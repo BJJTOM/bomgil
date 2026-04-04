@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -23,6 +23,8 @@ import RegisterScreen from '../screens/RegisterScreen';
 import TrailDetailScreen from '../screens/TrailDetailScreen';
 import WalkScreen from '../screens/WalkScreen';
 import WalkCompleteScreen from '../screens/WalkCompleteScreen';
+import StoryDetailScreen from '../screens/StoryDetailScreen';
+import CommunityWriteScreen from '../screens/CommunityWriteScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,15 +32,41 @@ const Stack = createNativeStackNavigator();
 const TAB_CONFIG: {
   name: string;
   label: string;
-  iconName: string;
+  icon: string;
   component: React.ComponentType<any>;
 }[] = [
-  { name: 'Home', label: '홈', iconName: 'home', component: HomeScreen },
-  { name: 'Explore', label: '탐색', iconName: 'search', component: ExploreScreen },
-  { name: 'Community', label: '커뮤니티', iconName: 'message-square', component: CommunityScreen },
-  { name: 'Activity', label: '활동', iconName: 'activity', component: ActivityScreen },
-  { name: 'Settings', label: 'MY', iconName: 'user', component: SettingsScreen },
+  { name: 'Home', label: '홈', icon: '⌂', component: HomeScreen },
+  { name: 'Explore', label: '탐색', icon: '⊕', component: ExploreScreen },
+  { name: 'Community', label: '커뮤니티', icon: '⊞', component: CommunityScreen },
+  { name: 'Activity', label: '활동', icon: '◈', component: ActivityScreen },
+  { name: 'Settings', label: 'MY', icon: '⊙', component: SettingsScreen },
 ];
+
+function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isFocused) {
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 1.2, duration: 100, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [isFocused]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Text
+        style={{
+          fontSize: 20,
+          color: isFocused ? colors.primary : colors.textTertiary,
+          opacity: isFocused ? 1 : 0.5,
+        }}>
+        {icon}
+      </Text>
+    </Animated.View>
+  );
+}
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -71,12 +99,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               style={styles.tabItem}
               onPress={onPress}
               activeOpacity={0.7}>
-              <Icon
-                name={config?.iconName || 'circle'}
-                size={22}
-                color={isFocused ? colors.primary : colors.textTertiary}
-                style={{ opacity: isFocused ? 1 : 0.5 }}
-              />
+              <AnimatedTabIcon icon={config?.icon || '•'} isFocused={isFocused} />
               <Text
                 style={[
                   styles.tabLabel,
@@ -114,7 +137,7 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
@@ -129,6 +152,8 @@ export default function AppNavigator() {
           component={WalkCompleteScreen}
           options={{ gestureEnabled: false }}
         />
+        <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
+        <Stack.Screen name="CommunityWrite" component={CommunityWriteScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

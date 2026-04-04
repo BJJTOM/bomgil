@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,49 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
-  ActivityIndicator,
+  StatusBar,
+  Alert,
+  Share,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { WalkStory } from '../types';
 import { useAuthStore } from '../stores/auth';
+import { FadeInView } from '../components/FadeInView';
+
+function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => void }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 1.3, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <TouchableOpacity style={styles.actionBtn} onPress={handlePress}>
+      <Animated.Text style={[styles.actionIcon, isLiked && styles.actionIconLiked, { transform: [{ scale: scaleAnim }] }]}>
+        {isLiked ? '\u2764\uFE0F' : '\u{1F90D}'}
+      </Animated.Text>
+      <Text style={[styles.actionLabel, isLiked && styles.actionLabelLiked]}>
+        좋아요
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
-  happy: { emoji: '\u{1F60A}', label: '\uD589\uBCF5\uD574\uC694', bg: '#FFFBEB', text: '#B45309' },
-  peaceful: { emoji: '\u262E\uFE0F', label: '\uD3C9\uD654\uB85C\uC6CC\uC694', bg: '#EFF6FF', text: '#1D4ED8' },
-  exciting: { emoji: '\u{1F929}', label: '\uC2E0\uB098\uC694', bg: '#FFF7ED', text: '#C2410C' },
-  touching: { emoji: '\u{1F979}', label: '\uAC10\uB3D9\uC774\uC5D0\uC694', bg: '#FDF2F8', text: '#BE185D' },
-  funny: { emoji: '\u{1F604}', label: '\uC7AC\uBC0C\uC5B4\uC694', bg: '#F0FDF4', text: '#15803D' },
+  happy: { emoji: '\u{1F60A}', label: '행복해요', bg: '#FFFBEB', text: '#B45309' },
+  peaceful: { emoji: '\u262E\uFE0F', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
+  exciting: { emoji: '\u{1F929}', label: '신나요', bg: '#FFF7ED', text: '#C2410C' },
+  touching: { emoji: '\u{1F979}', label: '감동이에요', bg: '#FDF2F8', text: '#BE185D' },
+  funny: { emoji: '\u{1F604}', label: '재밌어요', bg: '#F0FDF4', text: '#15803D' },
 };
 
 export default function CommunityScreen() {
@@ -39,28 +66,52 @@ export default function CommunityScreen() {
     },
   });
 
-  const likeMutation = useMutation({
-    mutationFn: async (id: number) => (await api.post(`/stories/${id}/like/`)).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['community-feed'] }),
-  });
+  const handleLike = (storyId: number) => {
+    if (!isAuthenticated) {
+      navigation.navigate('Login');
+      return;
+    }
+    // Optimistic: update local state immediately
+    queryClient.setQueryData(['community-feed'], (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((s: any) =>
+        s.id === storyId
+          ? { ...s, is_liked: !s.is_liked, like_count: s.is_liked ? s.like_count - 1 : s.like_count + 1 }
+          : s,
+      );
+    });
+    api.post(`/stories/${storyId}/like/`).catch(() => {
+      queryClient.invalidateQueries({ queryKey: ['community-feed'] });
+    });
+  };
+
+  const handleShare = (story: WalkStory) => {
+    Share.share({
+      message: `${story.title || ''}\n${story.content.slice(0, 100)}...\n\nRoami에서 확인하세요!`,
+    });
+  };
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}\uBD84 \uC804`;
+    if (mins < 60) return `${mins}분 전`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}\uC2DC\uAC04 \uC804`;
+    if (hours < 24) return `${hours}시간 전`;
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}\uC77C \uC804`;
+    if (days < 7) return `${days}일 전`;
     return new Date(dateStr).toLocaleDateString('ko-KR');
   };
 
-  const renderStory = ({ item }: { item: WalkStory }) => {
+  const renderStory = ({ item, index }: { item: WalkStory; index: number }) => {
     const mood = MOOD_MAP[item.mood];
     const photos = item.photos || [];
 
     return (
-      <View style={styles.storyCard}>
+    <FadeInView delay={index * 60}>
+      <TouchableOpacity
+        style={styles.storyCard}
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
         {/* Author Header */}
         <View style={styles.authorRow}>
           <View style={styles.avatarRing}>
@@ -86,11 +137,11 @@ export default function CommunityScreen() {
                 <TouchableOpacity
                   onPress={() => navigation.navigate('TrailDetail', { trailId: item.trail_id })}>
                   <Text style={styles.trailLink} numberOfLines={1}>
-                    {item.trail_region} \u00B7 {item.trail_title}
+                    {item.trail_region} · {item.trail_title}
                   </Text>
                 </TouchableOpacity>
               )}
-              {item.trail_id && <Text style={styles.metaDot}> \u00B7 </Text>}
+              {item.trail_id && <Text style={styles.metaDot}> · </Text>}
               <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
             </View>
           </View>
@@ -171,16 +222,16 @@ export default function CommunityScreen() {
                   <Text style={styles.likeCountIcon}>{'\u2764'}</Text>
                 </View>
                 <Text style={styles.engagementText}>
-                  {'\uC88B\uC544\uC694'} {item.like_count}\uAC1C
+                  좋아요 {item.like_count}개
                 </Text>
               </View>
             )}
             {item.comment_count > 0 && (
               <TouchableOpacity
                 style={styles.commentCountBtn}
-                onPress={() => navigation.navigate('CommunityDetail', { storyId: item.id })}>
+                onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
                 <Text style={styles.engagementText}>
-                  {'\uB313\uAE00'} {item.comment_count}\uAC1C
+                  댓글 {item.comment_count}개
                 </Text>
               </TouchableOpacity>
             )}
@@ -189,60 +240,47 @@ export default function CommunityScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => {
-              if (!isAuthenticated) {
-                navigation.navigate('Login');
-                return;
-              }
-              likeMutation.mutate(item.id);
-            }}>
-            <Text style={[styles.actionIcon, item.is_liked && styles.actionIconLiked]}>
-              {item.is_liked ? '\u2764\uFE0F' : '\u{1F90D}'}
-            </Text>
-            <Text style={[styles.actionLabel, item.is_liked && styles.actionLabelLiked]}>
-              {'\uC88B\uC544\uC694'}
-            </Text>
-          </TouchableOpacity>
+          <LikeButton isLiked={item.is_liked} onPress={() => handleLike(item.id)} />
 
           <View style={styles.actionDivider} />
 
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => navigation.navigate('CommunityDetail', { storyId: item.id })}>
+            onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
             <Text style={styles.actionIcon}>{'\u{1F4AC}'}</Text>
-            <Text style={styles.actionLabel}>{'\uB313\uAE00'}</Text>
+            <Text style={styles.actionLabel}>댓글</Text>
           </TouchableOpacity>
 
           <View style={styles.actionDivider} />
 
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleShare(item)}>
             <Text style={styles.actionIcon}>{'\u2B06\uFE0F'}</Text>
-            <Text style={styles.actionLabel}>{'\uACF5\uC720'}</Text>
+            <Text style={styles.actionLabel}>공유</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
+    </FadeInView>
     );
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Sticky Header */}
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+      {/* Sticky Header — no write button, just notification + chat */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{'\uCEE4\uBBA4\uB2C8\uD2F0'}</Text>
+        <Text style={styles.headerTitle}>커뮤니티</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.writeBtn}
-            onPress={() =>
-              navigation.navigate(isAuthenticated ? 'CommunityWrite' : 'Login')
-            }>
-            <Text style={styles.writeBtnText}>{'\uAE00\uC4F0\uAE30'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+            style={styles.iconBtn}
+            onPress={() => Alert.alert('알림', '알림 기능 준비중입니다')}>
             <Text style={styles.iconBtnEmoji}>{'\u{1F514}'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => Alert.alert('채팅', '채팅 기능 준비중입니다')}>
             <Text style={styles.iconBtnEmoji}>{'\u{1F4AC}'}</Text>
           </TouchableOpacity>
         </View>
@@ -255,7 +293,7 @@ export default function CommunityScreen() {
             <View style={[styles.loadingDot, { opacity: 0.8 }]} />
             <View style={[styles.loadingDot, { opacity: 1 }]} />
           </View>
-          <Text style={styles.loadingText}>{'\uB85C\uB529 \uC911...'}</Text>
+          <Text style={styles.loadingText}>로딩 중...</Text>
         </View>
       ) : stories.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -263,14 +301,14 @@ export default function CommunityScreen() {
             <View style={styles.emptyIconCircle}>
               <Text style={styles.emptyIcon}>{'\u{1F4DD}'}</Text>
             </View>
-            <Text style={styles.emptyTitle}>{'\uC544\uC9C1 \uC2A4\uD1A0\uB9AC\uAC00 \uC5C6\uC5B4\uC694'}</Text>
+            <Text style={styles.emptyTitle}>아직 스토리가 없어요</Text>
             <Text style={styles.emptyDesc}>
-              {'\uCCAB \uBC88\uC9F8 \uAC77\uAE30 \uC774\uC57C\uAE30\uB97C\n\uACF5\uC720\uD574\uBCF4\uC138\uC694'}
+              {'첫 번째 걷기 이야기를\n공유해보세요'}
             </Text>
             <TouchableOpacity
               style={styles.emptyBtn}
               onPress={() => navigation.navigate('Explore')}>
-              <Text style={styles.emptyBtnText}>{'\uD2B8\uB808\uC77C \uD0D0\uC0C9\uD558\uAE30'}</Text>
+              <Text style={styles.emptyBtnText}>트레일 탐색하기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -291,9 +329,9 @@ export default function CommunityScreen() {
         />
       )}
 
-      {/* FAB */}
+      {/* FAB — smaller, positioned to clear tab bar */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 90 }]}
+        style={styles.fab}
         activeOpacity={0.85}
         onPress={() =>
           navigation.navigate(isAuthenticated ? 'CommunityWrite' : 'Login')
@@ -329,17 +367,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  writeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-  },
-  writeBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
   },
   iconBtn: {
     width: 36,
@@ -647,9 +674,10 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 90,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -661,8 +689,8 @@ const styles = StyleSheet.create({
   },
   fabIcon: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '300',
-    lineHeight: 26,
+    lineHeight: 24,
   },
 });

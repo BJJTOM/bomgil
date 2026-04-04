@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +19,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, PaginatedResponse } from '../types';
 import TrailCard from '../components/TrailCard';
+import { FadeInView } from '../components/FadeInView';
 
 const { width } = Dimensions.get('window');
 
@@ -138,21 +140,22 @@ export default function ExploreScreen() {
   };
 
   const renderTrailCard = useCallback(
-    ({ item }: { item: Trail }) => (
-      <View style={styles.cardWrap}>
+    ({ item, index }: { item: Trail; index: number }) => (
+      <FadeInView delay={index * 50} style={styles.cardWrap}>
         <TrailCard
           trail={item}
           onPress={() =>
             navigation.navigate('TrailDetail', { trailId: item.id })
           }
         />
-      </View>
+      </FadeInView>
     ),
     [navigation],
   );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       {/* Sticky Header */}
       <View style={styles.stickyHeader}>
         {/* Search Bar */}
@@ -276,7 +279,7 @@ export default function ExploreScreen() {
           numColumns={width > 600 ? 2 : 1}
           key={width > 600 ? 'two-col' : 'one-col'}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
           renderItem={renderTrailCard}
           ListEmptyComponent={

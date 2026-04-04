@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -120,10 +123,11 @@ export default function ActivityScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* Header */}
@@ -133,12 +137,16 @@ export default function ActivityScreen() {
               <Text style={styles.headerTitle}>활동 기록</Text>
               <Text style={styles.headerSub}>나의 걷기 활동을 기록해보세요</Text>
             </View>
-            <TouchableOpacity style={styles.addRecordBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.addRecordBtn}
+              activeOpacity={0.7}
+              onPress={() => Alert.alert('기록 추가', 'GPX 업로드 기능 준비중입니다')}>
               <Text style={styles.addRecordText}>+ 기록 추가</Text>
             </TouchableOpacity>
           </View>
 
           {/* Big Total Distance */}
+          <FadeInView delay={0}>
           {statsLoading ? (
             <ActivityIndicator
               color={colors.primary}
@@ -153,8 +161,10 @@ export default function ActivityScreen() {
               <Text style={styles.totalDistanceUnit}>km</Text>
             </View>
           )}
+          </FadeInView>
 
           {/* Today's Rings */}
+          <FadeInView delay={100}>
           <View style={styles.ringsRow}>
             <View style={styles.ringItem}>
               <View style={[styles.ringCircle, styles.ringSteps]}>
@@ -179,6 +189,7 @@ export default function ActivityScreen() {
               <Text style={styles.ringLabel}>kcal</Text>
             </View>
           </View>
+          </FadeInView>
 
           {/* Start Walking CTA */}
           <TouchableOpacity

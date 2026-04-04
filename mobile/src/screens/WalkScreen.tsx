@@ -9,6 +9,7 @@ import {
   PermissionsAndroid,
   Dimensions,
   Animated,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -255,6 +256,7 @@ export default function WalkScreen() {
   if (state === 'ready') {
     return (
       <View style={styles.readyContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a3a1b" />
         {/* Back button */}
         <TouchableOpacity
           style={[styles.readyBack, { top: insets.top + 10 }]}
@@ -297,6 +299,7 @@ export default function WalkScreen() {
   // ---- WALKING / PAUSED STATE ----
   return (
     <View style={styles.walkContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#1a3a1b" />
       {/* Status indicator */}
       <View style={[styles.statusBar, { top: insets.top + 12 }]}>
         <View style={styles.statusPill}>

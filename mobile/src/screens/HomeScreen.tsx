@@ -18,6 +18,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
+import { FadeInView } from '../components/FadeInView';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
@@ -63,9 +64,10 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }>
         {/* Hero Section */}
+        <FadeInView delay={0}>
         <LinearGradient
           colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
           start={{ x: 0, y: 0 }}
@@ -74,20 +76,23 @@ export default function HomeScreen() {
           {/* Top bar */}
           <View style={styles.heroTopBar}>
             <View style={styles.heroLogoRow}>
+              <Text style={styles.heroLogoIcon}>🌿</Text>
               <Text style={styles.heroLogoText}>Roami</Text>
+            </View>
+            <View style={styles.langButton}>
+              <Text style={styles.langButtonText}>🌐</Text>
             </View>
           </View>
 
           {/* Community badge */}
           <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeFlags}>🇰🇷🇯🇵🇺🇸🇬🇧🇫🇷</Text>
-            <Text style={styles.heroBadgeText}>전 세계 도보여행자들의 커뮤니티</Text>
+            <Text style={styles.heroBadgeText}>🌏 전 세계 도보여행자들의 커뮤니티</Text>
           </View>
 
           {/* Headline */}
           <Text style={styles.heroTitle}>걸으면 보이는 것들</Text>
           <Text style={styles.heroSub}>
-            {'전 세계 도보여행 코스를 발견하고, 나만의 길을 공유하세요.\n당신의 발걸음이 누군가의 여행이 됩니다.'}
+            {'전 세계 도보여행 코스를 발견하고\n나만의 길을 공유하세요'}
           </Text>
 
           {/* CTA Buttons */}
@@ -105,6 +110,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </LinearGradient>
+        </FadeInView>
 
         {/* Stats Bar */}
         <View style={styles.statsBarOuter}>
@@ -124,6 +130,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Discover by Country */}
+        <FadeInView delay={100}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>어디를 걸어볼까요?</Text>
@@ -149,8 +156,10 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+        </FadeInView>
 
         {/* Popular Trails */}
+        <FadeInView delay={200}>
         <View style={styles.popularSection}>
           <View style={styles.popularHeader}>
             <View>
@@ -196,6 +205,7 @@ export default function HomeScreen() {
             />
           )}
         </View>
+        </FadeInView>
 
         {/* UGC CTA */}
         <View style={styles.ugcSection}>
@@ -223,16 +233,10 @@ export default function HomeScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerMain}>
-            Roami는 전 세계 도보여행자들을 위한 코스 공유 & 동행 매칭 플랫폼입니다
-          </Text>
-          <Text style={styles.footerSub}>
-            Roami — A walking travel platform for discovering trails, sharing
-            routes, and finding companions.
-          </Text>
+          <Text style={styles.footerMain}>© 2026 Roami</Text>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -260,12 +264,26 @@ const styles = StyleSheet.create({
   heroLogoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  heroLogoIcon: {
+    fontSize: 20,
   },
   heroLogoText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  langButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  langButtonText: {
+    fontSize: 16,
   },
   heroBadge: {
     flexDirection: 'row',
@@ -275,10 +293,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginBottom: 20,
-    gap: 8,
-  },
-  heroBadgeFlags: {
-    fontSize: 13,
   },
   heroBadgeText: {
     color: 'rgba(255,255,255,0.7)',
@@ -328,7 +342,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Stats Bar
+  // Stats Bar (Toss-style)
   statsBarOuter: {
     paddingHorizontal: 20,
     marginTop: -28,
@@ -337,28 +351,35 @@ const styles = StyleSheet.create({
   statsBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#F2F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statItem: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
   },
   statItemBorder: {
-    borderRightWidth: 1,
-    borderRightColor: '#F2F4F6',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: '#E5E8EB',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#2D4A2E',
-    marginBottom: 2,
+    color: '#191F28',
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   statLabel: {
     fontSize: 11,
     color: '#B0B8C1',
+    fontWeight: '400',
   },
 
   // Section
@@ -530,23 +551,13 @@ const styles = StyleSheet.create({
 
   // Footer
   footer: {
-    paddingVertical: 32,
+    paddingVertical: 20,
     paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F4F6',
     alignItems: 'center',
   },
   footerMain: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#B0B8C1',
     textAlign: 'center',
-    lineHeight: 20,
-  },
-  footerSub: {
-    fontSize: 12,
-    color: 'rgba(176,184,193,0.6)',
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
   },
 });

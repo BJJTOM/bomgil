@@ -49,6 +49,7 @@ export interface Trail {
   end_lng: string;
   path_data: GeoJSONLineString;
   cover_image: string;
+  thumbnail_url?: string;
   tags: Tag[];
   best_season: string;
   status: "draft" | "pending" | "approved" | "rejected";

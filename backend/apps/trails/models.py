@@ -66,6 +66,7 @@ class Trail(models.Model):
     end_lng = models.DecimalField(max_digits=9, decimal_places=6)
     path_data = models.JSONField(default=dict, blank=True)
     cover_image = models.ImageField(upload_to="trails/covers/", blank=True)
+    thumbnail_url = models.URLField(max_length=500, blank=True, help_text="External thumbnail image URL")
     tags = models.ManyToManyField(Tag, blank=True, related_name="trails")
     best_season = models.CharField(max_length=10, choices=SEASON_CHOICES, default="all")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")

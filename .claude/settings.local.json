@@ -29,7 +29,13 @@
       "Bash(npm uninstall:*)",
       "Bash(npm run:*)",
       "Bash(vercel --yes --prod --name roami)",
-      "Bash(git commit -m 'Remove vercel.json that was causing deploy issues:*)"
+      "Bash(git commit -m 'Remove vercel.json that was causing deploy issues:*)",
+      "Bash(vercel --yes --prod)",
+      "Bash(curl -s https://frontend-sigma-nine-57.vercel.app/)",
+      "Bash(curl -s https://bomgil-api.onrender.com/api/v1/trails/)",
+      "Bash(python3 -c ':*)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings_local python3 manage.py makemigrations trails)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings_local python3 manage.py migrate)"
     ]
   }
 }

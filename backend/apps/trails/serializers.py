@@ -21,7 +21,7 @@ class TrailListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "author", "title", "region", "country",
             "distance_km", "estimated_minutes", "difficulty",
-            "cover_image", "tags", "best_season", "status",
+            "cover_image", "thumbnail_url", "tags", "best_season", "status",
             "view_count", "like_count", "is_liked", "created_at",
         ]
 

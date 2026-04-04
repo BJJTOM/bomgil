@@ -57,6 +57,7 @@ TRAILS_DATA = [
         "title": "북촌한옥마을 골목길",
         "title_en": "Bukchon Hanok Village Alley Walk",
         "title_ja": "北村韓屋マウル路地散歩",
+        "thumbnail_url": "https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop",
         "description": "조선시대 한옥이 밀집한 서울의 대표 도보코스. 600년 역사가 살아있는 골목을 걸으며 전통과 현대가 공존하는 풍경을 감상할 수 있다.",
         "description_en": "Seoul's iconic walking trail through dense Joseon-era hanok houses. Walk through 600 years of living history where tradition and modernity coexist.",
         "description_ja": "朝鮮時代の韓屋が密集したソウルの代表的な徒歩コース。600年の歴史が息づく路地を歩き、伝統と現代が共存する風景を楽しめます。",
@@ -92,6 +93,7 @@ TRAILS_DATA = [
         "title": "해운대 해변 산책로",
         "title_en": "Haeundae Coastal Walk",
         "title_ja": "海雲台海辺散歩道",
+        "thumbnail_url": "https://images.unsplash.com/photo-1590559899731-a382839e5549?w=800&h=600&fit=crop",
         "description": "해운대 해변에서 청사포까지 이어지는 해안 산책로. 파도소리를 들으며 부산의 아름다운 해안선을 걸을 수 있다.",
         "description_en": "A coastal promenade from Haeundae Beach to Cheongsapo. Walk along Busan's beautiful coastline listening to the waves.",
         "description_ja": "海雲台ビーチから青沙浦まで続く海岸散歩道。波の音を聞きながら釜山の美しい海岸線を歩けます。",
@@ -124,6 +126,7 @@ TRAILS_DATA = [
     },
     {
         # 2: 제주 올레길 7코스
+        "thumbnail_url": "https://images.unsplash.com/photo-1623826986116-1b31eec4ad02?w=800&h=600&fit=crop",
         "title": "제주 올레길 7코스",
         "title_en": "Jeju Olle Trail Route 7",
         "title_ja": "済州オルレ道7コース",
@@ -161,6 +164,7 @@ TRAILS_DATA = [
     {
         # 3: 전주한옥마을 맛집 탐방
         "title": "전주한옥마을 맛집 탐방",
+        "thumbnail_url": "https://images.unsplash.com/photo-1583167617788-5a41e7e4f68e?w=800&h=600&fit=crop",
         "title_en": "Jeonju Hanok Village Food Walk",
         "title_ja": "全州韓屋村グルメ散歩",
         "description": "전주한옥마을에서 남부시장까지 이어지는 먹거리 투어 코스. 비빔밥, 초코파이, 막걸리 등 전주의 맛을 걸으며 즐길 수 있다.",
@@ -196,6 +200,7 @@ TRAILS_DATA = [
     {
         # 4: 도쿄 야나카 산책
         "title": "도쿄 야나카 산책",
+        "thumbnail_url": "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=800&h=600&fit=crop",
         "title_en": "Tokyo Yanaka Old Town Walk",
         "title_ja": "東京谷中散歩",
         "description": "도쿄에서 가장 잘 보존된 옛 거리. 야나카 긴자 상점가의 석양, 사찰 골목, 고양이 마을로 유명하다.",
@@ -231,6 +236,7 @@ TRAILS_DATA = [
     {
         # 5: 교토 철학의 길
         "title": "교토 철학의 길",
+        "thumbnail_url": "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&h=600&fit=crop",
         "title_en": "Kyoto Philosopher's Path",
         "title_ja": "京都哲学の道",
         "description": "은각사에서 난젠지까지 이어지는 벚나무 수로길. 교토를 대표하는 산책로로 사계절 아름답다.",
@@ -266,6 +272,7 @@ TRAILS_DATA = [
     {
         # 6: 지우펀 올드 스트릿
         "title": "지우펀 올드 스트릿",
+        "thumbnail_url": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&h=600&fit=crop",
         "title_en": "Jiufen Old Street Walk",
         "title_ja": "九份老街散歩",
         "description": "센과 치히로의 행방불명의 모티브가 된 곳. 가파른 계단길을 따라 홍등과 전통 찻집이 이어진다.",
@@ -300,6 +307,7 @@ TRAILS_DATA = [
     {
         # 7: 런던 사우스뱅크 워크
         "title": "런던 사우스뱅크 워크",
+        "thumbnail_url": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop",
         "title_en": "London South Bank Walk",
         "title_ja": "ロンドン サウスバンク散歩",
         "description": "템즈강 남쪽을 따라 걷는 런던 최고의 도심 코스. 빅벤, 런던아이, 테이트모던, 타워브릿지까지.",
@@ -335,6 +343,7 @@ TRAILS_DATA = [
     {
         # 8: 파리 몽마르뜨 언덕 산책
         "title": "파리 몽마르뜨 언덕 산책",
+        "thumbnail_url": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&h=600&fit=crop",
         "title_en": "Paris Montmartre Walk",
         "title_ja": "パリ モンマルトル散歩",
         "description": "사크레쾨르 대성당에서 시작하는 파리 예술가 마을 산책. 화가들의 광장, 포도밭, 아멜리에 카페까지.",
@@ -370,6 +379,7 @@ TRAILS_DATA = [
     {
         # 9: 바르셀로나 고딕 지구
         "title": "바르셀로나 고딕 지구",
+        "thumbnail_url": "https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800&h=600&fit=crop",
         "title_en": "Barcelona Gothic Quarter Walk",
         "title_ja": "バルセロナ ゴシック地区散歩",
         "description": "바르셀로나 대성당에서 시작해 중세 골목을 지나 바르셀로네타 해변까지. 가우디의 흔적과 타파스 바가 곳곳에.",
@@ -405,6 +415,7 @@ TRAILS_DATA = [
     {
         # 10: 뉴욕 하이라인
         "title": "뉴욕 하이라인",
+        "thumbnail_url": "https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800&h=600&fit=crop",
         "title_en": "NYC High Line Walk",
         "title_ja": "ニューヨーク ハイライン散歩",
         "description": "폐선 위에 만든 공중 정원. 맨해튼 서쪽 하늘 아래 현대 미술과 도시 풍경을 동시에 즐길 수 있다.",
@@ -440,6 +451,7 @@ TRAILS_DATA = [
     {
         # 11: 방콕 차이나타운 야오와랏
         "title": "방콕 차이나타운 야오와랏",
+        "thumbnail_url": "https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800&h=600&fit=crop",
         "title_en": "Bangkok Yaowarat Walk",
         "title_ja": "バンコク チャイナタウン ヤワラート散歩",
         "description": "방콕에서 가장 활기찬 야시장 거리. 200년 역사의 차이나타운에서 길거리 음식을 즐기며 걷는 코스.",

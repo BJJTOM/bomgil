@@ -21,8 +21,8 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
         className="flex card-hover overflow-hidden active:scale-[0.98]"
       >
         <div className="relative w-28 h-28 flex-shrink-0">
-          {trail.cover_image ? (
-            <Image src={trail.cover_image} alt={trail.title} fill className="object-cover" />
+          {trail.cover_image || trail.thumbnail_url ? (
+            <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-accent-light to-accent flex items-center justify-center text-2xl">
               {trailType.emoji}
@@ -53,8 +53,8 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
       className={`block card-hover overflow-hidden ${variant === "compact" ? "min-w-[280px]" : ""}`}
     >
       <div className="relative h-44 w-full">
-        {trail.cover_image ? (
-          <Image src={trail.cover_image} alt={trail.title} fill className="object-cover" />
+        {trail.cover_image || trail.thumbnail_url ? (
+          <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-accent-light to-primary-100 flex items-center justify-center text-5xl">
             {trailType.emoji}

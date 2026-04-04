@@ -1,8 +1,22 @@
+import re
+
+from django.utils.html import strip_tags
 from rest_framework import serializers
 
 from apps.accounts.serializers import UserPublicSerializer
 
 from .models import StoryComment, StoryLike, StoryPhoto, WalkStory
+
+
+def sanitize_text(value):
+    """Strip HTML tags and script content from user input."""
+    if not value:
+        return value
+    # Remove script tags and content
+    value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.DOTALL | re.IGNORECASE)
+    # Strip all remaining HTML tags
+    value = strip_tags(value)
+    return value.strip()
 
 
 class StoryPhotoSerializer(serializers.ModelSerializer):
@@ -78,6 +92,12 @@ class WalkStoryCreateSerializer(serializers.ModelSerializer):
         model = WalkStory
         fields = ["trail", "walk_plan", "title", "content", "mood", "is_public", "companion_ids"]
         extra_kwargs = {"walk_plan": {"required": False}, "trail": {"required": False}}
+
+    def validate_title(self, value):
+        return sanitize_text(value)
+
+    def validate_content(self, value):
+        return sanitize_text(value)
 
     def create(self, validated_data):
         companion_ids = validated_data.pop("companion_ids", [])

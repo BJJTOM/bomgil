@@ -160,7 +160,7 @@ class GuestLoginView(APIView):
             email=email,
             nickname=nickname,
             password=None,
-            bio="게스트 사용자입니다",
+            bio="게스트 사용자입니다 (24시간 후 자동 삭제)",
         )
         user.set_unusable_password()
         user.save()

@@ -3,6 +3,7 @@ import textwrap
 
 from django.db.models import F
 from django.http import HttpResponse
+from django.utils.html import strip_tags
 from PIL import Image, ImageDraw, ImageFont
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -145,7 +146,7 @@ class StoryCommentCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        content = request.data.get("content", "").strip()
+        content = strip_tags(request.data.get("content", "")).strip()
         if not content:
             return Response({"error": "댓글 내용을 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 

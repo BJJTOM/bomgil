@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import connection
 from django.core.cache import cache
 from rest_framework.response import Response
@@ -9,25 +10,32 @@ class HealthCheckView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        health = {"status": "ok", "checks": {}}
+        health = {"status": "ok"}
 
         # DB check
         try:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
-            health["checks"]["database"] = "ok"
+            db_ok = True
         except Exception as e:
-            health["checks"]["database"] = f"error: {str(e)}"
+            db_ok = False
             health["status"] = "degraded"
 
         # Redis check
         try:
             cache.set("health_check", "ok", 10)
             val = cache.get("health_check")
-            health["checks"]["redis"] = "ok" if val == "ok" else "error"
+            redis_ok = val == "ok"
         except Exception as e:
-            health["checks"]["redis"] = f"error: {str(e)}"
+            redis_ok = False
             health["status"] = "degraded"
+
+        # Only expose internal details in DEBUG mode
+        if settings.DEBUG:
+            health["checks"] = {
+                "database": "ok" if db_ok else "error",
+                "redis": "ok" if redis_ok else "error",
+            }
 
         status_code = 200 if health["status"] == "ok" else 503
         return Response(health, status=status_code)

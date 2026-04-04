@@ -70,3 +70,11 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
     "user": "5000/hour",
     "trail_create": "100/day",
 }
+
+# ---------------------------------------------------------------------------
+# Security headers
+# ---------------------------------------------------------------------------
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"

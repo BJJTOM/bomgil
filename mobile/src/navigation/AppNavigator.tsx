@@ -2,7 +2,14 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -19,19 +26,71 @@ import WalkCompleteScreen from '../screens/WalkCompleteScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    Home: '\uD83C\uDFE0',
-    Explore: '\uD83D\uDD0D',
-    Community: '\uD83D\uDCAC',
-    Activity: '\u26A1',
-    Settings: '\u2699\uFE0F',
-  };
+const TAB_CONFIG: {
+  name: string;
+  label: string;
+  icon: string;
+  component: React.ComponentType<any>;
+}[] = [
+  { name: 'Home', label: '\uD648', icon: '\u{1F3E0}', component: HomeScreen },
+  { name: 'Explore', label: '\uD0D0\uC0C9', icon: '\u{1F50D}', component: ExploreScreen },
+  { name: 'Community', label: '\uCEE4\uBBA4\uB2C8\uD2F0', icon: '\u{1F4AC}', component: CommunityScreen },
+  { name: 'Activity', label: '\uD65C\uB3D9', icon: '\u26A1', component: ActivityScreen },
+  { name: 'Settings', label: 'MY', icon: '\u2699\uFE0F', component: SettingsScreen },
+];
+
+function CustomTabBar({ state, descriptors, navigation }: any) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={{ alignItems: 'center' }}>
-      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>
-        {icons[name]}
-      </Text>
+    <View
+      style={[
+        styles.tabBarOuter,
+        { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 },
+      ]}>
+      <View style={styles.tabBarPill}>
+        {state.routes.map((route: any, index: number) => {
+          const config = TAB_CONFIG.find((t) => t.name === route.name);
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              style={styles.tabItem}
+              onPress={onPress}
+              activeOpacity={0.7}>
+              <Text
+                style={[
+                  styles.tabIcon,
+                  { opacity: isFocused ? 1 : 0.4 },
+                ]}>
+                {config?.icon || ''}
+              </Text>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: isFocused ? colors.primary : colors.textTertiary,
+                    fontWeight: isFocused ? '600' : '400',
+                  },
+                ]}>
+                {config?.label || route.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -39,54 +98,15 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused }) => (
-          <TabIcon name={route.name} focused={focused} />
-        ),
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-          borderTopWidth: 0,
-          elevation: 20,
-          shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 16,
-          backgroundColor: '#fff',
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600' as const,
-        },
-      })}>
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ tabBarLabel: '\uD648' }}
-      />
-      <Tab.Screen
-        name="Explore"
-        component={ExploreScreen}
-        options={{ tabBarLabel: '\uD0D0\uC0C9' }}
-      />
-      <Tab.Screen
-        name="Community"
-        component={CommunityScreen}
-        options={{ tabBarLabel: '\uCEE4\uBBA4\uB2C8\uD2F0' }}
-      />
-      <Tab.Screen
-        name="Activity"
-        component={ActivityScreen}
-        options={{ tabBarLabel: '\uD65C\uB3D9' }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ tabBarLabel: 'MY' }}
-      />
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}>
+      {TAB_CONFIG.map((tab) => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+        />
+      ))}
     </Tab.Navigator>
   );
 }
@@ -113,3 +133,49 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarOuter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  tabBarPill: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    height: 64,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: -4 },
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  tabLabel: {
+    fontSize: 10,
+  },
+});

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -16,6 +15,17 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
+
+const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
+  manual_gpx: { label: 'GPX', icon: '📁' },
+  apple_watch: { label: 'Apple Watch', icon: '⌚' },
+  garmin: { label: 'Garmin', icon: '⌚' },
+  samsung_health: { label: 'Samsung Health', icon: '📱' },
+  google_fit: { label: 'Google Fit', icon: '📱' },
+  cashwalk: { label: 'Cashwalk', icon: '🚶' },
+  phone_gps: { label: 'GPS', icon: '📍' },
+  strava: { label: 'Strava', icon: '🏃' },
+};
 
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
@@ -32,7 +42,7 @@ export default function ActivityScreen() {
   });
 
   const {
-    data: activities,
+    data: activitiesData,
     isLoading: activitiesLoading,
     refetch,
     isRefetching,
@@ -45,27 +55,63 @@ export default function ActivityScreen() {
     enabled: isAuthenticated,
   });
 
-  const formatDuration = (minutes: number) => {
+  const activities = activitiesData?.results || [];
+
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return '-';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
   };
+
+  const formatPace = (pace: string | null) => {
+    if (!pace) return '-';
+    const p = parseFloat(pace);
+    const min = Math.floor(p);
+    const sec = Math.round((p - min) * 60);
+    return `${min}'${sec.toString().padStart(2, '0')}"`;
+  };
+
+  // Today's stats
+  const today = new Date().toISOString().split('T')[0];
+  const todayWeekly = stats?.weekly?.find((d) => d.date === today);
+  const todayActivities = activities.filter(
+    (a) => a.started_at && a.started_at.startsWith(today),
+  );
+  const todayStats = todayWeekly
+    ? {
+        steps: todayWeekly.total_steps,
+        distance: parseFloat(todayWeekly.total_distance_km),
+        calories: todayWeekly.total_calories,
+      }
+    : {
+        steps: todayActivities.reduce((s, a) => s + (a.total_steps || 0), 0),
+        distance: todayActivities.reduce(
+          (s, a) => s + parseFloat(a.distance_km || '0'),
+          0,
+        ),
+        calories: todayActivities.reduce(
+          (s, a) => s + (a.calories_burned || 0),
+          0,
+        ),
+      };
 
   if (!isAuthenticated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{'\uD65C\uB3D9'}</Text>
+        <View style={styles.headerSimple}>
+          <Text style={styles.headerTitle}>활동 기록</Text>
         </View>
-        <View style={styles.center}>
-          <Text style={styles.emptyIcon}>{'\uD83E\uDDB6'}</Text>
-          <Text style={styles.emptyTitle}>
-            {'\uB85C\uADF8\uC778\uD558\uACE0 \uAC77\uAE30 \uAE30\uB85D\uC744 \uC2DC\uC791\uD558\uC138\uC694'}
+        <View style={styles.loginPrompt}>
+          <Text style={styles.loginPromptIcon}>🦶</Text>
+          <Text style={styles.loginPromptTitle}>
+            로그인하고 걷기 기록을 시작하세요
           </Text>
           <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginBtnText}>{'\uB85C\uADF8\uC778'}</Text>
+            style={styles.loginPromptBtn}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.85}>
+            <Text style={styles.loginPromptBtnText}>로그인</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -74,129 +120,209 @@ export default function ActivityScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{'\uD65C\uB3D9'}</Text>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-        }>
-        {/* Stats Overview */}
-        {statsLoading ? (
-          <View style={styles.statsRow}>
-            <ActivityIndicator color={colors.primary} />
+        }
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>활동 기록</Text>
+              <Text style={styles.headerSub}>나의 걷기 활동을 기록해보세요</Text>
+            </View>
+            <TouchableOpacity style={styles.addRecordBtn} activeOpacity={0.7}>
+              <Text style={styles.addRecordText}>+ 기록 추가</Text>
+            </TouchableOpacity>
           </View>
-        ) : stats ? (
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {stats.total_distance_km.toFixed(1)}
-              </Text>
-              <Text style={styles.statLabel}>{'km \uCD1D \uAC70\uB9AC'}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {stats.total_steps.toLocaleString()}
-              </Text>
-              <Text style={styles.statLabel}>{'\uCD1D \uAC78\uC74C'}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {stats.total_calories.toLocaleString()}
-              </Text>
-              <Text style={styles.statLabel}>{'kcal'}</Text>
-            </View>
-          </View>
-        ) : null}
 
-        {/* Today's Rings */}
-        <View style={styles.ringsCard}>
-          <Text style={styles.ringsTitle}>{'\uC624\uB298\uC758 \uAC77\uAE30'}</Text>
+          {/* Big Total Distance */}
+          {statsLoading ? (
+            <ActivityIndicator
+              color={colors.primary}
+              style={{ marginVertical: 24 }}
+            />
+          ) : (
+            <View style={styles.totalDistanceWrap}>
+              <Text style={styles.totalDistanceLabel}>총 거리</Text>
+              <Text style={styles.totalDistanceValue}>
+                {stats?.total_distance_km.toFixed(1) || '0.0'}
+              </Text>
+              <Text style={styles.totalDistanceUnit}>km</Text>
+            </View>
+          )}
+
+          {/* Today's Rings */}
           <View style={styles.ringsRow}>
-            <View style={styles.ring}>
-              <View
-                style={[styles.ringCircle, { borderColor: colors.primary }]}>
+            <View style={styles.ringItem}>
+              <View style={[styles.ringCircle, styles.ringSteps]}>
                 <Text style={styles.ringValue}>
-                  {stats?.weekly?.[stats.weekly.length - 1]?.total_steps || 0}
+                  {todayStats.steps.toLocaleString()}
                 </Text>
               </View>
-              <Text style={styles.ringLabel}>{'\uAC78\uC74C'}</Text>
+              <Text style={styles.ringLabel}>걸음</Text>
             </View>
-            <View style={styles.ring}>
-              <View
-                style={[styles.ringCircle, { borderColor: colors.accent }]}>
+            <View style={styles.ringItem}>
+              <View style={[styles.ringCircle, styles.ringDistance]}>
                 <Text style={styles.ringValue}>
-                  {stats?.weekly?.[stats.weekly.length - 1]?.total_distance_km ||
-                    '0'}
+                  {todayStats.distance.toFixed(1)}
                 </Text>
               </View>
-              <Text style={styles.ringLabel}>{'km'}</Text>
+              <Text style={styles.ringLabel}>km</Text>
             </View>
-            <View style={styles.ring}>
-              <View
-                style={[styles.ringCircle, { borderColor: '#FF9800' }]}>
-                <Text style={styles.ringValue}>
-                  {stats?.weekly?.[stats.weekly.length - 1]?.total_calories || 0}
-                </Text>
+            <View style={styles.ringItem}>
+              <View style={[styles.ringCircle, styles.ringCalories]}>
+                <Text style={styles.ringValue}>{todayStats.calories}</Text>
               </View>
-              <Text style={styles.ringLabel}>{'kcal'}</Text>
+              <Text style={styles.ringLabel}>kcal</Text>
             </View>
           </View>
-        </View>
 
-        {/* Start Walk Button */}
-        <View style={styles.walkSection}>
+          {/* Start Walking CTA */}
           <TouchableOpacity
             style={styles.startWalkBtn}
-            onPress={() => navigation.navigate('Walk')}>
-            <Text style={styles.startWalkIcon}>{'\uD83E\uDDB6'}</Text>
-            <Text style={styles.startWalkText}>{'\uAC77\uAE30 \uC2DC\uC791'}</Text>
+            onPress={() => navigation.navigate('Walk')}
+            activeOpacity={0.85}>
+            <Text style={styles.startWalkText}>🚶 걷기 시작</Text>
           </TouchableOpacity>
+
+          {/* Weekly Chart */}
+          {stats && stats.weekly && stats.weekly.length > 0 && (
+            <View style={styles.weeklyCard}>
+              <Text style={styles.weeklyTitle}>이번 주 거리</Text>
+              <View style={styles.weeklyBars}>
+                {stats.weekly.map((day) => {
+                  const km = parseFloat(day.total_distance_km);
+                  const maxKm = Math.max(
+                    ...stats.weekly.map((d) =>
+                      parseFloat(d.total_distance_km),
+                    ),
+                    1,
+                  );
+                  const height = Math.max((km / maxKm) * 100, 4);
+                  const dayLabel = new Date(day.date).toLocaleDateString(
+                    'ko-KR',
+                    { weekday: 'short' },
+                  );
+                  return (
+                    <View key={day.date} style={styles.weeklyBarCol}>
+                      <View style={styles.weeklyBarTrack}>
+                        <View
+                          style={[
+                            styles.weeklyBar,
+                            { height: `${height}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.weeklyBarLabel}>{dayLabel}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Recent Activities */}
         <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>{'\uCD5C\uADFC \uD65C\uB3D9'}</Text>
+          <Text style={styles.recentTitle}>최근 활동</Text>
           {activitiesLoading ? (
-            <ActivityIndicator
-              color={colors.primary}
-              style={{ marginTop: 20 }}
-            />
+            <>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonItem}>
+                  <View style={styles.skeletonTitle} />
+                  <View style={styles.skeletonMeta} />
+                </View>
+              ))}
+            </>
+          ) : activities.length === 0 ? (
+            <View style={styles.noRecords}>
+              <Text style={styles.noRecordsText}>
+                아직 활동 기록이 없어요
+              </Text>
+            </View>
           ) : (
-            activities?.results?.map((track) => (
-              <View key={track.id} style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Text>{'\uD83D\uDEB6'}</Text>
+            activities.map((activity) => (
+              <TouchableOpacity
+                key={activity.id}
+                style={styles.activityCard}
+                activeOpacity={0.7}>
+                <View style={styles.activityHeader}>
+                  <View style={styles.activityTitleRow}>
+                    <Text style={styles.activityIcon}>
+                      {SOURCE_LABELS[activity.source]?.icon || '📍'}
+                    </Text>
+                    <View style={styles.activityTitleInfo}>
+                      <Text style={styles.activityTitle}>
+                        {activity.title ||
+                          `${SOURCE_LABELS[activity.source]?.label || ''} 기록`}
+                      </Text>
+                      <Text style={styles.activityDate}>
+                        {activity.started_at
+                          ? new Date(activity.started_at).toLocaleDateString(
+                              'ko-KR',
+                              {
+                                month: 'long',
+                                day: 'numeric',
+                                weekday: 'short',
+                              },
+                            )
+                          : new Date(activity.created_at).toLocaleDateString(
+                              'ko-KR',
+                              {
+                                month: 'long',
+                                day: 'numeric',
+                                weekday: 'short',
+                              },
+                            )}
+                        {' · '}
+                        {SOURCE_LABELS[activity.source]?.label || ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.distanceBadge}>
+                    <Text style={styles.distanceBadgeText}>
+                      {activity.distance_km
+                        ? `${parseFloat(activity.distance_km).toFixed(1)}km`
+                        : '-'}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.activityInfo}>
-                  <Text style={styles.activityTitle}>{track.title}</Text>
-                  <Text style={styles.activityMeta}>
-                    {track.distance_km}km
-                    {track.duration_minutes
-                      ? ` \u00B7 ${formatDuration(track.duration_minutes)}`
-                      : ''}
-                  </Text>
+
+                <View style={styles.activityStats}>
+                  <View style={styles.activityStatItem}>
+                    <Text style={styles.activityStatLabel}>거리</Text>
+                    <Text style={styles.activityStatValue}>
+                      {activity.distance_km
+                        ? `${parseFloat(activity.distance_km).toFixed(1)}km`
+                        : '-'}
+                    </Text>
+                  </View>
+                  <View style={styles.activityStatItem}>
+                    <Text style={styles.activityStatLabel}>시간</Text>
+                    <Text style={styles.activityStatValue}>
+                      {formatDuration(activity.duration_minutes)}
+                    </Text>
+                  </View>
+                  <View style={styles.activityStatItem}>
+                    <Text style={styles.activityStatLabel}>걸음</Text>
+                    <Text style={styles.activityStatValue}>
+                      {activity.total_steps?.toLocaleString() || '-'}
+                    </Text>
+                  </View>
+                  <View style={styles.activityStatItem}>
+                    <Text style={styles.activityStatLabel}>페이스</Text>
+                    <Text style={styles.activityStatValue}>
+                      {formatPace(activity.avg_pace_min_km)}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.activityDate}>
-                  {new Date(track.created_at).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
-          {!activitiesLoading &&
-            (!activities?.results || activities.results.length === 0) && (
-              <Text style={styles.emptyText}>
-                {'\uC544\uC9C1 \uD65C\uB3D9 \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694'}
-              </Text>
-            )}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -205,174 +331,319 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FAFAFA',
   },
-  header: {
+
+  // Login prompt
+  headerSimple: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  center: {
+  loginPrompt: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
   },
-  emptyIcon: {
+  loginPromptIcon: {
     fontSize: 48,
     marginBottom: 16,
   },
-  emptyTitle: {
+  loginPromptTitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 24,
   },
-  loginBtn: {
+  loginPromptBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
   },
-  loginBtnText: {
-    color: '#fff',
+  loginPromptBtnText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
-  statsRow: {
+
+  // Header section (light gradient feel)
+  headerSection: {
+    backgroundColor: colors.primary50,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  headerRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 10,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 24,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-  },
-  statValue: {
+  headerTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  headerSub: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  addRecordBtn: {
+    backgroundColor: 'rgba(45,74,46,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 9999,
+  },
+  addRecordText: {
+    fontSize: 13,
     fontWeight: '500',
+    color: colors.primary,
   },
-  ringsCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+
+  // Total distance
+  totalDistanceWrap: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  ringsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 16,
+  totalDistanceLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
+  totalDistanceValue: {
+    fontSize: 56,
+    fontWeight: '700',
+    color: colors.primary,
+    lineHeight: 60,
+  },
+  totalDistanceUnit: {
+    fontSize: 14,
+    color: colors.textTertiary,
+    marginTop: 4,
+  },
+
+  // Today's rings
   ringsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 24,
   },
-  ring: {
+  ringItem: {
     alignItems: 'center',
   },
   ringCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 4,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  ringSteps: {
+    borderColor: '#2D4A2E',
+  },
+  ringDistance: {
+    borderColor: '#A8E6CF',
+  },
+  ringCalories: {
+    borderColor: '#FF6B6B',
   },
   ringValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   },
   ringLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 10,
+    color: colors.textTertiary,
   },
-  walkSection: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
+
+  // Start walk
   startWalkBtn: {
     backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
-  },
-  startWalkIcon: {
-    fontSize: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   startWalkText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  recentSection: {
-    paddingHorizontal: 20,
+
+  // Weekly chart
+  weeklyCard: {
+    marginTop: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  weeklyTitle: {
+    fontSize: 12,
+    color: colors.textTertiary,
     marginBottom: 12,
   },
-  activityItem: {
+  weeklyBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 60,
+    gap: 6,
+  },
+  weeklyBarCol: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  weeklyBarTrack: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
+  },
+  weeklyBar: {
+    width: '100%',
+    backgroundColor: 'rgba(45,74,46,0.3)',
+    borderRadius: 2,
+  },
+  weeklyBarLabel: {
+    fontSize: 9,
+    color: colors.textTertiary,
+    marginTop: 4,
+  },
+
+  // Recent activities
+  recentSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  recentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+
+  // Activity card
+  activityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  activityTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    gap: 8,
+    flex: 1,
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 18,
   },
-  activityInfo: {
+  activityTitleInfo: {
     flex: 1,
-    marginLeft: 12,
   },
   activityTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  activityMeta: {
-    fontSize: 13,
-    color: colors.textSecondary,
   },
   activityDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textTertiary,
+    marginTop: 2,
   },
-  emptyText: {
+  distanceBadge: {
+    backgroundColor: '#111111',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 9999,
+  },
+  distanceBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  activityStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  activityStatItem: {
+    flex: 1,
+  },
+  activityStatLabel: {
+    fontSize: 10,
+    color: colors.textTertiary,
+    marginBottom: 2,
+  },
+  activityStatValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+
+  // Skeleton
+  skeletonItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 12,
+  },
+  skeletonTitle: {
+    height: 16,
+    width: '40%',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonMeta: {
+    height: 12,
+    width: '65%',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 4,
+  },
+
+  // Empty
+  noRecords: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  noRecordsText: {
     fontSize: 14,
     color: colors.textTertiary,
-    textAlign: 'center',
-    marginTop: 20,
   },
 });

@@ -14,11 +14,16 @@ import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, LANGUAGES } from '../stores/language';
 
-interface MenuItem {
+interface SectionItem {
   icon: string;
   label: string;
-  onPress: () => void;
-  danger?: boolean;
+  value?: string;
+  onPress?: () => void;
+}
+
+interface Section {
+  title: string;
+  items: SectionItem[];
 }
 
 export default function SettingsScreen() {
@@ -28,10 +33,10 @@ export default function SettingsScreen() {
   const { language, setLanguage } = useLanguageStore();
 
   const handleLogout = () => {
-    Alert.alert('\uB85C\uADF8\uC544\uC6C3', '\uB85C\uADF8\uC544\uC6C3 \uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?', [
-      { text: '\uCDE8\uC18C', style: 'cancel' },
+    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
       {
-        text: '\uB85C\uADF8\uC544\uC6C3',
+        text: '로그아웃',
         style: 'destructive',
         onPress: () => logout(),
       },
@@ -40,7 +45,7 @@ export default function SettingsScreen() {
 
   const handleLanguageChange = () => {
     Alert.alert(
-      '\uC5B8\uC5B4 \uC120\uD0DD',
+      '언어 선택',
       '',
       LANGUAGES.map((l) => ({
         text: `${l.flag} ${l.label}`,
@@ -50,125 +55,130 @@ export default function SettingsScreen() {
     );
   };
 
-  const menuItems: MenuItem[] = isAuthenticated
-    ? [
+  const sections: Section[] = [
+    {
+      title: '계정',
+      items: isAuthenticated
+        ? [
+            { icon: '👤', label: '프로필 수정', onPress: () => {} },
+            {
+              icon: '📊',
+              label: '내 활동 기록',
+              onPress: () => navigation.navigate('Activity'),
+            },
+            { icon: '❤️', label: '좋아요한 코스', onPress: () => {} },
+          ]
+        : [
+            {
+              icon: '🔑',
+              label: '로그인',
+              onPress: () => navigation.navigate('Login'),
+            },
+            {
+              icon: '✨',
+              label: '회원가입',
+              onPress: () => navigation.navigate('Register'),
+            },
+          ],
+    },
+    {
+      title: '앱 설정',
+      items: [
         {
-          icon: '\uD83D\uDC64',
-          label: '\uD504\uB85C\uD544',
-          onPress: () => {},
-        },
-        {
-          icon: '\uD83D\uDEB6',
-          label: '\uB098\uC758 \uD65C\uB3D9',
-          onPress: () => navigation.navigate('Activity'),
-        },
-        {
-          icon: '\u2764\uFE0F',
-          label: '\uC88B\uC544\uC694 \uBAA9\uB85D',
-          onPress: () => {},
-        },
-        {
-          icon: '\uD83C\uDF10',
-          label: `\uC5B8\uC5B4 (${LANGUAGES.find((l) => l.code === language)?.label})`,
+          icon: '🌐',
+          label: '언어 설정',
+          value: LANGUAGES.find((l) => l.code === language)?.label,
           onPress: handleLanguageChange,
         },
-        {
-          icon: '\uD83D\uDCC4',
-          label: '\uC774\uC6A9\uC57D\uAD00',
-          onPress: () => {},
-        },
-        {
-          icon: '\uD83D\uDD12',
-          label: '\uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68',
-          onPress: () => {},
-        },
-      ]
-    : [
-        {
-          icon: '\uD83C\uDF10',
-          label: `\uC5B8\uC5B4 (${LANGUAGES.find((l) => l.code === language)?.label})`,
-          onPress: handleLanguageChange,
-        },
-        {
-          icon: '\uD83D\uDCC4',
-          label: '\uC774\uC6A9\uC57D\uAD00',
-          onPress: () => {},
-        },
-        {
-          icon: '\uD83D\uDD12',
-          label: '\uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68',
-          onPress: () => {},
-        },
-      ];
+        { icon: '🔔', label: '알림 설정', onPress: () => {} },
+      ],
+    },
+    {
+      title: '정보',
+      items: [
+        { icon: '📋', label: '서비스 이용약관', onPress: () => {} },
+        { icon: '🔒', label: '개인정보처리방침', onPress: () => {} },
+        { icon: '📄', label: '오픈소스 라이선스', onPress: () => {} },
+        { icon: 'ℹ️', label: '버전 정보', value: '1.0.0' },
+      ],
+    },
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>MY</Text>
-      </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>설정</Text>
+        </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
         {/* User Card */}
         {isAuthenticated && user ? (
-          <View style={styles.userCard}>
-            <View style={styles.userAvatar}>
+          <TouchableOpacity style={styles.userCard} activeOpacity={0.7}>
+            <View style={styles.avatar}>
               {user.profile_image ? (
                 <Image
                   source={{ uri: user.profile_image }}
-                  style={styles.userAvatarImg}
+                  style={styles.avatarImage}
                 />
               ) : (
-                <Text style={styles.userAvatarText}>
-                  {user.nickname.charAt(0).toUpperCase()}
-                </Text>
+                <Text style={styles.avatarEmoji}>👤</Text>
               )}
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{user.nickname}</Text>
               <Text style={styles.userEmail}>{user.email}</Text>
             </View>
-          </View>
-        ) : (
-          <View style={styles.guestCard}>
-            <Text style={styles.guestTitle}>
-              {'\uB85C\uADF8\uC778\uD558\uACE0 \uB354 \uB9CE\uC740 \uAE30\uB2A5\uC744 \uC774\uC6A9\uD558\uC138\uC694'}
-            </Text>
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginButtonText}>{'\uB85C\uADF8\uC778'}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Menu */}
-        <View style={styles.menuSection}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={item.onPress}>
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text
-                style={[
-                  styles.menuLabel,
-                  item.danger && { color: colors.danger },
-                ]}>
-                {item.label}
-              </Text>
-              <Text style={styles.menuArrow}>{'\u203A'}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Logout */}
-        {isAuthenticated && (
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutText}>{'\uB85C\uADF8\uC544\uC6C3'}</Text>
+            <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
+        ) : null}
+
+        {/* Sections */}
+        {sections.map((section) => (
+          <View key={section.title} style={styles.sectionWrap}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.sectionCard}>
+              {section.items.map((item, index) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[
+                    styles.menuItem,
+                    index < section.items.length - 1 && styles.menuItemBorder,
+                  ]}
+                  onPress={item.onPress}
+                  activeOpacity={item.onPress ? 0.6 : 1}>
+                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  {item.value ? (
+                    <Text style={styles.menuValue}>{item.value}</Text>
+                  ) : null}
+                  <Text style={styles.menuChevron}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {/* Logout Button */}
+        {isAuthenticated && (
+          <View style={styles.logoutWrap}>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.7}>
+              <Text style={styles.logoutText}>로그아웃</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
-        <View style={{ height: 100 }} />
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            © 2026 Roami. All rights reserved.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -177,128 +187,156 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FAFAFA',
   },
+
+  // Header
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
   },
+
+  // User card
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  userAvatar: {
+  avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.accent,
+    backgroundColor: 'rgba(168,230,207,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  userAvatarImg: {
+  avatarImage: {
     width: 56,
     height: 56,
   },
-  userAvatarText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.primary,
+  avatarEmoji: {
+    fontSize: 24,
   },
   userInfo: {
-    marginLeft: 16,
     flex: 1,
   },
   userName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 2,
   },
   userEmail: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: colors.textTertiary,
   },
-  guestCard: {
-    marginHorizontal: 16,
+  chevron: {
+    fontSize: 22,
+    color: colors.textTertiary,
+  },
+
+  // Sections
+  sectionWrap: {
     marginBottom: 16,
-    padding: 24,
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
-    alignItems: 'center',
   },
-  guestTitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  loginButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 15,
+  sectionTitle: {
+    paddingHorizontal: 20,
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
   },
-  menuSection: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  sectionCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 15,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
   menuIcon: {
     fontSize: 18,
-    marginRight: 12,
-    width: 24,
+    width: 28,
     textAlign: 'center',
   },
   menuLabel: {
     flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
+    fontSize: 14,
     fontWeight: '500',
+    color: colors.textPrimary,
   },
-  menuArrow: {
-    fontSize: 20,
+  menuValue: {
+    fontSize: 13,
     color: colors.textTertiary,
   },
+  menuChevron: {
+    fontSize: 18,
+    color: colors.textTertiary,
+  },
+
+  // Logout
+  logoutWrap: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
   logoutBtn: {
-    marginTop: 24,
-    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   logoutText: {
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '500',
     color: colors.danger,
-    fontWeight: '600',
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  footerText: {
+    fontSize: 11,
+    color: colors.textTertiary,
   },
 });

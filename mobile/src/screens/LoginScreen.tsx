@@ -25,65 +25,77 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('\uC624\uB958', '\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('이메일과 비밀번호를 입력해주세요');
       return;
     }
+    setError('');
     setLoading(true);
     try {
       const { data } = await api.post('/auth/email-login/', { email, password });
-      login(data.user, data.tokens.access, data.tokens.refresh);
+      login(data.user, data.access, data.refresh);
       navigation.goBack();
     } catch (err: any) {
       const msg =
+        err.response?.data?.non_field_errors?.[0] ||
         err.response?.data?.detail ||
-        err.response?.data?.error ||
-        '\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4';
-      Alert.alert('\uB85C\uADF8\uC778 \uC2E4\uD328', msg);
+        (err.response?.status === 400
+          ? '이메일 또는 비밀번호를 확인해주세요.'
+          : '로그인 중 문제가 발생했습니다.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGuestLogin = async () => {
-    setGuestLoading(true);
+    setError('');
+    setLoading(true);
     try {
       const { data } = await api.post('/auth/guest-login/');
-      login(data.user, data.tokens.access, data.tokens.refresh);
+      login(data.user, data.access, data.refresh);
       navigation.goBack();
     } catch {
-      Alert.alert('\uC624\uB958', '\uAC8C\uC2A4\uD2B8 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4');
+      setError('게스트 로그인에 실패했습니다');
     } finally {
-      setGuestLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled">
-        {/* Back button */}
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.content}>
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 40 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        {/* Branding */}
+        <View style={styles.branding}>
           <Text style={styles.logo}>Roami</Text>
-          <Text style={styles.title}>{'\uB85C\uADF8\uC778'}</Text>
-          <Text style={styles.subtitle}>
-            {'\uAC77\uAE30 \uC5EC\uD589\uC758 \uBAA8\uB4E0 \uAC83\uC744 \uAE30\uB85D\uD558\uC138\uC694'}
-          </Text>
+          <Text style={styles.tagline}>걸으면 보이는 것들</Text>
+        </View>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>{'\uC774\uBA54\uC77C'}</Text>
+        {/* Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>로그인</Text>
+
+          {/* Error message */}
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Email */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>이메일</Text>
             <TextInput
               style={styles.input}
               placeholder="email@example.com"
@@ -93,51 +105,78 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="off"
             />
+          </View>
 
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+          {/* Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>비밀번호</Text>
             <TextInput
               style={styles.input}
-              placeholder={'\uBE44\uBC00\uBC88\uD638 \uC785\uB825'}
+              placeholder="비밀번호 입력"
               placeholderTextColor={colors.textTertiary}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={true}
               autoCapitalize="none"
+              autoComplete="off"
             />
-
-            <TouchableOpacity
-              style={[styles.loginBtn, loading && styles.btnDisabled]}
-              onPress={handleLogin}
-              disabled={loading}>
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.loginBtnText}>{'\uB85C\uADF8\uC778'}</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.guestBtn, guestLoading && styles.btnDisabled]}
-              onPress={handleGuestLogin}
-              disabled={guestLoading}>
-              {guestLoading ? (
-                <ActivityIndicator color={colors.textSecondary} />
-              ) : (
-                <Text style={styles.guestBtnText}>
-                  {'\uAC8C\uC2A4\uD2B8\uB85C \uC2DC\uC791\uD558\uAE30'}
-                </Text>
-              )}
-            </TouchableOpacity>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {'\uACC4\uC815\uC774 \uC5C6\uC73C\uC2E0\uAC00\uC694?'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.footerLink}>{'\uD68C\uC6D0\uAC00\uC785'}</Text>
+          {/* Login Button */}
+          <TouchableOpacity
+            style={[styles.loginBtn, loading && styles.btnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginBtnText}>로그인</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>또는</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social Buttons */}
+          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.7}>
+            <Text style={styles.googleIcon}>G</Text>
+            <Text style={styles.socialBtnText}>Google로 계속하기</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.kakaoBtn} activeOpacity={0.7}>
+            <Text style={styles.kakaoIcon}>K</Text>
+            <Text style={styles.kakaoBtnText}>카카오로 계속하기</Text>
+          </TouchableOpacity>
+
+          {/* Guest divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>먼저 둘러보기</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Guest Login */}
+          <TouchableOpacity
+            style={styles.guestBtn}
+            onPress={handleGuestLogin}
+            disabled={loading}
+            activeOpacity={0.7}>
+            <Text style={styles.guestIcon}>👤</Text>
+            <Text style={styles.guestBtnText}>게스트로 시작하기</Text>
+          </TouchableOpacity>
+
+          {/* Register link */}
+          <View style={styles.registerRow}>
+            <Text style={styles.registerText}>계정이 없으신가요? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>회원가입</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -149,64 +188,89 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FAFAFA',
   },
   scroll: {
     flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  backBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backText: {
-    fontSize: 24,
-    color: colors.textPrimary,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  logo: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.primary,
-    marginBottom: 24,
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
+
+  // Branding
+  branding: {
+    alignItems: 'center',
     marginBottom: 32,
   },
-  form: {},
-  label: {
-    fontSize: 14,
+  logo: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+
+  // Card
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 20,
     fontWeight: '600',
     color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+
+  // Error
+  errorBox: {
+    backgroundColor: 'rgba(255,75,75,0.08)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 13,
+    color: colors.danger,
+    lineHeight: 20,
+  },
+
+  // Form
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   input: {
     height: 48,
     borderWidth: 1,
     borderColor: colors.borderDefault,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
   },
+
+  // Login button
   loginBtn: {
     backgroundColor: colors.primary,
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -215,37 +279,104 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  guestBtn: {
-    height: 50,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-  },
-  guestBtnText: {
-    color: colors.textSecondary,
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
-  footer: {
+
+  // Divider
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+    gap: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.borderLight,
+  },
+  dividerText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+
+  // Social buttons
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    borderRadius: 16,
+    gap: 10,
+    marginBottom: 10,
+  },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4285F4',
+  },
+  socialBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  kakaoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    backgroundColor: '#FEE500',
+    borderRadius: 16,
+    gap: 10,
+  },
+  kakaoIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#191919',
+  },
+  kakaoBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#191919',
+  },
+
+  // Guest
+  guestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(45,74,46,0.3)',
+    borderRadius: 16,
+    gap: 8,
+  },
+  guestIcon: {
+    fontSize: 16,
+  },
+  guestBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+
+  // Register
+  registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 32,
-    gap: 6,
+    marginTop: 24,
   },
-  footerText: {
-    fontSize: 14,
+  registerText: {
+    fontSize: 13,
     color: colors.textSecondary,
   },
-  footerLink: {
-    fontSize: 14,
+  registerLink: {
+    fontSize: 13,
     color: colors.primary,
     fontWeight: '600',
   },

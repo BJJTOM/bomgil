@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import MapView, { Polyline, Marker } from 'react-native-maps';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
@@ -241,11 +242,47 @@ export default function TrailDetailScreen() {
             )}
           </View>
 
-          {/* Map Placeholder */}
-          <View style={styles.mapSection}>
-            <View style={styles.mapPlaceholder}>
-              <Text style={styles.mapEmoji}>{'\u{1F5FA}\uFE0F'}</Text>
-              <Text style={styles.mapLabel}>{'\uC9C0\uB3C4'}</Text>
+          {/* Map */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{'\uACBD\uB85C \uC9C0\uB3C4'}</Text>
+            <View style={styles.mapContainer}>
+              {trail.start_lat && trail.start_lng ? (
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: parseFloat(trail.start_lat),
+                    longitude: parseFloat(trail.start_lng),
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  }}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                >
+                  <Marker
+                    coordinate={{ latitude: parseFloat(trail.start_lat), longitude: parseFloat(trail.start_lng) }}
+                    title={'\uCD9C\uBC1C'}
+                  />
+                  {trail.end_lat && trail.end_lng && (
+                    <Marker
+                      coordinate={{ latitude: parseFloat(trail.end_lat), longitude: parseFloat(trail.end_lng) }}
+                      title={'\uB3C4\uCC29'}
+                      pinColor="red"
+                    />
+                  )}
+                  {trail.path_data?.coordinates && trail.path_data.coordinates.length > 0 && (
+                    <Polyline
+                      coordinates={trail.path_data.coordinates.map(([lng, lat]: number[]) => ({ latitude: lat, longitude: lng }))}
+                      strokeColor={colors.primary}
+                      strokeWidth={4}
+                    />
+                  )}
+                </MapView>
+              ) : (
+                <View style={styles.mapFallback}>
+                  <Text style={{ fontSize: 40 }}>{'\u{1F5FA}\uFE0F'}</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 13, marginTop: 8 }}>{'\uC704\uCE58 \uC815\uBCF4 \uC5C6\uC74C'}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -547,13 +584,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   infoLabel: {
     fontSize: 11,
@@ -579,11 +613,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   likeBtnActive: {
     backgroundColor: '#FF4B4B',
@@ -607,11 +638,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   shareBtnEmoji: {
     fontSize: 16,
@@ -630,11 +658,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 28,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   sectionTitle: {
     fontSize: 18,
@@ -664,28 +689,29 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
-  mapSection: {
-    marginBottom: 24,
-    borderRadius: 20,
+  mapContainer: {
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
-  mapPlaceholder: {
+  map: {
+    height: 250,
+    width: '100%',
+  },
+  mapFallback: {
     height: 200,
-    backgroundColor: '#E5E8EB',
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  mapEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  mapLabel: {
-    fontSize: 14,
-    color: colors.textTertiary,
+    backgroundColor: colors.bgSecondary,
   },
   section: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   spotItem: {
     flexDirection: 'row',
@@ -708,6 +734,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingLeft: 12,
     paddingBottom: 20,
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 4,
   },
   spotName: {
     fontSize: 15,
@@ -782,11 +812,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   ratingDistRow: {
     flexDirection: 'row',
@@ -827,11 +854,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 28,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   reviewFormTitle: {
     fontSize: 18,
@@ -937,11 +961,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 28,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   authorRow: {
     flexDirection: 'row',

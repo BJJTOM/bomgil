@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface MapViewProps {
   country?: string;
@@ -21,129 +21,115 @@ interface MapViewProps {
 export function MapView({
   country = "KR",
   center,
-  zoom = 12,
+  zoom = 13,
   markers = [],
   pathCoordinates,
   onMarkerClick,
   className = "w-full h-full min-h-[400px]",
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
-
-    const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
-    if (country === "KR" && kakaoKey) {
-      loadKakaoMap(kakaoKey);
-    } else if (country !== "KR" && mapboxToken) {
-      loadMapboxMap(mapboxToken);
-    } else {
-      renderFallback();
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
     }
-  }, [country, center?.lat, center?.lng, markers.length]);
 
-  const loadKakaoMap = (apiKey: string) => {
-    if ((window as any).kakao?.maps) {
-      initKakaoMap();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`;
-    script.onload = () => {
-      (window as any).kakao.maps.load(initKakaoMap);
-    };
-    script.onerror = renderFallback;
-    document.head.appendChild(script);
-  };
+    const initMap = async () => {
+      try {
+        const L = (await import("leaflet")).default;
 
-  const initKakaoMap = () => {
-    if (!mapRef.current) return;
-    const kakao = (window as any).kakao;
-    const map = new kakao.maps.Map(mapRef.current, {
-      center: new kakao.maps.LatLng(center?.lat || 37.5665, center?.lng || 126.978),
-      level: zoom > 10 ? 8 : zoom > 5 ? 5 : 3,
-    });
-
-    markers.forEach((m) => {
-      const marker = new kakao.maps.Marker({
-        position: new kakao.maps.LatLng(m.lat, m.lng),
-        map,
-      });
-      if (onMarkerClick) {
-        kakao.maps.event.addListener(marker, "click", () => onMarkerClick(m.id));
-      }
-    });
-
-    if (pathCoordinates && pathCoordinates.length > 0) {
-      const path = pathCoordinates.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-      new kakao.maps.Polyline({
-        map, path, strokeWeight: 4, strokeColor: "#2D4A2E", strokeOpacity: 0.8,
-      });
-    }
-  };
-
-  const loadMapboxMap = async (token: string) => {
-    try {
-      const mapboxgl = await import("mapbox-gl");
-      // @ts-ignore
-      await import("mapbox-gl/dist/mapbox-gl.css");
-      (mapboxgl as any).accessToken = token;
-      if (!mapRef.current) return;
-
-      const map = new mapboxgl.Map({
-        container: mapRef.current,
-        style: "mapbox://styles/mapbox/outdoors-v12",
-        center: [center?.lng || 139.7, center?.lat || 35.68],
-        zoom,
-      });
-
-      markers.forEach((m) => {
-        const el = document.createElement("div");
-        el.textContent = m.emoji || "📍";
-        el.style.fontSize = "24px";
-        el.style.cursor = "pointer";
-        new mapboxgl.Marker(el).setLngLat([m.lng, m.lat]).addTo(map);
-        if (onMarkerClick) {
-          el.addEventListener("click", () => onMarkerClick(m.id));
-        }
-      });
-
-      if (pathCoordinates && pathCoordinates.length > 0) {
-        map.on("load", () => {
-          map.addSource("route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: { type: "LineString", coordinates: pathCoordinates },
-            },
-          });
-          map.addLayer({
-            id: "route", type: "line", source: "route",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-color": "#2D4A2E", "line-width": 4 },
-          });
+        // Fix default marker icons
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
-      }
-    } catch {
-      renderFallback();
-    }
-  };
 
-  const renderFallback = () => {
-    if (!mapRef.current) return;
-    mapRef.current.innerHTML = `
-      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f9f4;border-radius:16px;">
-        <div style="text-align:center;color:#777;">
-          <div style="font-size:48px;margin-bottom:8px;">🗺️</div>
-          <p style="font-size:14px;">지도 미리보기</p>
-          <p style="font-size:12px;margin-top:4px;color:#aaa;">API 키 설정 시 지도가 표시됩니다</p>
-        </div>
-      </div>
-    `;
-  };
+        const defaultCenter = center || { lat: 37.5665, lng: 126.978 };
+
+        const map = L.map(mapRef.current!, {
+          center: [defaultCenter.lat, defaultCenter.lng],
+          zoom,
+          zoomControl: true,
+          attributionControl: true,
+        });
+
+        // OpenStreetMap tile layer (free, no API key)
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Add markers
+        markers.forEach((m) => {
+          const marker = L.marker([m.lat, m.lng]);
+          if (m.emoji) {
+            const icon = L.divIcon({
+              html: `<span style="font-size:24px">${m.emoji}</span>`,
+              className: "bg-transparent border-none",
+              iconSize: [30, 30],
+              iconAnchor: [15, 15],
+            });
+            marker.setIcon(icon);
+          }
+          marker.addTo(map).bindPopup(m.title);
+          if (onMarkerClick) {
+            marker.on("click", () => onMarkerClick(m.id));
+          }
+        });
+
+        // Draw path/polyline
+        if (pathCoordinates && pathCoordinates.length > 0) {
+          // pathCoordinates are [lng, lat] (GeoJSON format), Leaflet needs [lat, lng]
+          const latLngs = pathCoordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
+          const polyline = L.polyline(latLngs, {
+            color: "#2D4A2E",
+            weight: 4,
+            opacity: 0.8,
+          }).addTo(map);
+          map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+        } else if (markers.length > 1) {
+          // Fit to markers
+          const group = L.featureGroup(
+            markers.map((m) => L.marker([m.lat, m.lng]))
+          );
+          map.fitBounds(group.getBounds(), { padding: [30, 30] });
+        }
+
+        mapInstanceRef.current = map;
+        setLoaded(true);
+
+        // Fix map render after container resize
+        setTimeout(() => map.invalidateSize(), 100);
+      } catch (err) {
+        console.error("Map load error:", err);
+        if (mapRef.current) {
+          mapRef.current.innerHTML = `
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f9f4;border-radius:16px;">
+              <div style="text-align:center;color:#777;">
+                <div style="font-size:48px;margin-bottom:8px;">🗺️</div>
+                <p style="font-size:14px;">지도를 불러올 수 없습니다</p>
+              </div>
+            </div>
+          `;
+        }
+      }
+    };
+
+    initMap();
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [center?.lat, center?.lng, markers.length, pathCoordinates?.length, zoom]);
 
   return <div ref={mapRef} className={className} />;
 }

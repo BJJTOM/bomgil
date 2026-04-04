@@ -7,7 +7,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { useChatRooms } from "@/hooks/useCompanions";
-import type { WalkStory, Trail, StoryComment } from "@/types";
+import type { WalkStory, StoryComment } from "@/types";
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string }> = {
   happy: { emoji: "😊", label: "즐거웠어요", bg: "bg-yellow-50 text-yellow-700" },
@@ -30,14 +30,6 @@ export default function CommunityPage() {
     },
   });
 
-  const { data: trails = [] } = useQuery<Trail[]>({
-    queryKey: ["community-new-trails"],
-    queryFn: async () => {
-      const { data } = await api.get("/trails/");
-      return (data.results ?? data).slice(0, 6);
-    },
-  });
-
   const likeMutation = useMutation({
     mutationFn: async (id: number) => (await api.post(`/stories/${id}/like/`)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["community-feed"] }),
@@ -48,7 +40,7 @@ export default function CommunityPage() {
   return (
     <div className="md:pt-[60px] min-h-screen bg-warm">
       {/* Sticky Header */}
-      <header className="sticky top-0 md:top-[60px] z-30 bg-surface/95 backdrop-blur-xl border-b border-border-light">
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-border-light">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-[20px] font-bold tracking-tight">커뮤니티</h1>
@@ -85,41 +77,6 @@ export default function CommunityPage() {
       )}
 
       <div className="max-w-2xl mx-auto">
-        {/* New Trails — Story-like circles */}
-        {trails.length > 0 && (
-          <div className="bg-surface px-5 py-4 border-b border-border-light">
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide">
-              {/* Create story CTA */}
-              {isAuthenticated && (
-                <Link href="/trails/new" className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                  <div className="w-[60px] h-[60px] rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center bg-primary-50">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2.5">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-medium text-primary">내 코스</span>
-                </Link>
-              )}
-              {trails.map((trail: Trail) => (
-                <Link key={trail.id} href={`/trails/${trail.id}`} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                  <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-accent to-primary-200 p-[2.5px]">
-                    <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
-                      {trail.cover_image ? (
-                        <Image src={trail.cover_image} alt="" width={56} height={56} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xl">🥾</span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-text-secondary font-medium max-w-[60px] truncate text-center">
-                    {trail.region}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Feed */}
         {isLoading ? (
           <div className="py-20 text-center text-text-tertiary">
@@ -131,13 +88,34 @@ export default function CommunityPage() {
             불러오는 중...
           </div>
         ) : stories.length === 0 ? (
-          <div className="py-20 text-center bg-surface">
-            <p className="text-4xl mb-3">📝</p>
-            <p className="text-[16px] font-semibold text-text-primary mb-1.5">첫 번째 이야기를 남겨보세요</p>
-            <p className="text-[13px] text-text-tertiary mb-6">도보여행 후기를 공유하고 다른 여행자들과 소통해요</p>
+          <div className="py-20 px-6 text-center">
+            <div className="bg-white rounded-card shadow-soft max-w-sm mx-auto p-8">
+              <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-primary-50 flex items-center justify-center">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+              </div>
+              <p className="text-[18px] font-bold text-text-primary mb-2">아직 이야기가 없어요</p>
+              <p className="text-[14px] text-text-tertiary mb-6 leading-relaxed">
+                도보여행 후기를 공유하고<br />다른 여행자들과 소통해보세요
+              </p>
+              <Link
+                href="/trails"
+                className="inline-flex items-center gap-2 bg-primary text-white text-[14px] font-semibold px-6 py-3 rounded-pill hover:bg-primary-600 transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                트레일 둘러보기
+              </Link>
+            </div>
           </div>
         ) : (
-          <div>
+          <div className="px-4 py-4 space-y-4">
             {stories.map((story, index) => (
               <FeedPost
                 key={story.id}
@@ -216,10 +194,56 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
     return new Date(dateStr).toLocaleDateString("ko");
   };
 
+  const photos = story.photos || [];
+
+  const PhotoGrid = () => {
+    if (photos.length === 0) return null;
+    if (photos.length === 1) {
+      return (
+        <div className="relative w-full aspect-[4/3]">
+          <Image src={photos[0].image} alt={photos[0].caption || ""} fill className="object-cover" />
+        </div>
+      );
+    }
+    if (photos.length === 2) {
+      return (
+        <div className="grid grid-cols-2 gap-0.5">
+          {photos.slice(0, 2).map((p) => (
+            <div key={p.id} className="relative aspect-square">
+              <Image src={p.image} alt={p.caption || ""} fill className="object-cover" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-cols-2 gap-0.5">
+        <div className="relative aspect-square row-span-2">
+          <Image src={photos[0].image} alt={photos[0].caption || ""} fill className="object-cover" />
+        </div>
+        <div className="relative aspect-square">
+          <Image src={photos[1].image} alt={photos[1].caption || ""} fill className="object-cover" />
+        </div>
+        <div className="relative aspect-square">
+          {photos.length > 3 ? (
+            <>
+              <Image src={photos[2].image} alt={photos[2].caption || ""} fill className="object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <span className="text-white text-[18px] font-bold">+{photos.length - 3}</span>
+              </div>
+            </>
+          ) : (
+            <Image src={photos[2].image} alt={photos[2].caption || ""} fill className="object-cover" />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <article className="bg-surface border-b border-border-light">
+    <article className="bg-white rounded-card shadow-soft overflow-hidden hover:shadow-card transition-shadow">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-4 pb-2.5">
+      <div className="flex items-center gap-3 px-5 pt-4 pb-3">
         <Link href={`/profile/${story.author.nickname}`}>
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-accent to-primary-300 p-[2px]">
             <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
@@ -237,14 +261,24 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
               {story.author.nickname}
             </Link>
             {(story.author as any).is_verified && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#2D4A2E"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-primary">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="none">
+                  <path d="M9 12l2 2 4-4"/>
+                  <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
             )}
           </div>
-          <Link href={`/trails/${story.trail_id}`} className="text-[12px] text-text-tertiary hover:text-primary transition-colors">
-            {story.trail_region} · {story.trail_title}
-          </Link>
+          <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+            {story.trail_id && (
+              <Link href={`/trails/${story.trail_id}`} className="hover:text-primary transition-colors">
+                {story.trail_region} · {story.trail_title}
+              </Link>
+            )}
+            <span>·</span>
+            <span>{timeAgo(story.created_at)}</span>
+          </div>
         </div>
-        <span className="text-[11px] text-text-tertiary">{timeAgo(story.created_at)}</span>
       </div>
 
       {/* Content */}
@@ -294,21 +328,24 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
         )}
       </div>
 
+      {/* Photo grid */}
+      <PhotoGrid />
+
       {/* Engagement stats */}
       {(story.like_count > 0 || story.comment_count > 0) && (
-        <div className="flex items-center gap-3 px-5 pb-2 text-[12px] text-text-tertiary">
+        <div className="flex items-center gap-3 px-5 py-2.5 text-[12px] text-text-tertiary">
           {story.like_count > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="w-4 h-4 bg-danger rounded-full flex items-center justify-center">
+            <span className="flex items-center gap-1.5">
+              <span className="w-[18px] h-[18px] bg-danger rounded-full flex items-center justify-center">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="none">
                   <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                 </svg>
               </span>
-              {story.like_count}명
+              좋아요 {story.like_count}개
             </span>
           )}
           {story.comment_count > 0 && (
-            <button onClick={() => setShowComments(!showComments)} className="hover:underline">
+            <button onClick={() => setShowComments(!showComments)} className="hover:underline ml-auto">
               댓글 {story.comment_count}개
             </button>
           )}

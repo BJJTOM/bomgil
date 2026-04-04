@@ -40,8 +40,7 @@ export default function RegisterPage() {
   const updateField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError("");
 
     if (!form.nickname.trim()) {
@@ -103,7 +102,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
+          <div className="space-y-5">
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.email")}</label>
               <input
@@ -129,6 +128,8 @@ export default function RegisterPage() {
                 required
                 maxLength={50}
                 autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 className="input-field"
               />
               <p className="text-[11px] text-text-tertiary mt-1.5">{t("register.nicknameHelp")}</p>
@@ -190,7 +191,8 @@ export default function RegisterPage() {
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={loading || !form.email || !form.nickname || !form.password1 || !form.password2}
               className="btn-primary w-full mt-2"
             >
@@ -205,7 +207,7 @@ export default function RegisterPage() {
                 t("auth.registerButton")
               )}
             </button>
-          </form>
+          </div>
 
           <div className="relative my-7">
             <div className="absolute inset-0 flex items-center">

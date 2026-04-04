@@ -16,8 +16,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: any) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!email || !password) return;
     setError("");
     setLoading(true);
     try {
@@ -69,7 +70,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+          <div className="space-y-4">
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">
                 {t("auth.email")}
@@ -77,11 +78,14 @@ export default function LoginPage() {
               <input
                 type="text"
                 inputMode="email"
+                name={"r_" + Date.now()}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
                 placeholder="email@example.com"
-                required
                 autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 className="input-field"
               />
             </div>
@@ -91,18 +95,20 @@ export default function LoginPage() {
               </label>
               <input
                 type="text"
+                name={"r_" + Date.now()}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("loginPage.passwordPlaceholder")}
-                required
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
                 autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 className="input-field password-mask"
               />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
+            <button type="button" onClick={handleSubmit} disabled={loading} className="btn-primary w-full mt-2">
               {loading ? t("loginPage.loggingIn") : t("auth.loginButton")}
             </button>
-          </form>
+          </div>
 
           <div className="my-7 flex items-center gap-4">
             <div className="flex-1 h-px bg-border-light" />

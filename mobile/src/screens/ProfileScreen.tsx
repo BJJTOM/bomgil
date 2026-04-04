@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
@@ -58,6 +58,17 @@ export default function ProfileScreen() {
   });
 
   const isOwnProfile = currentUser?.nickname === nickname;
+  const queryClient = useQueryClient();
+
+  const followMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post(`/auth/users/${nickname}/follow/`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', nickname] });
+    },
+  });
 
   if (isLoading || !profile) {
     return (
@@ -117,8 +128,13 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile.companion_count ?? 0}</Text>
-              <Text style={styles.statLabel}>동행</Text>
+              <Text style={styles.statValue}>{profile.follower_count ?? 0}</Text>
+              <Text style={styles.statLabel}>팔로워</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{profile.following_count ?? 0}</Text>
+              <Text style={styles.statLabel}>팔로잉</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
@@ -127,13 +143,29 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => navigation.navigate('ProfileEdit')}>
               <Text style={styles.editBtnText}>프로필 수정</Text>
             </TouchableOpacity>
-          )}
+          ) : currentUser ? (
+            <TouchableOpacity
+              style={[
+                styles.followBtn,
+                profile.is_following && styles.followBtnActive,
+              ]}
+              onPress={() => followMutation.mutate()}
+              disabled={followMutation.isPending}>
+              <Text
+                style={[
+                  styles.followBtnText,
+                  profile.is_following && styles.followBtnTextActive,
+                ]}>
+                {profile.is_following ? '팔로잉' : '팔로우'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Badges */}
@@ -304,6 +336,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  followBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  followBtnActive: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  followBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  followBtnTextActive: {
+    color: colors.textSecondary,
   },
   section: {
     marginHorizontal: 20,

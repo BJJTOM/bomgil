@@ -11,7 +11,7 @@ from .rankings import (
     RegionPopularView,
     WeeklyPopularView,
 )
-from .views import TagListView, TrailViewSet
+from .views import RecommendedTrailsView, TagListView, TrailViewSet
 
 router = DefaultRouter()
 router.register("", TrailViewSet, basename="trail")
@@ -27,6 +27,8 @@ urlpatterns = [
     path("collections/", CollectionListView.as_view(), name="collection-list"),
     path("collections/featured/", FeaturedCollectionsView.as_view(), name="collection-featured"),
     path("collections/<int:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
+    # Recommendations
+    path("recommended/", RecommendedTrailsView.as_view(), name="trail-recommended"),
     # OG Image
     path("<int:pk>/og-image/", generate_og_image, name="trail-og-image"),
     # Router

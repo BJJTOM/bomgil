@@ -61,6 +61,7 @@ export default function SettingsScreen() {
               onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
             { icon: '❤️', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
+            { icon: '📥', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
           ]
         : [
             {

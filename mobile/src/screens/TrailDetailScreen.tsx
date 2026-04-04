@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   FlatList,
   TextInput,
   Share,
+  Alert,
 } from 'react-native';
 
 class TrailDetailErrorBoundary extends React.Component<
@@ -41,6 +42,7 @@ import MapView, { Polyline, Marker } from 'react-native-maps';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
+import { saveTrailOffline, isSaved, getSavedTrail } from '../utils/offlineStorage';
 
 const { width } = Dimensions.get('window');
 
@@ -104,12 +106,25 @@ function TrailDetailScreenInner() {
     content: '',
     visited_date: new Date().toISOString().split('T')[0],
   });
+  const [savedOffline, setSavedOffline] = useState(false);
+  const [savingOffline, setSavingOffline] = useState(false);
+
+  useEffect(() => {
+    isSaved(trailId).then(setSavedOffline);
+  }, [trailId]);
 
   const { data: trail, isLoading } = useQuery({
     queryKey: ['trail', trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${trailId}/`);
-      return data as Trail;
+      try {
+        const { data } = await api.get(`/trails/${trailId}/`);
+        return data as Trail;
+      } catch {
+        // Fallback to offline cache
+        const cached = await getSavedTrail(trailId);
+        if (cached) return cached.trail as Trail;
+        throw new Error('Trail not available');
+      }
     },
   });
 
@@ -145,6 +160,19 @@ function TrailDetailScreenInner() {
       setReviewForm({ rating: 5, content: '', visited_date: new Date().toISOString().split('T')[0] });
     },
   });
+
+  const handleSaveOffline = async () => {
+    if (savingOffline) return;
+    setSavingOffline(true);
+    const success = await saveTrailOffline(trailId);
+    setSavingOffline(false);
+    if (success) {
+      setSavedOffline(true);
+      Alert.alert('저장 완료', '오프라인에서도 이 코스를 확인할 수 있습니다.');
+    } else {
+      Alert.alert('저장 실패', '코스를 저장하지 못했습니다. 다시 시도해주세요.');
+    }
+  };
 
   const handleShare = async () => {
     if (!trail) return;
@@ -253,6 +281,21 @@ function TrailDetailScreenInner() {
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
               <Text style={styles.shareBtnEmoji}>{'\u2B06\uFE0F'}</Text>
               <Text style={styles.shareBtnText}>{'\uACF5\uC720'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.saveOfflineBtn, savedOffline && styles.saveOfflineBtnActive]}
+              onPress={handleSaveOffline}
+              disabled={savingOffline}>
+              <Text style={styles.saveOfflineBtnEmoji}>
+                {savedOffline ? '\u2705' : '\u{1F4E5}'}
+              </Text>
+              <Text
+                style={[
+                  styles.saveOfflineBtnText,
+                  savedOffline && styles.saveOfflineBtnTextActive,
+                ]}>
+                {savingOffline ? '저장 중...' : savedOffline ? '저장됨' : '저장'}
+              </Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
             <Text style={styles.viewCount}>
@@ -683,6 +726,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: colors.textPrimary,
+  },
+  saveOfflineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  saveOfflineBtnActive: {
+    backgroundColor: colors.primary50 || '#E8F5E9',
+    borderColor: colors.primary,
+  },
+  saveOfflineBtnEmoji: {
+    fontSize: 16,
+  },
+  saveOfflineBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  saveOfflineBtnTextActive: {
+    color: colors.primary,
   },
   viewCount: {
     fontSize: 14,

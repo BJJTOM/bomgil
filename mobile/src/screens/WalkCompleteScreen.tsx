@@ -7,6 +7,8 @@ import {
   Share,
   ScrollView,
   Dimensions,
+  Image,
+  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -24,6 +26,7 @@ export default function WalkCompleteScreen() {
     duration = 0,
     steps = 0,
     calories = 0,
+    taggedPhotos = [],
   } = route.params || {};
 
   // Duration comes as seconds now
@@ -110,6 +113,32 @@ export default function WalkCompleteScreen() {
             <Text style={styles.cardFooterText}>Walk. Discover. Connect.</Text>
           </View>
         </View>
+
+        {/* Tagged Photos */}
+        {taggedPhotos.length > 0 && (
+          <View style={styles.photosSection}>
+            <Text style={styles.photosSectionTitle}>
+              {'\u{1F4F7}'} {'\uC0AC\uC9C4'} ({taggedPhotos.length})
+            </Text>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={taggedPhotos}
+              keyExtractor={(_, i) => String(i)}
+              contentContainerStyle={styles.photosList}
+              renderItem={({ item }) => (
+                <View style={styles.photoCard}>
+                  <Image source={{ uri: item.uri }} style={styles.photoImage} resizeMode="cover" />
+                  <View style={styles.photoLocationBadge}>
+                    <Text style={styles.photoLocationText}>
+                      {'\u{1F4CD}'} {item.lat.toFixed(4)}, {item.lng.toFixed(4)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            />
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
@@ -286,5 +315,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.8)',
+  },
+  photosSection: {
+    width: width - 40,
+    marginBottom: 24,
+  },
+  photosSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 12,
+  },
+  photosList: {
+    gap: 10,
+  },
+  photoCard: {
+    width: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  photoImage: {
+    width: 160,
+    height: 120,
+  },
+  photoLocationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  photoLocationText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
   },
 });

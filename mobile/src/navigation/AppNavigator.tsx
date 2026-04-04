@@ -35,6 +35,8 @@ import LikedTrailsScreen from '../screens/LikedTrailsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import SavedTrailsScreen from '../screens/SavedTrailsScreen';
+import WalkStatsScreen from '../screens/WalkStatsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -174,6 +176,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />
+        <Stack.Screen name="SavedTrails" component={SavedTrailsScreen} />
+        <Stack.Screen name="WalkStats" component={WalkStatsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

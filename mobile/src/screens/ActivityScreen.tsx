@@ -137,12 +137,20 @@ export default function ActivityScreen() {
               <Text style={styles.headerTitle}>활동 기록</Text>
               <Text style={styles.headerSub}>나의 걷기 활동을 기록해보세요</Text>
             </View>
-            <TouchableOpacity
-              style={styles.addRecordBtn}
-              activeOpacity={0.7}
-              onPress={() => Alert.alert('기록 추가', 'GPX 업로드 기능 준비중입니다')}>
-              <Text style={styles.addRecordText}>+ 기록 추가</Text>
-            </TouchableOpacity>
+            <View style={styles.headerBtns}>
+              <TouchableOpacity
+                style={styles.statsBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('WalkStats')}>
+                <Text style={styles.statsBtnText}>통계 보기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addRecordBtn}
+                activeOpacity={0.7}
+                onPress={() => Alert.alert('기록 추가', 'GPX 업로드 기능 준비중입니다')}>
+                <Text style={styles.addRecordText}>+ 기록 추가</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Big Total Distance */}
@@ -402,6 +410,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textTertiary,
     marginTop: 2,
+  },
+  headerBtns: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statsBtn: {
+    backgroundColor: 'rgba(45,74,46,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 9999,
+  },
+  statsBtnText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.primary,
   },
   addRecordBtn: {
     backgroundColor: 'rgba(45,74,46,0.1)',

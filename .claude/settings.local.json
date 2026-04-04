@@ -45,7 +45,8 @@
       "Bash(git stash:*)",
       "Bash(git checkout:*)",
       "Bash(git reset:*)",
-      "Bash(ls -la /Users/tom/Desktop/map_ai/mobile/src/screens/*.tsx)"
+      "Bash(ls -la /Users/tom/Desktop/map_ai/mobile/src/screens/*.tsx)",
+      "Bash(ls -la /Users/tom/Desktop/map_ai/backend/apps/accounts/badges.py /Users/tom/Desktop/map_ai/backend/apps/trails/recommendations.py /Users/tom/Desktop/map_ai/backend/apps/accounts/migrations/0003_*.py)"
     ]
   }
 }

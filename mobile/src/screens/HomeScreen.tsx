@@ -21,6 +21,7 @@ import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
 import { useLanguageStore, Language } from '../stores/language';
+import { useAuthStore } from '../stores/auth';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
@@ -116,6 +117,18 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'コミュニティを見る',
     zh: '浏览社区',
   },
+  recommendedTitle: {
+    ko: '추천 코스',
+    en: 'Recommended Trails',
+    ja: 'おすすめコース',
+    zh: '推荐路线',
+  },
+  recommendedSub: {
+    ko: '당신의 취향에 맞는 코스를 추천합니다',
+    en: 'Trails curated for your taste',
+    ja: 'あなたの好みに合ったコース',
+    zh: '根据您的喜好推荐路线',
+  },
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
   stories: { ko: '걸은 이야기', en: 'Stories', ja: '歩いた話', zh: '步行故事' },
@@ -141,6 +154,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { language, setLanguage } = useLanguageStore();
+  const { isAuthenticated } = useAuthStore();
   const [showLangModal, setShowLangModal] = useState(false);
 
   const STATS = [
@@ -161,6 +175,15 @@ export default function HomeScreen() {
       const { data } = await api.get('/trails/popular/');
       return data as Trail[];
     },
+  });
+
+  const { data: recommendedTrails } = useQuery({
+    queryKey: ['trails', 'recommended'],
+    queryFn: async () => {
+      const { data } = await api.get('/trails/recommended/');
+      return data as Trail[];
+    },
+    enabled: isAuthenticated,
   });
 
   return (
@@ -311,6 +334,38 @@ export default function HomeScreen() {
           )}
         </View>
         </FadeInView>
+
+        {/* Recommended Trails (logged-in users only) */}
+        {isAuthenticated && recommendedTrails && recommendedTrails.length > 0 && (
+          <FadeInView delay={250}>
+            <View style={styles.popularSection}>
+              <View style={styles.popularHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>{t('recommendedTitle', language)}</Text>
+                  <Text style={styles.sectionSub}>{t('recommendedSub', language)}</Text>
+                </View>
+              </View>
+              <FlatList
+                data={recommendedTrails.slice(0, 6)}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.trailScroll}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <View style={styles.trailCardWrap}>
+                    <TrailCard
+                      trail={item}
+                      compact
+                      onPress={() =>
+                        navigation.navigate('TrailDetail', { id: item.id })
+                      }
+                    />
+                  </View>
+                )}
+              />
+            </View>
+          </FadeInView>
+        )}
 
         {/* UGC CTA */}
         <View style={styles.ugcSection}>

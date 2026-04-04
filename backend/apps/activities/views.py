@@ -48,6 +48,8 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             instance.track_points = simplify_track(instance.track_points, tolerance=0.00005)
             instance.save()
         self._update_daily_summary(instance)
+        from apps.accounts.badges import check_and_award_badges
+        check_and_award_badges(self.request.user)
 
     def _update_daily_summary(self, activity):
         if not activity.started_at:

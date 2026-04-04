@@ -17,6 +17,9 @@ export interface User {
   one_liner?: string;
   trail_count?: number;
   review_count?: number;
+  follower_count?: number;
+  following_count?: number;
+  is_following?: boolean;
   badges?: UserBadge[];
   created_at?: string;
 }

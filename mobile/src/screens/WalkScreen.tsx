@@ -10,6 +10,7 @@ import {
   Dimensions,
   Animated,
   StatusBar,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import Geolocation from 'react-native-geolocation-service';
 import { colors } from '../theme/colors';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
+import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 
 const { width, height } = Dimensions.get('window');
 
@@ -42,6 +44,8 @@ export default function WalkScreen() {
   const [locations, setLocations] = useState<LocationPoint[]>([]);
   const [steps, setSteps] = useState(0);
   const [gpsReady, setGpsReady] = useState(false);
+  const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
+  const [isBackground, setIsBackground] = useState(false);
 
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -98,6 +102,33 @@ export default function WalkScreen() {
     return false;
   };
 
+  // Background/foreground tracking
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background') {
+        setIsBackground(true);
+        // GPS keeps running via watchPosition — continues in background
+        // on Android with foreground service permissions
+      } else if (nextState === 'active') {
+        setIsBackground(false);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Take photo with GPS tag
+  const handleTakePhoto = useCallback(async () => {
+    if (locations.length === 0) {
+      Alert.alert('GPS 대기 중', '위치 정보를 아직 받지 못했습니다.');
+      return;
+    }
+    const lastLoc = locations[locations.length - 1];
+    const photo = await takeTaggedPhoto(lastLoc.lat, lastLoc.lng);
+    if (photo) {
+      setTaggedPhotos((prev) => [...prev, photo]);
+    }
+  }, [locations]);
+
   // Request GPS on mount
   useEffect(() => {
     (async () => {
@@ -147,7 +178,13 @@ export default function WalkScreen() {
         });
       },
       (error) => console.warn('GPS error:', error),
-      { enableHighAccuracy: true, distanceFilter: 5, interval: 3000, fastestInterval: 2000 },
+      {
+        enableHighAccuracy: true,
+        distanceFilter: 5,
+        interval: 3000,
+        fastestInterval: 2000,
+        showsBackgroundLocationIndicator: true,
+      },
     );
   }, []);
 
@@ -225,6 +262,7 @@ export default function WalkScreen() {
       duration: elapsedSeconds,
       steps: finalSteps,
       calories,
+      taggedPhotos,
     });
   };
 
@@ -316,7 +354,28 @@ export default function WalkScreen() {
             {state === 'walking' ? '\uAE30\uB85D \uC911' : '\uC77C\uC2DC\uC815\uC9C0'}
           </Text>
         </View>
+        {isBackground && (
+          <View style={styles.bgTrackingPill}>
+            <Text style={styles.bgTrackingText}>{'GPS \uBC31\uADF8\uB77C\uC6B4\uB4DC \uCD94\uC801 \uC911'}</Text>
+          </View>
+        )}
       </View>
+
+      {/* Camera button - top right */}
+      {state === 'walking' && (
+        <TouchableOpacity
+          style={[styles.cameraBtn, { top: insets.top + 12 }]}
+          onPress={handleTakePhoto}
+          activeOpacity={0.8}>
+          <Text style={styles.cameraBtnIcon}>{'\u{1F4F7}'}</Text>
+        </TouchableOpacity>
+      )}
+      {/* Photo count badge */}
+      {taggedPhotos.length > 0 && (
+        <View style={[styles.photoBadge, { top: insets.top + 10 }]}>
+          <Text style={styles.photoBadgeText}>{taggedPhotos.length}</Text>
+        </View>
+      )}
 
       {/* Full screen stats - Nike Run style */}
       <View style={styles.fullScreenStats}>
@@ -622,5 +681,47 @@ const styles = StyleSheet.create({
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
     marginLeft: 4,
+  },
+  bgTrackingPill: {
+    backgroundColor: 'rgba(74,222,128,0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginTop: 6,
+  },
+  bgTrackingText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#4ADE80',
+  },
+  cameraBtn: {
+    position: 'absolute',
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  cameraBtnIcon: {
+    fontSize: 20,
+  },
+  photoBadge: {
+    position: 'absolute',
+    right: 16,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 11,
+  },
+  photoBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

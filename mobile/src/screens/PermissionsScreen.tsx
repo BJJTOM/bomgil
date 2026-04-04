@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Linking } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
+import { requestNotificationPermission } from '../utils/notifications';
 
 const PERMISSIONS = [
   {
@@ -47,7 +48,7 @@ export default function PermissionsScreen({ onComplete }: { onComplete: () => vo
       // Location permission will be requested when Walk screen opens
     }
     if (agreed.notification) {
-      // Notification permission
+      await requestNotificationPermission();
     }
 
     onComplete();

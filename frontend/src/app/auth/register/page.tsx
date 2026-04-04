@@ -61,7 +61,8 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/register/", form);
+      const username = form.email.split("@")[0] + "_" + Date.now().toString(36);
+      const { data } = await api.post("/auth/register/", { ...form, username });
       const { data: user } = await api.get("/auth/me/", {
         headers: { Authorization: `Bearer ${data.access}` },
       });

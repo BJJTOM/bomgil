@@ -84,9 +84,9 @@ export default function RegisterPage() {
         {/* Brand header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-[20px] mb-4">
-            <span className="text-2xl text-white font-bold font-en">B</span>
+            <span className="text-2xl text-white font-bold font-en">R</span>
           </div>
-          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">봄길에 합류하세요</h1>
+          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">Roami에 합류하세요</h1>
           <p className="text-text-secondary text-[15px] mt-1.5">전 세계 도보여행자들과 함께 걸어요</p>
         </div>
 
@@ -121,7 +121,7 @@ export default function RegisterPage() {
                 type="text"
                 value={form.nickname}
                 onChange={(e) => updateField("nickname", e.target.value)}
-                placeholder="봄길에서 사용할 닉네임"
+                placeholder="Roami에서 사용할 닉네임"
                 required
                 maxLength={50}
                 className="input-field"
@@ -218,7 +218,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-[11px] text-text-tertiary mt-6 leading-relaxed">
-          가입하면 봄길의{" "}
+          가입하면 Roami의{" "}
           <span className="underline cursor-pointer">이용약관</span> 및{" "}
           <span className="underline cursor-pointer">개인정보처리방침</span>에 동의하게 됩니다.
         </p>

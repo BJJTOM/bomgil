@@ -206,7 +206,7 @@ export default function Home() {
                 <span className="text-lg">🗺️</span>
                 <span className="text-[13px] font-semibold text-primary">누구나 코스를 등록할 수 있어요</span>
               </div>
-              <h2 className="text-[22px] font-bold tracking-tight mb-2">나만 아는 그 길,<br />봄길에 공유해주세요</h2>
+              <h2 className="text-[22px] font-bold tracking-tight mb-2">나만 아는 그 길,<br />Roami에 공유해주세요</h2>
               <p className="text-[14px] text-text-secondary leading-relaxed mb-7 max-w-md mx-auto">
                 동네 산책로, 여행지 골목길, 해외 숨은 명소까지.<br />
                 당신이 걸었던 길이 다른 여행자의 지도가 됩니다.
@@ -232,10 +232,10 @@ export default function Home() {
       <section className="py-10 border-t border-border-light bg-[#FAFAFA]">
         <div className="max-w-7xl mx-auto px-5 text-center">
           <p className="text-[13px] text-text-tertiary">
-            🌏 봄길은 전 세계 도보여행자들이 함께 만들어가는 오픈 플랫폼입니다
+            Roami는 전 세계 도보여행자들을 위한 코스 공유 & 동행 매칭 플랫폼입니다
           </p>
           <p className="text-[12px] text-text-tertiary/60 mt-1">
-            Bomgil — A global community of walking travelers
+            Roami — A walking travel platform for discovering trails, sharing routes, and finding companions.
           </p>
         </div>
       </section>

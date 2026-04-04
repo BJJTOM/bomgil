@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "봄길",
+    "appName": "Roami",
     "login": "로그인",
     "logout": "로그아웃",
     "register": "회원가입",
@@ -150,7 +150,7 @@
     "password": "비밀번호",
     "passwordConfirm": "비밀번호 확인",
     "nickname": "닉네임",
-    "nicknamePlaceholder": "봄길에서 사용할 닉네임",
+    "nicknamePlaceholder": "Roami에서 사용할 닉네임",
     "loginButton": "로그인",
     "registerButton": "가입하기",
     "googleLogin": "Google로 계속하기",
@@ -223,7 +223,7 @@
     "CN": "중국"
   },
   "meta": {
-    "title": "봄길 — 걸으면 보이는 것들",
-    "description": "도보 여행 코스를 발견하고, 숨은 맛집과 포토스팟을 공유하세요. 봄길과 함께 걸어보세요."
+    "title": "Roami — 걸으면 보이는 것들",
+    "description": "도보 여행 코스를 발견하고, 숨은 맛집과 포토스팟을 공유하세요. Roami와 함께 걸어보세요."
   }
 }

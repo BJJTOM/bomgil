@@ -106,7 +106,7 @@ class StoryShareCardView(APIView):
             title_font = body_font = small_font = ImageFont.load_default()
 
         # Brand
-        draw.text((60, 1000), "Bomgil", fill=(168, 230, 207), font=body_font)
+        draw.text((60, 1000), "Roami", fill=(168, 230, 207), font=body_font)
 
         # Trail info
         draw.text((60, 1060), trail.title[:30], fill=(26, 26, 26), font=title_font)
@@ -127,7 +127,7 @@ class StoryShareCardView(APIView):
             draw.text((60, y + 30), f"{count + 1}명이 함께 걸었어요", fill=(100, 100, 100), font=small_font)
 
         # Footer
-        draw.text((60, 1820), "bomgil.kr", fill=(168, 230, 207), font=small_font)
+        draw.text((60, 1820), "roami.kr", fill=(168, 230, 207), font=small_font)
 
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")

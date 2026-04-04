@@ -58,7 +58,7 @@ export default function LoginPage() {
     <div className="md:pt-16 min-h-screen flex items-center justify-center px-5">
       <div className="w-full max-w-[400px]">
         <div className="text-center mb-10">
-          <h1 className="text-[28px] font-bold text-primary tracking-tight">봄길</h1>
+          <h1 className="text-[28px] font-bold text-primary tracking-tight" style={{ fontFamily: "'DM Sans', 'Sora', sans-serif" }}>Roami</h1>
           <p className="text-text-secondary text-[15px] mt-1">걸으면 보이는 것들</p>
         </div>
 

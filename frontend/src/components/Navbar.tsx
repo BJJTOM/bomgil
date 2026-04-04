@@ -20,7 +20,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto w-full px-6 h-[60px] flex items-center justify-between">
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-[22px] font-bold text-primary tracking-tight">봄길</span>
+            <span className="text-[22px] font-bold text-primary tracking-tight" style={{ fontFamily: "'DM Sans', 'Sora', sans-serif" }}>Roami</span>
             <span className="text-[10px] font-semibold text-primary/50 bg-primary/5 px-1.5 py-0.5 rounded">GLOBAL</span>
           </Link>
 

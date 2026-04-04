@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Bomgil",
+    "appName": "Roami",
     "login": "Login",
     "logout": "Logout",
     "register": "Sign Up",
@@ -150,7 +150,7 @@
     "password": "Password",
     "passwordConfirm": "Confirm Password",
     "nickname": "Nickname",
-    "nicknamePlaceholder": "Your nickname on Bomgil",
+    "nicknamePlaceholder": "Your nickname on Roami",
     "loginButton": "Login",
     "registerButton": "Sign Up",
     "googleLogin": "Continue with Google",
@@ -223,7 +223,7 @@
     "CN": "China"
   },
   "meta": {
-    "title": "Bomgil — What you see when you walk",
-    "description": "Discover walking trails, hidden restaurants, and photo spots. Walk with Bomgil."
+    "title": "Roami — What you see when you walk",
+    "description": "Discover walking trails, hidden restaurants, and photo spots. Walk with Roami."
   }
 }

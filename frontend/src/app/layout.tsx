@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "봄길 Bomgil — Walk, Discover, Share",
+  title: "Roami — 걸으면 보이는 것들",
   description:
     "Discover walking trails worldwide. Record your journey, share hidden gems. 전 세계 도보여행 코스를 발견하고, 나만의 길을 공유하세요.",
 };

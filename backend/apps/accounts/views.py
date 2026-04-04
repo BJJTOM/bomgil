@@ -153,7 +153,7 @@ class GuestLoginView(APIView):
         guest_id = uuid.uuid4().hex[:8]
         nickname = f"게스트_{guest_id}"
         username = f"guest_{guest_id}"
-        email = f"guest_{guest_id}@bomgil.guest"
+        email = f"guest_{guest_id}@roami.guest"
 
         user = CustomUser.objects.create_user(
             username=username,

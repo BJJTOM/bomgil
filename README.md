@@ -1,6 +1,6 @@
-# 🥾 봄길 (Bomgil)
+# Roami — 전 세계 도보여행 코스 공유 & 동행 매칭 플랫폼
 
-> 걸으면 보이는 것들 — 도보 여행 코스 공유 플랫폼
+> Roami — Walk. Discover. Connect.
 
 ## Tech Stack
 
@@ -32,7 +32,7 @@ docker compose up --build
 ## Project Structure
 
 ```
-bomgil/
+roami/
 ├── backend/          # Django 4.2 + DRF
 │   ├── config/       # settings, urls, wsgi, asgi
 │   └── apps/

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "ボムギル",
+    "appName": "Roami",
     "login": "ログイン",
     "logout": "ログアウト",
     "register": "新規登録",
@@ -150,7 +150,7 @@
     "password": "パスワード",
     "passwordConfirm": "パスワード確認",
     "nickname": "ニックネーム",
-    "nicknamePlaceholder": "ボムギルで使うニックネーム",
+    "nicknamePlaceholder": "Roamiで使うニックネーム",
     "loginButton": "ログイン",
     "registerButton": "登録する",
     "googleLogin": "Googleで続ける",
@@ -223,7 +223,7 @@
     "CN": "中国"
   },
   "meta": {
-    "title": "ボムギル — 歩けば見えるもの",
-    "description": "散歩コースを発見し、隠れた名店やフォトスポットを共有しましょう。ボムギルと一緒に歩きましょう。"
+    "title": "Roami — 歩けば見えるもの",
+    "description": "散歩コースを発見し、隠れた名店やフォトスポットを共有しましょう。Roamiと一緒に歩きましょう。"
   }
 }

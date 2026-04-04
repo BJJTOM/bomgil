@@ -80,7 +80,7 @@ def generate_track_points(start_lat, start_lng, num_points=100, heading=None):
 
 
 class Command(BaseCommand):
-    help = "Seed realistic activity tracking data for the Bomgil walking travel platform"
+    help = "Seed realistic activity tracking data for the Roami walking travel platform"
 
     def handle(self, *args, **options):
         users = list(CustomUser.objects.all())

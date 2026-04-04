@@ -34,7 +34,7 @@ def generate_og_image(request, pk):
         small_font = ImageFont.load_default()
 
     # Brand
-    draw.text((60, 40), "Bomgil", fill=(168, 230, 207), font=body_font)
+    draw.text((60, 40), "Roami", fill=(168, 230, 207), font=body_font)
 
     # Title
     title = trail.title[:40]

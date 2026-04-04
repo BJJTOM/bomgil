@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: "bomgil-auth",
+      name: "roami-auth",
     }
   )
 );

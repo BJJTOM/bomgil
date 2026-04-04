@@ -94,9 +94,9 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="bomgil"),
-        "USER": config("DB_USER", default="bomgil"),
-        "PASSWORD": config("DB_PASSWORD", default="bomgil"),
+        "NAME": config("DB_NAME", default="roami"),
+        "USER": config("DB_USER", default="roami"),
+        "PASSWORD": config("DB_PASSWORD", default="roami"),
         "HOST": config("DB_HOST", default="localhost"),
         "PORT": config("DB_PORT", default="5432"),
     }
@@ -211,6 +211,12 @@ USE_TZ = True
 # Misc
 # ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Site branding
+SITE_NAME = "Roami"
+
+# Admin branding
+ADMIN_SITE_HEADER = "Roami Admin"
 
 # Image settings
 IMAGE_MAX_WIDTH = 1920

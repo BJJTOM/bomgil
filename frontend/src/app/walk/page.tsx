@@ -32,6 +32,7 @@ export default function WalkPage() {
   const [elapsed, setElapsed] = useState(0);
   const [gpsReady, setGpsReady] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(true);
 
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,26 +56,7 @@ export default function WalkPage() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCurrentPos({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
-          setGpsReady(true);
-        },
-        () => {
-          // GPS failed — still allow starting (will try again on start)
-          setGpsReady(true);
-        },
-        { enableHighAccuracy: true, timeout: 5000 },
-      );
-    } else {
-      setGpsReady(true); // No geolocation API — still allow start
-    }
-  }, []);
+  // Location permission is now requested via the custom modal instead of auto-requesting
 
   const handlePosition = (pos: GeolocationPosition) => {
     const point: TrackPoint = {
@@ -209,6 +191,42 @@ export default function WalkPage() {
   if (state === "ready") {
     return (
       <div className="fixed inset-0 bg-gradient-to-b from-[#1a2f1b] to-[#0d1a0e] flex flex-col items-center justify-center z-50">
+        {showPermissionModal && (
+          <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center px-8">
+            <div className="bg-white rounded-[24px] p-6 max-w-[320px] w-full text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <h3 className="text-[17px] font-bold mb-2">위치 정보 사용</h3>
+              <p className="text-[13px] text-text-secondary mb-5 leading-relaxed">
+                걷기 경로를 기록하려면 위치 정보 접근이 필요합니다
+              </p>
+              <button
+                onClick={() => {
+                  setShowPermissionModal(false);
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => { setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsReady(true); },
+                      () => { setGpsReady(true); },
+                      { enableHighAccuracy: true, timeout: 5000 }
+                    );
+                  } else {
+                    setGpsReady(true);
+                  }
+                }}
+                className="w-full py-3.5 bg-primary text-white rounded-[14px] text-[15px] font-semibold mb-2"
+              >
+                허용
+              </button>
+              <button
+                onClick={() => { setShowPermissionModal(false); setGpsReady(true); }}
+                className="w-full py-3 text-text-tertiary text-[14px]"
+              >
+                나중에
+              </button>
+            </div>
+          </div>
+        )}
         <div className="relative z-10 flex flex-col items-center">
           {/* GPS status */}
           <div className={`flex items-center gap-2 mb-10 px-4 py-2 rounded-pill ${gpsReady ? "bg-green-500/20" : "bg-white/10"}`}>

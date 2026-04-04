@@ -7,6 +7,39 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
+/* Native app feel */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Hide scrollbars globally but keep scroll */
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent pull-to-refresh */
+html, body {
+  overscroll-behavior-y: contain;
+}
+
+/* Page transition */
+main {
+  animation: pageIn 0.15s ease-out;
+}
+
+@keyframes pageIn {
+  from { opacity: 0.95; }
+  to { opacity: 1; }
+}
+
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;

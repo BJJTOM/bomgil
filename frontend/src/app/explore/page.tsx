@@ -143,7 +143,7 @@ function ExploreContent() {
     <div className="md:pt-16 min-h-screen bg-warm">
       {/* Search & Filters Header */}
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-border-light">
-        <div className="max-w-7xl mx-auto px-5 py-3 space-y-3">
+        <div className="max-w-7xl mx-auto px-5 pt-14 md:pt-3 pb-3 space-y-3">
           {/* Search */}
           <div className="relative">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

@@ -9,7 +9,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { useChatRooms } from "@/hooks/useCompanions";
 import { useT } from "@/stores/language";
-import type { WalkStory, StoryComment } from "@/types";
+import type { WalkStory } from "@/types";
 
 function NotificationBadge() {
   const { isAuthenticated } = useAuthStore();
@@ -174,13 +174,9 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
   const { t, language } = useT();
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
-  const [commentInput, setCommentInput] = useState("");
-  const [replyingTo, setReplyingTo] = useState<{ id: number; nickname: string } | null>(null);
   const { isAuthenticated } = useAuthStore();
-  const qc = useQueryClient();
 
   const MOOD_MAP: Record<string, { emoji: string; labelKey: string; bg: string }> = {
     happy: { emoji: "😊", labelKey: "community.moodHappy", bg: "bg-yellow-50 text-yellow-700" },
@@ -192,7 +188,6 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
 
   const mood = MOOD_MAP[story.mood];
   const isLong = story.content.length > 180;
-  const comments = (story as any).comments || [];
 
   const handleTranslate = async () => {
     if (translatedText) {
@@ -212,22 +207,6 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
       setShowTranslation(true);
     }
   };
-
-  const postComment = useMutation({
-    mutationFn: async ({ content, parent }: { content: string; parent?: number }) =>
-      (await api.post(`/stories/${story.id}/comments/create/`, { content, parent })).data,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["community-feed"] });
-      setCommentInput("");
-      setReplyingTo(null);
-    },
-  });
-
-  const likeComment = useMutation({
-    mutationFn: async (commentId: number) =>
-      (await api.post(`/stories/comments/${commentId}/like/`)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["community-feed"] }),
-  });
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -391,7 +370,7 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
             </span>
           )}
           {story.comment_count > 0 && (
-            <button onClick={() => setShowComments(!showComments)} className="hover:underline ml-auto">
+            <button onClick={() => router.push(`/community/${story.id}`)} className="hover:underline ml-auto">
               {t("community.commentsCount").replace("{count}", String(story.comment_count))}
             </button>
           )}
@@ -425,7 +404,7 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
         </button>
         <div className="w-px h-5 bg-border-light" />
         <button
-          onClick={() => setShowComments(!showComments)}
+          onClick={() => router.push(`/community/${story.id}`)}
           className="flex-1 flex items-center justify-center gap-2 py-3 text-[13px] font-medium text-text-secondary active:scale-95"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -442,162 +421,6 @@ function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
         </button>
       </div>
 
-      {/* Comments section */}
-      {showComments && (
-        <div className="bg-[#F7F8FA] border-t border-border-light">
-          {/* Comment list */}
-          <div className="px-5 py-3 space-y-3 max-h-[400px] overflow-y-auto">
-            {comments.length === 0 ? (
-              <p className="text-[13px] text-text-tertiary text-center py-3">{t("community.noComments")}</p>
-            ) : (
-              comments.map((comment: StoryComment) => (
-                <div key={comment.id}>
-                  {/* Parent comment */}
-                  <div className="flex gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
-                      {comment.author.profile_image ? (
-                        <Image src={comment.author.profile_image} alt="" width={32} height={32} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[11px]">👤</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-white rounded-[14px] px-3.5 py-2.5">
-                        <span className="text-[12px] font-bold">{comment.author.nickname}</span>
-                        <p className="text-[13px] leading-relaxed mt-0.5">{comment.content}</p>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 ml-1 text-[11px] text-text-tertiary">
-                        <span>{timeAgo(comment.created_at)}</span>
-                        {comment.like_count > 0 && <span>{t("community.likesCount").replace("{count}", String(comment.like_count))}</span>}
-                        <button
-                          onClick={() => {
-                            if (!isAuthenticated) { router.push("/auth/login"); return; }
-                            likeComment.mutate(comment.id);
-                          }}
-                          className={`font-medium hover:text-text-secondary ${comment.is_liked ? "text-danger" : ""}`}
-                        >
-                          {t("community.like")}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!isAuthenticated) { router.push("/auth/login"); return; }
-                            setReplyingTo(replyingTo?.id === comment.id ? null : { id: comment.id, nickname: comment.author.nickname });
-                          }}
-                          className="font-medium hover:text-text-secondary"
-                        >
-                          {t("community.reply")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Replies */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="ml-10 mt-2 space-y-2">
-                      {comment.replies.map((reply: StoryComment) => (
-                        <div key={reply.id} className="flex gap-2">
-                          <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
-                            {reply.author.profile_image ? (
-                              <Image src={reply.author.profile_image} alt="" width={24} height={24} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-[9px]">👤</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="bg-white/80 rounded-[12px] px-3 py-2">
-                              <span className="text-[11px] font-bold">{reply.author.nickname}</span>
-                              <p className="text-[12px] leading-relaxed mt-0.5">{reply.content}</p>
-                            </div>
-                            <div className="flex items-center gap-3 mt-0.5 ml-1 text-[10px] text-text-tertiary">
-                              <span>{timeAgo(reply.created_at)}</span>
-                              {reply.like_count > 0 && <span>{t("community.likesCount").replace("{count}", String(reply.like_count))}</span>}
-                              <button
-                                onClick={() => {
-                                  if (!isAuthenticated) { router.push("/auth/login"); return; }
-                                  likeComment.mutate(reply.id);
-                                }}
-                                className={`font-medium hover:text-text-secondary ${reply.is_liked ? "text-danger" : ""}`}
-                              >
-                                {t("community.like")}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Inline reply input */}
-                  {replyingTo?.id === comment.id && isAuthenticated && (
-                    <div className="ml-10 mt-2 flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-accent/30 flex items-center justify-center flex-shrink-0 text-[9px]">👤</div>
-                      <input
-                        type="text"
-                        autoFocus
-                        value={commentInput}
-                        onChange={(e) => setCommentInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && commentInput.trim()) {
-                            postComment.mutate({ content: commentInput, parent: comment.id });
-                          }
-                          if (e.key === "Escape") {
-                            setReplyingTo(null);
-                            setCommentInput("");
-                          }
-                        }}
-                        placeholder={t("community.replyPlaceholder")}
-                        className="flex-1 px-3 py-2 bg-white rounded-pill text-[12px] placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/10 border border-border-light"
-                      />
-                      <button
-                        onClick={() => commentInput.trim() && postComment.mutate({ content: commentInput, parent: comment.id })}
-                        disabled={!commentInput.trim() || postComment.isPending}
-                        className="text-primary font-semibold text-[12px] disabled:text-text-tertiary"
-                      >
-                        {t("community.writePost")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Comment input */}
-          {isAuthenticated ? (
-            !replyingTo && (
-              <div className="flex items-center gap-2 px-5 py-3 border-t border-border-light bg-surface">
-                <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center flex-shrink-0 text-[11px]">👤</div>
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={commentInput}
-                    onChange={(e) => setCommentInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && commentInput.trim()) {
-                        postComment.mutate({ content: commentInput });
-                      }
-                    }}
-                    placeholder={t("community.commentPlaceholder")}
-                    className="w-full px-4 py-2.5 bg-bg-secondary rounded-pill text-[13px] placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/10"
-                  />
-                </div>
-                <button
-                  onClick={() => commentInput.trim() && postComment.mutate({ content: commentInput })}
-                  disabled={!commentInput.trim() || postComment.isPending}
-                  className="text-primary font-semibold text-[13px] disabled:text-text-tertiary px-2"
-                >
-                  {t("community.writePost")}
-                </button>
-              </div>
-            )
-          ) : (
-            <Link href="/auth/login" className="flex items-center gap-2 px-5 py-3 border-t border-border-light bg-surface">
-              <p className="text-[13px] text-text-tertiary">{language === "ko" ? "로그인하고 댓글을 남겨보세요" : "Login to leave a comment"}</p>
-              <span className="text-primary font-semibold text-[13px]">{t("common.login")}</span>
-            </Link>
-          )}
-        </div>
-      )}
     </article>
   );
 }

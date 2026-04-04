@@ -141,19 +141,18 @@ export default function Home() {
   return (
     <div className="bg-warm" style={{ backgroundColor: "#FAFAFA" }}>
       {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between px-5 pt-12 pb-2 bg-transparent absolute top-0 left-0 right-0 z-20">
-        <Link href="/" className="flex items-center gap-1.5">
-          <span className="text-[18px]">🌿</span>
-          <span className="text-white font-bold text-[18px]" style={{ fontFamily: "'DM Sans', sans-serif" }}>Roami</span>
-        </Link>
-        <button onClick={() => setShowLangMenu(!showLangMenu)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-pill bg-white/15 backdrop-blur-sm">
-          <span className="text-[13px]">{LANGUAGES.find(l => l.code === language)?.flag}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+      <div className="md:hidden absolute top-0 left-0 right-0 z-20 px-5 pt-12 pb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <img src="/icon-192.png" alt="Roami" className="w-7 h-7 rounded-lg" />
+          <span className="text-white font-bold text-[17px]" style={{ fontFamily: "'DM Sans', sans-serif" }}>Roami</span>
+        </div>
+        <button onClick={() => setShowLangMenu(!showLangMenu)} className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
+          <span className="text-[14px]">{LANGUAGES.find(l => l.code === language)?.flag}</span>
         </button>
         {showLangMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />
-            <div className="absolute top-full right-5 mt-1 bg-[#1a1a1a]/95 backdrop-blur-xl rounded-card shadow-card border border-white/10 py-1 min-w-[140px] z-50">
+            <div className="absolute top-full right-5 mt-1 bg-[#1a1a1a]/95 backdrop-blur-xl rounded-[16px] shadow-card border border-white/10 py-1 min-w-[140px] z-50">
               {LANGUAGES.map((l) => (
                 <button
                   key={l.code}
@@ -164,7 +163,7 @@ export default function Home() {
                 >
                   <span>{l.flag}</span>
                   <span>{l.label}</span>
-                  {language === l.code && <span className="ml-auto text-[#A8E6CF]">{"\u2713"}</span>}
+                  {language === l.code && <span className="ml-auto text-[#A8E6CF]">✓</span>}
                 </button>
               ))}
             </div>
@@ -220,7 +219,7 @@ export default function Home() {
       </section>
 
       {/* Discover by Country */}
-      <section className="max-w-7xl mx-auto px-5 pt-16 pb-10 bg-[#FAFAFA]">
+      <section className="max-w-7xl mx-auto px-5 pt-10 md:pt-16 pb-8 bg-[#FAFAFA]">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-[20px] font-bold tracking-tight">{discoverTexts[language]?.title ?? discoverTexts.en.title}</h2>
@@ -268,7 +267,7 @@ export default function Home() {
       </section>
 
       {/* Popular Trails */}
-      <section className="bg-surface py-14">
+      <section className="bg-surface py-8 md:py-14">
         <div className="max-w-7xl mx-auto px-5">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -292,7 +291,7 @@ export default function Home() {
       </section>
 
       {/* UGC CTA */}
-      <section className="bg-surface py-14">
+      <section className="bg-surface py-8 md:py-14">
         <div className="max-w-3xl mx-auto px-5">
           <div className="bg-gradient-to-br from-primary-50 to-accent-light/30 rounded-card p-8 md:p-10">
             <div className="text-center">
@@ -312,14 +311,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Floating action button */}
-      <Link
-        href="/walk"
-        className="md:hidden fixed bottom-24 right-5 z-40 w-14 h-14 bg-primary text-white rounded-full shadow-float flex items-center justify-center text-2xl font-light active:scale-90 transition-transform"
-      >
-        +
-      </Link>
 
       {/* Global footer info */}
       <section className="py-10 border-t border-border-light bg-[#FAFAFA]">

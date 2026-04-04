@@ -74,10 +74,10 @@ export function BottomNav() {
 
   return (
     <div
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 12px)" }}
+      className="md:hidden fixed bottom-0 left-0 right-0 z-[60] flex justify-center pointer-events-none"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="bg-white/90 backdrop-blur-xl shadow-float rounded-[28px] border border-white/50 mx-4 w-full max-w-[380px] pointer-events-auto mb-3">
+      <nav className="bg-white/90 backdrop-blur-xl shadow-float rounded-[28px] border border-white/50 mx-4 w-full max-w-[380px] pointer-events-auto mb-2">
         <div className="flex items-center justify-around h-[64px] px-2">
           {navItems.map((item) => {
             const isActive =
@@ -93,14 +93,14 @@ export function BottomNav() {
               >
                 <div
                   className={`transition-all duration-200 ${
-                    isActive ? "scale-110" : "opacity-50"
+                    isActive ? "scale-110" : "opacity-70"
                   }`}
                 >
                   {item.icon(isActive)}
                 </div>
                 <span
                   className={`text-[10px] leading-none font-semibold transition-all duration-200 ${
-                    isActive ? "text-primary" : "text-text-tertiary/60"
+                    isActive ? "text-primary" : "text-text-secondary"
                   }`}
                 >
                   {item.label}

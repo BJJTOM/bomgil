@@ -1,6 +1,8 @@
 """
 Production settings for Render deployment.
 """
+import os
+
 import dj_database_url
 
 from .settings import *  # noqa: F401,F403
@@ -9,19 +11,18 @@ from .settings import *  # noqa: F401,F403
 # Core
 # ---------------------------------------------------------------------------
 DEBUG = False
-SECRET_KEY = config("SECRET_KEY")
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=Csv())
+SECRET_KEY = os.environ.get("SECRET_KEY", "fallback-change-me")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 # ---------------------------------------------------------------------------
-# Database — Neon PostgreSQL
+# Database — Render PostgreSQL
 # ---------------------------------------------------------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 DATABASES = {
-    "default": dj_database_url.config(
-        default=config("DATABASE_URL", default=""),
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=True,
-    )
+    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600) if DATABASE_URL else {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -46,11 +47,11 @@ STORAGES = {
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = config(
-    "CORS_ALLOWED_ORIGINS",
-    default="https://bomgil.vercel.app",
-    cast=Csv(),
-)
+CORS_ALLOWED_ORIGINS = [
+    x.strip() for x in
+    os.environ.get("CORS_ALLOWED_ORIGINS", "https://frontend-sigma-nine-57.vercel.app").split(",")
+    if x.strip()
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ---------------------------------------------------------------------------

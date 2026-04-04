@@ -7,15 +7,24 @@ const nextConfig = {
         hostname: "localhost",
         port: "8001",
       },
+      {
+        protocol: "https",
+        hostname: "**.onrender.com",
+      },
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:8001/api/:path*",
-      },
-    ];
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1";
+    // Only rewrite in development (Vercel handles this differently)
+    if (process.env.NODE_ENV === "development") {
+      return [
+        {
+          source: "/api/:path*",
+          destination: "http://localhost:8001/api/:path*",
+        },
+      ];
+    }
+    return [];
   },
 };
 

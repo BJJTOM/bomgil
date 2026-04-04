@@ -155,15 +155,17 @@ class SafetyReport(models.Model):
 
 class ChatRoom(models.Model):
     walk_plan = models.OneToOneField(
-        WalkPlan, on_delete=models.CASCADE, related_name="chat_room"
+        WalkPlan, on_delete=models.CASCADE, related_name="chat_room",
+        null=True, blank=True,
     )
+    name = models.CharField(max_length=100, blank=True)
     participants = models.ManyToManyField(
         settings.AUTH_USER_MODEL, related_name="chat_rooms"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Chat: {self.walk_plan}"
+        return self.name or f"Chat: {self.walk_plan}"
 
 
 class ChatMessage(models.Model):

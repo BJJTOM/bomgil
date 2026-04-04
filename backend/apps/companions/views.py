@@ -319,9 +319,20 @@ class ChatRoomListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        from django.db.models import Q
+        # My companion rooms + all open rooms
         return ChatRoom.objects.filter(
-            participants=self.request.user
-        ).prefetch_related("participants")
+            Q(participants=self.request.user) | Q(walk_plan__isnull=True)
+        ).distinct().prefetch_related("participants")
+
+    def post(self, request):
+        """Create an open chat room."""
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response({"error": "채팅방 이름을 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        room = ChatRoom.objects.create(name=name)
+        room.participants.add(request.user)
+        return Response(ChatRoomSerializer(room).data, status=status.HTTP_201_CREATED)
 
 
 class ChatMessageListView(generics.ListAPIView):

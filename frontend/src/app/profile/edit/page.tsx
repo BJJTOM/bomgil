@@ -11,6 +11,8 @@ export default function ProfileEditPage() {
   const { user, setUser, isAuthenticated } = useAuthStore();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     nickname: "",
@@ -47,17 +49,39 @@ export default function ProfileEditPage() {
   const updateField = (key: string, value: string) =>
     setForm((p) => ({ ...p, [key]: value }));
 
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+    const formData = new FormData();
+    formData.append("profile_image", file);
+    try {
+      const { data } = await api.patch("/auth/me/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setUser(data);
+    } catch {
+      setError("사진 업로드에 실패했습니다");
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
+    setError("");
     try {
-      const { data } = await api.patch("/auth/me/", form);
+      const { data } = await api.patch("/auth/me/", {
+        nickname: form.nickname,
+        bio: form.bio,
+        walking_style: form.walking_style,
+        preferred_language: form.preferred_language,
+        one_liner: form.one_liner,
+        age_range: form.age_range,
+      });
       setUser(data);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
+      router.push(`/profile/${data.nickname}`);
     } catch (err) {
-      console.error(err);
-    } finally {
+      setError("저장에 실패했습니다");
       setSaving(false);
     }
   };
@@ -75,21 +99,19 @@ export default function ProfileEditPage() {
       <h1 className="text-[22px] font-bold tracking-tight mb-8">프로필 수정</h1>
 
       <div className="space-y-6">
-        {/* Profile image placeholder */}
-        <div className="flex justify-center">
-          <div className="w-24 h-24 rounded-full bg-accent/30 flex items-center justify-center text-4xl relative">
-            {user?.profile_image ? (
-              <img src={user.profile_image} alt="" className="w-full h-full rounded-full object-cover" />
+        {/* Profile photo upload */}
+        <div className="relative w-24 h-24 mx-auto mb-6">
+          <div className="w-24 h-24 rounded-full bg-accent/30 overflow-hidden flex items-center justify-center">
+            {preview || user?.profile_image ? (
+              <img src={preview || user?.profile_image || ""} alt="" className="w-full h-full object-cover" />
             ) : (
-              "👤"
+              <span className="text-4xl">👤</span>
             )}
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm shadow-card cursor-pointer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </div>
           </div>
+          <label className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-card">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+          </label>
         </div>
 
         <div>
@@ -165,9 +187,27 @@ export default function ProfileEditPage() {
           </div>
         </div>
 
+        <div>
+          <label className="text-[13px] font-medium text-text-secondary block mb-2">언어</label>
+          <select
+            value={form.preferred_language}
+            onChange={(e) => updateField("preferred_language", e.target.value)}
+            className="input-field"
+          >
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+
+        {error && (
+          <p className="text-red-500 text-sm text-center">{error}</p>
+        )}
+
         <div className="pt-4 space-y-3">
           <button onClick={handleSave} disabled={saving} className="btn-primary w-full">
-            {saving ? "저장 중..." : success ? "저장 완료!" : "저장하기"}
+            {saving ? "저장 중..." : "저장하기"}
           </button>
           <button
             onClick={() => router.back()}

@@ -11,7 +11,26 @@ import { TrailCard } from "@/components/TrailCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { WALKING_STYLE_LABELS } from "@/lib/utils";
 import type { User, Trail, Review, ActivityTrack } from "@/types";
+
+const BADGE_CONFIG: Record<string, { emoji: string; label: string }> = {
+  verified: { emoji: "✓", label: "본인 인증" },
+  trusted: { emoji: "🛡️", label: "신뢰 동행자" },
+  first_walk: { emoji: "🌱", label: "첫 걸음" },
+  companion_10: { emoji: "🤝", label: "10회 동행" },
+  popular: { emoji: "⭐", label: "인기 동행자" },
+  trail_creator: { emoji: "🗺️", label: "코스 개척자" },
+  storyteller: { emoji: "📝", label: "스토리텔러" },
+  walker_10km: { emoji: "🚶", label: "10km 달성" },
+  walker_50km: { emoji: "🏃", label: "50km 달성" },
+  walker_100km: { emoji: "🏅", label: "100km 달성" },
+  early_bird: { emoji: "🌅", label: "얼리버드" },
+  night_walker: { emoji: "🌙", label: "야간 산책러" },
+  global_walker: { emoji: "🌏", label: "글로벌 워커" },
+  photo_lover: { emoji: "📸", label: "사진 매니아" },
+  food_explorer: { emoji: "🍜", label: "맛집 탐험가" },
+};
 
 type Tab = "trails" | "likes" | "reviews" | "activities";
 
@@ -97,22 +116,23 @@ export default function ProfilePage() {
   return (
     <div className="md:pt-16 max-w-4xl mx-auto px-4 py-8">
       {/* Profile Header */}
-      <div className="flex items-center gap-6 mb-8">
-        <div className="w-24 h-24 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="flex flex-col items-center text-center mb-8">
+        <div className="w-24 h-24 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0 ring-4 ring-accent/20">
           {profile.profile_image ? (
             <Image
               src={profile.profile_image}
               alt={profile.nickname}
               width={96}
               height={96}
-              className="object-cover"
+              className="w-full h-full object-cover"
             />
           ) : (
             <span className="text-4xl">👤</span>
           )}
         </div>
-        <div>
-          <div className="flex items-center gap-3">
+
+        <div className="mt-4">
+          <div className="flex items-center justify-center gap-3">
             <h1 className="text-2xl font-bold">{profile.nickname}</h1>
             {profile.is_guide && (
               <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
@@ -120,13 +140,55 @@ export default function ProfilePage() {
               </span>
             )}
           </div>
-          {profile.bio && (
-            <p className="text-text-secondary mt-1">{profile.bio}</p>
+
+          {profile.one_liner && (
+            <p className="text-text-secondary text-sm mt-1">{profile.one_liner}</p>
           )}
+
+          {profile.bio && (
+            <p className="text-text-secondary mt-2 max-w-md">{profile.bio}</p>
+          )}
+
+          {/* Walking style badge */}
+          {profile.walking_style && WALKING_STYLE_LABELS[profile.walking_style] && (
+            <span className="inline-flex items-center gap-1 mt-3 px-3 py-1 bg-bg-secondary rounded-full text-[12px] font-medium text-text-secondary">
+              {WALKING_STYLE_LABELS[profile.walking_style].emoji} {WALKING_STYLE_LABELS[profile.walking_style].label}
+            </span>
+          )}
+
+          {/* Stats row */}
+          <div className="flex items-center justify-center gap-6 mt-4">
+            <div className="text-center">
+              <p className="text-lg font-bold text-text-primary">{profile.trail_count || 0}</p>
+              <p className="text-[11px] text-text-tertiary">코스</p>
+            </div>
+            <div className="w-px h-8 bg-border-light" />
+            <div className="text-center">
+              <p className="text-lg font-bold text-text-primary">{profile.total_walks || 0}</p>
+              <p className="text-[11px] text-text-tertiary">동행</p>
+            </div>
+            <div className="w-px h-8 bg-border-light" />
+            <div className="text-center">
+              <p className="text-lg font-bold text-text-primary">{profile.review_count || 0}</p>
+              <p className="text-[11px] text-text-tertiary">리뷰</p>
+            </div>
+          </div>
+
+          {/* Badges */}
+          {profile.badges && profile.badges.length > 0 && (
+            <div className="flex gap-2 mt-3 flex-wrap justify-center">
+              {profile.badges.map((badge: any) => (
+                <span key={badge.badge_type} className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-light rounded-pill text-[11px] font-semibold text-primary">
+                  {BADGE_CONFIG[badge.badge_type]?.emoji || "🏅"} {BADGE_CONFIG[badge.badge_type]?.label || badge.badge_type}
+                </span>
+              ))}
+            </div>
+          )}
+
           {isMyProfile && (
             <Link
               href="/profile/edit"
-              className="mt-3 inline-block px-4 py-2 bg-bg-secondary text-text-primary rounded-button text-[13px] font-medium hover:bg-border-light transition-colors"
+              className="mt-4 inline-block px-5 py-2 bg-bg-secondary text-text-primary rounded-button text-[13px] font-medium hover:bg-border-light transition-colors"
             >
               프로필 수정
             </Link>

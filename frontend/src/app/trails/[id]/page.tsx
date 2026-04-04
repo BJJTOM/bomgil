@@ -16,12 +16,14 @@ import { ShareButton } from "@/components/ShareButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDistance, formatDuration, SEASON_LABELS, SPOT_TYPE_LABELS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
+import { useT } from "@/stores/language";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 export default function TrailDetailPage() {
   const { id } = useParams();
   const trailId = Number(id);
   const { isAuthenticated } = useAuthStore();
+  const { t, language } = useT();
 
   const { data: trail, isLoading: trailLoading } = useTrail(trailId);
   const { data: spots = [] } = useTrailSpots(trailId);
@@ -54,13 +56,13 @@ export default function TrailDetailPage() {
   if (!trail) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-text-secondary">코스를 찾을 수 없습니다.</p>
+        <p className="text-text-secondary">{t("common.noResults")}</p>
       </div>
     );
   }
 
-  const t: Trail = trail;
-  const pathCoords = t.path_data?.coordinates || [];
+  const tr: Trail = trail;
+  const pathCoords = tr.path_data?.coordinates || [];
   const mapMarkers = spots.map((s: Spot) => ({
     id: s.id,
     lat: parseFloat(s.lat),
@@ -80,18 +82,22 @@ export default function TrailDetailPage() {
     setReviewForm({ rating: 5, content: "", visited_date: new Date().toISOString().split("T")[0] });
   };
 
+  function formatActivityDuration(minutes: number | null) {
+    if (!minutes) return "-";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (language === "ko") return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    if (language === "ja") return h > 0 ? `${h}時間${m}分` : `${m}分`;
+    if (language === "zh") return h > 0 ? `${h}小时${m}分钟` : `${m}分钟`;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
   return (
     <div className="md:pt-16">
       {/* Cover Image */}
       <div className="relative h-64 md:h-80 bg-primary">
-        {t.cover_image ? (
-          <Image
-            src={t.cover_image}
-            alt={t.title}
-            fill
-            className="object-cover"
-            priority
-          />
+        {tr.cover_image || tr.thumbnail_url ? (
+          <img src={tr.cover_image || tr.thumbnail_url} alt={tr.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#2D4A2E] to-[#3A5C3B] flex items-center justify-center">
             <span className="text-8xl opacity-30">🥾</span>
@@ -99,10 +105,10 @@ export default function TrailDetailPage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-6 left-6 right-6 text-white">
-          <DifficultyBadge difficulty={t.difficulty} />
-          <h1 className="text-3xl md:text-4xl font-semibold mt-2">{t.title}</h1>
+          <DifficultyBadge difficulty={tr.difficulty} />
+          <h1 className="text-3xl md:text-4xl font-semibold mt-2">{tr.title}</h1>
           <p className="text-sm opacity-80 mt-1">
-            {t.region}, {t.country}
+            {tr.region}, {tr.country}
           </p>
         </div>
       </div>
@@ -110,13 +116,13 @@ export default function TrailDetailPage() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Info Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <InfoCard label="거리" value={formatDistance(t.distance_km)} />
-          <InfoCard label="소요시간" value={formatDuration(t.estimated_minutes)} />
+          <InfoCard label={t("trail.distance")} value={formatDistance(tr.distance_km)} />
+          <InfoCard label={t("trail.time")} value={formatDuration(tr.estimated_minutes)} />
           <InfoCard
-            label="고도"
-            value={t.elevation_gain ? `${t.elevation_gain}m` : "-"}
+            label={t("trail.elevation")}
+            value={tr.elevation_gain ? `${tr.elevation_gain}m` : "-"}
           />
-          <InfoCard label="시즌" value={SEASON_LABELS[t.best_season] || t.best_season} />
+          <InfoCard label={t("trail.season")} value={SEASON_LABELS[tr.best_season] || tr.best_season} />
         </div>
 
         {/* Action buttons */}
@@ -124,33 +130,33 @@ export default function TrailDetailPage() {
           <button
             onClick={() => toggleLike.mutate(trailId)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-button text-sm font-medium transition-all ${
-              t.is_liked
+              tr.is_liked
                 ? "bg-danger text-white"
                 : "card hover:shadow-hover"
             }`}
           >
-            {t.is_liked ? "❤️" : "🤍"} {t.like_count}
+            {tr.is_liked ? "❤️" : "🤍"} {tr.like_count}
           </button>
           <ShareButton
-            title={t.title}
-            description={t.description}
+            title={tr.title}
+            description={tr.description}
             url={typeof window !== "undefined" ? window.location.href : ""}
           />
           <div className="flex-1" />
           <span className="text-sm text-text-tertiary">
-            👁️ {t.view_count}
+            👁️ {tr.view_count}
           </span>
         </div>
 
         {/* Description */}
         <div className="card p-7 mb-10">
-          <h2 className="text-[18px] font-semibold mb-3">코스 소개</h2>
+          <h2 className="text-[18px] font-semibold mb-3">{t("trail.description")}</h2>
           <p className="text-text-secondary leading-relaxed whitespace-pre-line">
-            {t.description}
+            {tr.description}
           </p>
-          {t.tags.length > 0 && (
+          {tr.tags.length > 0 && (
             <div className="flex gap-2 mt-5 flex-wrap">
-              {t.tags.map((tag) => (
+              {tr.tags.map((tag) => (
                 <span
                   key={tag.id}
                   className="chip text-sm"
@@ -162,22 +168,22 @@ export default function TrailDetailPage() {
           )}
         </div>
 
-        {/* Map — full-bleed dark theme */}
+        {/* Map */}
         <div className="mb-10 -mx-6 md:mx-0 md:rounded-card overflow-hidden">
           <div className="h-[400px] md:h-[500px] relative">
             <MapView
-              country={t.country}
+              country={tr.country}
               center={{
-                lat: parseFloat(t.start_lat),
-                lng: parseFloat(t.start_lng),
+                lat: parseFloat(tr.start_lat),
+                lng: parseFloat(tr.start_lng),
               }}
               zoom={14}
               markers={mapMarkers}
               pathCoordinates={pathCoords}
               theme="dark"
               showStats
-              distance={t.distance_km}
-              duration={String(t.estimated_minutes)}
+              distance={tr.distance_km}
+              duration={String(tr.estimated_minutes)}
             />
           </div>
         </div>
@@ -185,7 +191,7 @@ export default function TrailDetailPage() {
         {/* Spot Timeline */}
         {spots.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-[18px] font-semibold mb-6">경유지 타임라인</h2>
+            <h2 className="text-[18px] font-semibold mb-6">{t("trail.spotTimeline")}</h2>
             <SpotTimeline spots={spots} />
           </div>
         )}
@@ -194,7 +200,7 @@ export default function TrailDetailPage() {
         <div className="mb-10">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <h2 className="text-[18px] font-semibold">리뷰</h2>
+              <h2 className="text-[18px] font-semibold">{t("review.title")}</h2>
               {avgRating && (
                 <span className="text-sm bg-yellow-50 text-yellow-700 px-3 py-1 rounded-pill font-medium">
                   ★ {avgRating} ({reviews.length})
@@ -206,7 +212,7 @@ export default function TrailDetailPage() {
                 onClick={() => setShowReviewForm(!showReviewForm)}
                 className="btn-primary px-5 py-2.5 text-sm"
               >
-                이 코스 걸어봤어요
+                {t("trail.writeReview")}
               </button>
             )}
           </div>
@@ -239,11 +245,11 @@ export default function TrailDetailPage() {
           {/* Review Form */}
           {showReviewForm && (
             <div className="card p-7 mb-6">
-              <h3 className="text-[18px] font-semibold mb-5">리뷰 작성</h3>
+              <h3 className="text-[18px] font-semibold mb-5">{t("review.write")}</h3>
               <div className="space-y-5">
                 <div>
                   <label className="text-sm text-text-secondary block mb-2">
-                    별점
+                    {t("review.rating")}
                   </label>
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -265,7 +271,7 @@ export default function TrailDetailPage() {
                 </div>
                 <div>
                   <label className="text-sm text-text-secondary block mb-2">
-                    방문일
+                    {t("review.visitDate")}
                   </label>
                   <input
                     type="date"
@@ -281,7 +287,7 @@ export default function TrailDetailPage() {
                 </div>
                 <div>
                   <label className="text-sm text-text-secondary block mb-2">
-                    리뷰
+                    {t("review.content")}
                   </label>
                   <textarea
                     value={reviewForm.content}
@@ -290,7 +296,7 @@ export default function TrailDetailPage() {
                     }
                     rows={4}
                     maxLength={1000}
-                    placeholder="코스에 대한 솔직한 후기를 남겨주세요"
+                    placeholder={t("review.placeholder")}
                     className="input-field resize-none"
                   />
                 </div>
@@ -299,14 +305,14 @@ export default function TrailDetailPage() {
                     onClick={() => setShowReviewForm(false)}
                     className="btn-ghost px-5 py-2.5 text-sm"
                   >
-                    취소
+                    {t("common.cancel")}
                   </button>
                   <button
                     onClick={handleSubmitReview}
                     disabled={!reviewForm.content || createReview.isPending}
                     className="btn-primary px-6 py-2.5 text-sm disabled:opacity-50"
                   >
-                    {createReview.isPending ? "등록 중..." : "리뷰 등록"}
+                    {createReview.isPending ? t("review.submitting") : t("review.submit")}
                   </button>
                 </div>
               </div>
@@ -329,8 +335,8 @@ export default function TrailDetailPage() {
         {activities.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[18px] font-semibold">활동 기록</h2>
-              <span className="text-[12px] text-text-tertiary">{activities.length}명이 기록했어요</span>
+              <h2 className="text-[18px] font-semibold">{t("activities.title")}</h2>
+              <span className="text-[12px] text-text-tertiary">{activities.length}{t("activities.recorded")}</span>
             </div>
             <div className="space-y-3">
               {activities.slice(0, 5).map((act: ActivityTrack) => (
@@ -344,8 +350,8 @@ export default function TrailDetailPage() {
                     <div>
                       <p className="text-[13px] font-semibold">{act.user?.nickname}</p>
                       <p className="text-[11px] text-text-tertiary">
-                        {act.distance_km ? `${parseFloat(act.distance_km).toFixed(1)}km` : "-"} · {act.duration_minutes ? `${Math.floor(act.duration_minutes / 60)}시간 ${act.duration_minutes % 60}분` : "-"}
-                        {act.total_steps ? ` · ${act.total_steps.toLocaleString()}걸음` : ""}
+                        {act.distance_km ? `${parseFloat(act.distance_km).toFixed(1)}km` : "-"} · {formatActivityDuration(act.duration_minutes)}
+                        {act.total_steps ? ` · ${act.total_steps.toLocaleString()} ${t("activities.steps")}` : ""}
                       </p>
                     </div>
                   </div>
@@ -358,16 +364,16 @@ export default function TrailDetailPage() {
 
         {/* Author */}
         <div className="card p-7">
-          <h2 className="text-[18px] font-semibold mb-5">작성자</h2>
+          <h2 className="text-[18px] font-semibold mb-5">{t("trail.author")}</h2>
           <Link
-            href={`/profile/${t.author.nickname}`}
+            href={`/profile/${tr.author.nickname}`}
             className="flex items-center gap-4 hover:bg-[#F5F6F7] -m-3 p-3 rounded-card transition-colors"
           >
             <div className="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
-              {t.author.profile_image ? (
+              {tr.author.profile_image ? (
                 <Image
-                  src={t.author.profile_image}
-                  alt={t.author.nickname}
+                  src={tr.author.profile_image}
+                  alt={tr.author.nickname}
                   width={56}
                   height={56}
                   className="object-cover"
@@ -377,10 +383,10 @@ export default function TrailDetailPage() {
               )}
             </div>
             <div>
-              <p className="font-semibold">{t.author.nickname}</p>
-              {t.author.is_guide && (
+              <p className="font-semibold">{tr.author.nickname}</p>
+              {tr.author.is_guide && (
                 <span className="text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-pill">
-                  인증 가이드
+                  {t("trail.certifiedGuide")}
                 </span>
               )}
             </div>

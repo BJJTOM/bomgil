@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import UserPublicSerializer
 
-from .models import StoryComment, StoryLike, StoryPhoto, WalkStory
+from .models import CommentLike, StoryComment, StoryLike, StoryPhoto, WalkStory
 
 
 def sanitize_text(value):
@@ -27,18 +27,32 @@ class StoryPhotoSerializer(serializers.ModelSerializer):
 
 class StoryCommentSerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = StoryComment
-        fields = ["id", "author", "content", "like_count", "created_at"]
+        fields = ["id", "author", "content", "like_count", "parent", "replies", "is_liked", "created_at"]
         read_only_fields = ["author", "like_count"]
+
+    def get_replies(self, obj):
+        if obj.parent is None:
+            replies = obj.replies.select_related("author").all()
+            return StoryCommentSerializer(replies, many=True, context=self.context).data
+        return []
+
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return CommentLike.objects.filter(user=request.user, comment=obj).exists()
+        return False
 
 
 class WalkStorySerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
     photos = StoryPhotoSerializer(many=True, read_only=True)
     companions_tagged = UserPublicSerializer(many=True, read_only=True)
-    comments = StoryCommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     trail_title = serializers.SerializerMethodField()
     trail_region = serializers.SerializerMethodField()
@@ -54,6 +68,11 @@ class WalkStorySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["author", "like_count", "comment_count"]
+
+    def get_comments(self, obj):
+        # Only top-level comments (no parent) — replies are nested inside
+        top_comments = obj.comments.filter(parent__isnull=True).select_related("author")
+        return StoryCommentSerializer(top_comments, many=True, context=self.context).data
 
     def get_is_liked(self, obj):
         request = self.context.get("request")

@@ -131,6 +131,9 @@ export interface StoryComment {
   author: User;
   content: string;
   like_count: number;
+  parent: number | null;
+  replies: StoryComment[];
+  is_liked: boolean;
   created_at: string;
 }
 

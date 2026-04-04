@@ -126,7 +126,7 @@ TRAILS_DATA = [
     },
     {
         # 2: 제주 올레길 7코스
-        "thumbnail_url": "https://images.unsplash.com/photo-1623826986116-1b31eec4ad02?w=800&h=600&fit=crop",
+        "thumbnail_url": "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=800&h=600&fit=crop",
         "title": "제주 올레길 7코스",
         "title_en": "Jeju Olle Trail Route 7",
         "title_ja": "済州オルレ道7コース",
@@ -164,7 +164,7 @@ TRAILS_DATA = [
     {
         # 3: 전주한옥마을 맛집 탐방
         "title": "전주한옥마을 맛집 탐방",
-        "thumbnail_url": "https://images.unsplash.com/photo-1583167617788-5a41e7e4f68e?w=800&h=600&fit=crop",
+        "thumbnail_url": "https://images.unsplash.com/photo-1601823984263-b87b59798b70?w=800&h=600&fit=crop",
         "title_en": "Jeonju Hanok Village Food Walk",
         "title_ja": "全州韓屋村グルメ散歩",
         "description": "전주한옥마을에서 남부시장까지 이어지는 먹거리 투어 코스. 비빔밥, 초코파이, 막걸리 등 전주의 맛을 걸으며 즐길 수 있다.",

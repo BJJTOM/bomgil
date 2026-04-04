@@ -4,26 +4,13 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth";
+import { useT } from "@/stores/language";
 import api from "@/lib/api";
-
-function getPasswordStrength(password: string): { level: number; label: string; color: string } {
-  if (!password) return { level: 0, label: "", color: "" };
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-  if (score <= 1) return { level: 1, label: "취약", color: "bg-red-400" };
-  if (score <= 2) return { level: 2, label: "보통", color: "bg-yellow-400" };
-  if (score <= 3) return { level: 3, label: "양호", color: "bg-blue-400" };
-  return { level: 4, label: "강력", color: "bg-green-500" };
-}
 
 export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuthStore();
+  const { t } = useT();
   const [form, setForm] = useState({
     email: "",
     nickname: "",
@@ -33,7 +20,22 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const passwordStrength = useMemo(() => getPasswordStrength(form.password1), [form.password1]);
+  function getPasswordStrength(password: string): { level: number; label: string; color: string } {
+    if (!password) return { level: 0, label: "", color: "" };
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+    if (score <= 1) return { level: 1, label: t("register.strengthWeak"), color: "bg-red-400" };
+    if (score <= 2) return { level: 2, label: t("register.strengthFair"), color: "bg-yellow-400" };
+    if (score <= 3) return { level: 3, label: t("register.strengthGood"), color: "bg-blue-400" };
+    return { level: 4, label: t("register.strengthStrong"), color: "bg-green-500" };
+  }
+
+  const passwordStrength = useMemo(() => getPasswordStrength(form.password1), [form.password1, t]);
 
   const updateField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -43,17 +45,17 @@ export default function RegisterPage() {
     setError("");
 
     if (!form.nickname.trim()) {
-      setError("닉네임을 입력해주세요.");
+      setError(t("register.nicknameRequired"));
       return;
     }
 
     if (form.password1.length < 8) {
-      setError("비밀번호는 8자 이상이어야 합니다.");
+      setError(t("register.passwordMinLength"));
       return;
     }
 
     if (form.password1 !== form.password2) {
-      setError("비밀번호가 일치하지 않습니다.");
+      setError(t("auth.passwordMismatch"));
       return;
     }
 
@@ -69,9 +71,9 @@ export default function RegisterPage() {
       const errors = err.response?.data;
       if (errors) {
         const firstError = Object.values(errors).flat()[0] as string;
-        setError(firstError || "회원가입에 실패했습니다.");
+        setError(firstError || t("auth.registerFailed"));
       } else {
-        setError("회원가입에 실패했습니다.");
+        setError(t("auth.registerFailed"));
       }
     } finally {
       setLoading(false);
@@ -86,8 +88,8 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-[20px] mb-4">
             <span className="text-2xl text-white font-bold font-en">R</span>
           </div>
-          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">Roami에 합류하세요</h1>
-          <p className="text-text-secondary text-[15px] mt-1.5">전 세계 도보여행자들과 함께 걸어요</p>
+          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">{t("register.joinTitle")}</h1>
+          <p className="text-text-secondary text-[15px] mt-1.5">{t("register.joinSubtitle")}</p>
         </div>
 
         <div className="card p-7">
@@ -102,7 +104,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="text-[13px] font-medium text-text-secondary block mb-2">이메일</label>
+              <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.email")}</label>
               <input
                 type="email"
                 value={form.email}
@@ -115,27 +117,27 @@ export default function RegisterPage() {
 
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">
-                닉네임 <span className="text-danger">*</span>
+                {t("auth.nickname")} <span className="text-danger">*</span>
               </label>
               <input
                 type="text"
                 value={form.nickname}
                 onChange={(e) => updateField("nickname", e.target.value)}
-                placeholder="Roami에서 사용할 닉네임"
+                placeholder={t("auth.nicknamePlaceholder")}
                 required
                 maxLength={50}
                 className="input-field"
               />
-              <p className="text-[11px] text-text-tertiary mt-1.5">다른 여행자에게 보이는 이름이에요</p>
+              <p className="text-[11px] text-text-tertiary mt-1.5">{t("register.nicknameHelp")}</p>
             </div>
 
             <div>
-              <label className="text-[13px] font-medium text-text-secondary block mb-2">비밀번호</label>
+              <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.password")}</label>
               <input
                 type="password"
                 value={form.password1}
                 onChange={(e) => updateField("password1", e.target.value)}
-                placeholder="8자 이상, 영문/숫자/특수문자 조합"
+                placeholder={t("register.passwordPlaceholder")}
                 required
                 className="input-field"
               />
@@ -158,27 +160,27 @@ export default function RegisterPage() {
                     passwordStrength.level <= 3 ? "text-blue-400" :
                     "text-green-500"
                   }`}>
-                    비밀번호 강도: {passwordStrength.label}
+                    {t("register.passwordStrength")}: {passwordStrength.label}
                   </p>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="text-[13px] font-medium text-text-secondary block mb-2">비밀번호 확인</label>
+              <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.passwordConfirm")}</label>
               <input
                 type="password"
                 value={form.password2}
                 onChange={(e) => updateField("password2", e.target.value)}
-                placeholder="비밀번호를 다시 입력하세요"
+                placeholder={t("register.passwordConfirmPlaceholder")}
                 required
                 className="input-field"
               />
               {form.password2 && form.password1 !== form.password2 && (
-                <p className="text-[11px] text-danger mt-1.5">비밀번호가 일치하지 않습니다</p>
+                <p className="text-[11px] text-danger mt-1.5">{t("auth.passwordMismatch")}</p>
               )}
               {form.password2 && form.password1 === form.password2 && (
-                <p className="text-[11px] text-green-500 mt-1.5">비밀번호가 일치합니다</p>
+                <p className="text-[11px] text-green-500 mt-1.5">{t("register.passwordMatch")}</p>
               )}
             </div>
 
@@ -192,10 +194,10 @@ export default function RegisterPage() {
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M7.76 7.76L4.93 4.93" />
                   </svg>
-                  가입 중...
+                  {t("register.submitting")}
                 </span>
               ) : (
-                "가입하기"
+                t("auth.registerButton")
               )}
             </button>
           </form>
@@ -205,22 +207,22 @@ export default function RegisterPage() {
               <div className="w-full border-t border-border-light" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-[12px] text-text-tertiary">또는</span>
+              <span className="bg-white px-3 text-[12px] text-text-tertiary">{t("auth.or")}</span>
             </div>
           </div>
 
           <p className="text-center text-[13px] text-text-secondary">
-            이미 계정이 있으신가요?{" "}
+            {t("auth.hasAccount")}{" "}
             <Link href="/auth/login" className="text-primary font-semibold hover:underline">
-              로그인
+              {t("common.login")}
             </Link>
           </p>
         </div>
 
         <p className="text-center text-[11px] text-text-tertiary mt-6 leading-relaxed">
-          가입하면 Roami의{" "}
-          <span className="underline cursor-pointer">이용약관</span> 및{" "}
-          <span className="underline cursor-pointer">개인정보처리방침</span>에 동의하게 됩니다.
+          {t("register.termsNotice")}{" "}
+          <span className="underline cursor-pointer">{t("register.terms")}</span> {t("register.and")}{" "}
+          <span className="underline cursor-pointer">{t("register.privacy")}</span>{t("register.termsAgree")}
         </p>
       </div>
     </div>

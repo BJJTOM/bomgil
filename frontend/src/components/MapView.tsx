@@ -238,7 +238,9 @@ export function MapView({
         mapInstanceRef.current = map;
         setLoaded(true);
 
-        setTimeout(() => map.invalidateSize(), 100);
+        setTimeout(() => {
+          try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
+        }, 100);
       } catch (err) {
         console.error("Map load error:", err);
         if (mapRef.current) {

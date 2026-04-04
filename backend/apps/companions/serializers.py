@@ -118,16 +118,21 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     participants = UserPublicSerializer(many=True, read_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
-    walk_plan_title = serializers.CharField(
-        source="walk_plan.trail.title", read_only=True
-    )
+    walk_plan_title = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
         fields = [
-            "id", "walk_plan", "walk_plan_title",
+            "id", "walk_plan", "name", "walk_plan_title",
             "participants", "last_message", "unread_count", "created_at",
         ]
+
+    def get_walk_plan_title(self, obj):
+        if obj.name:
+            return obj.name
+        if obj.walk_plan and obj.walk_plan.trail:
+            return obj.walk_plan.trail.title
+        return f"Chat #{obj.id}"
 
     def get_last_message(self, obj):
         msg = obj.messages.order_by("-created_at").first()

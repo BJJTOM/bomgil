@@ -5,12 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { TrailCard } from "@/components/TrailCard";
 import { TrailCardSkeleton } from "@/components/ui/Skeleton";
+import { useT } from "@/stores/language";
 import type { Trail, User } from "@/types";
 import Image from "next/image";
 
 type RankingTab = "weekly" | "monthly" | "region" | "guides";
 
 export default function RankingsPage() {
+  const { t } = useT();
   const [tab, setTab] = useState<RankingTab>("weekly");
   const [region, setRegion] = useState("서울");
 
@@ -42,34 +44,41 @@ export default function RankingsPage() {
   });
 
   const TABS = [
-    { key: "weekly" as const, label: "주간 인기" },
-    { key: "monthly" as const, label: "월간 인기" },
-    { key: "region" as const, label: "지역별" },
-    { key: "guides" as const, label: "인기 가이드" },
+    { key: "weekly" as const, label: t("rankings.weekly") },
+    { key: "monthly" as const, label: t("rankings.monthly") },
+    { key: "region" as const, label: t("rankings.region") },
+    { key: "guides" as const, label: t("rankings.guides") },
   ];
 
-  const REGIONS = ["서울", "제주", "강원", "부산", "전남", "경북"];
+  const REGIONS = [
+    { value: "서울", label: t("region.seoul") },
+    { value: "제주", label: t("region.jeju") },
+    { value: "강원", label: t("region.gangwon") },
+    { value: "부산", label: t("region.busan") },
+    { value: "전남", label: t("region.jeonnam") },
+    { value: "경북", label: t("region.gyeongbuk") },
+  ];
 
   return (
     <div className="md:pt-16 max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-title mb-2">랭킹</h1>
+      <h1 className="text-3xl font-title mb-2">{t("rankings.title")}</h1>
       <p className="text-text-secondary text-sm mb-8">
-        가장 사랑받는 코스와 가이드를 만나보세요
+        {t("rankings.subtitle")}
       </p>
 
       {/* Tabs */}
       <div className="flex border-b mb-6 overflow-x-auto">
-        {TABS.map((t) => (
+        {TABS.map((tb) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === t.key
+              tab === tb.key
                 ? "border-primary text-primary"
                 : "border-transparent text-text-secondary"
             }`}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
       </div>
@@ -79,15 +88,15 @@ export default function RankingsPage() {
         <div className="flex gap-2 mb-6 flex-wrap">
           {REGIONS.map((r) => (
             <button
-              key={r}
-              onClick={() => setRegion(r)}
+              key={r.value}
+              onClick={() => setRegion(r.value)}
               className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
-                region === r
+                region === r.value
                   ? "bg-primary text-white"
                   : "bg-white text-text-primary border border-gray-200"
               }`}
             >
-              {r}
+              {r.label}
             </button>
           ))}
         </div>
@@ -128,7 +137,7 @@ export default function RankingsPage() {
       {tab === "guides" && (
         <div className="space-y-4">
           {guidesLoading ? (
-            <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
+            <div className="text-center py-8 text-text-secondary">{t("common.loading")}</div>
           ) : (
             guides.map((guide, index) => (
               <div
@@ -160,13 +169,13 @@ export default function RankingsPage() {
                 <div className="flex-1">
                   <p className="font-bold">{guide.nickname}</p>
                   <p className="text-xs text-text-secondary">
-                    코스 {guide.trail_count || 0}개 · 총 좋아요{" "}
+                    {t("rankings.trails")} {guide.trail_count || 0} · {t("rankings.totalLikes")}{" "}
                     {guide.total_likes || 0}
                   </p>
                 </div>
                 {guide.is_guide && (
                   <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                    인증 가이드
+                    {t("trail.certifiedGuide")}
                   </span>
                 )}
               </div>

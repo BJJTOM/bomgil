@@ -70,7 +70,7 @@ export default function HomeScreen() {
           colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 16 }]}>
+          style={[styles.hero, { paddingTop: insets.top + 10 }]}>
           {/* Top bar */}
           <View style={styles.heroTopBar}>
             <View style={styles.heroLogoRow}>

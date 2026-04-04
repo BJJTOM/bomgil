@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -29,14 +30,14 @@ const Stack = createNativeStackNavigator();
 const TAB_CONFIG: {
   name: string;
   label: string;
-  icon: string;
+  iconName: string;
   component: React.ComponentType<any>;
 }[] = [
-  { name: 'Home', label: '\uD648', icon: '\u{1F3E0}', component: HomeScreen },
-  { name: 'Explore', label: '\uD0D0\uC0C9', icon: '\u{1F50D}', component: ExploreScreen },
-  { name: 'Community', label: '\uCEE4\uBBA4\uB2C8\uD2F0', icon: '\u{1F4AC}', component: CommunityScreen },
-  { name: 'Activity', label: '\uD65C\uB3D9', icon: '\u26A1', component: ActivityScreen },
-  { name: 'Settings', label: 'MY', icon: '\u2699\uFE0F', component: SettingsScreen },
+  { name: 'Home', label: '홈', iconName: 'home', component: HomeScreen },
+  { name: 'Explore', label: '탐색', iconName: 'search', component: ExploreScreen },
+  { name: 'Community', label: '커뮤니티', iconName: 'message-square', component: CommunityScreen },
+  { name: 'Activity', label: '활동', iconName: 'activity', component: ActivityScreen },
+  { name: 'Settings', label: 'MY', iconName: 'user', component: SettingsScreen },
 ];
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
@@ -70,13 +71,12 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               style={styles.tabItem}
               onPress={onPress}
               activeOpacity={0.7}>
-              <Text
-                style={[
-                  styles.tabIcon,
-                  { opacity: isFocused ? 1 : 0.4 },
-                ]}>
-                {config?.icon || ''}
-              </Text>
+              <Icon
+                name={config?.iconName || 'circle'}
+                size={22}
+                color={isFocused ? colors.primary : colors.textTertiary}
+                style={{ opacity: isFocused ? 1 : 0.5 }}
+              />
               <Text
                 style={[
                   styles.tabLabel,
@@ -172,7 +172,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tabIcon: {
-    fontSize: 20,
     marginBottom: 2,
   },
   tabLabel: {

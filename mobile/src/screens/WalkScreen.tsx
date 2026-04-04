@@ -257,7 +257,7 @@ export default function WalkScreen() {
       <View style={styles.readyContainer}>
         {/* Back button */}
         <TouchableOpacity
-          style={[styles.readyBack, { top: insets.top + 12 }]}
+          style={[styles.readyBack, { top: insets.top + 10 }]}
           onPress={() => navigation.goBack()}>
           <Text style={styles.readyBackText}>{'\u2190'} {'\uB3CC\uC544\uAC00\uAE30'}</Text>
         </TouchableOpacity>

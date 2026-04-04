@@ -293,7 +293,7 @@ export default function CommunityScreen() {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 24 + insets.bottom }]}
+        style={[styles.fab, { bottom: 90 }]}
         activeOpacity={0.85}
         onPress={() =>
           navigation.navigate(isAuthenticated ? 'CommunityWrite' : 'Login')

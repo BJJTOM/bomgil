@@ -1,0 +1,61 @@
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface User {
+  id: number;
+  nickname: string;
+  email: string;
+  profile_image: string | null;
+  bio: string;
+  preferred_language: string;
+  is_guide: boolean;
+  is_staff?: boolean;
+  is_verified?: boolean;
+  age_range?: string | null;
+  walking_style?: string | null;
+  companion_rating?: string | null;
+}
+
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  setUser: (user: User) => void;
+  setTokens: (access: string, refresh: string) => void;
+  login: (user: User, access: string, refresh: string) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+      setUser: (user) => set({ user }),
+      setTokens: (access, refresh) =>
+        set({ accessToken: access, refreshToken: refresh }),
+      login: (user, access, refresh) =>
+        set({
+          user,
+          accessToken: access,
+          refreshToken: refresh,
+          isAuthenticated: true,
+        }),
+      logout: () =>
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        }),
+    }),
+    {
+      name: 'roami-auth',
+      storage: createJSONStorage(() => AsyncStorage),
+    },
+  ),
+);

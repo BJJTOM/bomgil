@@ -20,19 +20,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const { data } = await api.post("/auth/login/", { email, password });
-      const { data: user } = await api.get("/auth/me/", {
-        headers: { Authorization: `Bearer ${data.access}` },
-      });
-      login(user, data.access, data.refresh);
+      const { data } = await api.post("/auth/email-login/", { email, password });
+      login(data.user, data.access, data.refresh);
       router.push("/");
     } catch (err: any) {
-      setError(
-        err.response?.data?.non_field_errors?.[0] ||
-          t("auth.loginFailed")
-      );
+      const msg = err.response?.data?.non_field_errors?.[0]
+        || err.response?.data?.detail
+        || (err.response?.status === 400 ? "이메일 또는 비밀번호를 확인해주세요." : "로그인 중 문제가 발생했습니다.");
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -73,7 +69,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">
                 {t("auth.email")}
@@ -84,6 +80,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
                 required
+                autoComplete="username"
                 className="input-field"
               />
             </div>
@@ -97,6 +94,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("loginPage.passwordPlaceholder")}
                 required
+                autoComplete="current-password"
                 className="input-field"
               />
             </div>

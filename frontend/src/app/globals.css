@@ -182,3 +182,18 @@ a, button, [role="button"] {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
+
+/* Chrome autofill style override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+  -webkit-text-fill-color: #191F28 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}

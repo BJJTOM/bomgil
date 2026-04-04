@@ -22,6 +22,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+    // Prevent Chrome credential popups in TWA
+    if (typeof navigator !== "undefined" && navigator.credentials) {
+      try { navigator.credentials.preventSilentAccess(); } catch {}
+    }
   }, []);
 
   return (

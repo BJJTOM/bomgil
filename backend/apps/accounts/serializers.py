@@ -1,7 +1,28 @@
+from django.contrib.auth import authenticate
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
 
 from .models import CustomUser, UserBadge
+
+
+class EmailLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
+        if not email or not password:
+            raise serializers.ValidationError("이메일과 비밀번호를 입력해주세요.")
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("이메일 또는 비밀번호가 올바르지 않습니다.")
+        user = authenticate(username=user.username, password=password)
+        if user is None:
+            raise serializers.ValidationError("이메일 또는 비밀번호가 올바르지 않습니다.")
+        data['user'] = user
+        return data
 
 
 class CustomRegisterSerializer(RegisterSerializer):

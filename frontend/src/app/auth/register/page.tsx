@@ -103,7 +103,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.email")}</label>
               <input
@@ -112,6 +112,7 @@ export default function RegisterPage() {
                 onChange={(e) => updateField("email", e.target.value)}
                 placeholder="email@example.com"
                 required
+                autoComplete="off"
                 className="input-field"
               />
             </div>
@@ -127,6 +128,7 @@ export default function RegisterPage() {
                 placeholder={t("auth.nicknamePlaceholder")}
                 required
                 maxLength={50}
+                autoComplete="off"
                 className="input-field"
               />
               <p className="text-[11px] text-text-tertiary mt-1.5">{t("register.nicknameHelp")}</p>
@@ -140,6 +142,7 @@ export default function RegisterPage() {
                 onChange={(e) => updateField("password1", e.target.value)}
                 placeholder={t("register.passwordPlaceholder")}
                 required
+                autoComplete="new-password"
                 className="input-field"
               />
               {/* Password strength indicator */}
@@ -175,6 +178,7 @@ export default function RegisterPage() {
                 onChange={(e) => updateField("password2", e.target.value)}
                 placeholder={t("register.passwordConfirmPlaceholder")}
                 required
+                autoComplete="new-password"
                 className="input-field"
               />
               {form.password2 && form.password1 !== form.password2 && (

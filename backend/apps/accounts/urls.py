@@ -1,6 +1,7 @@
 from django.urls import include, path
 
 from .views import (
+    EmailLoginView,
     GuestLoginView,
     MeView,
     PhoneSendView,
@@ -23,6 +24,8 @@ urlpatterns = [
     path("users/<str:nickname>/trails/", UserTrailsView.as_view(), name="user-trails"),
     path("users/<str:nickname>/reviews/", UserReviewsView.as_view(), name="user-reviews"),
     path("users/<str:nickname>/badges/", UserBadgesView.as_view(), name="user-badges"),
+    # Email login
+    path("email-login/", EmailLoginView.as_view(), name="email-login"),
     # Guest login
     path("guest-login/", GuestLoginView.as_view(), name="guest-login"),
     # Phone verification

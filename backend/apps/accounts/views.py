@@ -14,6 +14,8 @@ from apps.trails.serializers import TrailListSerializer
 from .models import CustomUser, PhoneVerification, UserBadge
 from .serializers import UserPublicSerializer, UserSerializer
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
@@ -133,6 +135,24 @@ class PhoneVerifyView(APIView):
         UserBadge.objects.get_or_create(user=user, badge_type="verified")
 
         return Response({"verified": True})
+
+
+class EmailLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        from .serializers import EmailLoginSerializer
+        serializer = EmailLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user).data
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': user_data,
+        })
 
 
 class GuestLoginThrottle(AnonRateThrottle):

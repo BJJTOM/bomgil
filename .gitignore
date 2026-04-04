@@ -42,8 +42,9 @@ docker-compose.override.yml
 credentials.json
 secrets.json
 
-# Media uploads
-media/
+# Media uploads (not backend/apps/media Django app)
+/media/
+/backend/media/
 
 # Logs
 *.log

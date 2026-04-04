@@ -9,6 +9,11 @@ interface User {
   bio: string;
   preferred_language: string;
   is_guide: boolean;
+  is_staff?: boolean;
+  is_verified?: boolean;
+  age_range?: string | null;
+  walking_style?: string | null;
+  companion_rating?: string | null;
 }
 
 interface AuthState {

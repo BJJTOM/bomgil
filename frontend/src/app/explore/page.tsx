@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useTrails } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
@@ -85,6 +86,14 @@ const SORT_OPTIONS = [
 ];
 
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-warm" />}>
+      <ExploreContent />
+    </Suspense>
+  );
+}
+
+function ExploreContent() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("-like_count");

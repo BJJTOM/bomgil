@@ -87,6 +87,7 @@ export function MapView({
   const loadMapboxMap = async (token: string) => {
     try {
       const mapboxgl = await import("mapbox-gl");
+      // @ts-ignore
       await import("mapbox-gl/dist/mapbox-gl.css");
       (mapboxgl as any).accessToken = token;
       if (!mapRef.current) return;

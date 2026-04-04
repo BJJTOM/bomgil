@@ -6,8 +6,18 @@ export interface User {
   bio: string;
   preferred_language: string;
   is_guide: boolean;
+  is_staff?: boolean;
+  is_verified?: boolean;
+  verification_level?: number;
+  age_range?: string | null;
+  walking_style?: string | null;
+  companion_rating?: string | null;
+  total_walks?: number;
+  companion_count?: number;
+  one_liner?: string;
   trail_count?: number;
   review_count?: number;
+  badges?: UserBadge[];
   created_at?: string;
 }
 
@@ -99,6 +109,7 @@ export interface CompanionReview {
 export interface ChatRoom {
   id: number;
   walk_plan: number;
+  walk_plan_title?: string;
   participants: User[];
   last_message?: ChatMessage;
   unread_count: number;

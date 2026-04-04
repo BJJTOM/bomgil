@@ -99,7 +99,7 @@ export default function StoriesPage() {
                       <Link href={`/trails/${story.trail_id}`} className="hover:text-primary">
                         {story.trail_region} · {story.trail_title}
                       </Link>
-                      {" "}· {story.planned_date}
+                      {" "}· {new Date(story.created_at).toLocaleDateString("ko")}
                     </p>
                   </div>
                 </div>

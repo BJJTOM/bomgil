@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCreateWalkPlan } from "@/hooks/useCompanions";
 import { useAuthStore } from "@/stores/auth";
 import { PACE_LABELS } from "@/lib/utils";
 
 export default function NewWalkPlanPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-warm" />}>
+      <NewWalkPlanContent />
+    </Suspense>
+  );
+}
+
+function NewWalkPlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();

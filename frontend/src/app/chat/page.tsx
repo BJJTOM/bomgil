@@ -41,7 +41,7 @@ export default function ChatListPage() {
                 <span className="text-xl">💬</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate">{room.walk_plan_title}</p>
+                <p className="font-bold text-sm truncate">{room.walk_plan_title || `채팅방 #${room.id}`}</p>
                 <p className="text-xs text-text-secondary truncate">
                   {room.last_message
                     ? `${room.last_message.sender.nickname}: ${room.last_message.content}`

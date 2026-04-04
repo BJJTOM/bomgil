@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #191F28;
+    background-color: #FAFAFA;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.02em;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full px-4 py-3.5 rounded-input border border-border-default bg-white text-[15px]
+           focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10
+           placeholder:text-text-tertiary transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3.5 bg-primary text-white rounded-button text-[15px] font-semibold
+           hover:bg-primary-600 active:scale-[0.98] transition-all duration-150
+           disabled:bg-text-tertiary disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3.5 bg-bg-secondary text-text-primary rounded-button text-[15px] font-semibold
+           hover:bg-border-light active:scale-[0.98] transition-all duration-150;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-text-secondary text-[14px] font-medium
+           hover:bg-bg-secondary rounded-button transition-all duration-150;
+  }
+
+  .card {
+    @apply bg-white rounded-card shadow-soft;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-card shadow-soft hover:shadow-card
+           active:scale-[0.99] transition-all duration-200;
+  }
+
+  .chip {
+    @apply inline-flex items-center px-3 py-1.5 rounded-pill text-[13px] font-medium
+           bg-bg-secondary text-text-secondary transition-colors;
+  }
+
+  .chip-active {
+    @apply inline-flex items-center px-3 py-1.5 rounded-pill text-[13px] font-medium
+           bg-primary text-white;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+a, button, [role="button"] {
+  transition: all 0.15s ease;
+}
+
+::selection {
+  background: #A8E6CF;
+  color: #191F28;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

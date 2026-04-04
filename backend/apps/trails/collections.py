@@ -1,0 +1,25 @@
+from django.conf import settings
+from django.db import models
+
+
+class Collection(models.Model):
+    title = models.CharField(max_length=100)
+    title_en = models.CharField(max_length=100, blank=True)
+    title_ja = models.CharField(max_length=100, blank=True)
+    description = models.TextField(max_length=500)
+    description_en = models.TextField(max_length=500, blank=True)
+    description_ja = models.TextField(max_length=500, blank=True)
+    cover_image = models.ImageField(upload_to="collections/", blank=True)
+    trails = models.ManyToManyField("Trail", related_name="collections", blank=True)
+    is_featured = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title

@@ -27,7 +27,9 @@
       "Bash(git commit -m ':*)",
       "Bash(git push:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(vercel --yes --prod --name roami)",
+      "Bash(git commit -m 'Remove vercel.json that was causing deploy issues:*)"
     ]
   }
 }

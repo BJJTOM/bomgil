@@ -1,5 +1,5 @@
 {
-  "packageId": "app.vercel.frontend_sigma_nine_57.twa",
+  "packageId": "app.roami.twa",
   "host": "frontend-sigma-nine-57.vercel.app",
   "name": "Roami — Walk. Discover. Connect.",
   "launcherName": "Roami",
@@ -20,8 +20,8 @@
     "path": "roami.keystore",
     "alias": "android"
   },
-  "appVersionName": "2",
-  "appVersionCode": 2,
+  "appVersionName": "3",
+  "appVersionCode": 3,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://frontend-sigma-nine-57.vercel.app/manifest.json",
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "2"
+  "appVersion": "3"
 }

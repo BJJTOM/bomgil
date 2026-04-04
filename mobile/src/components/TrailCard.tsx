@@ -34,12 +34,15 @@ const TRAIL_TYPE_EMOJI: Record<string, string> = {
   mixed: '\u{1F6B6}',
 };
 
-function formatDistance(km: string | number): string {
+function formatDistance(km: string | number | null | undefined): string {
+  if (km == null) return '-';
   const n = typeof km === 'string' ? parseFloat(km) : km;
+  if (isNaN(n)) return '-';
   return n >= 1 ? `${n.toFixed(1)}km` : `${Math.round(n * 1000)}m`;
 }
 
-function formatDuration(minutes: number): string {
+function formatDuration(minutes: number | null | undefined): string {
+  if (minutes == null || isNaN(minutes)) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
@@ -89,7 +92,7 @@ export default function TrailCard({
               <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
             </View>
             <Text style={styles.horizontalStats}>
-              {formatDistance(trail.distance_km)} \u00B7 {formatDuration(trail.estimated_minutes)}
+              {formatDistance(trail.distance_km)}{' · '}{formatDuration(trail.estimated_minutes)}
             </Text>
           </View>
         </View>
@@ -151,20 +154,20 @@ export default function TrailCard({
               trail.trail_type === 'cultural' ? '\uBB38\uD654' :
               trail.trail_type === 'nature' ? '\uC790\uC5F0' : '\uD63C\uD569'}
           </Text>
-          <Text style={styles.regionDot}>\u00B7</Text>
-          <Text style={styles.regionLabel}>{trail.region}</Text>
+          <Text style={styles.regionDot}>{' · '}</Text>
+          <Text style={styles.regionLabel}>{trail.region || ''}</Text>
         </View>
 
         <Text style={styles.title} numberOfLines={1}>
-          {trail.title}
+          {trail.title || ''}
         </Text>
 
         <View style={styles.metaRow}>
           <Text style={styles.metaValue}>{formatDistance(trail.distance_km)}</Text>
-          <Text style={styles.metaDot}>\u00B7</Text>
+          <Text style={styles.metaDot}>{' · '}</Text>
           <Text style={styles.metaValue}>{formatDuration(trail.estimated_minutes)}</Text>
-          <Text style={styles.metaDot}>\u00B7</Text>
-          <Text style={styles.likeCount}>{'\u2764\uFE0F'} {trail.like_count}</Text>
+          <Text style={styles.metaDot}>{' · '}</Text>
+          <Text style={styles.likeCount}>{'\u2764\uFE0F'} {trail.like_count ?? 0}</Text>
         </View>
 
         {/* Tags */}

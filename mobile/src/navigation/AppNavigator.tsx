@@ -25,6 +25,16 @@ import WalkScreen from '../screens/WalkScreen';
 import WalkCompleteScreen from '../screens/WalkCompleteScreen';
 import StoryDetailScreen from '../screens/StoryDetailScreen';
 import CommunityWriteScreen from '../screens/CommunityWriteScreen';
+import RankingsScreen from '../screens/RankingsScreen';
+import ChatScreen from '../screens/ChatScreen';
+import ChatRoomScreen from '../screens/ChatRoomScreen';
+import TrailCreateScreen from '../screens/TrailCreateScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import ProfileEditScreen from '../screens/ProfileEditScreen';
+import LikedTrailsScreen from '../screens/LikedTrailsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import TermsScreen from '../screens/TermsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -154,6 +164,16 @@ export default function AppNavigator() {
         />
         <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
         <Stack.Screen name="CommunityWrite" component={CommunityWriteScreen} />
+        <Stack.Screen name="Rankings" component={RankingsScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+        <Stack.Screen name="TrailCreate" component={TrailCreateScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+        <Stack.Screen name="LikedTrails" component={LikedTrailsScreen} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="Terms" component={TermsScreen} />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

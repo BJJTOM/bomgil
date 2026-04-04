@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Dimensions,
   StatusBar,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -19,9 +20,111 @@ import { colors } from '../theme/colors';
 import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
+import { useLanguageStore, Language } from '../stores/language';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
+
+const TRANSLATIONS: Record<string, Record<Language, string>> = {
+  communityBadge: {
+    ko: '🌏 전 세계 도보여행자들의 커뮤니티',
+    en: '🌏 A community of walkers around the world',
+    ja: '🌏 世界中の徒歩旅行者のコミュニティ',
+    zh: '🌏 全球步行旅行者的社区',
+  },
+  heroTitle: {
+    ko: '걸으면 보이는 것들',
+    en: 'What you see\nwhen you walk',
+    ja: '歩けば見えるもの',
+    zh: '走路时看到的风景',
+  },
+  heroSub: {
+    ko: '전 세계 도보여행 코스를 발견하고\n나만의 길을 공유하세요',
+    en: 'Discover walking trails around the world\nand share your own path',
+    ja: '世界中の散歩コースを発見し\n自分だけの道を共有しましょう',
+    zh: '发现世界各地的步行路线\n分享属于你的道路',
+  },
+  exploreCTA: {
+    ko: '코스 둘러보기',
+    en: 'Explore Trails',
+    ja: 'コースを見る',
+    zh: '浏览路线',
+  },
+  shareCTA: {
+    ko: '내 코스 공유하기',
+    en: 'Share My Trail',
+    ja: 'コースを共有',
+    zh: '分享我的路线',
+  },
+  discoverTitle: {
+    ko: '어디를 걸어볼까요?',
+    en: 'Where will you walk?',
+    ja: 'どこを歩きますか？',
+    zh: '你想去哪里走走？',
+  },
+  discoverSub: {
+    ko: '전 세계 도보여행 코스를 탐색하세요',
+    en: 'Explore walking trails around the world',
+    ja: '世界中の散歩コースを探索しましょう',
+    zh: '探索世界各地的步行路线',
+  },
+  popularTitle: {
+    ko: '인기 코스',
+    en: 'Popular Trails',
+    ja: '人気コース',
+    zh: '热门路线',
+  },
+  popularSub: {
+    ko: '여행자들이 가장 사랑한 도보 코스',
+    en: 'Most loved walking trails by travelers',
+    ja: '旅行者に最も愛された散歩コース',
+    zh: '旅行者最喜爱的步行路线',
+  },
+  viewAll: {
+    ko: '전체보기',
+    en: 'View All',
+    ja: 'すべて見る',
+    zh: '查看全部',
+  },
+  ugcBadge: {
+    ko: '누구나 코스를 등록할 수 있어요',
+    en: 'Anyone can register a trail',
+    ja: '誰でもコースを登録できます',
+    zh: '任何人都可以注册路线',
+  },
+  ugcTitle: {
+    ko: '나만 아는 그 길,\nRoami에 공유해주세요',
+    en: 'That hidden path you know,\nshare it on Roami',
+    ja: '自分だけが知るあの道、\nRoamiで共有してください',
+    zh: '你所知道的那条路,\n在Roami上分享吧',
+  },
+  ugcDesc: {
+    ko: '동네 산책로, 여행지 골목길, 해외 숨은 명소까지.\n당신이 걸었던 길이 다른 여행자의 지도가 됩니다.',
+    en: 'Neighborhood walks, hidden alleys, secret spots abroad.\nYour path becomes another traveler\'s map.',
+    ja: '近所の散歩道、旅先の路地裏、海外の隠れた名所まで。\nあなたが歩いた道が他の旅行者の地図になります。',
+    zh: '社区步道、旅行小巷、海外隐藏景点。\n你走过的路将成为其他旅行者的地图。',
+  },
+  ugcShareBtn: {
+    ko: '내 코스 공유하기',
+    en: 'Share My Trail',
+    ja: 'コースを共有',
+    zh: '分享我的路线',
+  },
+  ugcCommunityBtn: {
+    ko: '커뮤니티 둘러보기',
+    en: 'Browse Community',
+    ja: 'コミュニティを見る',
+    zh: '浏览社区',
+  },
+  registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
+  courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
+  stories: { ko: '걸은 이야기', en: 'Stories', ja: '歩いた話', zh: '步行故事' },
+  travelers: { ko: '여행자', en: 'Travelers', ja: '旅行者', zh: '旅行者' },
+};
+
+function t(key: string, lang: Language): string {
+  return TRANSLATIONS[key]?.[lang] || TRANSLATIONS[key]?.ko || key;
+}
 
 const DISCOVER_COUNTRIES = [
   { code: 'KR', name: '한국', emoji: '🇰🇷', desc: '서울, 제주, 부산...' },
@@ -34,16 +137,18 @@ const DISCOVER_COUNTRIES = [
   { code: 'ES', name: '스페인', emoji: '🇪🇸', desc: '바르셀로나, 산티아고...' },
 ];
 
-const STATS = [
-  { value: '8개국', label: '등록 국가' },
-  { value: '120+', label: '코스' },
-  { value: '850+', label: '걸은 이야기' },
-  { value: '2.4K', label: '여행자' },
-];
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { language, setLanguage } = useLanguageStore();
+  const [showLangModal, setShowLangModal] = useState(false);
+
+  const STATS = [
+    { value: '8개국', label: t('registeredCountries', language) },
+    { value: '120+', label: t('courses', language) },
+    { value: '850+', label: t('stories', language) },
+    { value: '2.4K', label: t('travelers', language) },
+  ];
 
   const {
     data: popularTrails,
@@ -79,21 +184,22 @@ export default function HomeScreen() {
               <Text style={styles.heroLogoIcon}>🌿</Text>
               <Text style={styles.heroLogoText}>Roami</Text>
             </View>
-            <View style={styles.langButton}>
+            <TouchableOpacity
+              style={styles.langButton}
+              onPress={() => setShowLangModal(true)}
+              activeOpacity={0.7}>
               <Text style={styles.langButtonText}>🌐</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Community badge */}
           <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>🌏 전 세계 도보여행자들의 커뮤니티</Text>
+            <Text style={styles.heroBadgeText}>{t('communityBadge', language)}</Text>
           </View>
 
           {/* Headline */}
-          <Text style={styles.heroTitle}>걸으면 보이는 것들</Text>
-          <Text style={styles.heroSub}>
-            {'전 세계 도보여행 코스를 발견하고\n나만의 길을 공유하세요'}
-          </Text>
+          <Text style={styles.heroTitle}>{t('heroTitle', language)}</Text>
+          <Text style={styles.heroSub}>{t('heroSub', language)}</Text>
 
           {/* CTA Buttons */}
           <View style={styles.heroCTARow}>
@@ -101,12 +207,13 @@ export default function HomeScreen() {
               style={styles.heroCTAPrimary}
               onPress={() => navigation.navigate('Explore')}
               activeOpacity={0.85}>
-              <Text style={styles.heroCTAPrimaryText}>코스 둘러보기</Text>
+              <Text style={styles.heroCTAPrimaryText}>{t('exploreCTA', language)}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.heroCTASecondary}
+              onPress={() => navigation.navigate('TrailCreate')}
               activeOpacity={0.85}>
-              <Text style={styles.heroCTASecondaryText}>내 코스 공유하기</Text>
+              <Text style={styles.heroCTASecondaryText}>{t('shareCTA', language)}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -133,8 +240,8 @@ export default function HomeScreen() {
         <FadeInView delay={100}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>어디를 걸어볼까요?</Text>
-            <Text style={styles.sectionSub}>전 세계 도보여행 코스를 탐색하세요</Text>
+            <Text style={styles.sectionTitle}>{t('discoverTitle', language)}</Text>
+            <Text style={styles.sectionSub}>{t('discoverSub', language)}</Text>
           </View>
           <View style={styles.countryGrid}>
             {DISCOVER_COUNTRIES.map((country) => (
@@ -163,16 +270,14 @@ export default function HomeScreen() {
         <View style={styles.popularSection}>
           <View style={styles.popularHeader}>
             <View>
-              <Text style={styles.sectionTitle}>인기 코스</Text>
-              <Text style={styles.sectionSub}>
-                여행자들이 가장 사랑한 도보 코스
-              </Text>
+              <Text style={styles.sectionTitle}>{t('popularTitle', language)}</Text>
+              <Text style={styles.sectionSub}>{t('popularSub', language)}</Text>
             </View>
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('Explore', { ordering: '-like_count' })
               }>
-              <Text style={styles.viewAllText}>전체보기</Text>
+              <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
             </TouchableOpacity>
           </View>
           {isLoading ? (
@@ -197,7 +302,7 @@ export default function HomeScreen() {
                     trail={item}
                     compact
                     onPress={() =>
-                      navigation.navigate('TrailDetail', { trailId: item.id })
+                      navigation.navigate('TrailDetail', { id: item.id })
                     }
                   />
                 </View>
@@ -212,23 +317,44 @@ export default function HomeScreen() {
           <View style={styles.ugcCard}>
             <View style={styles.ugcBadge}>
               <Text style={styles.ugcBadgeIcon}>🗺️</Text>
-              <Text style={styles.ugcBadgeText}>누구나 코스를 등록할 수 있어요</Text>
+              <Text style={styles.ugcBadgeText}>{t('ugcBadge', language)}</Text>
             </View>
-            <Text style={styles.ugcTitle}>
-              {'나만 아는 그 길,\nRoami에 공유해주세요'}
-            </Text>
-            <Text style={styles.ugcDesc}>
-              {'동네 산책로, 여행지 골목길, 해외 숨은 명소까지.\n당신이 걸었던 길이 다른 여행자의 지도가 됩니다.'}
-            </Text>
+            <Text style={styles.ugcTitle}>{t('ugcTitle', language)}</Text>
+            <Text style={styles.ugcDesc}>{t('ugcDesc', language)}</Text>
             <View style={styles.ugcButtonRow}>
-              <TouchableOpacity style={styles.ugcButtonPrimary} activeOpacity={0.85}>
-                <Text style={styles.ugcButtonPrimaryText}>내 코스 공유하기</Text>
+              <TouchableOpacity style={styles.ugcButtonPrimary} onPress={() => navigation.navigate('TrailCreate')} activeOpacity={0.85}>
+                <Text style={styles.ugcButtonPrimaryText}>{t('ugcShareBtn', language)}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.ugcButtonSecondary} activeOpacity={0.85}>
-                <Text style={styles.ugcButtonSecondaryText}>커뮤니티 둘러보기</Text>
+              <TouchableOpacity style={styles.ugcButtonSecondary} onPress={() => navigation.navigate('Community')} activeOpacity={0.85}>
+                <Text style={styles.ugcButtonSecondaryText}>{t('ugcCommunityBtn', language)}</Text>
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+
+        {/* Quick Links */}
+        <View style={styles.quickLinksSection}>
+          <TouchableOpacity
+            style={styles.quickLinkCard}
+            onPress={() => navigation.navigate('Rankings')}
+            activeOpacity={0.85}>
+            <Text style={styles.quickLinkIcon}>{'\u{1F3C6}'}</Text>
+            <Text style={styles.quickLinkLabel}>{'랭킹'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickLinkCard}
+            onPress={() => navigation.navigate('Chat')}
+            activeOpacity={0.85}>
+            <Text style={styles.quickLinkIcon}>{'\u{1F4AC}'}</Text>
+            <Text style={styles.quickLinkLabel}>{'채팅'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickLinkCard}
+            onPress={() => navigation.navigate('TrailCreate')}
+            activeOpacity={0.85}>
+            <Text style={styles.quickLinkIcon}>{'\u{2795}'}</Text>
+            <Text style={styles.quickLinkLabel}>{'코스 등록'}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Footer */}
@@ -238,6 +364,33 @@ export default function HomeScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal visible={showLangModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowLangModal(false)}
+          activeOpacity={1}>
+          <View style={styles.langModal}>
+            <Text style={styles.langModalTitle}>언어 설정</Text>
+            {([
+              { code: 'ko' as Language, label: '한국어', flag: '🇰🇷' },
+              { code: 'en' as Language, label: 'English', flag: '🇺🇸' },
+              { code: 'ja' as Language, label: '日本語', flag: '🇯🇵' },
+              { code: 'zh' as Language, label: '中文', flag: '🇨🇳' },
+            ]).map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.langItem, language === lang.code && styles.langItemActive]}
+                onPress={() => { setLanguage(lang.code); setShowLangModal(false); }}>
+                <Text style={styles.langFlag}>{lang.flag}</Text>
+                <Text style={styles.langLabel}>{lang.label}</Text>
+                {language === lang.code && <Text style={styles.langCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -549,6 +702,34 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  // Quick Links
+  quickLinksSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  quickLinkCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+    gap: 6,
+  },
+  quickLinkIcon: {
+    fontSize: 24,
+  },
+  quickLinkLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+
   // Footer
   footer: {
     paddingVertical: 20,
@@ -559,5 +740,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#B0B8C1',
     textAlign: 'center',
+  },
+
+  // Language Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 64,
+    maxWidth: 320,
+  },
+  langModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#191F28',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  langItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  langItemActive: {
+    backgroundColor: '#f0f7f0',
+  },
+  langFlag: {
+    fontSize: 22,
+    marginRight: 14,
+  },
+  langLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#191F28',
+    flex: 1,
+  },
+  langCheck: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D4A2E',
   },
 });

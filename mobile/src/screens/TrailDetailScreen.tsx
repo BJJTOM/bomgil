@@ -12,6 +12,28 @@ import {
   TextInput,
   Share,
 } from 'react-native';
+
+class TrailDetailErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' }}>
+          <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+          <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'화면을 불러올 수 없습니다'}</Text>
+          <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'잠시 후 다시 시도해주세요'}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -47,18 +69,29 @@ const SPOT_ICONS: Record<string, string> = {
   end: '\u{1F534}',
 };
 
-function formatDistance(km: string | number): string {
+function formatDistance(km: string | number | null | undefined): string {
+  if (km == null) return '-';
   const n = typeof km === 'string' ? parseFloat(km) : km;
+  if (isNaN(n)) return '-';
   return n >= 1 ? `${n.toFixed(1)}km` : `${Math.round(n * 1000)}m`;
 }
 
-function formatDuration(minutes: number): string {
+function formatDuration(minutes: number | null | undefined): string {
+  if (minutes == null || isNaN(minutes)) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
 }
 
 export default function TrailDetailScreen() {
+  return (
+    <TrailDetailErrorBoundary>
+      <TrailDetailScreenInner />
+    </TrailDetailErrorBoundary>
+  );
+}
+
+function TrailDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -168,7 +201,7 @@ export default function TrailDetailScreen() {
             </View>
             <Text style={styles.coverTitle}>{trail.title}</Text>
             <Text style={styles.coverRegion}>
-              {trail.region}, {trail.country}
+              {[trail.region, trail.country].filter(Boolean).join(', ')}
             </Text>
           </View>
         </View>
@@ -231,7 +264,7 @@ export default function TrailDetailScreen() {
           <View style={styles.descCard}>
             <Text style={styles.sectionTitle}>{'\uCF54\uC2A4 \uC18C\uAC1C'}</Text>
             <Text style={styles.descText}>{trail.description}</Text>
-            {trail.tags.length > 0 && (
+            {trail.tags && trail.tags.length > 0 && (
               <View style={styles.tagsRow}>
                 {trail.tags.map((tag) => (
                   <View key={tag.id} style={styles.tag}>
@@ -313,7 +346,7 @@ export default function TrailDetailScreen() {
                         <Text style={styles.tipText}>{spot.tip}</Text>
                       </View>
                     ) : null}
-                    {spot.images.length > 0 && (
+                    {spot.images && spot.images.length > 0 && (
                       <FlatList
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -433,7 +466,7 @@ export default function TrailDetailScreen() {
             {reviews.slice(0, 5).map((review) => (
               <View key={review.id} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewAuthor}>{review.author.nickname}</Text>
+                  <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>
                   <View style={styles.ratingRow}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Text
@@ -455,6 +488,7 @@ export default function TrailDetailScreen() {
           </View>
 
           {/* Author Card */}
+          {trail.author && (
           <View style={styles.authorCard}>
             <Text style={styles.sectionTitle}>{'\uC791\uC131\uC790'}</Text>
             <TouchableOpacity style={styles.authorRow}>
@@ -469,7 +503,7 @@ export default function TrailDetailScreen() {
                 )}
               </View>
               <View>
-                <Text style={styles.authorName}>{trail.author.nickname}</Text>
+                <Text style={styles.authorName}>{trail.author.nickname || ''}</Text>
                 {trail.author.is_guide && (
                   <View style={styles.guideBadge}>
                     <Text style={styles.guideBadgeText}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
@@ -478,6 +512,7 @@ export default function TrailDetailScreen() {
               </View>
             </TouchableOpacity>
           </View>
+          )}
 
           {/* Walk CTA */}
           <TouchableOpacity

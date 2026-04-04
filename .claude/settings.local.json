@@ -41,7 +41,11 @@
       "Bash(export PATH=\"$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH\")",
       "Bash(./gradlew assembleRelease)",
       "Bash(cp /Users/tom/Desktop/map_ai/mobile/android/app/build/outputs/apk/release/app-release.apk /Users/tom/Desktop/Roami_native_v3.0.0.apk)",
-      "Read(//Users/tom/Desktop/**)"
+      "Read(//Users/tom/Desktop/**)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(ls -la /Users/tom/Desktop/map_ai/mobile/src/screens/*.tsx)"
     ]
   }
 }

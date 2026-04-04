@@ -40,6 +40,7 @@ export default function WalkScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [distance, setDistance] = useState(0);
   const [locations, setLocations] = useState<LocationPoint[]>([]);
+  const [steps, setSteps] = useState(0);
   const [gpsReady, setGpsReady] = useState(false);
 
   const watchIdRef = useRef<number | null>(null);
@@ -137,6 +138,7 @@ export default function WalkScreen() {
             const d = haversine(last.lat, last.lng, point.lat, point.lng);
             if (d > 0.003) {
               setDistance((prevDist) => prevDist + d);
+              setSteps((prevSteps) => prevSteps + Math.round(d * 1300));
               return [...prev, point];
             }
             return prev;
@@ -145,7 +147,7 @@ export default function WalkScreen() {
         });
       },
       (error) => console.warn('GPS error:', error),
-      { enableHighAccuracy: true, distanceFilter: 10, interval: 5000, fastestInterval: 3000 },
+      { enableHighAccuracy: true, distanceFilter: 5, interval: 3000, fastestInterval: 2000 },
     );
   }, []);
 
@@ -178,6 +180,7 @@ export default function WalkScreen() {
             const d = haversine(last.lat, last.lng, point.lat, point.lng);
             if (d > 0.003) {
               setDistance((prevDist) => prevDist + d);
+              setSteps((prevSteps) => prevSteps + Math.round(d * 1300));
               return [...prev, point];
             }
             return prev;
@@ -186,7 +189,7 @@ export default function WalkScreen() {
         });
       },
       () => {},
-      { enableHighAccuracy: true, distanceFilter: 10, interval: 5000, fastestInterval: 3000 },
+      { enableHighAccuracy: true, distanceFilter: 5, interval: 3000, fastestInterval: 2000 },
     );
   };
 
@@ -194,7 +197,7 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
 
-    const steps = Math.round(distance * 1300);
+    const finalSteps = steps > 0 ? steps : Math.round(distance * 1300);
     const calories = Math.round(distance * 65);
 
     if (isAuthenticated && locations.length > 0) {
@@ -206,7 +209,7 @@ export default function WalkScreen() {
           title: `${dateLabel} \uAC77\uAE30`,
           started_at: new Date(Date.now() - elapsedSeconds * 1000).toISOString(),
           finished_at: new Date().toISOString(),
-          total_steps: steps,
+          total_steps: finalSteps,
           distance_km: distance.toFixed(2),
           duration_minutes: Math.round(elapsedSeconds / 60),
           calories_burned: calories,
@@ -220,7 +223,7 @@ export default function WalkScreen() {
     navigation.replace('WalkComplete', {
       distance: distance.toFixed(2),
       duration: elapsedSeconds,
-      steps,
+      steps: finalSteps,
       calories,
     });
   };
@@ -299,7 +302,7 @@ export default function WalkScreen() {
   // ---- WALKING / PAUSED STATE ----
   return (
     <View style={styles.walkContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a3a1b" />
+      <StatusBar barStyle="light-content" backgroundColor="#0d1a0e" />
       {/* Status indicator */}
       <View style={[styles.statusBar, { top: insets.top + 12 }]}>
         <View style={styles.statusPill}>
@@ -315,25 +318,19 @@ export default function WalkScreen() {
         </View>
       </View>
 
-      {/* Main content area (map placeholder) */}
-      <View style={styles.walkMapArea}>
-        <Text style={styles.walkMapEmoji}>{'\u{1F5FA}\uFE0F'}</Text>
-      </View>
-
-      {/* Bottom stats panel */}
-      <View style={[styles.statsPanel, { paddingBottom: insets.bottom + 20 }]}>
-        {/* Big distance */}
+      {/* Full screen stats - Nike Run style */}
+      <View style={styles.fullScreenStats}>
+        {/* Big distance at top center */}
         <View style={styles.distanceRow}>
           <Text style={styles.distanceBig}>{distance.toFixed(2)}</Text>
           <Text style={styles.distanceUnit}>km</Text>
         </View>
 
-        {/* Stats grid */}
+        {/* Timer below */}
+        <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
+
+        {/* Secondary stats */}
         <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatTime(elapsedSeconds)}</Text>
-            <Text style={styles.statLabel}>{'\uC2DC\uAC04'}</Text>
-          </View>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.accent }]}>
               {pace > 0
@@ -346,9 +343,15 @@ export default function WalkScreen() {
             <Text style={styles.statValue}>{Math.round(distance * 65)}</Text>
             <Text style={styles.statLabel}>kcal</Text>
           </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{steps.toLocaleString()}</Text>
+            <Text style={styles.statLabel}>{'\uAC78\uC74C'}</Text>
+          </View>
         </View>
+      </View>
 
-        {/* Controls */}
+      {/* Controls at bottom */}
+      <View style={[styles.controlsArea, { paddingBottom: insets.bottom + 24 }]}>
         <View style={styles.controlsRow}>
           {state === 'walking' ? (
             <TouchableOpacity
@@ -472,7 +475,7 @@ const styles = StyleSheet.create({
   // ---- WALKING / PAUSED STATE ----
   walkContainer: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: '#0d1a0e',
   },
   statusBar: {
     position: 'absolute',
@@ -506,48 +509,46 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: 'rgba(255,255,255,0.8)',
   },
-  walkMapArea: {
+  fullScreenStats: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a1a1a',
-  },
-  walkMapEmoji: {
-    fontSize: 64,
-    opacity: 0.2,
-  },
-  statsPanel: {
-    backgroundColor: '#111',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 24,
-    paddingTop: 24,
   },
   distanceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 4,
   },
   distanceBig: {
-    fontSize: 56,
-    fontWeight: '700',
+    fontSize: 72,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: -1,
+    letterSpacing: -2,
   },
   distanceUnit: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.4)',
-    marginLeft: 4,
+    marginLeft: 6,
+  },
+  timerText: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 40,
+    letterSpacing: 2,
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    width: '100%',
     marginBottom: 32,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
   },
   statValue: {
     fontSize: 22,
@@ -558,6 +559,12 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  controlsArea: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   controlsRow: {
     flexDirection: 'row',

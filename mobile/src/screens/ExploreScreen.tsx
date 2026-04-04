@@ -23,6 +23,12 @@ import { FadeInView } from '../components/FadeInView';
 
 const { width } = Dimensions.get('window');
 
+const SORT_OPTIONS = [
+  { value: '-like_count', label: '인기순' },
+  { value: '-created_at', label: '최신순' },
+  { value: 'distance_km', label: '거리 짧은순' },
+];
+
 const FILTER_CHIPS = [
   {
     key: 'country',
@@ -82,6 +88,7 @@ export default function ExploreScreen() {
   const route = useRoute<any>();
 
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('-like_count');
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     if (route.params?.country) initial.country = route.params.country;
@@ -90,13 +97,14 @@ export default function ExploreScreen() {
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
 
   const queryParams = useMemo(() => {
-    const params: Record<string, string> = { ordering: '-like_count' };
+    const params: Record<string, string> = {};
+    if (sortBy) params.ordering = sortBy;
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params[k] = v;
     });
     if (search.trim()) params.search = search.trim();
     return params;
-  }, [filters, search]);
+  }, [filters, search, sortBy]);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['trails', queryParams],
@@ -145,7 +153,7 @@ export default function ExploreScreen() {
         <TrailCard
           trail={item}
           onPress={() =>
-            navigation.navigate('TrailDetail', { trailId: item.id })
+            navigation.navigate('TrailDetail', { id: item.id })
           }
         />
       </FadeInView>
@@ -223,6 +231,31 @@ export default function ExploreScreen() {
               <Text style={styles.resetText}>초기화</Text>
             </TouchableOpacity>
           )}
+        </ScrollView>
+
+        {/* Sort Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortRow}>
+          {SORT_OPTIONS.map((opt) => {
+            const isActive = sortBy === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.sortChip, isActive && styles.sortChipActive]}
+                onPress={() => setSortBy(opt.value)}
+                activeOpacity={0.7}>
+                <Text
+                  style={[
+                    styles.sortChipText,
+                    isActive && styles.sortChipTextActive,
+                  ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Expanded filter options */}
@@ -394,6 +427,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.primary,
     fontWeight: '500',
+  },
+
+  // Sort chips
+  sortRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+  },
+  sortChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sortChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  sortChipTextActive: {
+    color: '#FFFFFF',
   },
 
   // Expanded filter options

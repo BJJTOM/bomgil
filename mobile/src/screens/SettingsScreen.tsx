@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,16 @@ import {
   Image,
   Alert,
   StatusBar,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
-import { useLanguageStore, LANGUAGES } from '../stores/language';
+import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
+
+const { width } = Dimensions.get('window');
 
 interface SectionItem {
   icon: string;
@@ -32,6 +36,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
+  const [showLangModal, setShowLangModal] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
@@ -44,30 +49,18 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const handleLanguageChange = () => {
-    Alert.alert(
-      '언어 선택',
-      '',
-      LANGUAGES.map((l) => ({
-        text: `${l.flag} ${l.label}`,
-        onPress: () => setLanguage(l.code),
-        style: l.code === language ? ('cancel' as const) : ('default' as const),
-      })),
-    );
-  };
-
   const sections: Section[] = [
     {
       title: '계정',
       items: isAuthenticated
         ? [
-            { icon: '👤', label: '프로필 수정', onPress: () => {} },
+            { icon: '👤', label: '프로필 수정', onPress: () => navigation.navigate('ProfileEdit') },
             {
               icon: '📊',
               label: '내 활동 기록',
-              onPress: () => navigation.navigate('Activity'),
+              onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
-            { icon: '❤️', label: '좋아요한 코스', onPress: () => {} },
+            { icon: '❤️', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
           ]
         : [
             {
@@ -89,16 +82,16 @@ export default function SettingsScreen() {
           icon: '🌐',
           label: '언어 설정',
           value: LANGUAGES.find((l) => l.code === language)?.label,
-          onPress: handleLanguageChange,
+          onPress: () => setShowLangModal(true),
         },
-        { icon: '🔔', label: '알림 설정', onPress: () => {} },
+        { icon: '🔔', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
       ],
     },
     {
       title: '정보',
       items: [
-        { icon: '📋', label: '서비스 이용약관', onPress: () => {} },
-        { icon: '🔒', label: '개인정보처리방침', onPress: () => {} },
+        { icon: '📋', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
+        { icon: '🔒', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
         { icon: '📄', label: '오픈소스 라이선스', onPress: () => {} },
         { icon: 'ℹ️', label: '버전 정보', value: '1.0.0' },
       ],
@@ -118,7 +111,10 @@ export default function SettingsScreen() {
 
         {/* User Card */}
         {isAuthenticated && user ? (
-          <TouchableOpacity style={styles.userCard} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.userCard}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
             <View style={styles.avatar}>
               {user.profile_image ? (
                 <Image
@@ -182,6 +178,33 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal visible={showLangModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowLangModal(false)}
+          activeOpacity={1}>
+          <View style={styles.langModal}>
+            <Text style={styles.langModalTitle}>언어 설정</Text>
+            {([
+              { code: 'ko' as Language, label: '한국어', flag: '🇰🇷' },
+              { code: 'en' as Language, label: 'English', flag: '🇺🇸' },
+              { code: 'ja' as Language, label: '日本語', flag: '🇯🇵' },
+              { code: 'zh' as Language, label: '中文', flag: '🇨🇳' },
+            ]).map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.langItem, language === lang.code && styles.langItemActive]}
+                onPress={() => { setLanguage(lang.code); setShowLangModal(false); }}>
+                <Text style={styles.langFlag}>{lang.flag}</Text>
+                <Text style={styles.langLabel}>{lang.label}</Text>
+                {language === lang.code && <Text style={styles.langCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -331,5 +354,53 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 11,
     color: colors.textTertiary,
+  },
+
+  // Language Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 64,
+    maxWidth: 320,
+  },
+  langModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#191F28',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  langItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  langItemActive: {
+    backgroundColor: '#f0f7f0',
+  },
+  langFlag: {
+    fontSize: 22,
+    marginRight: 14,
+  },
+  langLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#191F28',
+    flex: 1,
+  },
+  langCheck: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D4A2E',
   },
 });

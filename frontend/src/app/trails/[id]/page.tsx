@@ -162,19 +162,22 @@ export default function TrailDetailPage() {
           )}
         </div>
 
-        {/* Map */}
-        <div className="card overflow-hidden mb-10">
-          <h2 className="text-[18px] font-semibold p-7 pb-0">경로 지도</h2>
-          <div className="h-80 mt-4">
+        {/* Map — full-bleed dark theme */}
+        <div className="mb-10 -mx-6 md:mx-0 md:rounded-card overflow-hidden">
+          <div className="h-[400px] md:h-[500px] relative">
             <MapView
               country={t.country}
               center={{
                 lat: parseFloat(t.start_lat),
                 lng: parseFloat(t.start_lng),
               }}
-              zoom={13}
+              zoom={14}
               markers={mapMarkers}
               pathCoordinates={pathCoords}
+              theme="dark"
+              showStats
+              distance={t.distance_km}
+              duration={String(t.estimated_minutes)}
             />
           </div>
         </div>

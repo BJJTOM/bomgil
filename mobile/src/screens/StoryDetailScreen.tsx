@@ -14,6 +14,7 @@ import {
   StatusBar,
   Alert,
   Share,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -41,6 +42,7 @@ export default function StoryDetailScreen() {
 
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{id: number; nickname: string} | null>(null);
 
   const { data: story, isLoading } = useQuery<WalkStory>({
     queryKey: ['story', storyId],
@@ -105,11 +107,15 @@ export default function StoryDetailScreen() {
     }
     setSubmittingComment(true);
     try {
-      await api.post(`/stories/${storyId}/comments/`, {
+      await api.post(`/stories/${storyId}/comments/create/`, {
         content: commentText.trim(),
+        parent: replyingTo?.id,
       });
       setCommentText('');
-      refetchComments();
+      setReplyingTo(null);
+      queryClient.invalidateQueries({ queryKey: ['story-comments', storyId] });
+      queryClient.invalidateQueries({ queryKey: ['story', storyId] });
+      Keyboard.dismiss();
       // Update comment count in feed
       queryClient.setQueryData(['community-feed'], (old: any) => {
         if (!Array.isArray(old)) return old;
@@ -117,15 +123,15 @@ export default function StoryDetailScreen() {
           s.id === storyId ? { ...s, comment_count: s.comment_count + 1 } : s,
         );
       });
-      queryClient.setQueryData(['story', storyId], (old: any) => {
-        if (!old) return old;
-        return { ...old, comment_count: old.comment_count + 1 };
-      });
     } catch (err: any) {
-      Alert.alert('오류', '댓글 작성에 실패했습니다.');
+      Alert.alert('오류', '댓글 작성에 실패했습니다');
     } finally {
       setSubmittingComment(false);
     }
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
 
   const timeAgo = (dateStr: string) => {
@@ -265,12 +271,23 @@ export default function StoryDetailScreen() {
                     <Text style={styles.commentTime}>{timeAgo(comment.created_at)}</Text>
                   </View>
                   <Text style={styles.commentContent}>{comment.content}</Text>
+                  <TouchableOpacity
+                    style={styles.replyBtn}
+                    onPress={() => setReplyingTo({ id: comment.id, nickname: comment.author.nickname })}>
+                    <Text style={styles.replyBtnText}>답글</Text>
+                  </TouchableOpacity>
                   {comment.replies && comment.replies.length > 0 && (
                     <View style={styles.repliesWrap}>
                       {comment.replies.map((reply) => (
                         <View key={reply.id} style={styles.replyItem}>
-                          <Text style={styles.replyAuthor}>{reply.author.nickname}</Text>
-                          <Text style={styles.replyContent}>{reply.content}</Text>
+                          <View style={styles.replyAvatar}>
+                            <Text style={{fontSize: 10}}>{'\u{1F464}'}</Text>
+                          </View>
+                          <View style={styles.replyContentWrap}>
+                            <Text style={styles.replyAuthor}>{reply.author?.nickname}</Text>
+                            <Text style={styles.replyContent}>{reply.content}</Text>
+                            <Text style={styles.replyTime}>{timeAgo(reply.created_at)}</Text>
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -284,9 +301,18 @@ export default function StoryDetailScreen() {
 
       {/* Comment Input */}
       <View style={[styles.commentInputBar, { paddingBottom: insets.bottom + 8 }]}>
+        {replyingTo && (
+          <View style={styles.replyingBanner}>
+            <Text style={styles.replyingText}>@{replyingTo.nickname}에게 답글 작성 중</Text>
+            <TouchableOpacity onPress={handleCancelReply}>
+              <Text style={styles.replyingCancel}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={styles.commentInputRow}>
         <TextInput
           style={styles.commentInput}
-          placeholder="댓글을 입력하세요..."
+          placeholder={replyingTo ? `@${replyingTo.nickname}에게 답글` : '댓글을 입력하세요...'}
           placeholderTextColor={colors.textTertiary}
           value={commentText}
           onChangeText={setCommentText}
@@ -303,6 +329,7 @@ export default function StoryDetailScreen() {
             <Text style={styles.commentSendText}>{'\u2191'}</Text>
           )}
         </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -509,34 +536,81 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: 20,
   },
+  replyBtn: {
+    marginTop: 4,
+    paddingVertical: 2,
+  },
+  replyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textTertiary,
+  },
   repliesWrap: {
-    marginTop: 8,
-    paddingLeft: 8,
+    marginTop: 10,
+    paddingLeft: 4,
     borderLeftWidth: 2,
     borderLeftColor: colors.borderLight,
   },
   replyItem: {
-    marginBottom: 8,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+    paddingLeft: 8,
+  },
+  replyAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.bgSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  replyContentWrap: {
+    flex: 1,
   },
   replyAuthor: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   replyContent: {
     fontSize: 13,
     color: colors.textPrimary,
     lineHeight: 18,
   },
-  commentInputBar: {
+  replyTime: {
+    fontSize: 10,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  replyingBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingBottom: 6,
+    width: '100%',
+  },
+  replyingText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  replyingCancel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.danger,
+  },
+  commentInputBar: {
     paddingHorizontal: 16,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
     backgroundColor: '#fff',
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 8,
   },
   commentInput: {

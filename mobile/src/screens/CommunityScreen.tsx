@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -102,6 +102,24 @@ export default function CommunityScreen() {
     return new Date(dateStr).toLocaleDateString('ko-KR');
   };
 
+  const ExpandableContent = ({ content, storyId }: { content: string; storyId: number }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = content.length > 150;
+
+    return (
+      <View>
+        <Text style={styles.storyContent}>
+          {isLong && !expanded ? content.slice(0, 150) + '...' : content}
+        </Text>
+        {isLong && !expanded && (
+          <TouchableOpacity onPress={() => setExpanded(true)}>
+            <Text style={styles.showMoreText}>더보기</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   const renderStory = ({ item, index }: { item: WalkStory; index: number }) => {
     const mood = MOOD_MAP[item.mood];
     const photos = item.photos || [];
@@ -159,9 +177,7 @@ export default function CommunityScreen() {
           {item.title ? (
             <Text style={styles.storyTitle}>{item.title}</Text>
           ) : null}
-          <Text style={styles.storyContent} numberOfLines={4}>
-            {item.content}
-          </Text>
+          <ExpandableContent content={item.content} storyId={item.id} />
         </View>
 
         {/* Photo Grid */}
@@ -280,7 +296,7 @@ export default function CommunityScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={() => Alert.alert('채팅', '채팅 기능 준비중입니다')}>
+            onPress={() => navigation.navigate('Chat')}>
             <Text style={styles.iconBtnEmoji}>{'\u{1F4AC}'}</Text>
           </TouchableOpacity>
         </View>
@@ -406,10 +422,15 @@ const styles = StyleSheet.create({
   storyCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
+    marginBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F4F6',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   authorRow: {
     flexDirection: 'row',
@@ -420,11 +441,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   avatarRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     padding: 2,
-    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    backgroundColor: 'transparent',
   },
   avatarInner: {
     width: 40,
@@ -513,9 +536,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   storyContent: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textPrimary,
     lineHeight: 24,
+  },
+  showMoreText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textTertiary,
+    marginTop: 4,
   },
   singlePhoto: {
     width: '100%',
@@ -592,20 +621,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
-    marginHorizontal: 20,
+    marginHorizontal: 16,
   },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 6,
   },
   actionDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: colors.borderLight,
+    width: StyleSheet.hairlineWidth,
+    height: 18,
+    backgroundColor: colors.borderDefault,
   },
   actionIcon: {
     fontSize: 16,

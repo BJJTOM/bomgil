@@ -98,7 +98,7 @@ function TrailDetailScreenInner() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
-  const { trailId } = route.params;
+  const trailId = route.params?.id ?? route.params?.trailId;
 
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -110,22 +110,27 @@ function TrailDetailScreenInner() {
   const [savingOffline, setSavingOffline] = useState(false);
 
   useEffect(() => {
-    isSaved(trailId).then(setSavedOffline);
+    if (trailId) {
+      isSaved(trailId).then(setSavedOffline);
+    }
   }, [trailId]);
 
-  const { data: trail, isLoading } = useQuery({
+  const { data: trail, isLoading, error } = useQuery({
     queryKey: ['trail', trailId],
     queryFn: async () => {
       try {
         const { data } = await api.get(`/trails/${trailId}/`);
         return data as Trail;
-      } catch {
+      } catch (e) {
         // Fallback to offline cache
         const cached = await getSavedTrail(trailId);
         if (cached) return cached.trail as Trail;
-        throw new Error('Trail not available');
+        throw e;
       }
     },
+    enabled: !!trailId,
+    retry: 1,
+    staleTime: 30000,
   });
 
   const { data: spots = [] } = useQuery({
@@ -134,16 +139,18 @@ function TrailDetailScreenInner() {
       const { data } = await api.get(`/trails/${trailId}/spots/`);
       return data as Spot[];
     },
-    enabled: !!trail,
+    enabled: !!trailId && !!trail,
+    retry: 1,
   });
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['reviews', trailId],
     queryFn: async () => {
       const { data } = await api.get(`/reviews/trails/${trailId}/`);
-      return (data.results || data) as Review[];
+      return (data?.results || data || []) as Review[];
     },
-    enabled: !!trail,
+    enabled: !!trailId && !!trail,
+    retry: 1,
   });
 
   const likeMutation = useMutation({
@@ -183,6 +190,31 @@ function TrailDetailScreenInner() {
     } catch {}
   };
 
+  if (!trailId) {
+    return (
+      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 찾을 수 없습니다'}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 불러올 수 없습니다'}</Text>
+        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'네트워크 연결을 확인해주세요'}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (isLoading || !trail) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
@@ -191,7 +223,7 @@ function TrailDetailScreenInner() {
     );
   }
 
-  const diff = DIFFICULTY_CONFIG[trail.difficulty] || DIFFICULTY_CONFIG.easy;
+  const diff = DIFFICULTY_CONFIG[trail.difficulty || 'easy'] || DIFFICULTY_CONFIG.easy;
   const avgRating =
     reviews.length > 0
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
@@ -275,7 +307,7 @@ function TrailDetailScreenInner() {
                   styles.likeBtnCount,
                   trail.is_liked && styles.likeBtnCountActive,
                 ]}>
-                {trail.like_count}
+                {trail.like_count ?? 0}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
@@ -299,7 +331,7 @@ function TrailDetailScreenInner() {
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
             <Text style={styles.viewCount}>
-              {'\u{1F441}'} {trail.view_count}
+              {'\u{1F441}'} {trail.view_count ?? 0}
             </Text>
           </View>
 
@@ -524,7 +556,7 @@ function TrailDetailScreenInner() {
                   {review.content}
                 </Text>
                 <Text style={styles.reviewDate}>
-                  {new Date(review.visited_date).toLocaleDateString('ko-KR')}
+                  {review.visited_date ? new Date(review.visited_date).toLocaleDateString('ko-KR') : ''}
                 </Text>
               </View>
             ))}

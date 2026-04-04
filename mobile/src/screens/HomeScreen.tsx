@@ -188,7 +188,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" translucent={true} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -200,7 +200,7 @@ export default function HomeScreen() {
           colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 10 }]}>
+          style={[styles.hero, { paddingTop: insets.top + 16 }]}>
           {/* Top bar */}
           <View style={styles.heroTopBar}>
             <View style={styles.heroLogoRow}>
@@ -377,39 +377,11 @@ export default function HomeScreen() {
             <Text style={styles.ugcTitle}>{t('ugcTitle', language)}</Text>
             <Text style={styles.ugcDesc}>{t('ugcDesc', language)}</Text>
             <View style={styles.ugcButtonRow}>
-              <TouchableOpacity style={styles.ugcButtonPrimary} onPress={() => navigation.navigate('TrailCreate')} activeOpacity={0.85}>
-                <Text style={styles.ugcButtonPrimaryText}>{t('ugcShareBtn', language)}</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.ugcButtonSecondary} onPress={() => navigation.navigate('Community')} activeOpacity={0.85}>
                 <Text style={styles.ugcButtonSecondaryText}>{t('ugcCommunityBtn', language)}</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-
-        {/* Quick Links */}
-        <View style={styles.quickLinksSection}>
-          <TouchableOpacity
-            style={styles.quickLinkCard}
-            onPress={() => navigation.navigate('Rankings')}
-            activeOpacity={0.85}>
-            <Text style={styles.quickLinkIcon}>{'\u{1F3C6}'}</Text>
-            <Text style={styles.quickLinkLabel}>{'랭킹'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickLinkCard}
-            onPress={() => navigation.navigate('Chat')}
-            activeOpacity={0.85}>
-            <Text style={styles.quickLinkIcon}>{'\u{1F4AC}'}</Text>
-            <Text style={styles.quickLinkLabel}>{'채팅'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickLinkCard}
-            onPress={() => navigation.navigate('TrailCreate')}
-            activeOpacity={0.85}>
-            <Text style={styles.quickLinkIcon}>{'\u{2795}'}</Text>
-            <Text style={styles.quickLinkLabel}>{'코스 등록'}</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Footer */}
@@ -755,34 +727,6 @@ const styles = StyleSheet.create({
     color: '#191F28',
     fontSize: 14,
     fontWeight: '500',
-  },
-
-  // Quick Links
-  quickLinksSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  quickLinkCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-    gap: 6,
-  },
-  quickLinkIcon: {
-    fontSize: 24,
-  },
-  quickLinkLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
   },
 
   // Footer

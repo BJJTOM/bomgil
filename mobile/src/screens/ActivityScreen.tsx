@@ -147,7 +147,7 @@ export default function ActivityScreen() {
               <TouchableOpacity
                 style={styles.addRecordBtn}
                 activeOpacity={0.7}
-                onPress={() => Alert.alert('기록 추가', 'GPX 업로드 기능 준비중입니다')}>
+                onPress={() => navigation.navigate('AddRecord')}>
                 <Text style={styles.addRecordText}>+ 기록 추가</Text>
               </TouchableOpacity>
             </View>

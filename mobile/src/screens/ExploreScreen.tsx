@@ -258,6 +258,13 @@ export default function ExploreScreen() {
           })}
         </ScrollView>
 
+        {/* Ranking Chip */}
+        <View style={styles.rankingRow}>
+          <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankingChip} activeOpacity={0.7}>
+            <Text style={styles.rankingText}>🏆 랭킹</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Expanded filter options */}
         {expandedFilter && (
           <ScrollView
@@ -456,6 +463,28 @@ const styles = StyleSheet.create({
   },
   sortChipTextActive: {
     color: '#FFFFFF',
+  },
+
+  // Ranking chip
+  rankingRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    flexDirection: 'row',
+  },
+  rankingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 9999,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  rankingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B45309',
   },
 
   // Expanded filter options

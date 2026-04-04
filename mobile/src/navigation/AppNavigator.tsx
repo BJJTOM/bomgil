@@ -37,6 +37,7 @@ import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import SavedTrailsScreen from '../screens/SavedTrailsScreen';
 import WalkStatsScreen from '../screens/WalkStatsScreen';
+import AddRecordScreen from '../screens/AddRecordScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -178,6 +179,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Privacy" component={PrivacyScreen} />
         <Stack.Screen name="SavedTrails" component={SavedTrailsScreen} />
         <Stack.Screen name="WalkStats" component={WalkStatsScreen} />
+        <Stack.Screen name="AddRecord" component={AddRecordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

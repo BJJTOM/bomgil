@@ -137,13 +137,13 @@ export default function RegisterPage() {
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.password")}</label>
               <input
-                type="password"
+                type="text"
                 value={form.password1}
                 onChange={(e) => updateField("password1", e.target.value)}
                 placeholder={t("register.passwordPlaceholder")}
                 required
-                autoComplete="new-password"
-                className="input-field"
+                autoComplete="off"
+                className="input-field password-mask"
               />
               {/* Password strength indicator */}
               {form.password1 && (
@@ -173,13 +173,13 @@ export default function RegisterPage() {
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.passwordConfirm")}</label>
               <input
-                type="password"
+                type="text"
                 value={form.password2}
                 onChange={(e) => updateField("password2", e.target.value)}
                 placeholder={t("register.passwordConfirmPlaceholder")}
                 required
-                autoComplete="new-password"
-                className="input-field"
+                autoComplete="off"
+                className="input-field password-mask"
               />
               {form.password2 && form.password1 !== form.password2 && (
                 <p className="text-[11px] text-danger mt-1.5">{t("auth.passwordMismatch")}</p>

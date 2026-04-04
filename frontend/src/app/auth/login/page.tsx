@@ -75,12 +75,13 @@ export default function LoginPage() {
                 {t("auth.email")}
               </label>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
                 required
-                autoComplete="username"
+                autoComplete="off"
                 className="input-field"
               />
             </div>
@@ -89,13 +90,13 @@ export default function LoginPage() {
                 {t("auth.password")}
               </label>
               <input
-                type="password"
+                type="text"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("loginPage.passwordPlaceholder")}
                 required
-                autoComplete="current-password"
-                className="input-field"
+                autoComplete="off"
+                className="input-field password-mask"
               />
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full mt-2">

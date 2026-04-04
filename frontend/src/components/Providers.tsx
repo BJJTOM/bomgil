@@ -26,6 +26,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (typeof navigator !== "undefined" && navigator.credentials) {
       try { navigator.credentials.preventSilentAccess(); } catch {}
     }
+    // Block pinch zoom globally
+    document.addEventListener("gesturestart", (e) => e.preventDefault());
+    document.addEventListener("gesturechange", (e) => e.preventDefault());
+    document.addEventListener("touchmove", (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
   }, []);
 
   return (

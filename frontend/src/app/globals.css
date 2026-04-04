@@ -13,9 +13,13 @@
   text-security: disc;
 }
 
-/* Prevent zoom */
+/* Prevent all zoom (pinch + double tap) */
 html {
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
+}
+
+*:not(.leaflet-container):not(.leaflet-container *) {
+  touch-action: pan-x pan-y;
 }
 
 /* Native app feel */

@@ -145,10 +145,10 @@ export default function WalkScreen() {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
-            title: '\uC704\uCE58 \uAD8C\uD55C',
-            message: '\uAC77\uAE30 \uACBD\uB85C\uB97C \uAE30\uB85D\uD558\uB824\uBA74 \uC704\uCE58 \uC815\uBCF4\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4',
-            buttonPositive: '\uD5C8\uC6A9',
-            buttonNegative: '\uAC70\uBD80',
+            title: '위치 권한',
+            message: '걷기 경로를 기록하려면 위치 정보가 필요합니다',
+            buttonPositive: '허용',
+            buttonNegative: '거부',
           }
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -182,57 +182,71 @@ export default function WalkScreen() {
     }
   }, [currentPos]);
 
-  // Request GPS on mount
+  // Request GPS on mount — don't crash if Geolocation module is broken
   useEffect(() => {
     (async () => {
-      const hasPermission = await requestPermission();
-      if (hasPermission) {
-        Geolocation.getCurrentPosition(
-          () => setGpsReady(true),
-          () => setGpsReady(true),
-          { enableHighAccuracy: true, timeout: 5000 },
-        );
-      } else {
+      try {
+        const hasPermission = await requestPermission();
+        if (hasPermission) {
+          Geolocation.getCurrentPosition(
+            (pos) => {
+              setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+              setGpsReady(true);
+            },
+            () => setGpsReady(true),
+            { enableHighAccuracy: true, timeout: 5000 },
+          );
+        } else {
+          setGpsReady(true);
+        }
+      } catch {
+        // Geolocation module not available — still allow starting
         setGpsReady(true);
       }
     })();
   }, []);
 
-  const startGpsTracking = useCallback(() => {
-    watchIdRef.current = Geolocation.watchPosition(
-      (pos) => {
-        const point = engineRef.current.addPoint(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          pos.coords.altitude,
-          pos.coords.accuracy,
-          pos.timestamp,
-        );
-        if (point) {
-          setCurrentPos({ lat: point.lat, lng: point.lng });
-        }
-        setStats(engineRef.current.getStats());
-      },
-      (err) => console.log('GPS error:', err),
-      {
-        enableHighAccuracy: true,
-        distanceFilter: 5,
-        timeout: 10000,
-      },
-    );
-  }, []);
-
   const startWalk = useCallback(() => {
+    // Start engine and timer immediately — don't wait for GPS
     engineRef.current.start();
     setState('walking');
 
-    startGpsTracking();
-
-    // Update stats every second (for timer)
+    // Start timer immediately
     timerRef.current = setInterval(() => {
       setStats(engineRef.current.getStats());
     }, 1000);
-  }, [startGpsTracking]);
+
+    // Try to start GPS tracking, but don't block if it fails
+    try {
+      watchIdRef.current = Geolocation.watchPosition(
+        (pos) => {
+          const point = engineRef.current.addPoint(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.altitude,
+            pos.coords.accuracy,
+            pos.timestamp || Date.now(),
+          );
+          if (point) {
+            setCurrentPos({ lat: point.lat, lng: point.lng });
+          }
+          setStats(engineRef.current.getStats());
+        },
+        (err) => {
+          console.log('GPS error:', err);
+          // GPS failed but walk continues with timer
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 5,
+          timeout: 10000,
+        },
+      );
+    } catch (e) {
+      console.log('GPS watch failed:', e);
+      // Walk still continues with timer only
+    }
+  }, []);
 
   const pauseWalk = () => {
     setState('paused');
@@ -242,15 +256,51 @@ export default function WalkScreen() {
 
   const resumeWalk = () => {
     setState('walking');
-    startGpsTracking();
+
+    // Restart timer
     timerRef.current = setInterval(() => {
       setStats(engineRef.current.getStats());
     }, 1000);
+
+    // Try to restart GPS tracking
+    try {
+      watchIdRef.current = Geolocation.watchPosition(
+        (pos) => {
+          const point = engineRef.current.addPoint(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.altitude,
+            pos.coords.accuracy,
+            pos.timestamp || Date.now(),
+          );
+          if (point) {
+            setCurrentPos({ lat: point.lat, lng: point.lng });
+          }
+          setStats(engineRef.current.getStats());
+        },
+        (err) => {
+          console.log('GPS error:', err);
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 5,
+          timeout: 10000,
+        },
+      );
+    } catch (e) {
+      console.log('GPS watch failed on resume:', e);
+    }
   };
 
   const completeWalk = async () => {
     // Stop GPS and timer
-    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+    if (watchIdRef.current !== null) {
+      try {
+        Geolocation.clearWatch(watchIdRef.current);
+      } catch {
+        // ignore
+      }
+    }
     if (timerRef.current) clearInterval(timerRef.current);
 
     const finalStats = engineRef.current.getStats();
@@ -267,7 +317,7 @@ export default function WalkScreen() {
           trail: trailId || null,
           track_points: trackPoints,
           source: 'phone_gps',
-          title: `${dateLabel} \uB3C4\uBCF4`,
+          title: `${dateLabel} 도보`,
           started_at: new Date(
             Date.now() - finalStats.totalTime * 1000,
           ).toISOString(),
@@ -298,16 +348,22 @@ export default function WalkScreen() {
   };
 
   const handleStop = () => {
-    Alert.alert('\uAC77\uAE30 \uC885\uB8CC', '\uAC77\uAE30\uB97C \uC885\uB8CC\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?', [
-      { text: '\uCDE8\uC18C', style: 'cancel' },
-      { text: '\uC885\uB8CC', style: 'destructive', onPress: completeWalk },
+    Alert.alert('걷기 종료', '걷기를 종료하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      { text: '종료', style: 'destructive', onPress: completeWalk },
     ]);
   };
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+      if (watchIdRef.current !== null) {
+        try {
+          Geolocation.clearWatch(watchIdRef.current);
+        } catch {
+          // ignore
+        }
+      }
     };
   }, []);
 
@@ -320,14 +376,14 @@ export default function WalkScreen() {
         <TouchableOpacity
           style={[styles.readyBack, { top: insets.top + 10 }]}
           onPress={() => navigation.goBack()}>
-          <Text style={styles.readyBackText}>{'\u2190'} {'\uB3CC\uC544\uAC00\uAE30'}</Text>
+          <Text style={styles.readyBackText}>← 돌아가기</Text>
         </TouchableOpacity>
 
         {/* GPS Status */}
         <View style={[styles.gpsStatus, gpsReady && styles.gpsStatusReady]}>
           <View style={[styles.gpsDot, gpsReady && styles.gpsDotReady]} />
           <Text style={[styles.gpsText, gpsReady && styles.gpsTextReady]}>
-            {gpsReady ? 'GPS \uC900\uBE44 \uC644\uB8CC' : 'GPS \uAC80\uC0C9 \uC911...'}
+            {gpsReady ? '준비 완료' : '검색 중...'}
           </Text>
         </View>
 
@@ -340,7 +396,7 @@ export default function WalkScreen() {
             style={styles.startBtn}
             onPress={startWalk}
             activeOpacity={0.85}>
-            <Text style={styles.startBtnText}>{'\uAC77\uAE30 \uC2DC\uC791'}</Text>
+            <Text style={styles.startBtnText}>걷기 시작</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -349,7 +405,7 @@ export default function WalkScreen() {
 
         {/* Hint */}
         <Text style={styles.hintText}>
-          GPS\uB85C \uACBD\uB85C\uAC00 \uC790\uB3D9 \uAE30\uB85D\uB429\uB2C8\uB2E4
+          경로가 자동 기록됩니다
         </Text>
       </View>
     );
@@ -376,15 +432,15 @@ export default function WalkScreen() {
           <Text style={styles.statusText}>
             {state === 'walking'
               ? stats.isAutoPaused
-                ? '\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0'
-                : '\uAE30\uB85D \uC911'
-              : '\uC77C\uC2DC\uC815\uC9C0'}
+                ? '자동 일시정지'
+                : '기록 중'
+              : '일시정지'}
           </Text>
           <Text style={styles.statusTimer}>{formatTime(stats.duration)}</Text>
         </View>
         {isBackground && (
           <View style={styles.bgTrackingPill}>
-            <Text style={styles.bgTrackingText}>{'GPS \uBC31\uADF8\uB77C\uC6B4\uB4DC \uCD94\uC801 \uC911'}</Text>
+            <Text style={styles.bgTrackingText}>GPS 백그라운드 추적 중</Text>
           </View>
         )}
       </View>
@@ -395,7 +451,7 @@ export default function WalkScreen() {
           style={[styles.cameraBtn, { top: insets.top + 12 }]}
           onPress={handleTakePhoto}
           activeOpacity={0.8}>
-          <Text style={styles.cameraBtnIcon}>{'\u{1F4F7}'}</Text>
+          <Text style={styles.cameraBtnIcon}>📷</Text>
         </TouchableOpacity>
       )}
       {taggedPhotos.length > 0 && (
@@ -418,7 +474,7 @@ export default function WalkScreen() {
 
           {/* Current pace - highlighted */}
           <View style={styles.currentPaceContainer}>
-            <Text style={styles.currentPaceLabel}>{'\uD604\uC7AC \uD398\uC774\uC2A4'}</Text>
+            <Text style={styles.currentPaceLabel}>현재 페이스</Text>
             <Text style={styles.currentPaceValue}>{formatPace(stats.currentPace)}</Text>
             <Text style={styles.currentPaceUnit}>/km</Text>
           </View>
@@ -427,17 +483,17 @@ export default function WalkScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.steps.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>{'\uAC78\uC74C'}</Text>
+              <Text style={styles.statLabel}>걸음</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.calories}</Text>
-              <Text style={styles.statLabel}>{'\uCE7C\uB85C\uB9AC'}</Text>
+              <Text style={styles.statLabel}>칼로리</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
                 {stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m
               </Text>
-              <Text style={styles.statLabel}>{'\uACE0\uB3C4'}</Text>
+              <Text style={styles.statLabel}>고도</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.speed.toFixed(1)}</Text>
@@ -449,36 +505,36 @@ export default function WalkScreen() {
           <View style={styles.secondaryStatsRow}>
             <View style={styles.secondaryStat}>
               <Text style={styles.secondaryStatValue}>{formatPace(stats.pace)}</Text>
-              <Text style={styles.secondaryStatLabel}>{'\uD3C9\uADE0 \uD398\uC774\uC2A4'}</Text>
+              <Text style={styles.secondaryStatLabel}>평균 페이스</Text>
             </View>
             <View style={styles.secondaryStatDivider} />
             <View style={styles.secondaryStat}>
               <Text style={styles.secondaryStatValue}>{stats.cadence}</Text>
-              <Text style={styles.secondaryStatLabel}>{'\uCF00\uC774\uB358\uC2A4'}</Text>
+              <Text style={styles.secondaryStatLabel}>케이던스</Text>
             </View>
             <View style={styles.secondaryStatDivider} />
             <View style={styles.secondaryStat}>
               <Text style={styles.secondaryStatValue}>{stats.maxSpeed.toFixed(1)}</Text>
-              <Text style={styles.secondaryStatLabel}>{'\uCD5C\uACE0 km/h'}</Text>
+              <Text style={styles.secondaryStatLabel}>최고 km/h</Text>
             </View>
           </View>
 
           {/* Km Splits */}
           {stats.splits.length > 0 && (
             <View style={styles.splitsContainer}>
-              <Text style={styles.splitsTitle}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
+              <Text style={styles.splitsTitle}>구간 기록</Text>
               {stats.splits.map((split: KmSplit) => (
                 <View key={split.km} style={styles.splitRow}>
                   <Text style={styles.splitKm}>{split.km}km</Text>
                   <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
                   {split.elevationGain > 0 && (
                     <Text style={styles.splitEle}>
-                      {'\u2191'}{Math.round(split.elevationGain)}m
+                      ↑{Math.round(split.elevationGain)}m
                     </Text>
                   )}
                   {split.elevationLoss > 0 && (
                     <Text style={styles.splitEleLoss}>
-                      {'\u2193'}{Math.round(split.elevationLoss)}m
+                      ↓{Math.round(split.elevationLoss)}m
                     </Text>
                   )}
                 </View>
@@ -492,7 +548,7 @@ export default function WalkScreen() {
       {stats.isAutoPaused && state === 'walking' && (
         <View style={styles.autoPauseIndicator}>
           <Animated.View style={[styles.autoPauseDot, { opacity: autoPausePulse }]} />
-          <Text style={styles.autoPauseText}>{'\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0'}</Text>
+          <Text style={styles.autoPauseText}>자동 일시정지</Text>
         </View>
       )}
 

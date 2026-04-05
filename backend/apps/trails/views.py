@@ -110,6 +110,15 @@ class TrailViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class RecommendedTrailsView(generics.ListAPIView):
+    serializer_class = TrailListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        from .recommendations import get_recommendations
+        return get_recommendations(self.request.user)
+
+
 class TagListView(generics.ListAPIView):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer

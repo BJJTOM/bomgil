@@ -33,6 +33,8 @@ class StoryCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+        from apps.accounts.badges import check_and_award_badges
+        check_and_award_badges(self.request.user)
 
 
 class StoryDetailView(generics.RetrieveAPIView):

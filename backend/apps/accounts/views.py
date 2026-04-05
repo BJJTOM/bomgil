@@ -155,6 +155,36 @@ class EmailLoginView(APIView):
         })
 
 
+class FollowView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, nickname):
+        target = CustomUser.objects.get(nickname=nickname)
+        if target == request.user:
+            return Response({"error": "자신을 팔로우할 수 없습니다"}, status=400)
+        if request.user.following.filter(pk=target.pk).exists():
+            request.user.following.remove(target)
+            return Response({"following": False})
+        request.user.following.add(target)
+        return Response({"following": True}, status=201)
+
+
+class FollowersView(generics.ListAPIView):
+    serializer_class = UserPublicSerializer
+
+    def get_queryset(self):
+        user = CustomUser.objects.get(nickname=self.kwargs['nickname'])
+        return user.followers.all()
+
+
+class FollowingView(generics.ListAPIView):
+    serializer_class = UserPublicSerializer
+
+    def get_queryset(self):
+        user = CustomUser.objects.get(nickname=self.kwargs['nickname'])
+        return user.following.all()
+
+
 class GuestLoginThrottle(AnonRateThrottle):
     rate = '10/hour'
 

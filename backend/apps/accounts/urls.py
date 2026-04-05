@@ -2,6 +2,9 @@ from django.urls import include, path
 
 from .views import (
     EmailLoginView,
+    FollowersView,
+    FollowingView,
+    FollowView,
     GuestLoginView,
     MeView,
     PhoneSendView,
@@ -24,6 +27,9 @@ urlpatterns = [
     path("users/<str:nickname>/trails/", UserTrailsView.as_view(), name="user-trails"),
     path("users/<str:nickname>/reviews/", UserReviewsView.as_view(), name="user-reviews"),
     path("users/<str:nickname>/badges/", UserBadgesView.as_view(), name="user-badges"),
+    path("users/<str:nickname>/follow/", FollowView.as_view(), name="user-follow"),
+    path("users/<str:nickname>/followers/", FollowersView.as_view(), name="user-followers"),
+    path("users/<str:nickname>/following/", FollowingView.as_view(), name="user-following"),
     # Email login
     path("email-login/", EmailLoginView.as_view(), name="email-login"),
     # Guest login

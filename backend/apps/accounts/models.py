@@ -30,6 +30,7 @@ class CustomUser(AbstractUser):
     ]
 
     nickname = models.CharField(max_length=50, unique=True)
+    following = models.ManyToManyField('self', symmetrical=False, related_name='followers', blank=True)
     profile_image = models.ImageField(upload_to="profiles/", null=True, blank=True)
     bio = models.TextField(max_length=300, blank=True)
     preferred_language = models.CharField(
@@ -66,6 +67,10 @@ class UserBadge(models.Model):
         ("popular", "인기 동행자 🌟"),
         ("trail_creator", "코스 개척자 🗺️"),
         ("storyteller", "스토리텔러 📝"),
+        ("walker_10km", "10km 워커 🚶"),
+        ("walker_50km", "50km 워커 🏃"),
+        ("walker_100km", "100km 워커 🏅"),
+        ("global_walker", "글로벌 워커 🌍"),
     ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="badges")

@@ -7,7 +7,6 @@ import {
   Alert,
   Platform,
   PermissionsAndroid,
-  Dimensions,
   Animated,
   StatusBar,
   AppState,
@@ -31,9 +30,7 @@ import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
 
-const { width } = Dimensions.get('window');
-
-type WalkState = 'ready' | 'walking' | 'paused';
+type WalkState = 'walking' | 'paused';
 
 // Format pace as min'sec"
 function formatPace(pace: number): string {
@@ -61,7 +58,7 @@ export default function WalkScreen() {
   const { isAuthenticated } = useAuthStore();
   const trailId = route.params?.trailId;
 
-  const [state, setState] = useState<WalkState>('ready');
+  const [state, setState] = useState<WalkState>('walking');
   const [stats, setStats] = useState<WalkStats>({
     distance: 0,
     duration: 0,
@@ -80,7 +77,6 @@ export default function WalkScreen() {
     splits: [],
     isAutoPaused: false,
   });
-  const [gpsReady, setGpsReady] = useState(false);
   const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
   const [isBackground, setIsBackground] = useState(false);
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
@@ -88,32 +84,10 @@ export default function WalkScreen() {
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startedRef = useRef(false);
 
-  // Pulse animation for start button
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   // Auto-pause pulse animation
   const autoPausePulse = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (state === 'ready') {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.08,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
-  }, [state]);
 
   // Auto-pause pulse effect
   useEffect(() => {
@@ -182,28 +156,11 @@ export default function WalkScreen() {
     }
   }, [currentPos]);
 
-  // Request GPS on mount — don't crash if Geolocation module is broken
+  // Auto-start walk immediately on mount (Nike Run style)
   useEffect(() => {
-    (async () => {
-      try {
-        const hasPermission = await requestPermission();
-        if (hasPermission) {
-          Geolocation.getCurrentPosition(
-            (pos) => {
-              setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-              setGpsReady(true);
-            },
-            () => setGpsReady(true),
-            { enableHighAccuracy: true, timeout: 5000 },
-          );
-        } else {
-          setGpsReady(true);
-        }
-      } catch {
-        // Geolocation module not available — still allow starting
-        setGpsReady(true);
-      }
-    })();
+    if (startedRef.current) return;
+    startedRef.current = true;
+    startWalk();
   }, []);
 
   const startGps = useCallback(() => {
@@ -337,50 +294,6 @@ export default function WalkScreen() {
       }
     };
   }, []);
-
-  // ---- READY STATE ----
-  if (state === 'ready') {
-    return (
-      <View style={styles.readyContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#1a3a1b" />
-        {/* Back button */}
-        <TouchableOpacity
-          style={[styles.readyBack, { top: insets.top + 10 }]}
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.readyBackText}>← 돌아가기</Text>
-        </TouchableOpacity>
-
-        {/* GPS Status */}
-        <View style={[styles.gpsStatus, gpsReady && styles.gpsStatusReady]}>
-          <View style={[styles.gpsDot, gpsReady && styles.gpsDotReady]} />
-          <Text style={[styles.gpsText, gpsReady && styles.gpsTextReady]}>
-            {gpsReady ? '준비 완료' : '검색 중...'}
-          </Text>
-        </View>
-
-        {/* Brand */}
-        <Text style={styles.brandText}>ROAMI WALK</Text>
-
-        {/* Start Button with pulse */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity
-            style={styles.startBtn}
-            onPress={startWalk}
-            activeOpacity={0.85}>
-            <Text style={styles.startBtnText}>걷기 시작</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Pulse ring effect */}
-        <View style={styles.pulseRing} />
-
-        {/* Hint */}
-        <Text style={styles.hintText}>
-          경로가 자동 기록됩니다
-        </Text>
-      </View>
-    );
-  }
 
   // ---- WALKING / PAUSED STATE ----
   return (
@@ -560,90 +473,6 @@ export default function WalkScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ---- READY STATE ----
-  readyContainer: {
-    flex: 1,
-    backgroundColor: '#0d1a0e',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  readyBack: {
-    position: 'absolute',
-    left: 20,
-    zIndex: 10,
-  },
-  readyBackText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  gpsStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginBottom: 40,
-    gap: 8,
-  },
-  gpsStatusReady: {
-    backgroundColor: 'rgba(74,222,128,0.2)',
-  },
-  gpsDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FACC15',
-  },
-  gpsDotReady: {
-    backgroundColor: '#4ADE80',
-  },
-  gpsText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
-  },
-  gpsTextReady: {
-    color: '#4ADE80',
-  },
-  brandText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.2)',
-    letterSpacing: 3,
-    marginBottom: 64,
-  },
-  startBtn: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  startBtnText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  pulseRing: {
-    position: 'absolute',
-    width: 172,
-    height: 172,
-    borderRadius: 86,
-    borderWidth: 1,
-    borderColor: 'rgba(168,230,207,0.15)',
-    alignSelf: 'center',
-    top: '50%',
-    marginTop: -86 + 70 - 64 + 20,
-  },
-  hintText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.25)',
-    marginTop: 48,
-  },
-
   // ---- WALKING / PAUSED STATE ----
   walkContainer: {
     flex: 1,

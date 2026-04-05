@@ -166,31 +166,30 @@ export default function ExploreScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
-      {/* Sticky Header */}
-      <View style={styles.stickyHeader}>
+
+      {/* Header */}
+      <View style={styles.header}>
         {/* Search Bar */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchBar}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="코스, 지역, 키워드 검색..."
-              placeholderTextColor={colors.textTertiary}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search ? (
-              <TouchableOpacity
-                onPress={() => setSearch('')}
-                style={styles.clearBtn}>
-                <Text style={styles.clearBtnText}>✕</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="코스, 지역, 키워드 검색..."
+            placeholderTextColor={colors.textTertiary}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search ? (
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+              style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
-        {/* Filter Row: chips + sort dropdown + ranking */}
+        {/* Filter Row */}
         <View style={styles.filterRow}>
           <ScrollView
             horizontal
@@ -232,7 +231,7 @@ export default function ExploreScreen() {
             })}
             {activeFilterCount > 0 && (
               <TouchableOpacity onPress={clearAllFilters} style={styles.resetBtn}>
-                <Text style={styles.resetText}>{'초기화'}</Text>
+                <Text style={styles.resetText}>초기화</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -242,7 +241,7 @@ export default function ExploreScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankBtn} activeOpacity={0.7}>
-            <Text style={styles.rankBtnText}>{'🏆'}</Text>
+            <Text style={styles.rankBtnText}>🏆</Text>
           </TouchableOpacity>
         </View>
 
@@ -293,7 +292,7 @@ export default function ExploreScreen() {
                   <Text style={[styles.sortItemText, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
                     {opt.label}
                   </Text>
-                  {sortBy === opt.value && <Text style={{ color: colors.primary }}>{'✓'}</Text>}
+                  {sortBy === opt.value && <Text style={{ color: colors.primary }}>✓</Text>}
                 </TouchableOpacity>
               ))}
             </View>
@@ -352,75 +351,73 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
 
-  // Sticky header
-  stickyHeader: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    paddingBottom: 12,
+  // Header — clean, no heavy border
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 10,
   },
 
-  // Search
-  searchRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
+  // Search — pill shape, subtle shadow
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: '#F7F8FA',
     borderRadius: 9999,
-    paddingHorizontal: 14,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    paddingHorizontal: 16,
     height: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchIcon: {
     fontSize: 14,
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textPrimary,
     paddingVertical: 0,
   },
   clearBtn: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: 'rgba(176,184,193,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   clearBtnText: {
     fontSize: 10,
-    color: '#FFFFFF',
+    color: '#8B95A1',
     fontWeight: '600',
   },
 
-  // Filter row (chips + sort + ranking on one line)
+  // Filter row — compact single line
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 12,
-    gap: 8,
+    paddingRight: 16,
+    gap: 6,
   },
-
-  // Filter chips
   chipRow: {
     paddingHorizontal: 20,
-    gap: 8,
+    gap: 6,
     flexDirection: 'row',
     alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 9999,
-    backgroundColor: colors.bgSecondary,
-    gap: 4,
+    backgroundColor: '#F7F8FA',
   },
   chipActive: {
     backgroundColor: colors.primary,
@@ -439,7 +436,7 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   resetText: {
     fontSize: 11,
@@ -447,16 +444,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Sort dropdown button
+  // Sort button — clean pill
   sortBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 9999,
-    backgroundColor: colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+    backgroundColor: '#F7F8FA',
   },
   sortBtnText: {
     fontSize: 12,
@@ -466,23 +461,21 @@ const styles = StyleSheet.create({
 
   // Ranking button
   rankBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankBtnText: {
-    fontSize: 16,
+    fontSize: 14,
   },
 
   // Sort modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -492,7 +485,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     width: 220,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
@@ -515,7 +508,7 @@ const styles = StyleSheet.create({
   // Expanded filter options
   filterOptionsRow: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 6,
     gap: 6,
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,13 +517,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 9999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+    backgroundColor: '#F7F8FA',
   },
   filterOptionActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   filterOptionText: {
     fontSize: 12,
@@ -544,18 +534,18 @@ const styles = StyleSheet.create({
   // Results
   resultHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   resultCount: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: colors.textTertiary,
   },
   list: {
     paddingHorizontal: 20,
     paddingBottom: 100,
+    gap: 12,
   },
   cardWrap: {
-    marginBottom: 16,
     flex: 1,
   },
   loadingCenter: {
@@ -565,14 +555,14 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
 
-  // Empty state
+  // Empty state — clean
   emptyState: {
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 80,
     paddingHorizontal: 40,
   },
   emptyIcon: {
-    fontSize: 48,
+    fontSize: 40,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -582,7 +572,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   emptyDesc: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textTertiary,
     textAlign: 'center',
     marginBottom: 20,
@@ -590,8 +580,8 @@ const styles = StyleSheet.create({
   emptyResetBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   emptyResetText: {
     color: '#FFFFFF',

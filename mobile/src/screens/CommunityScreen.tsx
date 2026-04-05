@@ -33,13 +33,10 @@ function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => voi
   };
 
   return (
-    <TouchableOpacity style={styles.actionBtn} onPress={handlePress}>
-      <Animated.Text style={[styles.actionIcon, isLiked && styles.actionIconLiked, { transform: [{ scale: scaleAnim }] }]}>
+    <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
+      <Animated.Text style={[styles.actionIcon, { transform: [{ scale: scaleAnim }] }]}>
         {isLiked ? '\u2764\uFE0F' : '\u{1F90D}'}
       </Animated.Text>
-      <Text style={[styles.actionLabel, isLiked && styles.actionLabelLiked]}>
-        좋아요
-      </Text>
     </TouchableOpacity>
   );
 }
@@ -71,7 +68,6 @@ export default function CommunityScreen() {
       navigation.navigate('Login');
       return;
     }
-    // Optimistic: update local state immediately
     queryClient.setQueryData(['community-feed'], (old: any) => {
       if (!Array.isArray(old)) return old;
       return old.map((s: any) =>
@@ -125,159 +121,149 @@ export default function CommunityScreen() {
     const photos = item.photos || [];
 
     return (
-    <FadeInView delay={index * 60}>
-      <TouchableOpacity
-        style={styles.storyCard}
-        activeOpacity={0.9}
-        onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
-        {/* Author Header */}
-        <View style={styles.authorRow}>
-          <View style={styles.avatarRing}>
-            <View style={styles.avatarInner}>
+      <FadeInView delay={index * 60}>
+        <TouchableOpacity
+          style={styles.postContainer}
+          activeOpacity={0.95}
+          onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
+          {/* Author Header */}
+          <View style={styles.authorRow}>
+            <View style={styles.avatar}>
               {item.author.profile_image ? (
                 <Image source={{ uri: item.author.profile_image }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarFallback}>{'\u{1F464}'}</Text>
               )}
             </View>
-          </View>
-          <View style={styles.authorInfo}>
-            <View style={styles.authorNameRow}>
-              <Text style={styles.authorName}>{item.author.nickname}</Text>
-              {(item.author as any).is_verified && (
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedCheck}>{'\u2713'}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.authorMeta}>
-              {item.trail_id && item.trail_title && (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('TrailDetail', { trailId: item.trail_id })}>
-                  <Text style={styles.trailLink} numberOfLines={1}>
-                    {item.trail_region} · {item.trail_title}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {item.trail_id && <Text style={styles.metaDot}> · </Text>}
-              <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Content */}
-        <View style={styles.contentSection}>
-          {mood && (
-            <View style={[styles.moodTag, { backgroundColor: mood.bg }]}>
-              <Text style={[styles.moodText, { color: mood.text }]}>
-                {mood.emoji} {mood.label}
-              </Text>
-            </View>
-          )}
-          {item.title ? (
-            <Text style={styles.storyTitle}>{item.title}</Text>
-          ) : null}
-          <ExpandableContent content={item.content} storyId={item.id} />
-        </View>
-
-        {/* Photo Grid */}
-        {photos.length === 1 && (
-          <Image
-            source={{ uri: photos[0].image }}
-            style={styles.singlePhoto}
-            resizeMode="cover"
-          />
-        )}
-        {photos.length === 2 && (
-          <View style={styles.twoPhotos}>
-            {photos.map((p) => (
-              <Image
-                key={p.id}
-                source={{ uri: p.image }}
-                style={styles.twoPhotoItem}
-                resizeMode="cover"
-              />
-            ))}
-          </View>
-        )}
-        {photos.length >= 3 && (
-          <View style={styles.threePhotos}>
-            <Image
-              source={{ uri: photos[0].image }}
-              style={styles.threePhotoMain}
-              resizeMode="cover"
-            />
-            <View style={styles.threePhotoSide}>
-              <Image
-                source={{ uri: photos[1].image }}
-                style={styles.threePhotoSmall}
-                resizeMode="cover"
-              />
-              <View>
-                <Image
-                  source={{ uri: photos[2].image }}
-                  style={styles.threePhotoSmall}
-                  resizeMode="cover"
-                />
-                {photos.length > 3 && (
-                  <View style={styles.moreOverlay}>
-                    <Text style={styles.moreText}>+{photos.length - 3}</Text>
+            <View style={styles.authorInfo}>
+              <View style={styles.authorNameRow}>
+                <Text style={styles.authorName}>{item.author.nickname}</Text>
+                {(item.author as any).is_verified && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedCheck}>{'\u2713'}</Text>
+                  </View>
+                )}
+                {mood && (
+                  <View style={[styles.moodPill, { backgroundColor: mood.bg }]}>
+                    <Text style={[styles.moodPillText, { color: mood.text }]}>
+                      {mood.emoji} {mood.label}
+                    </Text>
                   </View>
                 )}
               </View>
+              <View style={styles.authorMeta}>
+                {item.trail_id && item.trail_title && (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('TrailDetail', { trailId: item.trail_id })}>
+                    <Text style={styles.trailLink} numberOfLines={1}>
+                      {item.trail_region} · {item.trail_title}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {item.trail_id && <Text style={styles.metaDot}> · </Text>}
+                <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
+              </View>
             </View>
           </View>
-        )}
 
-        {/* Engagement Stats */}
-        {(item.like_count > 0 || item.comment_count > 0) && (
-          <View style={styles.engagementRow}>
-            {item.like_count > 0 && (
-              <View style={styles.engagementItem}>
-                <View style={styles.likeCountBadge}>
-                  <Text style={styles.likeCountIcon}>{'\u2764'}</Text>
-                </View>
-                <Text style={styles.engagementText}>
-                  좋아요 {item.like_count}개
-                </Text>
-              </View>
-            )}
-            {item.comment_count > 0 && (
-              <TouchableOpacity
-                style={styles.commentCountBtn}
-                onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
-                <Text style={styles.engagementText}>
-                  댓글 {item.comment_count}개
-                </Text>
-              </TouchableOpacity>
-            )}
+          {/* Content */}
+          <View style={styles.contentSection}>
+            {item.title ? (
+              <Text style={styles.storyTitle}>{item.title}</Text>
+            ) : null}
+            <ExpandableContent content={item.content} storyId={item.id} />
           </View>
-        )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionsRow}>
-          <LikeButton isLiked={item.is_liked} onPress={() => handleLike(item.id)} />
+          {/* Photo Grid */}
+          {photos.length === 1 && (
+            <Image
+              source={{ uri: photos[0].image }}
+              style={styles.singlePhoto}
+              resizeMode="cover"
+            />
+          )}
+          {photos.length === 2 && (
+            <View style={styles.twoPhotos}>
+              {photos.map((p) => (
+                <Image
+                  key={p.id}
+                  source={{ uri: p.image }}
+                  style={styles.twoPhotoItem}
+                  resizeMode="cover"
+                />
+              ))}
+            </View>
+          )}
+          {photos.length >= 3 && (
+            <View style={styles.threePhotos}>
+              <Image
+                source={{ uri: photos[0].image }}
+                style={styles.threePhotoMain}
+                resizeMode="cover"
+              />
+              <View style={styles.threePhotoSide}>
+                <Image
+                  source={{ uri: photos[1].image }}
+                  style={styles.threePhotoSmall}
+                  resizeMode="cover"
+                />
+                <View>
+                  <Image
+                    source={{ uri: photos[2].image }}
+                    style={styles.threePhotoSmall}
+                    resizeMode="cover"
+                  />
+                  {photos.length > 3 && (
+                    <View style={styles.moreOverlay}>
+                      <Text style={styles.moreText}>+{photos.length - 3}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
 
-          <View style={styles.actionDivider} />
+          {/* Action Bar — icons only, Instagram-style */}
+          <View style={styles.actionsRow}>
+            <View style={styles.actionsLeft}>
+              <LikeButton isLiked={item.is_liked} onPress={() => handleLike(item.id)} />
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => navigation.navigate('StoryDetail', { id: item.id })}
+                activeOpacity={0.7}>
+                <Text style={styles.actionIcon}>{'\u{1F4AC}'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => handleShare(item)}
+                activeOpacity={0.7}>
+                <Text style={styles.actionIcon}>{'\u2B06\uFE0F'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
-            <Text style={styles.actionIcon}>{'\u{1F4AC}'}</Text>
-            <Text style={styles.actionLabel}>댓글</Text>
-          </TouchableOpacity>
+          {/* Engagement — small gray text */}
+          {(item.like_count > 0 || item.comment_count > 0) && (
+            <View style={styles.engagementRow}>
+              {item.like_count > 0 && (
+                <Text style={styles.engagementText}>좋아요 {item.like_count}개</Text>
+              )}
+              {item.like_count > 0 && item.comment_count > 0 && (
+                <Text style={styles.engagementDot}> · </Text>
+              )}
+              {item.comment_count > 0 && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
+                  <Text style={styles.engagementText}>댓글 {item.comment_count}개</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </TouchableOpacity>
 
-          <View style={styles.actionDivider} />
-
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => handleShare(item)}>
-            <Text style={styles.actionIcon}>{'\u2B06\uFE0F'}</Text>
-            <Text style={styles.actionLabel}>공유</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </FadeInView>
+        {/* Thin divider between posts */}
+        <View style={styles.divider} />
+      </FadeInView>
     );
   };
 
@@ -285,7 +271,7 @@ export default function CommunityScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* Sticky Header — no write button, just notification + chat */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>커뮤니티</Text>
         <View style={styles.headerRight}>
@@ -313,20 +299,16 @@ export default function CommunityScreen() {
         </View>
       ) : stories.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconCircle}>
-              <Text style={styles.emptyIcon}>{'\u{1F4DD}'}</Text>
-            </View>
-            <Text style={styles.emptyTitle}>아직 스토리가 없어요</Text>
-            <Text style={styles.emptyDesc}>
-              {'첫 번째 걷기 이야기를\n공유해보세요'}
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyBtn}
-              onPress={() => navigation.navigate('Explore')}>
-              <Text style={styles.emptyBtnText}>트레일 탐색하기</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.emptyIcon}>{'\u{1F4DD}'}</Text>
+          <Text style={styles.emptyTitle}>아직 스토리가 없어요</Text>
+          <Text style={styles.emptyDesc}>
+            {'첫 번째 걷기 이야기를\n공유해보세요'}
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyBtn}
+            onPress={() => navigation.navigate('Explore')}>
+            <Text style={styles.emptyBtnText}>트레일 탐색하기</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -345,9 +327,9 @@ export default function CommunityScreen() {
         />
       )}
 
-      {/* FAB — smaller, positioned to clear tab bar */}
+      {/* FAB — 44px */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 80 }]}
         activeOpacity={0.85}
         onPress={() =>
           navigation.navigate(isAuthenticated ? 'CommunityWrite' : 'Login')
@@ -361,7 +343,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.warm,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -369,9 +351,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
   },
   headerTitle: {
     fontSize: 20,
@@ -382,18 +361,18 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: colors.bgSecondary,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBtnEmoji: {
-    fontSize: 16,
+    fontSize: 15,
   },
   loadingContainer: {
     flex: 1,
@@ -416,44 +395,26 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   list: {
-    padding: 16,
     paddingBottom: 100,
   },
-  storyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    marginBottom: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F4F6',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+
+  // Post — no card, no shadow, no border
+  postContainer: {
+    backgroundColor: '#FFFFFF',
   },
   authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 10,
   },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    padding: 2,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    backgroundColor: 'transparent',
-  },
-  avatarInner: {
+  avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -473,35 +434,44 @@ const styles = StyleSheet.create({
   authorNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   authorName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textPrimary,
   },
   verifiedBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifiedCheck: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#fff',
     fontWeight: '700',
+  },
+  moodPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  moodPillText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   authorMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 1,
   },
   trailLink: {
     fontSize: 12,
     color: colors.textTertiary,
-    maxWidth: 160,
+    maxWidth: 180,
   },
   metaDot: {
     fontSize: 12,
@@ -512,36 +482,23 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   contentSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  moodTag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  moodText: {
-    fontSize: 11,
-    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
   storyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
     lineHeight: 22,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   storyContent: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   showMoreText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.textTertiary,
     marginTop: 4,
@@ -585,141 +542,109 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  engagementRow: {
+
+  // Actions — icons only, no text, no dividers
+  actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
-  engagementItem: {
+  actionsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  likeCountBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FF4B4B',
+  actionBtn: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  likeCountIcon: {
-    fontSize: 9,
-    color: '#fff',
+  actionIcon: {
+    fontSize: 20,
+  },
+
+  // Engagement — single line, small gray
+  engagementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   engagementText: {
     fontSize: 12,
     color: colors.textTertiary,
+    fontWeight: '500',
   },
-  commentCountBtn: {
-    marginLeft: 'auto',
+  engagementDot: {
+    fontSize: 12,
+    color: colors.textTertiary,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+
+  // Divider between posts
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#F2F4F6',
     marginHorizontal: 16,
   },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 6,
-  },
-  actionDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 18,
-    backgroundColor: colors.borderDefault,
-  },
-  actionIcon: {
-    fontSize: 16,
-  },
-  actionIconLiked: {},
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  actionLabelLiked: {
-    color: '#FF4B4B',
-  },
+
+  // Empty state — clean, no card
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 340,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-  },
-  emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 40,
   },
   emptyIcon: {
-    fontSize: 36,
+    fontSize: 40,
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptyDesc: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textTertiary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   emptyBtn: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: colors.primary,
-    borderRadius: 24,
+    borderRadius: 12,
   },
   emptyBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
+
+  // FAB — 44px
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 90,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   fabIcon: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '300',
-    lineHeight: 24,
+    lineHeight: 22,
   },
 });

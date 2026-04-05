@@ -90,16 +90,20 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backIcon}>{'←'}</Text>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.headerBtnIcon}>{'←'}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>프로필</Text>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation.navigate('Settings')}>
+            <Text style={styles.headerBtnIcon}>{'⚙'}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarRing}>
             {profile.profile_image ? (
               <Image source={{ uri: profile.profile_image }} style={styles.avatar} />
             ) : (
@@ -113,93 +117,88 @@ export default function ProfileScreen() {
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
           {profile.walking_style && (
-            <View style={styles.styleBadge}>
-              <Text style={styles.styleBadgeText}>
+            <View style={styles.stylePill}>
+              <Text style={styles.stylePillText}>
                 {WALKING_STYLE_LABELS[profile.walking_style] || profile.walking_style}
               </Text>
             </View>
           )}
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile.trail_count ?? 0}</Text>
-              <Text style={styles.statLabel}>코스</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile.follower_count ?? 0}</Text>
-              <Text style={styles.statLabel}>팔로워</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile.following_count ?? 0}</Text>
-              <Text style={styles.statLabel}>팔로잉</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile.review_count ?? 0}</Text>
-              <Text style={styles.statLabel}>리뷰</Text>
-            </View>
-          </View>
-
-          {isOwnProfile ? (
-            <TouchableOpacity
-              style={styles.editBtn}
-              onPress={() => navigation.navigate('ProfileEdit')}>
-              <Text style={styles.editBtnText}>프로필 수정</Text>
-            </TouchableOpacity>
-          ) : currentUser ? (
-            <TouchableOpacity
-              style={[
-                styles.followBtn,
-                profile.is_following && styles.followBtnActive,
-              ]}
-              onPress={() => followMutation.mutate()}
-              disabled={followMutation.isPending}>
-              <Text
-                style={[
-                  styles.followBtnText,
-                  profile.is_following && styles.followBtnTextActive,
-                ]}>
-                {profile.is_following ? '팔로잉' : '팔로우'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{profile.trail_count ?? 0}</Text>
+            <Text style={styles.statLabel}>코스</Text>
+          </View>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statValue}>{profile.follower_count ?? 0}</Text>
+            <Text style={styles.statLabel}>팔로워</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statValue}>{profile.following_count ?? 0}</Text>
+            <Text style={styles.statLabel}>팔로잉</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Action Button */}
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('ProfileEdit')}>
+            <Text style={styles.editBtnText}>프로필 수정</Text>
+          </TouchableOpacity>
+        ) : currentUser ? (
+          <TouchableOpacity
+            style={[
+              styles.followBtn,
+              profile.is_following && styles.followBtnFollowing,
+            ]}
+            onPress={() => followMutation.mutate()}
+            disabled={followMutation.isPending}>
+            <Text
+              style={[
+                styles.followBtnText,
+                profile.is_following && styles.followBtnTextFollowing,
+              ]}>
+              {profile.is_following ? '팔로잉' : '팔로우'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Badges */}
         {profile.badges && profile.badges.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>배지</Text>
-            <View style={styles.badgeGrid}>
-              {profile.badges.map((badge) => (
-                <View key={badge.id} style={styles.badgeItem}>
-                  <Text style={styles.badgeIcon}>
-                    {BADGE_ICONS[badge.badge_type] || '🏷️'}
-                  </Text>
-                  <Text style={styles.badgeLabel}>{badge.badge_type}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.badgeScroll}>
+            {profile.badges.map((badge) => (
+              <View key={badge.id} style={styles.badgePill}>
+                <Text style={styles.badgePillIcon}>
+                  {BADGE_ICONS[badge.badge_type] || '🏷️'}
+                </Text>
+                <Text style={styles.badgePillLabel}>{badge.badge_type}</Text>
+              </View>
+            ))}
+          </ScrollView>
         )}
 
         {/* Tabs */}
-        <View style={styles.tabRow}>
+        <View style={styles.tabBar}>
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+              style={styles.tab}
               onPress={() => setActiveTab(tab.key)}>
               <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
                 {tab.label}
               </Text>
+              {activeTab === tab.key && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Tab Content Placeholder */}
+        {/* Tab Content */}
         <View style={styles.tabContent}>
           <Text style={styles.emptyText}>
             {activeTab === 'courses' && '등록한 코스가 없습니다'}
@@ -222,63 +221,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    height: 44,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+  headerBtn: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
-  backIcon: {
-    fontSize: 18,
+  headerBtnIcon: {
+    fontSize: 20,
     color: colors.textPrimary,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  profileCard: {
-    marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 28,
+
+  // Profile
+  profileSection: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
-  avatarContainer: {
-    marginBottom: 16,
+  avatarRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
   },
   avatarPlaceholder: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(168,230,207,0.3)',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(168,230,207,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarEmoji: {
-    fontSize: 36,
+    fontSize: 32,
   },
   nickname: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 4,
@@ -288,143 +289,145 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 12,
+    paddingHorizontal: 40,
+    marginBottom: 8,
   },
-  styleBadge: {
+  stylePill: {
     backgroundColor: colors.primary50,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  styleBadgeText: {
-    fontSize: 13,
+  stylePillText: {
+    fontSize: 12,
     color: colors.primary,
     fontWeight: '600',
   },
+
+  // Stats
   statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-evenly',
+    paddingVertical: 20,
+    marginHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderDefault,
   },
   statItem: {
     alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.borderLight,
+    flex: 1,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
-  editBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  editBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
+  // Buttons
   followBtn: {
+    marginHorizontal: 20,
+    marginTop: 16,
     backgroundColor: colors.primary,
-    paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 24,
+    alignItems: 'center',
   },
-  followBtnActive: {
-    backgroundColor: '#FFFFFF',
+  followBtnFollowing: {
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.borderDefault,
   },
   followBtnText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
   },
-  followBtnTextActive: {
+  followBtnTextFollowing: {
     color: colors.textSecondary,
   },
-  section: {
+  editBtn: {
     marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 14,
-  },
-  badgeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  badgeItem: {
+    marginTop: 16,
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    borderRadius: 24,
     alignItems: 'center',
-    width: 72,
-  },
-  badgeIcon: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  badgeLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  tabRow: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 4,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: 16,
+    borderColor: colors.borderDefault,
+  },
+  editBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+
+  // Badges
+  badgeScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  badgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  badgePillIcon: {
+    fontSize: 14,
+  },
+  badgePillLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Tabs
+  tabBar: {
+    flexDirection: 'row',
+    marginTop: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderDefault,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 10,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    position: 'relative',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: colors.textTertiary,
   },
   tabTextActive: {
-    color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '25%',
+    right: '25%',
+    height: 2,
+    backgroundColor: colors.textPrimary,
+    borderRadius: 1,
+  },
+
+  // Tab Content
   tabContent: {
-    marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 40,
+    paddingVertical: 60,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   emptyText: {
     fontSize: 14,

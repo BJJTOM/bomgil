@@ -95,7 +95,7 @@ export default function WalkCompleteScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Roami - ${distNum.toFixed(2)}km \uC644\uB8CC!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} \uAC78\uC74C, ${timeStr}`,
+        message: `Roami - ${distNum.toFixed(2)}km 완료!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} 걸음, ${timeStr}`,
       });
     } catch {}
   };
@@ -105,16 +105,13 @@ export default function WalkCompleteScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <Text style={styles.completedBadge}>WALK COMPLETED</Text>
-          <Text style={styles.completedTitle}>{'\uAC77\uAE30 \uC644\uB8CC!'}</Text>
-        </View>
+        {/* Header accent */}
+        <Text style={styles.accentLabel}>WALK COMPLETED</Text>
+        <Text style={styles.celebrationText}>오늘도 멋진 걸음!</Text>
 
-        {/* Share Card */}
-        <View style={styles.shareCard}>
-          {/* Brand */}
-          <Text style={styles.cardBrand}>ROAMI</Text>
+        {/* Stat Card */}
+        <View style={styles.statCard}>
+          <Text style={styles.brandText}>ROAMI</Text>
 
           {/* Big distance */}
           <View style={styles.distanceRow}>
@@ -125,94 +122,61 @@ export default function WalkCompleteScreen() {
           {/* Primary stats grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{timeStr}</Text>
-              <Text style={styles.statLabel}>{'\uC2DC\uAC04'}</Text>
+              <Text style={styles.statCellValue}>{timeStr}</Text>
+              <Text style={styles.statCellLabel}>시간</Text>
             </View>
+            <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>
+              <Text style={[styles.statCellValue, { color: colors.accent }]}>
                 {typeof pace === 'string' && pace.includes("'") ? pace : formatPace(pace)}
               </Text>
-              <Text style={styles.statLabel}>{'\uD398\uC774\uC2A4'}</Text>
+              <Text style={styles.statCellLabel}>페이스</Text>
             </View>
+            <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{caloriesNum}</Text>
-              <Text style={styles.statLabel}>kcal</Text>
+              <Text style={styles.statCellValue}>{caloriesNum}</Text>
+              <Text style={styles.statCellLabel}>칼로리</Text>
             </View>
           </View>
 
-          {/* Extended stats */}
-          <View style={styles.extendedStatsGrid}>
-            <View style={styles.extendedStatCell}>
-              <Text style={styles.extendedStatValue}>
-                {stepsNum.toLocaleString()}
-              </Text>
-              <Text style={styles.extendedStatLabel}>{'\uAC78\uC74C'}</Text>
-            </View>
-            <View style={styles.extendedStatCell}>
-              <Text style={styles.extendedStatValue}>
-                {eleGain > 0 ? `+${eleGain}m` : '0m'}
-              </Text>
-              <Text style={styles.extendedStatLabel}>{'\uB204\uC801\uC0C1\uC2B9'}</Text>
-            </View>
-            <View style={styles.extendedStatCell}>
-              <Text style={styles.extendedStatValue}>
-                {eleLoss > 0 ? `-${eleLoss}m` : '0m'}
-              </Text>
-              <Text style={styles.extendedStatLabel}>{'\uB204\uC801\uD558\uAC15'}</Text>
-            </View>
-            <View style={styles.extendedStatCell}>
-              <Text style={styles.extendedStatValue}>
-                {maxSpeedNum > 0 ? `${maxSpeedNum.toFixed(1)}` : '0'}
-              </Text>
-              <Text style={styles.extendedStatLabel}>{'\uCD5C\uACE0 km/h'}</Text>
-            </View>
+          {/* Steps */}
+          <View style={styles.stepsRow}>
+            <Text style={styles.stepsValue}>{stepsNum.toLocaleString()}</Text>
+            <Text style={styles.stepsLabel}> 걸음</Text>
           </View>
-
-          {/* Km Splits Table */}
-          {splits.length > 0 && (
-            <View style={styles.splitsSection}>
-              <Text style={styles.splitsSectionTitle}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
-              <View style={styles.splitsHeader}>
-                <Text style={styles.splitsHeaderText}>{'\uAD6C\uAC04'}</Text>
-                <Text style={styles.splitsHeaderText}>{'\uD398\uC774\uC2A4'}</Text>
-                <Text style={styles.splitsHeaderText}>{'\uACE0\uB3C4'}</Text>
-              </View>
-              {splits.map((split: KmSplit) => (
-                <View key={split.km} style={styles.splitTableRow}>
-                  <Text style={styles.splitTableKm}>{split.km}km</Text>
-                  <Text style={styles.splitTablePace}>
-                    {formatPace(split.pace)}
-                  </Text>
-                  <Text style={styles.splitTableEle}>
-                    {split.elevationGain > 0
-                      ? `\u2191${Math.round(split.elevationGain)}m`
-                      : '-'}
-                    {split.elevationLoss > 0
-                      ? ` \u2193${Math.round(split.elevationLoss)}m`
-                      : ''}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
 
           {/* Date */}
-          <View style={styles.stepsDateRow}>
-            <Text style={styles.dateText}>{dateStr}</Text>
-          </View>
+          <Text style={styles.dateText}>{dateStr}</Text>
 
           {/* Footer branding */}
           <View style={styles.cardFooter}>
             <Text style={styles.cardFooterText}>roami.app</Text>
-            <Text style={styles.cardFooterText}>Walk. Discover. Connect.</Text>
           </View>
         </View>
+
+        {/* Splits Table */}
+        {splits.length > 0 && (
+          <View style={styles.splitsSection}>
+            <Text style={styles.splitsTitle}>구간 기록</Text>
+            {splits.map((split: KmSplit, index: number) => (
+              <View
+                key={split.km}
+                style={[
+                  styles.splitRow,
+                  index < splits.length - 1 && styles.splitRowBorder,
+                ]}>
+                <Text style={styles.splitKm}>{split.km} km</Text>
+                <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Tagged Photos */}
         {taggedPhotos.length > 0 && (
           <View style={styles.photosSection}>
             <Text style={styles.photosSectionTitle}>
-              {'\u{1F4F7}'} {'\uC0AC\uC9C4'} ({taggedPhotos.length})
+              사진 ({taggedPhotos.length})
             </Text>
             <FlatList
               horizontal
@@ -227,11 +191,6 @@ export default function WalkCompleteScreen() {
                     style={styles.photoImage}
                     resizeMode="cover"
                   />
-                  <View style={styles.photoLocationBadge}>
-                    <Text style={styles.photoLocationText}>
-                      {'\u{1F4CD}'} {item.lat.toFixed(4)}, {item.lng.toFixed(4)}
-                    </Text>
-                  </View>
                 </View>
               )}
             />
@@ -244,8 +203,7 @@ export default function WalkCompleteScreen() {
             style={styles.shareBtn}
             onPress={handleShare}
             activeOpacity={0.85}>
-            <Text style={styles.shareBtnIcon}>{'\u2B06\uFE0F'}</Text>
-            <Text style={styles.shareBtnText}>{'\uACF5\uC720\uD558\uAE30'}</Text>
+            <Text style={styles.shareBtnText}>공유하기</Text>
           </TouchableOpacity>
 
           <View style={styles.secondaryRow}>
@@ -253,15 +211,13 @@ export default function WalkCompleteScreen() {
               style={styles.secondaryBtn}
               onPress={() => navigation.navigate('Activity')}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>
-                {'\uD65C\uB3D9 \uAE30\uB85D \uBCF4\uAE30'}
-              </Text>
+              <Text style={styles.secondaryBtnText}>활동 기록</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.secondaryBtn}
               onPress={() => navigation.popToTop()}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>{'\uD648\uC73C\uB85C'}</Text>
+              <Text style={styles.secondaryBtnText}>홈으로</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -273,54 +229,52 @@ export default function WalkCompleteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#0d1a0e',
   },
   scrollContent: {
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
-  headerSection: {
-    alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 16,
-  },
-  completedBadge: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.accent,
-    letterSpacing: 2,
-  },
-  completedTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 8,
-  },
-  shareCard: {
-    width: width - 40,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 24,
-  },
-  cardBrand: {
+
+  // Header
+  accentLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(168,230,207,0.6)',
-    letterSpacing: 2,
+    color: colors.accent,
+    letterSpacing: 3,
+    marginTop: 48,
+    marginBottom: 8,
+  },
+  celebrationText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 32,
+  },
+
+  // Stat Card
+  statCard: {
+    width: width - 48,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 20,
+    paddingVertical: 28,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 8,
+    marginBottom: 20,
+  },
+  brandText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(168,230,207,0.5)',
+    letterSpacing: 3,
+    marginBottom: 8,
   },
   distanceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    marginBottom: 24,
   },
   distanceBig: {
-    fontSize: 64,
+    fontSize: 56,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -2,
@@ -328,149 +282,149 @@ const styles = StyleSheet.create({
   distanceUnit: {
     fontSize: 18,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.35)',
     marginLeft: 4,
   },
+
+  // Stats grid
   statsGrid: {
     flexDirection: 'row',
-    marginHorizontal: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 20,
   },
   statCell: {
     flex: 1,
-    backgroundColor: '#162416',
-    paddingVertical: 16,
     alignItems: 'center',
-    marginHorizontal: 1,
   },
-  statValue: {
-    fontSize: 20,
+  statCellValue: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 4,
   },
-  statLabel: {
+  statCellLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  extendedStatsGrid: {
-    flexDirection: 'row',
-    marginHorizontal: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-    marginTop: 4,
-  },
-  extendedStatCell: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginHorizontal: 1,
-  },
-  extendedStatValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 2,
-  },
-  extendedStatLabel: {
-    fontSize: 10,
     color: 'rgba(255,255,255,0.35)',
-  },
-  splitsSection: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    padding: 16,
-  },
-  splitsSectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 10,
-    letterSpacing: 1,
-  },
-  splitsHeader: {
-    flexDirection: 'row',
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 4,
-  },
-  splitsHeaderText: {
-    flex: 1,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
     fontWeight: '500',
   },
-  splitTableRow: {
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+
+  // Steps
+  stepsRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'baseline',
+    marginBottom: 4,
   },
-  splitTableKm: {
-    flex: 1,
-    fontSize: 14,
+  stepsValue: {
+    fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.7)',
   },
-  splitTablePace: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.accent,
+  stepsLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.35)',
   },
-  splitTableEle: {
-    flex: 1,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'right',
-  },
-  stepsDateRow: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-  },
+
+  // Date
   dateText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.3)',
-    marginTop: 4,
+    color: 'rgba(255,255,255,0.25)',
+    marginTop: 8,
+    marginBottom: 20,
   },
+
+  // Card footer
   cardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 12,
+    alignItems: 'center',
   },
   cardFooterText: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.2)',
+    letterSpacing: 0.5,
   },
+
+  // Splits
+  splitsSection: {
+    width: width - 48,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+  },
+  splitsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  splitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  splitRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  splitKm: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  splitPace: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+
+  // Photos
+  photosSection: {
+    width: width - 48,
+    marginBottom: 24,
+  },
+  photosSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 12,
+  },
+  photosList: {
+    gap: 10,
+  },
+  photoCard: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // Actions
   actionsSection: {
-    width: width - 40,
+    width: width - 48,
     gap: 12,
     paddingBottom: 20,
   },
   shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     backgroundColor: colors.primary,
     paddingVertical: 16,
-    borderRadius: 16,
-  },
-  shareBtnIcon: {
-    fontSize: 16,
+    borderRadius: 28,
+    alignItems: 'center',
   },
   shareBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
   },
@@ -481,44 +435,13 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
   },
   secondaryBtnText: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  photosSection: {
-    width: width - 40,
-    marginBottom: 24,
-  },
-  photosSectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 12,
-  },
-  photosList: {
-    gap: 10,
-  },
-  photoCard: {
-    width: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  photoImage: {
-    width: 160,
-    height: 120,
-  },
-  photoLocationBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  photoLocationText: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.7)',
   },
 });

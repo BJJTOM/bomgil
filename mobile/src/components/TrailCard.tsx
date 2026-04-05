@@ -20,9 +20,9 @@ interface TrailCardProps {
 }
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  easy: { label: '\uC27D\uAC8C', bg: '#DCFCE7', text: '#15803D' },
-  moderate: { label: '\uBCF4\uD1B5', bg: '#FEF3C7', text: '#B45309' },
-  hard: { label: '\uB3C4\uC804', bg: '#FEE2E2', text: '#DC2626' },
+  easy: { label: '쉽게', bg: '#DCFCE7', text: '#15803D' },
+  moderate: { label: '보통', bg: '#FEF3C7', text: '#B45309' },
+  hard: { label: '도전', bg: '#FEE2E2', text: '#DC2626' },
 };
 
 const TRAIL_TYPE_EMOJI: Record<string, string> = {
@@ -45,7 +45,7 @@ function formatDuration(minutes: number | null | undefined): string {
   if (minutes == null || isNaN(minutes)) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
 export default function TrailCard({
@@ -79,29 +79,21 @@ export default function TrailCard({
           )}
         </View>
         <View style={styles.horizontalContent}>
-          <View style={styles.horizontalMeta}>
-            <Text style={styles.horizontalRegion}>
-              {emoji} {trail?.region || ''}
-            </Text>
-          </View>
           <Text style={styles.horizontalTitle} numberOfLines={1}>
             {trail?.title || ''}
           </Text>
-          <View style={styles.horizontalBottom}>
-            <View style={[styles.diffBadge, { backgroundColor: diff.bg }]}>
-              <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
-            </View>
-            <Text style={styles.horizontalStats}>
-              {formatDistance(trail.distance_km)}{' · '}{formatDuration(trail.estimated_minutes)}
-            </Text>
-          </View>
+          <Text style={styles.horizontalMeta} numberOfLines={1}>
+            {trail?.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
+          </Text>
         </View>
       </TouchableOpacity>
     );
   }
 
   // ---- Default / Compact Variant ----
-  const cardWidth = effectiveVariant === 'compact' ? 280 : width - 32;
+  const isCompact = effectiveVariant === 'compact';
+  const cardWidth = isCompact ? 260 : width - 32;
+  const imageHeight = isCompact ? 160 : 176;
 
   return (
     <TouchableOpacity
@@ -109,7 +101,7 @@ export default function TrailCard({
       onPress={onPress}
       activeOpacity={0.85}>
       {/* Image */}
-      <View style={styles.imageContainer}>
+      <View style={[styles.imageContainer, { height: imageHeight }]}>
         {trail.cover_image || trail.thumbnail_url ? (
           <Image
             source={{ uri: trail.cover_image || trail.thumbnail_url }}
@@ -121,20 +113,6 @@ export default function TrailCard({
             <Text style={styles.imagePlaceholderEmoji}>{emoji}</Text>
           </View>
         )}
-        {/* Gradient overlay */}
-        <View style={styles.imageGradient} />
-
-        {/* Top left badges */}
-        <View style={styles.badgeRow}>
-          <View style={[styles.diffBadgeOverlay, { backgroundColor: diff.bg }]}>
-            <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
-          </View>
-          {trail.is_multi_day && trail.total_days && (
-            <View style={styles.multiDayBadge}>
-              <Text style={styles.multiDayText}>{trail.total_days}\uC77C</Text>
-            </View>
-          )}
-        </View>
 
         {/* Liked heart top right */}
         {trail.is_liked && (
@@ -146,40 +124,15 @@ export default function TrailCard({
 
       {/* Content */}
       <View style={styles.content}>
-        <View style={styles.typeRow}>
-          <Text style={styles.typeLabel}>
-            {emoji} {trail.trail_type === 'urban' ? '\uB3C4\uC2DC' :
-              trail.trail_type === 'coastal' ? '\uD574\uC548' :
-              trail.trail_type === 'village' ? '\uB9C8\uC744' :
-              trail.trail_type === 'cultural' ? '\uBB38\uD654' :
-              trail.trail_type === 'nature' ? '\uC790\uC5F0' : '\uD63C\uD569'}
-          </Text>
-          <Text style={styles.regionDot}>{' · '}</Text>
-          <Text style={styles.regionLabel}>{trail.region || ''}</Text>
-        </View>
-
         <Text style={styles.title} numberOfLines={1}>
           {trail.title || ''}
         </Text>
-
-        <View style={styles.metaRow}>
-          <Text style={styles.metaValue}>{formatDistance(trail.distance_km)}</Text>
-          <Text style={styles.metaDot}>{' · '}</Text>
-          <Text style={styles.metaValue}>{formatDuration(trail.estimated_minutes)}</Text>
-          <Text style={styles.metaDot}>{' · '}</Text>
-          <Text style={styles.likeCount}>{'\u2764\uFE0F'} {trail.like_count ?? 0}</Text>
-        </View>
-
-        {/* Tags */}
-        {trail.tags && trail.tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {trail.tags.slice(0, 3).map((tag) => (
-              <View key={tag.id} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag.name}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <Text style={styles.meta} numberOfLines={1}>
+          {trail.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
+        </Text>
+        <Text style={styles.likeCount}>
+          {'♥'} {trail.like_count ?? 0}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -189,20 +142,19 @@ const styles = StyleSheet.create({
   // ---- Default / Compact ----
   card: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
   },
   imageContainer: {
     position: 'relative',
-    height: 176,
     width: '100%',
   },
   image: {
     width: '100%',
     height: '100%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   imagePlaceholder: {
     width: '100%',
@@ -212,141 +164,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   imagePlaceholderEmoji: {
-    fontSize: 48,
-  },
-  imageGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 60,
-    backgroundColor: 'transparent',
-    // Simulating gradient with opacity
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  badgeRow: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  diffBadgeOverlay: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 20,
-  },
-  diffBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
-  },
-  diffText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  multiDayBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
-  multiDayText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.primary,
+    fontSize: 40,
   },
   likedBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   likedHeart: {
-    fontSize: 14,
+    fontSize: 13,
   },
   content: {
-    padding: 16,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
-  },
-  typeLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  regionDot: {
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
-  regionLabel: {
-    fontSize: 12,
-    color: colors.textTertiary,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.textPrimary,
-    lineHeight: 22,
-    marginBottom: 8,
+    lineHeight: 20,
+    marginBottom: 4,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaValue: {
+  meta: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  metaDot: {
-    fontSize: 13,
-    color: colors.textTertiary,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   likeCount: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 12,
-  },
-  tag: {
-    backgroundColor: colors.primary50,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  tagText: {
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: '500',
+    fontSize: 12,
+    color: colors.textTertiary,
   },
 
   // ---- Horizontal Variant ----
   horizontalCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
   },
   horizontalImage: {
-    width: 112,
-    height: 112,
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   horizontalImg: {
     width: '100%',
@@ -360,35 +228,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   horizontalPlaceholderEmoji: {
-    fontSize: 24,
+    fontSize: 22,
   },
   horizontalContent: {
     flex: 1,
-    padding: 14,
-    justifyContent: 'space-between',
-  },
-  horizontalMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  horizontalRegion: {
-    fontSize: 11,
-    color: colors.textTertiary,
+    paddingLeft: 12,
+    justifyContent: 'center',
   },
   horizontalTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textPrimary,
     lineHeight: 20,
+    marginBottom: 4,
   },
-  horizontalBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  horizontalStats: {
-    fontSize: 12,
-    color: colors.textTertiary,
+  horizontalMeta: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });

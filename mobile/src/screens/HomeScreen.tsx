@@ -24,15 +24,9 @@ import { useLanguageStore, Language } from '../stores/language';
 import { useAuthStore } from '../stores/auth';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 20 * 2 - 12) / 2;
+const CARD_WIDTH = (width - 40 - 10) / 2;
 
 const TRANSLATIONS: Record<string, Record<Language, string>> = {
-  communityBadge: {
-    ko: '🌏 전 세계 도보여행자들의 커뮤니티',
-    en: '🌏 A community of walkers around the world',
-    ja: '🌏 世界中の徒歩旅行者のコミュニティ',
-    zh: '🌏 全球步行旅行者的社区',
-  },
   heroTitle: {
     ko: '걸으면 보이는 것들',
     en: 'What you see\nwhen you walk',
@@ -40,10 +34,10 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     zh: '走路时看到的风景',
   },
   heroSub: {
-    ko: '전 세계 도보여행 코스를 발견하고\n나만의 길을 공유하세요',
-    en: 'Discover walking trails around the world\nand share your own path',
-    ja: '世界中の散歩コースを発見し\n自分だけの道を共有しましょう',
-    zh: '发现世界各地的步行路线\n分享属于你的道路',
+    ko: '전 세계 도보여행 코스를 발견하고 나만의 길을 공유하세요',
+    en: 'Discover walking trails worldwide and share your path',
+    ja: '世界中の散歩コースを発見し自分だけの道を共有しましょう',
+    zh: '发现世界各地的步行路线，分享属于你的道路',
   },
   exploreCTA: {
     ko: '코스 둘러보기',
@@ -63,12 +57,6 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'どこを歩きますか？',
     zh: '你想去哪里走走？',
   },
-  discoverSub: {
-    ko: '전 세계 도보여행 코스를 탐색하세요',
-    en: 'Explore walking trails around the world',
-    ja: '世界中の散歩コースを探索しましょう',
-    zh: '探索世界各地的步行路线',
-  },
   popularTitle: {
     ko: '인기 코스',
     en: 'Popular Trails',
@@ -87,47 +75,17 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'すべて見る',
     zh: '查看全部',
   },
-  ugcBadge: {
-    ko: '누구나 코스를 등록할 수 있어요',
-    en: 'Anyone can register a trail',
-    ja: '誰でもコースを登録できます',
-    zh: '任何人都可以注册路线',
-  },
-  ugcTitle: {
-    ko: '나만 아는 그 길,\nRoami에 공유해주세요',
-    en: 'That hidden path you know,\nshare it on Roami',
-    ja: '自分だけが知るあの道、\nRoamiで共有してください',
-    zh: '你所知道的那条路,\n在Roami上分享吧',
-  },
-  ugcDesc: {
-    ko: '동네 산책로, 여행지 골목길, 해외 숨은 명소까지.\n당신이 걸었던 길이 다른 여행자의 지도가 됩니다.',
-    en: 'Neighborhood walks, hidden alleys, secret spots abroad.\nYour path becomes another traveler\'s map.',
-    ja: '近所の散歩道、旅先の路地裏、海外の隠れた名所まで。\nあなたが歩いた道が他の旅行者の地図になります。',
-    zh: '社区步道、旅行小巷、海外隐藏景点。\n你走过的路将成为其他旅行者的地图。',
-  },
-  ugcShareBtn: {
-    ko: '내 코스 공유하기',
-    en: 'Share My Trail',
-    ja: 'コースを共有',
-    zh: '分享我的路线',
+  ugcCTA: {
+    ko: '나만의 길을 공유해보세요',
+    en: 'Share your own trail',
+    ja: '自分だけの道を共有してください',
+    zh: '分享你自己的路线',
   },
   ugcCommunityBtn: {
     ko: '커뮤니티 둘러보기',
     en: 'Browse Community',
     ja: 'コミュニティを見る',
     zh: '浏览社区',
-  },
-  recommendedTitle: {
-    ko: '추천 코스',
-    en: 'Recommended Trails',
-    ja: 'おすすめコース',
-    zh: '推荐路线',
-  },
-  recommendedSub: {
-    ko: '당신의 취향에 맞는 코스를 추천합니다',
-    en: 'Trails curated for your taste',
-    ja: 'あなたの好みに合ったコース',
-    zh: '根据您的喜好推荐路线',
   },
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
@@ -158,7 +116,7 @@ export default function HomeScreen() {
   const [showLangModal, setShowLangModal] = useState(false);
 
   const STATS = [
-    { value: '8개국', label: t('registeredCountries', language) },
+    { value: '8', label: t('registeredCountries', language) },
     { value: '120+', label: t('courses', language) },
     { value: '850+', label: t('stories', language) },
     { value: '2.4K', label: t('travelers', language) },
@@ -177,15 +135,6 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: recommendedTrails } = useQuery({
-    queryKey: ['trails', 'recommended'],
-    queryFn: async () => {
-      const { data } = await api.get('/trails/recommended/');
-      return data as Trail[];
-    },
-    enabled: isAuthenticated,
-  });
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent={true} />
@@ -194,159 +143,107 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }>
-        {/* Hero Section */}
+        {/* Hero Section — compact */}
         <FadeInView delay={0}>
-        <LinearGradient
-          colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 16 }]}>
-          {/* Top bar */}
-          <View style={styles.heroTopBar}>
-            <View style={styles.heroLogoRow}>
-              <Text style={styles.heroLogoIcon}>🌿</Text>
+          <LinearGradient
+            colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.hero, { paddingTop: insets.top + 12 }]}>
+            {/* Top bar */}
+            <View style={styles.heroTopBar}>
               <Text style={styles.heroLogoText}>Roami</Text>
+              <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => setShowLangModal(true)}
+                activeOpacity={0.7}>
+                <Text style={styles.langButtonText}>🌐</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.langButton}
-              onPress={() => setShowLangModal(true)}
-              activeOpacity={0.7}>
-              <Text style={styles.langButtonText}>🌐</Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* Community badge */}
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>{t('communityBadge', language)}</Text>
-          </View>
+            {/* Headline */}
+            <Text style={styles.heroTitle}>{t('heroTitle', language)}</Text>
+            <Text style={styles.heroSub}>{t('heroSub', language)}</Text>
 
-          {/* Headline */}
-          <Text style={styles.heroTitle}>{t('heroTitle', language)}</Text>
-          <Text style={styles.heroSub}>{t('heroSub', language)}</Text>
+            {/* CTA Buttons */}
+            <View style={styles.heroCTARow}>
+              <TouchableOpacity
+                style={styles.heroCTAPrimary}
+                onPress={() => navigation.navigate('Explore')}
+                activeOpacity={0.85}>
+                <Text style={styles.heroCTAPrimaryText}>{t('exploreCTA', language)}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.heroCTASecondary}
+                onPress={() => navigation.navigate('TrailCreate')}
+                activeOpacity={0.85}>
+                <Text style={styles.heroCTASecondaryText}>{t('shareCTA', language)}</Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* CTA Buttons */}
-          <View style={styles.heroCTARow}>
-            <TouchableOpacity
-              style={styles.heroCTAPrimary}
-              onPress={() => navigation.navigate('Explore')}
-              activeOpacity={0.85}>
-              <Text style={styles.heroCTAPrimaryText}>{t('exploreCTA', language)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.heroCTASecondary}
-              onPress={() => navigation.navigate('TrailCreate')}
-              activeOpacity={0.85}>
-              <Text style={styles.heroCTASecondaryText}>{t('shareCTA', language)}</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+            {/* Stats — overlay at bottom of hero */}
+            <View style={styles.statsRow}>
+              {STATS.map((stat, index) => (
+                <View key={stat.label} style={styles.statItem}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+          </LinearGradient>
         </FadeInView>
-
-        {/* Stats Bar */}
-        <View style={styles.statsBarOuter}>
-          <View style={styles.statsBar}>
-            {STATS.map((stat, index) => (
-              <View
-                key={stat.label}
-                style={[
-                  styles.statItem,
-                  index < STATS.length - 1 && styles.statItemBorder,
-                ]}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* Discover by Country */}
         <FadeInView delay={100}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('discoverTitle', language)}</Text>
-            <Text style={styles.sectionSub}>{t('discoverSub', language)}</Text>
-          </View>
-          <View style={styles.countryGrid}>
-            {DISCOVER_COUNTRIES.map((country) => (
-              <TouchableOpacity
-                key={country.code}
-                style={styles.countryCard}
-                activeOpacity={0.7}
-                onPress={() =>
-                  navigation.navigate('Explore', { country: country.code })
-                }>
-                <Text style={styles.countryEmoji}>{country.emoji}</Text>
-                <View style={styles.countryInfo}>
+            <View style={styles.countryGrid}>
+              {DISCOVER_COUNTRIES.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={styles.countryItem}
+                  activeOpacity={0.6}
+                  onPress={() =>
+                    navigation.navigate('Explore', { country: country.code })
+                  }>
+                  <Text style={styles.countryEmoji}>{country.emoji}</Text>
                   <Text style={styles.countryName}>{country.name}</Text>
                   <Text style={styles.countryDesc} numberOfLines={1}>
                     {country.desc}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
         </FadeInView>
 
         {/* Popular Trails */}
         <FadeInView delay={200}>
-        <View style={styles.popularSection}>
-          <View style={styles.popularHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>{t('popularTitle', language)}</Text>
-              <Text style={styles.sectionSub}>{t('popularSub', language)}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('Explore', { ordering: '-like_count' })
-              }>
-              <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
-            </TouchableOpacity>
-          </View>
-          {isLoading ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trailScroll}>
-              {[1, 2, 3].map((i) => (
-                <View key={i} style={styles.skeletonCard} />
-              ))}
-            </ScrollView>
-          ) : (
-            <FlatList
-              data={popularTrails?.slice(0, 6)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trailScroll}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <View style={styles.trailCardWrap}>
-                  <TrailCard
-                    trail={item}
-                    compact
-                    onPress={() =>
-                      navigation.navigate('TrailDetail', { id: item.id })
-                    }
-                  />
-                </View>
-              )}
-            />
-          )}
-        </View>
-        </FadeInView>
-
-        {/* Recommended Trails (logged-in users only) */}
-        {isAuthenticated && recommendedTrails && recommendedTrails.length > 0 && (
-          <FadeInView delay={250}>
-            <View style={styles.popularSection}>
-              <View style={styles.popularHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>{t('recommendedTitle', language)}</Text>
-                  <Text style={styles.sectionSub}>{t('recommendedSub', language)}</Text>
-                </View>
+          <View style={styles.trailSection}>
+            <View style={styles.trailHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>{t('popularTitle', language)}</Text>
+                <Text style={styles.sectionSub}>{t('popularSub', language)}</Text>
               </View>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('Explore', { ordering: '-like_count' })
+                }>
+                <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+              </TouchableOpacity>
+            </View>
+            {isLoading ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.trailScroll}>
+                {[1, 2, 3].map((i) => (
+                  <View key={i} style={styles.skeletonCard} />
+                ))}
+              </ScrollView>
+            ) : (
               <FlatList
-                data={recommendedTrails.slice(0, 6)}
+                data={popularTrails?.slice(0, 6)}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.trailScroll}
@@ -363,33 +260,27 @@ export default function HomeScreen() {
                   </View>
                 )}
               />
-            </View>
-          </FadeInView>
-        )}
-
-        {/* UGC CTA */}
-        <View style={styles.ugcSection}>
-          <View style={styles.ugcCard}>
-            <View style={styles.ugcBadge}>
-              <Text style={styles.ugcBadgeIcon}>🗺️</Text>
-              <Text style={styles.ugcBadgeText}>{t('ugcBadge', language)}</Text>
-            </View>
-            <Text style={styles.ugcTitle}>{t('ugcTitle', language)}</Text>
-            <Text style={styles.ugcDesc}>{t('ugcDesc', language)}</Text>
-            <View style={styles.ugcButtonRow}>
-              <TouchableOpacity style={styles.ugcButtonSecondary} onPress={() => navigation.navigate('Community')} activeOpacity={0.85}>
-                <Text style={styles.ugcButtonSecondaryText}>{t('ugcCommunityBtn', language)}</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
+        </FadeInView>
+
+        {/* UGC CTA — single compact line */}
+        <View style={styles.ugcRow}>
+          <Text style={styles.ugcText}>{t('ugcCTA', language)}</Text>
+          <TouchableOpacity
+            style={styles.ugcBtn}
+            onPress={() => navigation.navigate('Community')}
+            activeOpacity={0.85}>
+            <Text style={styles.ugcBtnText}>{t('ugcCommunityBtn', language)}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerMain}>© 2026 Roami</Text>
+          <Text style={styles.footerText}>&copy; 2026 Roami</Text>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
 
       {/* Language Selection Modal */}
@@ -428,10 +319,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
 
-  // Hero
+  // Hero — shorter, 220px feel
   hero: {
     paddingHorizontal: 20,
-    paddingBottom: 48,
+    paddingBottom: 20,
     alignItems: 'center',
   },
   heroTopBar: {
@@ -439,196 +330,153 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  heroLogoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroLogoIcon: {
-    fontSize: 20,
+    marginBottom: 16,
   },
   heroLogoText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
   langButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   langButtonText: {
-    fontSize: 16,
-  },
-  heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 20,
-  },
-  heroBadgeText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 15,
   },
   heroTitle: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 6,
     letterSpacing: -0.5,
     textAlign: 'center',
-    lineHeight: 44,
+    lineHeight: 36,
   },
   heroSub: {
-    fontSize: 15,
+    fontSize: 13,
     color: 'rgba(255,255,255,0.5)',
-    lineHeight: 22,
+    lineHeight: 18,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   heroCTARow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginBottom: 24,
   },
   heroCTAPrimary: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   heroCTAPrimaryText: {
     color: '#2D4A2E',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   heroCTASecondary: {
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   heroCTASecondaryText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
   },
 
-  // Stats Bar (Toss-style)
-  statsBarOuter: {
-    paddingHorizontal: 20,
-    marginTop: -28,
-    marginBottom: 16,
-  },
-  statsBar: {
+  // Stats — inside hero, no card
+  statsRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    width: '100%',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.15)',
   },
   statItem: {
-    flex: 1,
-    paddingVertical: 18,
     alignItems: 'center',
   },
-  statItemBorder: {
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: '#E5E8EB',
-  },
   statValue: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#191F28',
-    marginBottom: 4,
+    color: '#FFFFFF',
     letterSpacing: -0.3,
   },
   statLabel: {
-    fontSize: 11,
-    color: '#B0B8C1',
-    fontWeight: '400',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.45)',
+    marginTop: 2,
   },
 
   // Section
   section: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  sectionHeader: {
-    marginBottom: 16,
+    paddingTop: 28,
+    paddingBottom: 8,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#191F28',
     letterSpacing: -0.3,
   },
   sectionSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#B0B8C1',
     marginTop: 2,
   },
 
-  // Country Grid (2 columns)
+  // Country Grid — no borders, subtle bg
   countryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
+    marginTop: 16,
   },
-  countryCard: {
+  countryItem: {
     width: CARD_WIDTH,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 10,
   },
   countryEmoji: {
-    fontSize: 30,
-  },
-  countryInfo: {
-    flex: 1,
+    fontSize: 24,
   },
   countryName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#191F28',
-    marginBottom: 2,
   },
   countryDesc: {
-    fontSize: 11,
+    flex: 1,
+    fontSize: 10,
     color: '#B0B8C1',
   },
 
-  // Popular
-  popularSection: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 28,
-    marginTop: 8,
+  // Trail section
+  trailSection: {
+    paddingTop: 32,
+    paddingBottom: 8,
   },
-  popularHeader: {
+  trailHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   viewAllText: {
     fontSize: 13,
@@ -637,108 +485,58 @@ const styles = StyleSheet.create({
   },
   trailScroll: {
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 12,
   },
   trailCardWrap: {
-    width: 280,
+    width: 260,
   },
   skeletonCard: {
-    width: 280,
-    height: 200,
-    borderRadius: 20,
+    width: 260,
+    height: 180,
+    borderRadius: 12,
     backgroundColor: '#F7F8FA',
   },
 
-  // UGC CTA
-  ugcSection: {
+  // UGC — single compact row
+  ugcRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 32,
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    paddingVertical: 28,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
   },
-  ugcCard: {
-    backgroundColor: '#f0f7f0',
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-  },
-  ugcBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  ugcBadgeIcon: {
-    fontSize: 18,
-  },
-  ugcBadgeText: {
+  ugcText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#2D4A2E',
-  },
-  ugcTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#191F28',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-    marginBottom: 8,
-    lineHeight: 30,
-  },
-  ugcDesc: {
-    fontSize: 14,
-    color: '#8B95A1',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  ugcButtonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  ugcButtonPrimary: {
-    backgroundColor: '#2D4A2E',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
-  },
-  ugcButtonPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  ugcButtonSecondary: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  ugcButtonSecondaryText: {
-    color: '#191F28',
-    fontSize: 14,
     fontWeight: '500',
+    color: '#8B95A1',
+    flex: 1,
+    marginRight: 12,
+  },
+  ugcBtn: {
+    backgroundColor: '#2D4A2E',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  ugcBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   // Footer
   footer: {
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 8,
     alignItems: 'center',
   },
-  footerMain: {
-    fontSize: 12,
+  footerText: {
+    fontSize: 11,
     color: '#B0B8C1',
-    textAlign: 'center',
   },
 
   // Language Modal

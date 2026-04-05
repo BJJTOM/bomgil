@@ -299,7 +299,7 @@ export default function TrailCreateScreen() {
         <View style={styles.previewWrap}>
           <Image source={{ uri: coverImage.uri }} style={styles.previewImage} resizeMode="cover" />
           <TouchableOpacity style={styles.removeImageBtn} onPress={() => setCoverImage(null)}>
-            <Text style={styles.removeImageText}>{'\u2715'}</Text>
+            <Text style={styles.removeImageText}>{'✕'}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -318,9 +318,9 @@ export default function TrailCreateScreen() {
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>코스 요약</Text>
         <Text style={styles.summaryItem}>제목: {title || '-'}</Text>
-        <Text style={styles.summaryItem}>지역: {region || '-'}{' \u00B7 '}{COUNTRY_OPTIONS.find((c) => c.value === country)?.label || country}</Text>
+        <Text style={styles.summaryItem}>지역: {region || '-'}{' · '}{COUNTRY_OPTIONS.find((c) => c.value === country)?.label || country}</Text>
         <Text style={styles.summaryItem}>난이도: {DIFFICULTY_OPTIONS.find((d) => d.value === difficulty)?.label || difficulty}</Text>
-        <Text style={styles.summaryItem}>거리: {distanceKm || '-'} km{' \u00B7 '}{estimatedMinutes || '-'} 분</Text>
+        <Text style={styles.summaryItem}>거리: {distanceKm || '-'} km{' · '}{estimatedMinutes || '-'} 분</Text>
       </View>
     </View>
   );
@@ -331,7 +331,7 @@ export default function TrailCreateScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>코스 등록</Text>
         <View style={{ width: 40 }} />

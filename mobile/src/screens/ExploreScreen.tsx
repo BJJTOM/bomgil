@@ -232,7 +232,7 @@ export default function ExploreScreen() {
                       styles.chipArrow,
                       isActive && styles.chipTextActive,
                     ]}>
-                    {' \u25BE'}
+                    {' ▾'}
                   </Text>
                 </TouchableOpacity>
               );
@@ -245,7 +245,7 @@ export default function ExploreScreen() {
           </ScrollView>
           <TouchableOpacity onPress={() => setShowSortModal(true)} style={styles.sortBtn} activeOpacity={0.7}>
             <Text style={styles.sortBtnText}>
-              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' \u25BE'}
+              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' ▾'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankBtn} activeOpacity={0.7}>

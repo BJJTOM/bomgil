@@ -30,10 +30,10 @@ function getPasswordStrength(password: string): {
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { level: 1, label: '\uC57D\uD568', color: '#F87171' };
-  if (score <= 2) return { level: 2, label: '\uBCF4\uD1B5', color: '#FBBF24' };
-  if (score <= 3) return { level: 3, label: '\uC88B\uC74C', color: '#60A5FA' };
-  return { level: 4, label: '\uAC15\uB825', color: '#22C55E' };
+  if (score <= 1) return { level: 1, label: '약함', color: '#F87171' };
+  if (score <= 2) return { level: 2, label: '보통', color: '#FBBF24' };
+  if (score <= 3) return { level: 3, label: '좋음', color: '#60A5FA' };
+  return { level: 4, label: '강력', color: '#22C55E' };
 }
 
 export default function RegisterScreen() {
@@ -62,15 +62,15 @@ export default function RegisterScreen() {
     setError('');
 
     if (!form.nickname.trim()) {
-      setError('\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('닉네임을 입력해주세요');
       return;
     }
     if (form.password1.length < 8) {
-      setError('\uBE44\uBC00\uBC88\uD638\uB294 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4');
+      setError('비밀번호는 8자 이상이어야 합니다');
       return;
     }
     if (form.password1 !== form.password2) {
-      setError('\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4');
+      setError('비밀번호가 일치하지 않습니다');
       return;
     }
 
@@ -87,9 +87,9 @@ export default function RegisterScreen() {
       const errors = err.response?.data;
       if (errors) {
         const firstError = Object.values(errors).flat()[0] as string;
-        setError(firstError || '\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4');
+        setError(firstError || '회원가입에 실패했습니다');
       } else {
-        setError('\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4');
+        setError('회원가입에 실패했습니다');
       }
     } finally {
       setLoading(false);
@@ -111,7 +111,7 @@ export default function RegisterScreen() {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
 
         <View style={styles.content}>
@@ -120,9 +120,9 @@ export default function RegisterScreen() {
             <View style={styles.brandIcon}>
               <Text style={styles.brandLetter}>R</Text>
             </View>
-            <Text style={styles.title}>{'\uD68C\uC6D0\uAC00\uC785'}</Text>
+            <Text style={styles.title}>{'회원가입'}</Text>
             <Text style={styles.subtitle}>
-              {'\uAC77\uAE30 \uC5EC\uD589\uC744 \uD568\uAED8 \uC2DC\uC791\uD574\uBCFC\uAE4C\uC694?'}
+              {'걷기 여행을 함께 시작해볼까요?'}
             </Text>
           </View>
 
@@ -136,7 +136,7 @@ export default function RegisterScreen() {
             ) : null}
 
             {/* Email */}
-            <Text style={styles.label}>{'\uC774\uBA54\uC77C'}</Text>
+            <Text style={styles.label}>{'이메일'}</Text>
             <TextInput
               style={styles.input}
               placeholder="email@example.com"
@@ -150,11 +150,11 @@ export default function RegisterScreen() {
 
             {/* Nickname */}
             <Text style={styles.label}>
-              {'\uB2C9\uB124\uC784'} <Text style={styles.required}>*</Text>
+              {'닉네임'} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder={'\uB2C9\uB124\uC784 \uC785\uB825'}
+              placeholder={'닉네임 입력'}
               placeholderTextColor={colors.textTertiary}
               value={form.nickname}
               onChangeText={(v) => updateField('nickname', v)}
@@ -163,14 +163,14 @@ export default function RegisterScreen() {
               maxLength={50}
             />
             <Text style={styles.hint}>
-              {'\uB2E4\uB978 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC774\uB294 \uC774\uB984\uC785\uB2C8\uB2E4'}
+              {'다른 사용자에게 보이는 이름입니다'}
             </Text>
 
             {/* Password */}
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+            <Text style={styles.label}>{'비밀번호'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={'8\uC790 \uC774\uC0C1 \uC785\uB825'}
+              placeholder={'8자 이상 입력'}
               placeholderTextColor={colors.textTertiary}
               value={form.password1}
               onChangeText={(v) => updateField('password1', v)}
@@ -202,16 +202,16 @@ export default function RegisterScreen() {
                     styles.strengthLabel,
                     { color: passwordStrength.color },
                   ]}>
-                  {'\uBE44\uBC00\uBC88\uD638 \uAC15\uB3C4'}: {passwordStrength.label}
+                  {'비밀번호 강도'}: {passwordStrength.label}
                 </Text>
               </View>
             )}
 
             {/* Password Confirm */}
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638 \uD655\uC778'}</Text>
+            <Text style={styles.label}>{'비밀번호 확인'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={'\uBE44\uBC00\uBC88\uD638 \uB2E4\uC2DC \uC785\uB825'}
+              placeholder={'비밀번호 다시 입력'}
               placeholderTextColor={colors.textTertiary}
               value={form.password2}
               onChangeText={(v) => updateField('password2', v)}
@@ -220,12 +220,12 @@ export default function RegisterScreen() {
             />
             {form.password2.length > 0 && form.password1 !== form.password2 && (
               <Text style={styles.mismatchText}>
-                {'\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4'}
+                {'비밀번호가 일치하지 않습니다'}
               </Text>
             )}
             {form.password2.length > 0 && form.password1 === form.password2 && (
               <Text style={styles.matchText}>
-                {'\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD569\uB2C8\uB2E4'}
+                {'비밀번호가 일치합니다'}
               </Text>
             )}
 
@@ -237,35 +237,35 @@ export default function RegisterScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerBtnText}>{'\uD68C\uC6D0\uAC00\uC785'}</Text>
+                <Text style={styles.registerBtnText}>{'회원가입'}</Text>
               )}
             </TouchableOpacity>
 
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{'\uB610\uB294'}</Text>
+              <Text style={styles.dividerText}>{'또는'}</Text>
               <View style={styles.dividerLine} />
             </View>
 
             {/* Login link */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                {'\uC774\uBBF8 \uACC4\uC815\uC774 \uC788\uC73C\uC2E0\uAC00\uC694?'}
+                {'이미 계정이 있으신가요?'}
               </Text>
               <TouchableOpacity onPress={() => navigation.goBack()}>
-                <Text style={styles.footerLink}>{'\uB85C\uADF8\uC778'}</Text>
+                <Text style={styles.footerLink}>{'로그인'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Terms notice */}
           <Text style={styles.termsText}>
-            {'\uD68C\uC6D0\uAC00\uC785 \uC2DC '}
-            <Text style={styles.termsLink}>{'\uC774\uC6A9\uC57D\uAD00'}</Text>
-            {' \uBC0F '}
-            <Text style={styles.termsLink}>{'\uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68'}</Text>
-            {'\uC5D0 \uB3D9\uC758\uD558\uAC8C \uB429\uB2C8\uB2E4'}
+            {'회원가입 시 '}
+            <Text style={styles.termsLink}>{'이용약관'}</Text>
+            {' 및 '}
+            <Text style={styles.termsLink}>{'개인정보처리방침'}</Text>
+            {'에 동의하게 됩니다'}
           </Text>
         </View>
       </ScrollView>

@@ -19,14 +19,14 @@ import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
-  manual_gpx: { label: 'GPX', icon: '\uD83D\uDCC1' },
-  apple_watch: { label: 'Apple Watch', icon: '\u231A' },
-  garmin: { label: 'Garmin', icon: '\u231A' },
-  samsung_health: { label: 'Samsung Health', icon: '\uD83D\uDCF1' },
-  google_fit: { label: 'Google Fit', icon: '\uD83D\uDCF1' },
-  cashwalk: { label: 'Cashwalk', icon: '\uD83D\uDEB6' },
-  phone_gps: { label: 'GPS', icon: '\uD83D\uDCCD' },
-  strava: { label: 'Strava', icon: '\uD83C\uDFC3' },
+  manual_gpx: { label: 'GPX', icon: '📁' },
+  apple_watch: { label: 'Apple Watch', icon: '⌚' },
+  garmin: { label: 'Garmin', icon: '⌚' },
+  samsung_health: { label: 'Samsung Health', icon: '📱' },
+  google_fit: { label: 'Google Fit', icon: '📱' },
+  cashwalk: { label: 'Cashwalk', icon: '🚶' },
+  phone_gps: { label: 'GPS', icon: '📍' },
+  strava: { label: 'Strava', icon: '🏃' },
 };
 
 export default function ActivityScreen() {
@@ -63,7 +63,7 @@ export default function ActivityScreen() {
     if (!minutes) return '-';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
   };
 
   // Today's date string
@@ -103,18 +103,18 @@ export default function ActivityScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.headerSimple}>
-          <Text style={styles.headerTitle}>{'\uD65C\uB3D9 \uAE30\uB85D'}</Text>
+          <Text style={styles.headerTitle}>{'활동 기록'}</Text>
         </View>
         <View style={styles.loginPrompt}>
-          <Text style={styles.loginPromptIcon}>{'\uD83E\uDDB6'}</Text>
+          <Text style={styles.loginPromptIcon}>{'🦶'}</Text>
           <Text style={styles.loginPromptTitle}>
-            {'\uB85C\uADF8\uC778\uD558\uACE0 \uAC77\uAE30 \uAE30\uB85D\uC744 \uC2DC\uC791\uD558\uC138\uC694'}
+            {'로그인하고 걷기 기록을 시작하세요'}
           </Text>
           <TouchableOpacity
             style={styles.loginPromptBtn}
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.85}>
-            <Text style={styles.loginPromptBtnText}>{'\uB85C\uADF8\uC778'}</Text>
+            <Text style={styles.loginPromptBtnText}>{'로그인'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -159,9 +159,9 @@ export default function ActivityScreen() {
           <FadeInView delay={100}>
             <View style={styles.subStatsRow}>
               <Text style={styles.subStatText}>
-                {todayStats.steps.toLocaleString()} {'\uAC78\uC74C'}
+                {todayStats.steps.toLocaleString()} {'걸음'}
               </Text>
-              <Text style={styles.subStatDot}>{'\u00B7'}</Text>
+              <Text style={styles.subStatDot}>{'·'}</Text>
               <Text style={styles.subStatText}>
                 {todayStats.calories} kcal
               </Text>
@@ -176,7 +176,7 @@ export default function ActivityScreen() {
               style={styles.startWalkBtn}
               onPress={() => navigation.navigate('Walk')}
               activeOpacity={0.85}>
-              <Text style={styles.startWalkText}>{'\uD83D\uDEB6 \uAC77\uAE30 \uC2DC\uC791'}</Text>
+              <Text style={styles.startWalkText}>{'🚶 걷기 시작'}</Text>
             </TouchableOpacity>
           </FadeInView>
 
@@ -186,14 +186,14 @@ export default function ActivityScreen() {
                 style={styles.secondaryBtn}
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('AddRecord')}>
-                <Text style={styles.secondaryBtnText}>{'\uAE30\uB85D \uCD94\uAC00'}</Text>
+                <Text style={styles.secondaryBtnText}>{'기록 추가'}</Text>
               </TouchableOpacity>
-              <Text style={styles.secondaryDot}>{'\u00B7'}</Text>
+              <Text style={styles.secondaryDot}>{'·'}</Text>
               <TouchableOpacity
                 style={styles.secondaryBtn}
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('WalkStats')}>
-                <Text style={styles.secondaryBtnText}>{'\uD1B5\uACC4 \uBCF4\uAE30'}</Text>
+                <Text style={styles.secondaryBtnText}>{'통계 보기'}</Text>
               </TouchableOpacity>
             </View>
           </FadeInView>
@@ -202,7 +202,7 @@ export default function ActivityScreen() {
         {/* ===== BOTTOM SECTION: Recent activities ===== */}
         <View style={styles.recentSection}>
           <FadeInView delay={250}>
-            <Text style={styles.recentTitle}>{'\uCD5C\uADFC \uD65C\uB3D9'}</Text>
+            <Text style={styles.recentTitle}>{'최근 활동'}</Text>
           </FadeInView>
 
           {activitiesLoading ? (
@@ -217,7 +217,7 @@ export default function ActivityScreen() {
           ) : activities.length === 0 ? (
             <View style={styles.noRecords}>
               <Text style={styles.noRecordsText}>
-                {'\uC544\uC9C1 \uD65C\uB3D9 \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694'}
+                {'아직 활동 기록이 없어요'}
               </Text>
             </View>
           ) : (
@@ -244,7 +244,7 @@ export default function ActivityScreen() {
                     activeOpacity={0.7}>
                     <View style={styles.activityIconWrap}>
                       <Text style={styles.activityIcon}>
-                        {sourceInfo?.icon || '\uD83D\uDCCD'}
+                        {sourceInfo?.icon || '📍'}
                       </Text>
                     </View>
                     <View style={styles.activityInfo}>
@@ -252,11 +252,11 @@ export default function ActivityScreen() {
                         <Text style={styles.activityDateText}>{dateStr}</Text>
                         <Text style={styles.activityTitle}>
                           {activity.title ||
-                            `${sourceInfo?.label || ''} \uAE30\uB85D`}
+                            `${sourceInfo?.label || ''} 기록`}
                         </Text>
                       </View>
                       <Text style={styles.activityMeta}>
-                        {[distanceStr, durationStr].filter(Boolean).join(' \u00B7 ')}
+                        {[distanceStr, durationStr].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
                   </TouchableOpacity>

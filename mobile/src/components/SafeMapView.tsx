@@ -39,12 +39,12 @@ function MapPlaceholder({
 }) {
   return (
     <View style={styles.placeholder}>
-      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}\uFE0F'}</Text>
+      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}️'}</Text>
       <Text style={styles.placeholderRegion}>
         {region || ''} {country || ''}
       </Text>
       <Text style={styles.placeholderCoords}>
-        {lat.toFixed(4)}\u00B0N, {lng.toFixed(4)}\u00B0E
+        {lat.toFixed(4)}°N, {lng.toFixed(4)}°E
       </Text>
     </View>
   );
@@ -96,12 +96,12 @@ export default function SafeMapView({
           zoomEnabled={false}>
           <MarkerComponent
             coordinate={{ latitude: lat, longitude: lng }}
-            title={'\uCD9C\uBC1C'}
+            title={'출발'}
           />
           {endLat != null && endLng != null && (
             <MarkerComponent
               coordinate={{ latitude: endLat, longitude: endLng }}
-              title={'\uB3C4\uCC29'}
+              title={'도착'}
               pinColor="red"
             />
           )}

@@ -68,7 +68,7 @@ export default function AddRecordScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>{'\u2190'} 뒤로</Text>
+          <Text style={styles.backBtnText}>{'←'} 뒤로</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>기록 추가</Text>
         <View style={{ width: 50 }} />

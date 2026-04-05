@@ -20,7 +20,7 @@ import { colors } from '../theme/colors';
 
 const MOODS = [
   { key: 'happy', emoji: '\u{1F60A}', label: '행복해요' },
-  { key: 'peaceful', emoji: '\u262E\uFE0F', label: '평화로워요' },
+  { key: 'peaceful', emoji: '☮️', label: '평화로워요' },
   { key: 'exciting', emoji: '\u{1F929}', label: '신나요' },
   { key: 'touching', emoji: '\u{1F979}', label: '감동이에요' },
   { key: 'funny', emoji: '\u{1F604}', label: '재밌어요' },

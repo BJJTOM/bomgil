@@ -73,10 +73,10 @@ export default function RankingsScreen() {
             {item.title}
           </Text>
           <Text style={styles.rankMeta}>
-            {item.region}{' \u00B7 '}{item.distance_km ? `${parseFloat(String(item.distance_km)).toFixed(1)}km` : '-'}
+            {item.region}{' · '}{item.distance_km ? `${parseFloat(String(item.distance_km)).toFixed(1)}km` : '-'}
           </Text>
           <View style={styles.rankStats}>
-            <Text style={styles.rankLikes}>{'\u2764\uFE0F'} {item.like_count}</Text>
+            <Text style={styles.rankLikes}>{'❤️'} {item.like_count}</Text>
             <Text style={styles.rankViews}>{'\u{1F441}'} {item.view_count}</Text>
           </View>
         </View>
@@ -89,7 +89,7 @@ export default function RankingsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>랭킹</Text>
         <View style={{ width: 40 }} />

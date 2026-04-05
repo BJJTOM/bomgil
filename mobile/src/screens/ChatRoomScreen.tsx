@@ -119,7 +119,7 @@ export default function ChatRoomScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{roomName}</Text>
         <View style={{ width: 40 }} />
@@ -166,7 +166,7 @@ export default function ChatRoomScreen() {
           onPress={handleSend}
           disabled={!messageText.trim() || sendMutation.isPending}
           activeOpacity={0.7}>
-          <Text style={styles.sendBtnText}>{'\u2191'}</Text>
+          <Text style={styles.sendBtnText}>{'↑'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

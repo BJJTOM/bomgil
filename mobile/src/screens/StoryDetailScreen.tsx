@@ -26,7 +26,7 @@ import { useAuthStore } from '../stores/auth';
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
   happy: { emoji: '\u{1F60A}', label: '행복해요', bg: '#FFFBEB', text: '#B45309' },
-  peaceful: { emoji: '\u262E\uFE0F', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
+  peaceful: { emoji: '☮️', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
   exciting: { emoji: '\u{1F929}', label: '신나요', bg: '#FFF7ED', text: '#C2410C' },
   touching: { emoji: '\u{1F979}', label: '감동이에요', bg: '#FDF2F8', text: '#BE185D' },
   funny: { emoji: '\u{1F604}', label: '재밌어요', bg: '#F0FDF4', text: '#15803D' },
@@ -151,7 +151,7 @@ export default function StoryDetailScreen() {
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>{'\u2190'}</Text>
+            <Text style={styles.backText}>{'←'}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>스토리</Text>
           <View style={{ width: 40 }} />
@@ -176,7 +176,7 @@ export default function StoryDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>스토리</Text>
         <View style={{ width: 40 }} />
@@ -236,14 +236,14 @@ export default function StoryDetailScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
             <Text style={styles.actionIcon}>
-              {story.is_liked ? '\u2764\uFE0F' : '\u{1F90D}'}
+              {story.is_liked ? '❤️' : '\u{1F90D}'}
             </Text>
             <Text style={[styles.actionLabel, story.is_liked && { color: '#FF4B4B' }]}>
               좋아요 {story.like_count > 0 ? story.like_count : ''}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
-            <Text style={styles.actionIcon}>{'\u2B06\uFE0F'}</Text>
+            <Text style={styles.actionIcon}>{'⬆️'}</Text>
             <Text style={styles.actionLabel}>공유</Text>
           </TouchableOpacity>
         </View>
@@ -326,7 +326,7 @@ export default function StoryDetailScreen() {
           {submittingComment ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.commentSendText}>{'\u2191'}</Text>
+            <Text style={styles.commentSendText}>{'↑'}</Text>
           )}
         </TouchableOpacity>
         </View>

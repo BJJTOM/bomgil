@@ -35,7 +35,7 @@ function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => voi
   return (
     <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
       <Animated.Text style={[styles.actionIcon, { transform: [{ scale: scaleAnim }] }]}>
-        {isLiked ? '\u2764\uFE0F' : '\u{1F90D}'}
+        {isLiked ? '❤️' : '\u{1F90D}'}
       </Animated.Text>
     </TouchableOpacity>
   );
@@ -43,7 +43,7 @@ function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => voi
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
   happy: { emoji: '\u{1F60A}', label: '행복해요', bg: '#FFFBEB', text: '#B45309' },
-  peaceful: { emoji: '\u262E\uFE0F', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
+  peaceful: { emoji: '☮️', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
   exciting: { emoji: '\u{1F929}', label: '신나요', bg: '#FFF7ED', text: '#C2410C' },
   touching: { emoji: '\u{1F979}', label: '감동이에요', bg: '#FDF2F8', text: '#BE185D' },
   funny: { emoji: '\u{1F604}', label: '재밌어요', bg: '#F0FDF4', text: '#15803D' },
@@ -140,7 +140,7 @@ export default function CommunityScreen() {
                 <Text style={styles.authorName}>{item.author.nickname}</Text>
                 {(item.author as any).is_verified && (
                   <View style={styles.verifiedBadge}>
-                    <Text style={styles.verifiedCheck}>{'\u2713'}</Text>
+                    <Text style={styles.verifiedCheck}>{'✓'}</Text>
                   </View>
                 )}
                 {mood && (
@@ -237,7 +237,7 @@ export default function CommunityScreen() {
                 style={styles.actionBtn}
                 onPress={() => handleShare(item)}
                 activeOpacity={0.7}>
-                <Text style={styles.actionIcon}>{'\u2B06\uFE0F'}</Text>
+                <Text style={styles.actionIcon}>{'⬆️'}</Text>
               </TouchableOpacity>
             </View>
           </View>

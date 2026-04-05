@@ -117,7 +117,7 @@ export default function TrailCard({
         {/* Liked heart top right */}
         {trail.is_liked && (
           <View style={styles.likedBadge}>
-            <Text style={styles.likedHeart}>{'\u2764\uFE0F'}</Text>
+            <Text style={styles.likedHeart}>{'❤️'}</Text>
           </View>
         )}
       </View>

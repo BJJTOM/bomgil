@@ -26,9 +26,9 @@ class TrailDetailErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' }}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
-          <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uD654\uBA74\uC744 \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
-          <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'\uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694'}</Text>
+          <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+          <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'화면을 불러올 수 없습니다'}</Text>
+          <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'잠시 후 다시 시도해주세요'}</Text>
         </View>
       );
     }
@@ -47,27 +47,27 @@ import SafeMapView from '../components/SafeMapView';
 const { width } = Dimensions.get('window');
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  easy: { label: '\uC27D\uAC8C', bg: '#DCFCE7', text: '#15803D' },
-  moderate: { label: '\uBCF4\uD1B5', bg: '#FEF3C7', text: '#B45309' },
-  hard: { label: '\uB3C4\uC804', bg: '#FEE2E2', text: '#DC2626' },
+  easy: { label: '쉽게', bg: '#DCFCE7', text: '#15803D' },
+  moderate: { label: '보통', bg: '#FEF3C7', text: '#B45309' },
+  hard: { label: '도전', bg: '#FEE2E2', text: '#DC2626' },
 };
 
 const SEASON_LABELS: Record<string, string> = {
-  spring: '\uBD04',
-  summer: '\uC5EC\uB984',
-  autumn: '\uAC00\uC744',
-  winter: '\uACA8\uC6B8',
-  all: '\uC0AC\uACC4\uC808',
+  spring: '봄',
+  summer: '여름',
+  autumn: '가을',
+  winter: '겨울',
+  all: '사계절',
 };
 
 const SPOT_ICONS: Record<string, string> = {
   start: '\u{1F7E2}',
   restaurant: '\u{1F35C}',
-  cafe: '\u2615',
+  cafe: '☕',
   photo: '\u{1F4F7}',
   rest: '\u{1F9D8}',
   view: '\u{1F304}',
-  danger: '\u26A0\uFE0F',
+  danger: '⚠️',
   end: '\u{1F534}',
 };
 
@@ -82,7 +82,7 @@ function formatDuration(minutes: number | null | undefined): string {
   if (minutes == null || isNaN(minutes)) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
 export default function TrailDetailScreen() {
@@ -179,9 +179,9 @@ function TrailDetailScreenInner() {
     setSavingOffline(false);
     if (success) {
       setSavedOffline(true);
-      Alert.alert('\uC800\uC7A5 \uC644\uB8CC', '\uC624\uD504\uB77C\uC778\uC5D0\uC11C\uB3C4 \uC774 \uCF54\uC2A4\uB97C \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.');
+      Alert.alert('저장 완료', '오프라인에서도 이 코스를 확인할 수 있습니다.');
     } else {
-      Alert.alert('\uC800\uC7A5 \uC2E4\uD328', '\uCF54\uC2A4\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.');
+      Alert.alert('저장 실패', '코스를 저장하지 못했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -189,7 +189,7 @@ function TrailDetailScreenInner() {
     if (!trail) return;
     try {
       await Share.share({
-        message: `${trail?.title || ''} - ${trail?.region || ''}\nRoami\uC5D0\uC11C \uD655\uC778\uD574\uBCF4\uC138\uC694!`,
+        message: `${trail?.title || ''} - ${trail?.region || ''}\nRoami에서 확인해보세요!`,
       });
     } catch {}
   };
@@ -199,10 +199,10 @@ function TrailDetailScreenInner() {
   if (!trailId) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uCF54\uC2A4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 찾을 수 없습니다'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'\uB3CC\uC544\uAC00\uAE30'}</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -211,11 +211,11 @@ function TrailDetailScreenInner() {
   if (error) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uCF54\uC2A4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
-        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'\uB124\uD2B8\uC6CC\uD06C \uC5F0\uACB0\uC744 \uD655\uC778\uD574\uC8FC\uC138\uC694'}</Text>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 불러올 수 없습니다'}</Text>
+        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'네트워크 연결을 확인해주세요'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'\uB3CC\uC544\uAC00\uAE30'}</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -270,7 +270,7 @@ function TrailDetailScreenInner() {
             style={[styles.backButton, { top: insets.top + 8 }]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}>
-            <Text style={styles.backIcon}>{'\u2190'}</Text>
+            <Text style={styles.backIcon}>{'←'}</Text>
           </TouchableOpacity>
 
           {/* Difficulty badge */}
@@ -290,7 +290,7 @@ function TrailDetailScreenInner() {
         {/* ===== 2. Quick Stats Line ===== */}
         <View style={styles.statsLine}>
           <Text style={styles.statsText}>
-            {statsItems.join('  \u00B7  ')}
+            {statsItems.join('  ·  ')}
           </Text>
         </View>
 
@@ -304,15 +304,15 @@ function TrailDetailScreenInner() {
             style={[styles.actionBtn, trail.is_liked && styles.actionBtnLiked]}
             onPress={() => likeMutation.mutate()}
             activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{trail.is_liked ? '\u2764\uFE0F' : '\u{1F90D}'}</Text>
+            <Text style={styles.actionBtnIcon}>{trail.is_liked ? '❤️' : '\u{1F90D}'}</Text>
             <Text style={[styles.actionBtnText, trail.is_liked && styles.actionBtnTextLiked]}>
-              {'\uC88B\uC544\uC694'} {trail.like_count ?? 0}
+              {'좋아요'} {trail.like_count ?? 0}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{'\u2197\uFE0F'}</Text>
-            <Text style={styles.actionBtnText}>{'\uACF5\uC720'}</Text>
+            <Text style={styles.actionBtnIcon}>{'↗️'}</Text>
+            <Text style={styles.actionBtnText}>{'공유'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -320,9 +320,9 @@ function TrailDetailScreenInner() {
             onPress={handleSaveOffline}
             disabled={savingOffline}
             activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{savedOffline ? '\u2705' : '\u{1F4E5}'}</Text>
+            <Text style={styles.actionBtnIcon}>{savedOffline ? '✅' : '\u{1F4E5}'}</Text>
             <Text style={[styles.actionBtnText, savedOffline && styles.actionBtnTextSaved]}>
-              {savingOffline ? '\uC800\uC7A5 \uC911...' : savedOffline ? '\uC800\uC7A5\uB428' : '\uC800\uC7A5'}
+              {savingOffline ? '저장 중...' : savedOffline ? '저장됨' : '저장'}
             </Text>
           </TouchableOpacity>
 
@@ -331,13 +331,13 @@ function TrailDetailScreenInner() {
             onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
             activeOpacity={0.7}>
             <Text style={styles.actionBtnIcon}>{'\u{1F6B6}'}</Text>
-            <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>{'\uAC77\uAE30'}</Text>
+            <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>{'걷기'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
         {/* ===== 4. Description ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{'\uC18C\uAC1C'}</Text>
+          <Text style={styles.sectionTitle}>{'소개'}</Text>
           <Text style={styles.descText}>{trail?.description || ''}</Text>
           {(trail?.tags || []).length > 0 && (
             <View style={styles.tagsRow}>
@@ -365,7 +365,7 @@ function TrailDetailScreenInner() {
             />
           ) : (
             <View style={styles.mapFallback}>
-              <Text style={{ fontSize: 32 }}>{'\u{1F5FA}\uFE0F'}</Text>
+              <Text style={{ fontSize: 32 }}>{'\u{1F5FA}️'}</Text>
               <Text style={{ color: '#8B95A1', fontSize: 13, marginTop: 6 }}>
                 {trail?.region || ''} {trail?.country || ''}
               </Text>
@@ -377,7 +377,7 @@ function TrailDetailScreenInner() {
         {(spots || []).length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {'\uACBD\uC720\uC9C0'} <Text style={styles.sectionCount}>{spots.length}</Text>
+              {'경유지'} <Text style={styles.sectionCount}>{spots.length}</Text>
             </Text>
             {(showAllSpots ? spots : (spots || []).slice(0, 3)).map((spot, index) => (
               <View key={spot.id} style={styles.spotItem}>
@@ -436,10 +436,10 @@ function TrailDetailScreenInner() {
         <View style={styles.section}>
           <View style={styles.reviewsHeader}>
             <View style={styles.reviewsTitleRow}>
-              <Text style={styles.sectionTitle}>{'\uB9AC\uBDF0'}</Text>
+              <Text style={styles.sectionTitle}>{'리뷰'}</Text>
               {avgRating && (
                 <Text style={styles.ratingInline}>
-                  {'\u2605'} {avgRating} ({safeReviews.length})
+                  {'★'} {avgRating} ({safeReviews.length})
                 </Text>
               )}
             </View>
@@ -448,7 +448,7 @@ function TrailDetailScreenInner() {
               onPress={() => setShowReviewForm(!showReviewForm)}
               activeOpacity={0.7}>
               <Text style={styles.writeReviewBtnText}>
-                {showReviewForm ? '\uCDE8\uC18C' : '\uB9AC\uBDF0 \uC791\uC131'}
+                {showReviewForm ? '취소' : '리뷰 작성'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -467,7 +467,7 @@ function TrailDetailScreenInner() {
                         styles.starSelect,
                         star <= reviewForm.rating && styles.starSelectFilled,
                       ]}>
-                      {'\u2605'}
+                      {'★'}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -477,7 +477,7 @@ function TrailDetailScreenInner() {
                 multiline
                 numberOfLines={4}
                 maxLength={1000}
-                placeholder={'\uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uC8FC\uC138\uC694'}
+                placeholder={'리뷰를 작성해주세요'}
                 placeholderTextColor="#B0B8C1"
                 value={reviewForm.content}
                 onChangeText={(text) => setReviewForm((p) => ({ ...p, content: text }))}
@@ -492,7 +492,7 @@ function TrailDetailScreenInner() {
                 disabled={!reviewForm.content || createReview.isPending}
                 activeOpacity={0.7}>
                 <Text style={styles.reviewSubmitText}>
-                  {createReview.isPending ? '\uC81C\uCD9C \uC911...' : '\uC81C\uCD9C'}
+                  {createReview.isPending ? '제출 중...' : '제출'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -501,8 +501,8 @@ function TrailDetailScreenInner() {
           {/* Review List */}
           {safeReviews.length === 0 && !showReviewForm && (
             <View style={styles.emptyReviews}>
-              <Text style={styles.emptyReviewsText}>{'\uC544\uC9C1 \uB9AC\uBDF0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
-              <Text style={styles.emptyReviewsSub}>{'\uCCAB \uBC88\uC9F8 \uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uBCF4\uC138\uC694'}</Text>
+              <Text style={styles.emptyReviewsText}>{'아직 리뷰가 없습니다'}</Text>
+              <Text style={styles.emptyReviewsSub}>{'첫 번째 리뷰를 작성해보세요'}</Text>
             </View>
           )}
           {safeReviews.slice(0, 5).map((review: Review) => (
@@ -519,7 +519,7 @@ function TrailDetailScreenInner() {
                   <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>
                   <Text style={styles.reviewStars}>
                     {Array.from({ length: 5 }, (_, i) =>
-                      i < review.rating ? '\u2605' : '\u2606'
+                      i < review.rating ? '★' : '☆'
                     ).join('')}
                     {review.visited_date ? (
                       '  ' + new Date(review.visited_date).toLocaleDateString('ko-KR')
@@ -549,7 +549,7 @@ function TrailDetailScreenInner() {
             <Text style={styles.authorName}>{trail.author.nickname || ''}</Text>
             {trail.author.is_guide && (
               <View style={styles.guideBadge}>
-                <Text style={styles.guideBadgeText}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+                <Text style={styles.guideBadgeText}>{'인증 가이드'}</Text>
               </View>
             )}
           </View>

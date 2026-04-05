@@ -97,7 +97,7 @@ export default function SavedTrailsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>저장한 코스</Text>
         <View style={{ width: 40 }} />

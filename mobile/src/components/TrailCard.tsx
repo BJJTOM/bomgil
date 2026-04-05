@@ -81,11 +81,11 @@ export default function TrailCard({
         <View style={styles.horizontalContent}>
           <View style={styles.horizontalMeta}>
             <Text style={styles.horizontalRegion}>
-              {emoji} {trail.region}
+              {emoji} {trail?.region || ''}
             </Text>
           </View>
           <Text style={styles.horizontalTitle} numberOfLines={1}>
-            {trail.title}
+            {trail?.title || ''}
           </Text>
           <View style={styles.horizontalBottom}>
             <View style={[styles.diffBadge, { backgroundColor: diff.bg }]}>

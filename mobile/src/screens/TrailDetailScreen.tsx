@@ -136,8 +136,12 @@ function TrailDetailScreenInner() {
   const { data: spots = [] } = useQuery({
     queryKey: ['spots', trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${trailId}/spots/`);
-      return data as Spot[];
+      try {
+        const { data } = await api.get(`/spots/`, { params: { trail: trailId } });
+        return ((data?.results ?? data) || []) as Spot[];
+      } catch {
+        return [];
+      }
     },
     enabled: !!trailId && !!trail,
     retry: 1,
@@ -185,7 +189,7 @@ function TrailDetailScreenInner() {
     if (!trail) return;
     try {
       await Share.share({
-        message: `${trail.title} - ${trail.region}\nRoami\uC5D0\uC11C \uD655\uC778\uD574\uBCF4\uC138\uC694!`,
+        message: `${trail?.title || ''} - ${trail?.region || ''}\nRoami\uC5D0\uC11C \uD655\uC778\uD574\uBCF4\uC138\uC694!`,
       });
     } catch {}
   };
@@ -224,9 +228,10 @@ function TrailDetailScreenInner() {
   }
 
   const diff = DIFFICULTY_CONFIG[trail.difficulty || 'easy'] || DIFFICULTY_CONFIG.easy;
+  const safeReviews = reviews || [];
   const avgRating =
-    reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    safeReviews.length > 0
+      ? (safeReviews.reduce((sum: number, r: Review) => sum + (r.rating || 0), 0) / safeReviews.length).toFixed(1)
       : null;
 
   return (
@@ -259,9 +264,9 @@ function TrailDetailScreenInner() {
             <View style={[styles.diffBadge, { backgroundColor: diff.bg }]}>
               <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
             </View>
-            <Text style={styles.coverTitle}>{trail.title}</Text>
+            <Text style={styles.coverTitle}>{trail?.title || ''}</Text>
             <Text style={styles.coverRegion}>
-              {[trail.region, trail.country].filter(Boolean).join(', ')}
+              {[trail?.region, trail?.country].filter(Boolean).join(', ')}
             </Text>
           </View>
         </View>
@@ -280,13 +285,13 @@ function TrailDetailScreenInner() {
             <View style={styles.infoCard}>
               <Text style={styles.infoLabel}>{'\uB204\uC801\uC0C1\uC2B9'}</Text>
               <Text style={styles.infoValue}>
-                {trail.elevation_gain ? `${trail.elevation_gain}m` : '-'}
+                {trail?.elevation_gain ? `${trail.elevation_gain}m` : '-'}
               </Text>
             </View>
             <View style={styles.infoCard}>
               <Text style={styles.infoLabel}>{'\uC2DC\uC990'}</Text>
               <Text style={styles.infoValue}>
-                {SEASON_LABELS[trail.best_season] || trail.best_season}
+                {SEASON_LABELS[trail?.best_season || ''] || trail?.best_season || '-'}
               </Text>
             </View>
           </View>
@@ -338,10 +343,10 @@ function TrailDetailScreenInner() {
           {/* Description Section */}
           <View style={styles.descCard}>
             <Text style={styles.sectionTitle}>{'\uCF54\uC2A4 \uC18C\uAC1C'}</Text>
-            <Text style={styles.descText}>{trail.description}</Text>
-            {trail.tags && trail.tags.length > 0 && (
+            <Text style={styles.descText}>{trail?.description || ''}</Text>
+            {(trail?.tags || []).length > 0 && (
               <View style={styles.tagsRow}>
-                {trail.tags.map((tag) => (
+                {(trail?.tags || []).map((tag) => (
                   <View key={tag.id} style={styles.tag}>
                     <Text style={styles.tagText}>#{tag.name}</Text>
                   </View>
@@ -354,12 +359,12 @@ function TrailDetailScreenInner() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{'\uACBD\uB85C \uC9C0\uB3C4'}</Text>
             <View style={styles.mapContainer}>
-              {trail.start_lat && trail.start_lng ? (
+              {trail?.start_lat && trail?.start_lng && !isNaN(parseFloat(String(trail.start_lat))) && !isNaN(parseFloat(String(trail.start_lng))) ? (
                 <MapView
                   style={styles.map}
                   initialRegion={{
-                    latitude: parseFloat(trail.start_lat),
-                    longitude: parseFloat(trail.start_lng),
+                    latitude: parseFloat(String(trail.start_lat)),
+                    longitude: parseFloat(String(trail.start_lng)),
                     latitudeDelta: 0.02,
                     longitudeDelta: 0.02,
                   }}
@@ -367,17 +372,17 @@ function TrailDetailScreenInner() {
                   zoomEnabled={false}
                 >
                   <Marker
-                    coordinate={{ latitude: parseFloat(trail.start_lat), longitude: parseFloat(trail.start_lng) }}
+                    coordinate={{ latitude: parseFloat(String(trail.start_lat)), longitude: parseFloat(String(trail.start_lng)) }}
                     title={'\uCD9C\uBC1C'}
                   />
-                  {trail.end_lat && trail.end_lng && (
+                  {trail.end_lat && trail.end_lng && !isNaN(parseFloat(String(trail.end_lat))) && !isNaN(parseFloat(String(trail.end_lng))) && (
                     <Marker
-                      coordinate={{ latitude: parseFloat(trail.end_lat), longitude: parseFloat(trail.end_lng) }}
+                      coordinate={{ latitude: parseFloat(String(trail.end_lat)), longitude: parseFloat(String(trail.end_lng)) }}
                       title={'\uB3C4\uCC29'}
                       pinColor="red"
                     />
                   )}
-                  {trail.path_data?.coordinates && trail.path_data.coordinates.length > 0 && (
+                  {trail.path_data?.coordinates && Array.isArray(trail.path_data.coordinates) && trail.path_data.coordinates.length > 0 && (
                     <Polyline
                       coordinates={trail.path_data.coordinates.map(([lng, lat]: number[]) => ({ latitude: lat, longitude: lng }))}
                       strokeColor={colors.primary}
@@ -388,19 +393,19 @@ function TrailDetailScreenInner() {
               ) : (
                 <View style={styles.mapFallback}>
                   <Text style={{ fontSize: 40 }}>{'\u{1F5FA}\uFE0F'}</Text>
-                  <Text style={{ color: colors.textTertiary, fontSize: 13, marginTop: 8 }}>{'\uC704\uCE58 \uC815\uBCF4 \uC5C6\uC74C'}</Text>
+                  <Text style={{ color: '#999', marginTop: 8 }}>{'\uC9C0\uB3C4 \uC815\uBCF4 \uC5C6\uC74C'}</Text>
                 </View>
               )}
             </View>
           </View>
 
           {/* Spots Timeline */}
-          {spots.length > 0 && (
+          {(spots || []).length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                {'\uCF54\uC2A4 \uC2A4\uD31F'} ({spots.length})
+                {'\uCF54\uC2A4 \uC2A4\uD31F'} ({(spots || []).length})
               </Text>
-              {spots.map((spot, index) => (
+              {(spots || []).map((spot, index) => (
                 <View key={spot.id} style={styles.spotItem}>
                   <View style={styles.spotTimeline}>
                     <Text style={styles.spotIcon}>
@@ -409,8 +414,8 @@ function TrailDetailScreenInner() {
                     {index < spots.length - 1 && <View style={styles.spotLine} />}
                   </View>
                   <View style={styles.spotContent}>
-                    <Text style={styles.spotName}>{spot.name}</Text>
-                    <Text style={styles.spotDistance}>{spot.distance_from_start_km}km</Text>
+                    <Text style={styles.spotName}>{spot?.name || ''}</Text>
+                    <Text style={styles.spotDistance}>{spot?.distance_from_start_km != null ? `${spot.distance_from_start_km}km` : ''}</Text>
                     {spot.description ? (
                       <Text style={styles.spotDesc} numberOfLines={2}>
                         {spot.description}
@@ -450,7 +455,7 @@ function TrailDetailScreenInner() {
                 {avgRating && (
                   <View style={styles.ratingBadge}>
                     <Text style={styles.ratingBadgeText}>
-                      {'\u2605'} {avgRating} ({reviews.length})
+                      {'\u2605'} {avgRating} ({safeReviews.length})
                     </Text>
                   </View>
                 )}
@@ -463,11 +468,11 @@ function TrailDetailScreenInner() {
             </View>
 
             {/* Rating Distribution */}
-            {reviews.length > 0 && (
+            {safeReviews.length > 0 && (
               <View style={styles.ratingDistCard}>
                 {[5, 4, 3, 2, 1].map((star) => {
-                  const count = reviews.filter((r) => r.rating === star).length;
-                  const pct = (count / reviews.length) * 100;
+                  const count = safeReviews.filter((r: Review) => r.rating === star).length;
+                  const pct = (count / safeReviews.length) * 100;
                   return (
                     <View key={star} style={styles.ratingDistRow}>
                       <Text style={styles.ratingDistStar}>{star}</Text>
@@ -538,7 +543,7 @@ function TrailDetailScreenInner() {
             )}
 
             {/* Review List */}
-            {reviews.slice(0, 5).map((review) => (
+            {safeReviews.slice(0, 5).map((review: Review) => (
               <View key={review.id} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
                   <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>

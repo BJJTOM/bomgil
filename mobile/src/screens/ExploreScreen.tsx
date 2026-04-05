@@ -11,6 +11,7 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -95,6 +96,7 @@ export default function ExploreScreen() {
     return initial;
   });
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
+  const [showSortModal, setShowSortModal] = useState(false);
 
   const queryParams = useMemo(() => {
     const params: Record<string, string> = {};
@@ -188,80 +190,59 @@ export default function ExploreScreen() {
           </View>
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}>
-          {FILTER_CHIPS.map((filter) => {
-            const isActive = !!filters[filter.key];
-            const activeLabel = isActive
-              ? filter.options.find((o) => o.value === filters[filter.key])
-                  ?.label
-              : null;
-            return (
-              <TouchableOpacity
-                key={filter.key}
-                style={[styles.chip, isActive && styles.chipActive]}
-                onPress={() =>
-                  setExpandedFilter(
-                    expandedFilter === filter.key ? null : filter.key,
-                  )
-                }
-                activeOpacity={0.7}>
-                <Text
-                  style={[
-                    styles.chipText,
-                    isActive && styles.chipTextActive,
-                  ]}>
-                  {activeLabel || filter.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.chipArrow,
-                    isActive && styles.chipTextActive,
-                  ]}>
-                  ▾
-                </Text>
+        {/* Filter Row: chips + sort dropdown + ranking */}
+        <View style={styles.filterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            style={{ flex: 1 }}>
+            {FILTER_CHIPS.map((filter) => {
+              const isActive = !!filters[filter.key];
+              const activeLabel = isActive
+                ? filter.options.find((o) => o.value === filters[filter.key])
+                    ?.label
+                : null;
+              return (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[styles.chip, isActive && styles.chipActive]}
+                  onPress={() =>
+                    setExpandedFilter(
+                      expandedFilter === filter.key ? null : filter.key,
+                    )
+                  }
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      isActive && styles.chipTextActive,
+                    ]}>
+                    {activeLabel || filter.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.chipArrow,
+                      isActive && styles.chipTextActive,
+                    ]}>
+                    {' \u25BE'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {activeFilterCount > 0 && (
+              <TouchableOpacity onPress={clearAllFilters} style={styles.resetBtn}>
+                <Text style={styles.resetText}>{'초기화'}</Text>
               </TouchableOpacity>
-            );
-          })}
-          {activeFilterCount > 0 && (
-            <TouchableOpacity onPress={clearAllFilters} style={styles.resetBtn}>
-              <Text style={styles.resetText}>초기화</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-
-        {/* Sort Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sortRow}>
-          {SORT_OPTIONS.map((opt) => {
-            const isActive = sortBy === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.sortChip, isActive && styles.sortChipActive]}
-                onPress={() => setSortBy(opt.value)}
-                activeOpacity={0.7}>
-                <Text
-                  style={[
-                    styles.sortChipText,
-                    isActive && styles.sortChipTextActive,
-                  ]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Ranking Chip */}
-        <View style={styles.rankingRow}>
-          <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankingChip} activeOpacity={0.7}>
-            <Text style={styles.rankingText}>🏆 랭킹</Text>
+            )}
+          </ScrollView>
+          <TouchableOpacity onPress={() => setShowSortModal(true)} style={styles.sortBtn} activeOpacity={0.7}>
+            <Text style={styles.sortBtnText}>
+              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' \u25BE'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankBtn} activeOpacity={0.7}>
+            <Text style={styles.rankBtnText}>{'🏆'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -296,6 +277,28 @@ export default function ExploreScreen() {
             )}
           </ScrollView>
         )}
+
+        {/* Sort Modal */}
+        <Modal visible={showSortModal} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            onPress={() => setShowSortModal(false)}
+            activeOpacity={1}>
+            <View style={styles.sortModal}>
+              {SORT_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.sortItem, sortBy === opt.value && styles.sortItemActive]}
+                  onPress={() => { setSortBy(opt.value); setShowSortModal(false); }}>
+                  <Text style={[styles.sortItemText, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
+                    {opt.label}
+                  </Text>
+                  {sortBy === opt.value && <Text style={{ color: colors.primary }}>{'✓'}</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
 
       {/* Result Count */}
@@ -395,6 +398,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // Filter row (chips + sort + ranking on one line)
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 12,
+    gap: 8,
+  },
+
   // Filter chips
   chipRow: {
     paddingHorizontal: 20,
@@ -436,55 +447,69 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Sort chips
-  sortRow: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 6,
+  // Sort dropdown button
+  sortBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  sortChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 9999,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.bgSecondary,
     borderWidth: 1,
     borderColor: colors.borderDefault,
   },
-  sortChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  sortChipText: {
-    fontSize: 11,
+  sortBtnText: {
+    fontSize: 12,
     fontWeight: '500',
     color: colors.textSecondary,
   },
-  sortChipTextActive: {
-    color: '#FFFFFF',
-  },
 
-  // Ranking chip
-  rankingRow: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    flexDirection: 'row',
-  },
-  rankingChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 9999,
+  // Ranking button
+  rankBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFBEB',
     borderWidth: 1,
     borderColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  rankingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#B45309',
+  rankBtnText: {
+    fontSize: 16,
+  },
+
+  // Sort modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sortModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 8,
+    width: 220,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  sortItemActive: {
+    backgroundColor: 'rgba(45,74,46,0.06)',
+  },
+  sortItemText: {
+    fontSize: 14,
+    color: colors.textPrimary,
   },
 
   // Expanded filter options

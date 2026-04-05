@@ -33,6 +33,7 @@ export default function TrailDetailPage() {
   const toggleHelpful = useToggleHelpful();
 
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showAllSpots, setShowAllSpots] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     content: "",
@@ -43,11 +44,11 @@ export default function TrailDetailPage() {
   if (trailLoading) {
     return (
       <div className="md:pt-16">
-        <Skeleton className="h-80 w-full rounded-none" />
-        <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
-          <Skeleton className="h-10 w-3/4" />
-          <Skeleton className="h-6 w-1/2" />
-          <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full rounded-none" />
+        <div className="max-w-3xl mx-auto px-5 py-8 space-y-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-32 w-full" />
         </div>
       </div>
     );
@@ -56,7 +57,7 @@ export default function TrailDetailPage() {
   if (!trail) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-text-secondary">{t("common.noResults")}</p>
+        <p className="text-[#8B95A1]">{t("common.noResults")}</p>
       </div>
     );
   }
@@ -92,74 +93,96 @@ export default function TrailDetailPage() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
+  const visibleSpots = showAllSpots ? spots : spots.slice(0, 3);
+
+  const likeLabel = language === "ko" ? "좋아요" : language === "ja" ? "いいね" : language === "zh" ? "点赞" : "Like";
+  const shareLabel = language === "ko" ? "공유" : language === "ja" ? "共有" : language === "zh" ? "分享" : "Share";
+  const saveLabel = language === "ko" ? "저장" : language === "ja" ? "保存" : language === "zh" ? "收藏" : "Save";
+  const walkLabel = language === "ko" ? "걷기" : language === "ja" ? "歩く" : language === "zh" ? "步行" : "Walk";
+  const moreLabel = language === "ko" ? "더보기" : language === "ja" ? "もっと見る" : language === "zh" ? "查看更多" : "Show more";
+
   return (
-    <div className="md:pt-16">
+    <div className="md:pt-16" style={{ backgroundColor: "#FAFAFA" }}>
       {/* Cover Image */}
-      <div className="relative h-64 md:h-80 bg-primary">
+      <div className="relative h-56 md:h-72 bg-[#2D4A2E]">
         {tr.cover_image || tr.thumbnail_url ? (
           <img src={tr.cover_image || tr.thumbnail_url} alt={tr.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#2D4A2E] to-[#3A5C3B] flex items-center justify-center">
-            <span className="text-8xl opacity-30">🥾</span>
+            <span className="text-7xl opacity-30">🥾</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <div className="absolute bottom-6 left-6 right-6 text-white">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="absolute bottom-5 left-5 right-5 text-white">
           <DifficultyBadge difficulty={tr.difficulty} />
-          <h1 className="text-3xl md:text-4xl font-semibold mt-2">{tr.title}</h1>
-          <p className="text-sm opacity-80 mt-1">
+          <h1 className="text-[22px] md:text-[28px] font-bold mt-1.5 leading-tight">{tr.title}</h1>
+          <p className="text-[13px] opacity-70 mt-0.5">
             {tr.region}, {tr.country}
           </p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        {/* Info Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <InfoCard label={t("trail.distance")} value={formatDistance(tr.distance_km)} />
-          <InfoCard label={t("trail.time")} value={formatDuration(tr.estimated_minutes)} />
-          <InfoCard
-            label={t("trail.elevation")}
-            value={tr.elevation_gain ? `${tr.elevation_gain}m` : "-"}
-          />
-          <InfoCard label={t("trail.season")} value={SEASON_LABELS[tr.best_season] || tr.best_season} />
+      <div className="max-w-3xl mx-auto px-5 py-6">
+        {/* Quick stats — single line with dot separators */}
+        <div className="flex items-center gap-2 text-[14px] text-[#8B95A1] mb-5 flex-wrap">
+          <span className="font-semibold text-[#191F28]">{formatDistance(tr.distance_km)}</span>
+          <span>·</span>
+          <span>{formatDuration(tr.estimated_minutes)}</span>
+          <span>·</span>
+          <span>{tr.elevation_gain ? `${tr.elevation_gain}m` : "-"} {t("trail.elevation")}</span>
+          <span>·</span>
+          <span>{SEASON_LABELS[tr.best_season] || tr.best_season}</span>
+          {avgRating && (
+            <>
+              <span>·</span>
+              <span className="text-yellow-600">★ {avgRating}</span>
+            </>
+          )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-3 mb-10">
+        {/* Action buttons — pills */}
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
           <button
             onClick={() => toggleLike.mutate(trailId)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-button text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium transition-all ${
               tr.is_liked
-                ? "bg-danger text-white"
-                : "card hover:shadow-hover"
+                ? "bg-red-50 text-red-500 border border-red-200"
+                : "bg-white border border-[#E5E8EB] text-[#191F28]"
             }`}
           >
-            {tr.is_liked ? "❤️" : "🤍"} {tr.like_count}
+            {tr.is_liked ? "❤️" : "🤍"} {likeLabel} {tr.like_count > 0 && tr.like_count}
           </button>
           <ShareButton
             title={tr.title}
             description={tr.description}
             url={typeof window !== "undefined" ? window.location.href : ""}
           />
-          <div className="flex-1" />
-          <span className="text-sm text-text-tertiary">
+          <button className="flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium bg-white border border-[#E5E8EB] text-[#191F28]">
+            🔖 {saveLabel}
+          </button>
+          <Link
+            href={`/walk?trail=${trailId}`}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-semibold bg-[#2D4A2E] text-white"
+          >
+            🚶 {walkLabel}
+          </Link>
+          <span className="ml-auto text-[12px] text-[#B0B8C1]">
             👁️ {tr.view_count}
           </span>
         </div>
 
         {/* Description */}
-        <div className="card p-7 mb-10">
-          <h2 className="text-[18px] font-semibold mb-3">{t("trail.description")}</h2>
-          <p className="text-text-secondary leading-relaxed whitespace-pre-line">
+        <div className="mb-6">
+          <h2 className="text-[17px] font-bold text-[#191F28] mb-2">{t("trail.description")}</h2>
+          <p className="text-[14px] text-[#8B95A1] leading-relaxed whitespace-pre-line">
             {tr.description}
           </p>
           {tr.tags.length > 0 && (
-            <div className="flex gap-2 mt-5 flex-wrap">
+            <div className="flex gap-1.5 mt-3 flex-wrap">
               {tr.tags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="chip text-sm"
+                  className="inline-flex items-center px-2.5 py-1 rounded-[20px] text-[12px] font-medium bg-[#F7F8FA] text-[#8B95A1]"
                 >
                   #{tag.name}
                 </span>
@@ -169,8 +192,8 @@ export default function TrailDetailPage() {
         </div>
 
         {/* Map */}
-        <div className="mb-10 -mx-6 md:mx-0 md:rounded-card overflow-hidden">
-          <div className="h-[400px] md:h-[500px] relative">
+        <div className="mb-6 -mx-5 md:mx-0 md:rounded-[16px] overflow-hidden">
+          <div className="h-[320px] md:h-[400px] relative">
             <MapView
               country={tr.country}
               center={{
@@ -188,21 +211,29 @@ export default function TrailDetailPage() {
           </div>
         </div>
 
-        {/* Spot Timeline */}
+        {/* Spots — max 3, then "more" */}
         {spots.length > 0 && (
-          <div className="mb-10">
-            <h2 className="text-[18px] font-semibold mb-6">{t("trail.spotTimeline")}</h2>
-            <SpotTimeline spots={spots} />
+          <div className="mb-6">
+            <h2 className="text-[17px] font-bold text-[#191F28] mb-4">{t("trail.spotTimeline")}</h2>
+            <SpotTimeline spots={visibleSpots} />
+            {spots.length > 3 && !showAllSpots && (
+              <button
+                onClick={() => setShowAllSpots(true)}
+                className="mt-3 w-full py-2.5 text-[13px] font-medium text-[#2D4A2E] bg-[#f0f7f0] rounded-[14px] hover:bg-[#d9eed9] transition-colors"
+              >
+                {moreLabel} ({spots.length - 3})
+              </button>
+            )}
           </div>
         )}
 
-        {/* Reviews */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <h2 className="text-[18px] font-semibold">{t("review.title")}</h2>
+        {/* Reviews — no rating distribution chart */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[17px] font-bold text-[#191F28]">{t("review.title")}</h2>
               {avgRating && (
-                <span className="text-sm bg-yellow-50 text-yellow-700 px-3 py-1 rounded-pill font-medium">
+                <span className="text-[13px] text-yellow-600 font-medium">
                   ★ {avgRating} ({reviews.length})
                 </span>
               )}
@@ -210,45 +241,20 @@ export default function TrailDetailPage() {
             {isAuthenticated && (
               <button
                 onClick={() => setShowReviewForm(!showReviewForm)}
-                className="btn-primary px-5 py-2.5 text-sm"
+                className="px-4 py-2 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold"
               >
                 {t("trail.writeReview")}
               </button>
             )}
           </div>
 
-          {/* Rating distribution */}
-          {reviews.length > 0 && (
-            <div className="card p-5 mb-6">
-              {[5, 4, 3, 2, 1].map((star) => {
-                const count = reviews.filter((r: any) => r.rating === star).length;
-                const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
-                return (
-                  <div key={star} className="flex items-center gap-2.5 py-1.5">
-                    <span className="text-xs w-4 text-text-secondary">{star}</span>
-                    <span className="text-xs text-yellow-400">★</span>
-                    <div className="flex-1 h-2 bg-[#F5F6F7] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-yellow-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-text-tertiary w-6 text-right">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
           {/* Review Form */}
           {showReviewForm && (
-            <div className="card p-7 mb-6">
-              <h3 className="text-[18px] font-semibold mb-5">{t("review.write")}</h3>
-              <div className="space-y-5">
+            <div className="bg-white rounded-[16px] border border-[#E5E8EB] p-5 mb-4">
+              <h3 className="text-[17px] font-bold text-[#191F28] mb-4">{t("review.write")}</h3>
+              <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-text-secondary block mb-2">
+                  <label className="text-[13px] text-[#8B95A1] block mb-1.5">
                     {t("review.rating")}
                   </label>
                   <div className="flex gap-1">
@@ -270,7 +276,7 @@ export default function TrailDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm text-text-secondary block mb-2">
+                  <label className="text-[13px] text-[#8B95A1] block mb-1.5">
                     {t("review.visitDate")}
                   </label>
                   <input
@@ -286,7 +292,7 @@ export default function TrailDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-text-secondary block mb-2">
+                  <label className="text-[13px] text-[#8B95A1] block mb-1.5">
                     {t("review.content")}
                   </label>
                   <textarea
@@ -300,17 +306,17 @@ export default function TrailDetailPage() {
                     className="input-field resize-none"
                   />
                 </div>
-                <div className="flex justify-end gap-3">
+                <div className="flex justify-end gap-2">
                   <button
                     onClick={() => setShowReviewForm(false)}
-                    className="btn-ghost px-5 py-2.5 text-sm"
+                    className="px-4 py-2 text-[13px] font-medium text-[#8B95A1] hover:bg-[#F7F8FA] rounded-[14px] transition-colors"
                   >
                     {t("common.cancel")}
                   </button>
                   <button
                     onClick={handleSubmitReview}
                     disabled={!reviewForm.content || createReview.isPending}
-                    className="btn-primary px-6 py-2.5 text-sm disabled:opacity-50"
+                    className="px-5 py-2 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold disabled:opacity-50"
                   >
                     {createReview.isPending ? t("review.submitting") : t("review.submit")}
                   </button>
@@ -320,7 +326,7 @@ export default function TrailDetailPage() {
           )}
 
           {/* Review List */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {reviews.map((review: any) => (
               <ReviewCard
                 key={review.id}
@@ -333,29 +339,29 @@ export default function TrailDetailPage() {
 
         {/* Activity Records */}
         {activities.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[18px] font-semibold">{t("activities.title")}</h2>
-              <span className="text-[12px] text-text-tertiary">{activities.length}{t("activities.recorded")}</span>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[17px] font-bold text-[#191F28]">{t("activities.title")}</h2>
+              <span className="text-[12px] text-[#B0B8C1]">{activities.length}{t("activities.recorded")}</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {activities.slice(0, 5).map((act: ActivityTrack) => (
-                <Link key={act.id} href={`/activities/${act.id}`} className="card-hover p-4 flex items-center justify-between">
+                <Link key={act.id} href={`/activities/${act.id}`} className="block bg-white rounded-[16px] border border-[#E5E8EB] p-4 flex items-center justify-between hover:shadow-card transition-shadow">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-accent/30 flex items-center justify-center text-sm">
+                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center text-sm">
                       {act.user?.profile_image ? (
                         <Image src={act.user.profile_image} alt="" width={36} height={36} className="rounded-full object-cover" />
                       ) : "👤"}
                     </div>
                     <div>
-                      <p className="text-[13px] font-semibold">{act.user?.nickname}</p>
-                      <p className="text-[11px] text-text-tertiary">
+                      <p className="text-[13px] font-semibold text-[#191F28]">{act.user?.nickname}</p>
+                      <p className="text-[11px] text-[#B0B8C1]">
                         {act.distance_km ? `${parseFloat(act.distance_km).toFixed(1)}km` : "-"} · {formatActivityDuration(act.duration_minutes)}
                         {act.total_steps ? ` · ${act.total_steps.toLocaleString()} ${t("activities.steps")}` : ""}
                       </p>
                     </div>
                   </div>
-                  <span className="chip text-[10px]">{act.source === "apple_watch" ? "⌚" : act.source === "garmin" ? "⌚" : act.source === "cashwalk" ? "🚶" : "📍"} {act.source.replace("_", " ")}</span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-[20px] text-[10px] font-medium bg-[#F7F8FA] text-[#8B95A1]">{act.source === "apple_watch" ? "⌚" : act.source === "garmin" ? "⌚" : act.source === "cashwalk" ? "🚶" : "📍"} {act.source.replace("_", " ")}</span>
                 </Link>
               ))}
             </div>
@@ -363,29 +369,29 @@ export default function TrailDetailPage() {
         )}
 
         {/* Author */}
-        <div className="card p-7">
-          <h2 className="text-[18px] font-semibold mb-5">{t("trail.author")}</h2>
+        <div className="bg-white rounded-[16px] border border-[#E5E8EB] p-5 mb-6">
+          <h2 className="text-[17px] font-bold text-[#191F28] mb-4">{t("trail.author")}</h2>
           <Link
             href={`/profile/${tr.author.nickname}`}
-            className="flex items-center gap-4 hover:bg-[#F5F6F7] -m-3 p-3 rounded-card transition-colors"
+            className="flex items-center gap-3 hover:bg-[#F7F8FA] -m-2 p-2 rounded-[12px] transition-colors"
           >
-            <div className="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden">
               {tr.author.profile_image ? (
                 <Image
                   src={tr.author.profile_image}
                   alt={tr.author.nickname}
-                  width={56}
-                  height={56}
+                  width={48}
+                  height={48}
                   className="object-cover"
                 />
               ) : (
-                <span className="text-2xl">👤</span>
+                <span className="text-xl">👤</span>
               )}
             </div>
             <div>
-              <p className="font-semibold">{tr.author.nickname}</p>
+              <p className="text-[14px] font-semibold text-[#191F28]">{tr.author.nickname}</p>
               {tr.author.is_guide && (
-                <span className="text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-pill">
+                <span className="text-[11px] bg-[#f0f7f0] text-[#2D4A2E] px-2 py-0.5 rounded-[20px] font-medium">
                   {t("trail.certifiedGuide")}
                 </span>
               )}
@@ -393,15 +399,6 @@ export default function TrailDetailPage() {
           </Link>
         </div>
       </div>
-    </div>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="card p-5 text-center">
-      <p className="text-xs text-text-tertiary mb-1">{label}</p>
-      <p className="font-semibold font-en text-lg">{value}</p>
     </div>
   );
 }

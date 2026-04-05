@@ -42,10 +42,10 @@ const config: Config = {
         en: ["'Poppins'", "sans-serif"],
       },
       borderRadius: {
-        card: "20px",
-        button: "16px",
-        pill: "9999px",
-        input: "14px",
+        card: "16px",
+        button: "14px",
+        pill: "20px",
+        input: "12px",
       },
       boxShadow: {
         soft: "0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)",

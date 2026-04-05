@@ -100,11 +100,11 @@ main {
   }
 
   .card {
-    @apply bg-white rounded-card shadow-soft;
+    @apply bg-white rounded-card border border-[#E5E8EB];
   }
 
   .card-hover {
-    @apply bg-white rounded-card shadow-soft hover:shadow-card
+    @apply bg-white rounded-card border border-[#E5E8EB] hover:shadow-card
            active:scale-[0.99] transition-all duration-200;
   }
 

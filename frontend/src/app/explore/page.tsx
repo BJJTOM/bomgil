@@ -12,7 +12,7 @@ import type { Trail } from "@/types";
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-warm" />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "#FAFAFA" }} />}>
       <ExploreContent />
     </Suspense>
   );
@@ -140,10 +140,10 @@ function ExploreContent() {
   };
 
   return (
-    <div className="md:pt-16 min-h-screen bg-warm">
+    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
       {/* Search & Filters Header */}
-      <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-border-light">
-        <div className="max-w-7xl mx-auto px-5 pt-14 md:pt-3 pb-3 space-y-3">
+      <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
+        <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3 pb-3 space-y-2.5">
           {/* Search */}
           <div className="relative">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -152,12 +152,12 @@ function ExploreContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("explore.searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-2.5 rounded-pill bg-bg-secondary border-none text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-tertiary transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-[12px] bg-[#F7F8FA] border-none text-[13px] focus:outline-none focus:ring-2 focus:ring-[#2D4A2E]/20 placeholder:text-[#B0B8C1] transition-all"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-text-tertiary/30 flex items-center justify-center"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#B0B8C1]/30 flex items-center justify-center"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -167,7 +167,7 @@ function ExploreContent() {
             )}
           </div>
 
-          {/* Single row: filters + sort + map toggle — horizontal scroll */}
+          {/* Filter chips + sort */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-nowrap">
             <FilterBar
               filters={FILTER_CONFIG}
@@ -177,7 +177,7 @@ function ExploreContent() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="flex-shrink-0 text-[12px] bg-bg-secondary border-none rounded-pill px-3 py-1.5 font-medium text-text-secondary focus:outline-none appearance-none cursor-pointer"
+              className="flex-shrink-0 text-[12px] bg-[#F7F8FA] border-none rounded-[20px] px-3 py-1.5 font-medium text-[#8B95A1] focus:outline-none appearance-none cursor-pointer"
               style={{ WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23B0B8C1' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", paddingRight: "28px" }}
             >
               {SORT_OPTIONS.map((opt) => (
@@ -189,7 +189,7 @@ function ExploreContent() {
             {activeFilterCount > 0 && (
               <button
                 onClick={clearAllFilters}
-                className="flex-shrink-0 text-[11px] text-primary font-medium whitespace-nowrap"
+                className="flex-shrink-0 text-[11px] text-[#2D4A2E] font-medium whitespace-nowrap"
               >
                 {t("common.reset")}
               </button>
@@ -198,44 +198,44 @@ function ExploreContent() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-5 py-6">
-          {/* Trail count */}
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[13px] text-text-secondary">
-              {isLoading
-                ? t("explore.searching")
-                : t("explore.found").replace("{count}", String(trails.length))}
-            </p>
-          </div>
+      <div className="max-w-5xl mx-auto px-5 py-5">
+        {/* Trail count */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[13px] text-[#8B95A1]">
+            {isLoading
+              ? t("explore.searching")
+              : t("explore.found").replace("{count}", String(trails.length))}
+          </p>
+        </div>
 
-          {isLoading ? (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <TrailCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : trails.length === 0 ? (
-            <EmptyState
-              title={t("explore.noResults")}
-              description={t("explore.noResultsDesc")}
-              action={
-                <button
-                  onClick={clearAllFilters}
-                  className="btn-primary px-6 py-3 text-[13px]"
-                >
-                  {t("explore.resetFilters")}
-                </button>
-              }
-            />
-          ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {trails.map((trail) => (
-                <div key={trail.id} id={`trail-${trail.id}`}>
-                  <TrailCard trail={trail} />
-                </div>
-              ))}
-            </div>
-          )}
+        {isLoading ? (
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <TrailCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : trails.length === 0 ? (
+          <EmptyState
+            title={t("explore.noResults")}
+            description={t("explore.noResultsDesc")}
+            action={
+              <button
+                onClick={clearAllFilters}
+                className="px-5 py-2.5 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold"
+              >
+                {t("explore.resetFilters")}
+              </button>
+            }
+          />
+        ) : (
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {trails.map((trail) => (
+              <div key={trail.id} id={`trail-${trail.id}`}>
+                <TrailCard trail={trail} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

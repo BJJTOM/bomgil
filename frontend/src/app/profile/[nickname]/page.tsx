@@ -86,13 +86,11 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="md:pt-16 max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-6 mb-8">
-          <Skeleton className="w-24 h-24 rounded-full" />
-          <div className="space-y-3">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </div>
+      <div className="md:pt-16 max-w-2xl mx-auto px-5 py-8">
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-48" />
         </div>
       </div>
     );
@@ -114,71 +112,75 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="md:pt-16 max-w-4xl mx-auto px-4 py-8">
-      {/* Profile Header */}
-      <div className="flex flex-col items-center text-center mb-8">
-        <div className="w-24 h-24 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0 ring-4 ring-accent/20">
-          {profile.profile_image ? (
-            <Image
-              src={profile.profile_image}
-              alt={profile.nickname}
-              width={96}
-              height={96}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-4xl">👤</span>
-          )}
-        </div>
+    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
+      <div className="max-w-2xl mx-auto">
+        {/* Profile Header — Instagram style */}
+        <div className="bg-white px-5 pt-8 pb-5 text-center">
+          {/* Centered avatar with ring */}
+          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#A8E6CF] to-[#2D4A2E] p-[3px]">
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+              {profile.profile_image ? (
+                <Image
+                  src={profile.profile_image}
+                  alt={profile.nickname}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-3xl">👤</span>
+              )}
+            </div>
+          </div>
 
-        <div className="mt-4">
-          <div className="flex items-center justify-center gap-3">
-            <h1 className="text-2xl font-bold">{profile.nickname}</h1>
-            {profile.is_guide && (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                인증 가이드
+          <div className="mt-3">
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-[22px] font-bold text-[#191F28]">{profile.nickname}</h1>
+              {profile.is_guide && (
+                <span className="text-[11px] bg-[#f0f7f0] text-[#2D4A2E] px-2 py-0.5 rounded-[20px] font-medium">
+                  인증 가이드
+                </span>
+              )}
+            </div>
+
+            {profile.one_liner && (
+              <p className="text-[14px] text-[#8B95A1] mt-0.5">{profile.one_liner}</p>
+            )}
+
+            {profile.bio && (
+              <p className="text-[14px] text-[#8B95A1] mt-1 max-w-sm mx-auto">{profile.bio}</p>
+            )}
+
+            {profile.walking_style && WALKING_STYLE_LABELS[profile.walking_style] && (
+              <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-[#F7F8FA] rounded-[20px] text-[12px] font-medium text-[#8B95A1]">
+                {WALKING_STYLE_LABELS[profile.walking_style].emoji} {WALKING_STYLE_LABELS[profile.walking_style].label}
               </span>
             )}
           </div>
 
-          {profile.one_liner && (
-            <p className="text-text-secondary text-sm mt-1">{profile.one_liner}</p>
-          )}
-
-          {profile.bio && (
-            <p className="text-text-secondary mt-2 max-w-md">{profile.bio}</p>
-          )}
-
-          {/* Walking style badge */}
-          {profile.walking_style && WALKING_STYLE_LABELS[profile.walking_style] && (
-            <span className="inline-flex items-center gap-1 mt-3 px-3 py-1 bg-bg-secondary rounded-full text-[12px] font-medium text-text-secondary">
-              {WALKING_STYLE_LABELS[profile.walking_style].emoji} {WALKING_STYLE_LABELS[profile.walking_style].label}
-            </span>
-          )}
-
-          {/* Stats row */}
-          <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="text-center">
-              <p className="text-lg font-bold text-text-primary">{profile.trail_count || 0}</p>
-              <p className="text-[11px] text-text-tertiary">코스</p>
+          {/* 3-column stats */}
+          <div className="flex items-center justify-center mt-4">
+            <div className="flex-1 text-center py-2">
+              <p className="text-[18px] font-bold text-[#191F28]">{profile.trail_count || 0}</p>
+              <p className="text-[11px] text-[#B0B8C1]">코스</p>
             </div>
-            <div className="w-px h-8 bg-border-light" />
-            <div className="text-center">
-              <p className="text-lg font-bold text-text-primary">{profile.total_walks || 0}</p>
-              <p className="text-[11px] text-text-tertiary">동행</p>
+            <div className="w-px h-8 bg-[#F2F4F6]" />
+            <div className="flex-1 text-center py-2">
+              <p className="text-[18px] font-bold text-[#191F28]">{profile.total_walks || 0}</p>
+              <p className="text-[11px] text-[#B0B8C1]">동행</p>
             </div>
-            <div className="w-px h-8 bg-border-light" />
-            <div className="text-center">
-              <p className="text-lg font-bold text-text-primary">{profile.review_count || 0}</p>
-              <p className="text-[11px] text-text-tertiary">리뷰</p>
+            <div className="w-px h-8 bg-[#F2F4F6]" />
+            <div className="flex-1 text-center py-2">
+              <p className="text-[18px] font-bold text-[#191F28]">{profile.review_count || 0}</p>
+              <p className="text-[11px] text-[#B0B8C1]">리뷰</p>
             </div>
           </div>
 
           {/* Badges */}
           {profile.badges && profile.badges.length > 0 && (
-            <div className="flex gap-2 mt-3 flex-wrap justify-center">
+            <div className="flex gap-1.5 mt-3 flex-wrap justify-center">
               {profile.badges.map((badge: any) => (
-                <span key={badge.badge_type} className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-light rounded-pill text-[11px] font-semibold text-primary">
+                <span key={badge.badge_type} className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#f0f7f0] rounded-[20px] text-[11px] font-medium text-[#2D4A2E]">
                   {BADGE_CONFIG[badge.badge_type]?.emoji || "🏅"} {BADGE_CONFIG[badge.badge_type]?.label || badge.badge_type}
                 </span>
               ))}
@@ -188,111 +190,113 @@ export default function ProfilePage() {
           {isMyProfile && (
             <Link
               href="/profile/edit"
-              className="mt-4 inline-block px-5 py-2 bg-bg-secondary text-text-primary rounded-button text-[13px] font-medium hover:bg-border-light transition-colors"
+              className="mt-3 inline-block w-full max-w-[200px] py-2 bg-[#F7F8FA] text-[#191F28] rounded-[14px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors"
             >
               프로필 수정
             </Link>
           )}
         </div>
+
+        {/* Clean tab bar */}
+        <div className="flex bg-white border-b border-[#F2F4F6] sticky top-0 md:top-[60px] z-20">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-3 text-[13px] font-medium border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? "border-[#191F28] text-[#191F28]"
+                  : "border-transparent text-[#B0B8C1]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="px-5 py-4">
+          {activeTab === "trails" && (
+            <div>
+              {trails.length === 0 ? (
+                <EmptyState
+                  title="등록한 코스가 없습니다"
+                  description={
+                    isMyProfile ? "첫 번째 코스를 등록해보세요!" : undefined
+                  }
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {trails.map((trail: Trail) => (
+                    <TrailCard key={trail.id} trail={trail} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "likes" && isMyProfile && (
+            <div>
+              {likedTrails.length === 0 ? (
+                <EmptyState
+                  title="좋아요한 코스가 없습니다"
+                  description="마음에 드는 코스에 좋아요를 눌러보세요!"
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {likedTrails.map((trail: Trail) => (
+                    <TrailCard key={trail.id} trail={trail} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "activities" && (
+            <div>
+              {activities.length === 0 ? (
+                <EmptyState
+                  title="활동 기록이 없습니다"
+                  description={isMyProfile ? "도보 활동을 기록해보세요!" : undefined}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {activities.map((act: ActivityTrack) => (
+                    <Link key={act.id} href={`/activities/${act.id}`} className="block bg-white rounded-[16px] border border-[#E5E8EB] p-4 hover:shadow-card transition-shadow">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[14px] font-semibold text-[#191F28]">{act.title || "도보 기록"}</p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[20px] text-[10px] font-medium bg-[#F7F8FA] text-[#8B95A1]">{act.source.replace("_", " ")}</span>
+                      </div>
+                      <div className="flex gap-4 text-[12px] text-[#8B95A1]">
+                        {act.distance_km && <span>{parseFloat(act.distance_km).toFixed(1)}km</span>}
+                        {act.duration_minutes && <span>{Math.floor(act.duration_minutes / 60)}시간 {act.duration_minutes % 60}분</span>}
+                        {act.total_steps && <span>{act.total_steps.toLocaleString()}걸음</span>}
+                      </div>
+                      <p className="text-[11px] text-[#B0B8C1] mt-1">
+                        {new Date(act.created_at).toLocaleDateString("ko", { month: "long", day: "numeric" })}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "reviews" && (
+            <div>
+              {reviews.length === 0 ? (
+                <EmptyState title="작성한 리뷰가 없습니다" />
+              ) : (
+                <div className="space-y-3">
+                  {reviews.map((review: Review) => (
+                    <ReviewCard key={review.id} review={review} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Tabs */}
-      <div className="flex border-b mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === "trails" && (
-        <div>
-          {trails.length === 0 ? (
-            <EmptyState
-              title="등록한 코스가 없습니다"
-              description={
-                isMyProfile ? "첫 번째 코스를 등록해보세요!" : undefined
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {trails.map((trail: Trail) => (
-                <TrailCard key={trail.id} trail={trail} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "likes" && isMyProfile && (
-        <div>
-          {likedTrails.length === 0 ? (
-            <EmptyState
-              title="좋아요한 코스가 없습니다"
-              description="마음에 드는 코스에 좋아요를 눌러보세요!"
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {likedTrails.map((trail: Trail) => (
-                <TrailCard key={trail.id} trail={trail} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "activities" && (
-        <div>
-          {activities.length === 0 ? (
-            <EmptyState
-              title="활동 기록이 없습니다"
-              description={isMyProfile ? "도보 활동을 기록해보세요!" : undefined}
-            />
-          ) : (
-            <div className="space-y-3">
-              {activities.map((act: ActivityTrack) => (
-                <Link key={act.id} href={`/activities/${act.id}`} className="card-hover p-4 block">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[14px] font-semibold">{act.title || "도보 기록"}</p>
-                    <span className="chip text-[10px]">{act.source.replace("_", " ")}</span>
-                  </div>
-                  <div className="flex gap-4 text-[12px] text-text-secondary">
-                    {act.distance_km && <span>{parseFloat(act.distance_km).toFixed(1)}km</span>}
-                    {act.duration_minutes && <span>{Math.floor(act.duration_minutes / 60)}시간 {act.duration_minutes % 60}분</span>}
-                    {act.total_steps && <span>{act.total_steps.toLocaleString()}걸음</span>}
-                  </div>
-                  <p className="text-[11px] text-text-tertiary mt-1">
-                    {new Date(act.created_at).toLocaleDateString("ko", { month: "long", day: "numeric" })}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "reviews" && (
-        <div>
-          {reviews.length === 0 ? (
-            <EmptyState title="작성한 리뷰가 없습니다" />
-          ) : (
-            <div className="space-y-4">
-              {reviews.map((review: Review) => (
-                <ReviewCard key={review.id} review={review} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

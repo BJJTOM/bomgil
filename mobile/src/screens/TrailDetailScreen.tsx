@@ -38,7 +38,8 @@ class TrailDetailErrorBoundary extends React.Component<
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import MapView, { Polyline, Marker } from 'react-native-maps';
+// MapView removed — causes crash without Google Maps API key
+// import MapView, { Polyline, Marker } from 'react-native-maps';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
@@ -355,47 +356,19 @@ function TrailDetailScreenInner() {
             )}
           </View>
 
-          {/* Map */}
+          {/* Map — placeholder (no Google Maps API key) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{'\uACBD\uB85C \uC9C0\uB3C4'}</Text>
+            <Text style={styles.sectionTitle}>경로 지도</Text>
             <View style={styles.mapContainer}>
-              {trail?.start_lat && trail?.start_lng && !isNaN(parseFloat(String(trail.start_lat))) && !isNaN(parseFloat(String(trail.start_lng))) ? (
-                <MapView
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: parseFloat(String(trail.start_lat)),
-                    longitude: parseFloat(String(trail.start_lng)),
-                    latitudeDelta: 0.02,
-                    longitudeDelta: 0.02,
-                  }}
-                  scrollEnabled={false}
-                  zoomEnabled={false}
-                >
-                  <Marker
-                    coordinate={{ latitude: parseFloat(String(trail.start_lat)), longitude: parseFloat(String(trail.start_lng)) }}
-                    title={'\uCD9C\uBC1C'}
-                  />
-                  {trail.end_lat && trail.end_lng && !isNaN(parseFloat(String(trail.end_lat))) && !isNaN(parseFloat(String(trail.end_lng))) && (
-                    <Marker
-                      coordinate={{ latitude: parseFloat(String(trail.end_lat)), longitude: parseFloat(String(trail.end_lng)) }}
-                      title={'\uB3C4\uCC29'}
-                      pinColor="red"
-                    />
-                  )}
-                  {trail.path_data?.coordinates && Array.isArray(trail.path_data.coordinates) && trail.path_data.coordinates.length > 0 && (
-                    <Polyline
-                      coordinates={trail.path_data.coordinates.map(([lng, lat]: number[]) => ({ latitude: lat, longitude: lng }))}
-                      strokeColor={colors.primary}
-                      strokeWidth={4}
-                    />
-                  )}
-                </MapView>
-              ) : (
-                <View style={styles.mapFallback}>
-                  <Text style={{ fontSize: 40 }}>{'\u{1F5FA}\uFE0F'}</Text>
-                  <Text style={{ color: '#999', marginTop: 8 }}>{'\uC9C0\uB3C4 \uC815\uBCF4 \uC5C6\uC74C'}</Text>
-                </View>
-              )}
+              <View style={styles.mapFallback}>
+                <Text style={{ fontSize: 40 }}>🗺️</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8, fontWeight: '500' }}>
+                  {trail?.region || ''} {trail?.country || ''}
+                </Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4 }}>
+                  {trail?.start_lat ? `${parseFloat(String(trail.start_lat)).toFixed(4)}°N, ${parseFloat(String(trail.start_lng)).toFixed(4)}°E` : '위치 정보 없음'}
+                </Text>
+              </View>
             </View>
           </View>
 

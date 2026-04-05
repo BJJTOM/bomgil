@@ -230,47 +230,24 @@ export default function WalkScreen() {
     }
   }, []);
 
-  const startWalk = useCallback(async () => {
-    // 1. Request permission FIRST — this shows the system dialog
-    let hasPermission = false;
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: '위치 권한 필요',
-            message: 'Roami가 걷기 경로를 기록하려면\n위치 정보 접근이 필요합니다.',
-            buttonPositive: '허용',
-            buttonNegative: '나중에',
-          },
-        );
-        hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        hasPermission = true;
-      }
-    } catch {
-      hasPermission = false;
-    }
-
-    // 2. Start engine and timer immediately
+  const startWalk = () => {
+    // Start IMMEDIATELY — no async, no await, no permission blocking
     engineRef.current.start();
     setState('walking');
 
+    // Timer starts right away
     timerRef.current = setInterval(() => {
       setStats(engineRef.current.getStats());
     }, 1000);
 
-    // 3. Start GPS if permission granted
-    if (hasPermission) {
-      startGps();
-    } else {
-      Alert.alert(
-        'GPS 없이 시작',
-        '위치 권한이 없어 경로 기록 없이 시간만 측정합니다.\n설정에서 위치 권한을 허용해주세요.',
-        [{ text: '확인' }],
-      );
-    }
-  }, []);
+    // GPS starts in background — if it fails, timer keeps going
+    startGps();
+
+    // Also request permission in background (for next time if not granted)
+    PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    ).catch(() => {});
+  };
 
   const pauseWalk = () => {
     setState('paused');

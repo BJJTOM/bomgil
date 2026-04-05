@@ -206,17 +206,7 @@ export default function WalkScreen() {
     })();
   }, []);
 
-  const startWalk = useCallback(() => {
-    // Start engine and timer immediately — don't wait for GPS
-    engineRef.current.start();
-    setState('walking');
-
-    // Start timer immediately
-    timerRef.current = setInterval(() => {
-      setStats(engineRef.current.getStats());
-    }, 1000);
-
-    // Try to start GPS tracking, but don't block if it fails
+  const startGps = useCallback(() => {
     try {
       watchIdRef.current = Geolocation.watchPosition(
         (pos) => {
@@ -232,19 +222,53 @@ export default function WalkScreen() {
           }
           setStats(engineRef.current.getStats());
         },
-        (err) => {
-          console.log('GPS error:', err);
-          // GPS failed but walk continues with timer
-        },
-        {
-          enableHighAccuracy: true,
-          distanceFilter: 5,
-          timeout: 10000,
-        },
+        (err) => console.log('GPS error:', err),
+        { enableHighAccuracy: true, distanceFilter: 5, timeout: 15000 },
       );
     } catch (e) {
       console.log('GPS watch failed:', e);
-      // Walk still continues with timer only
+    }
+  }, []);
+
+  const startWalk = useCallback(async () => {
+    // 1. Request permission FIRST — this shows the system dialog
+    let hasPermission = false;
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '위치 권한 필요',
+            message: 'Roami가 걷기 경로를 기록하려면\n위치 정보 접근이 필요합니다.',
+            buttonPositive: '허용',
+            buttonNegative: '나중에',
+          },
+        );
+        hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+      } else {
+        hasPermission = true;
+      }
+    } catch {
+      hasPermission = false;
+    }
+
+    // 2. Start engine and timer immediately
+    engineRef.current.start();
+    setState('walking');
+
+    timerRef.current = setInterval(() => {
+      setStats(engineRef.current.getStats());
+    }, 1000);
+
+    // 3. Start GPS if permission granted
+    if (hasPermission) {
+      startGps();
+    } else {
+      Alert.alert(
+        'GPS 없이 시작',
+        '위치 권한이 없어 경로 기록 없이 시간만 측정합니다.\n설정에서 위치 권한을 허용해주세요.',
+        [{ text: '확인' }],
+      );
     }
   }, []);
 
@@ -256,40 +280,10 @@ export default function WalkScreen() {
 
   const resumeWalk = () => {
     setState('walking');
-
-    // Restart timer
     timerRef.current = setInterval(() => {
       setStats(engineRef.current.getStats());
     }, 1000);
-
-    // Try to restart GPS tracking
-    try {
-      watchIdRef.current = Geolocation.watchPosition(
-        (pos) => {
-          const point = engineRef.current.addPoint(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            pos.coords.altitude,
-            pos.coords.accuracy,
-            pos.timestamp || Date.now(),
-          );
-          if (point) {
-            setCurrentPos({ lat: point.lat, lng: point.lng });
-          }
-          setStats(engineRef.current.getStats());
-        },
-        (err) => {
-          console.log('GPS error:', err);
-        },
-        {
-          enableHighAccuracy: true,
-          distanceFilter: 5,
-          timeout: 10000,
-        },
-      );
-    } catch (e) {
-      console.log('GPS watch failed on resume:', e);
-    }
+    startGps();
   };
 
   const completeWalk = async () => {

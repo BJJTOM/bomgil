@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.textPrimary,
   },
 
@@ -243,11 +243,11 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 24,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     gap: 12,
   },
   avatar: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 36,
     fontSize: 11,
     fontWeight: '600',
     color: colors.textTertiary,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sectionCard: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
   },
   menuIcon: {
-    fontSize: 20,
+    fontSize: 18,
     width: 28,
     textAlign: 'center',
   },

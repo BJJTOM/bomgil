@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.3,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 10,
     gap: 10,
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   moodPill: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 20,
   },
   moodPillText: {
     fontSize: 10,
@@ -482,12 +482,12 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   contentSection: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 10,
   },
   storyTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textPrimary,
     lineHeight: 22,
     marginBottom: 4,
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
     paddingTop: 8,
   },
   actionsLeft: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 12,
   },
   engagementText: {
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#F2F4F6',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
   },
 
   // Empty state — clean, no card
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   emptyBtnText: {
     fontSize: 13,

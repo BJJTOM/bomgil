@@ -181,17 +181,31 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Stats — overlay at bottom of hero */}
-            <View style={styles.statsRow}>
-              {STATS.map((stat, index) => (
-                <View key={stat.label} style={styles.statItem}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
           </LinearGradient>
         </FadeInView>
+
+        {/* Stats bar — overlapping hero bottom */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{STATS[0].value}</Text>
+            <Text style={styles.statLabel}>{STATS[0].label}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{STATS[1].value}</Text>
+            <Text style={styles.statLabel}>{STATS[1].label}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{STATS[2].value}</Text>
+            <Text style={styles.statLabel}>{STATS[2].label}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{STATS[3].value}</Text>
+            <Text style={styles.statLabel}>{STATS[3].label}</Text>
+          </View>
+        </View>
 
         {/* Discover by Country */}
         <FadeInView delay={100}>
@@ -374,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   heroCTAPrimaryText: {
     color: '#2D4A2E',
@@ -385,7 +399,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   heroCTASecondaryText: {
     color: '#FFFFFF',
@@ -393,38 +407,45 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Stats — inside hero, no card
-  statsRow: {
+  // Stats bar — white card overlapping hero bottom
+  statsBar: {
     flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: -24,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
   },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#F2F4F6',
+  },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
+    color: '#2D4A2E',
   },
   statLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    color: '#B0B8C1',
     marginTop: 2,
   },
 
   // Section
   section: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 24,
     paddingBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#191F28',
     letterSpacing: -0.3,
@@ -446,11 +467,12 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F8FA',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
     gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
   },
   countryEmoji: {
     fontSize: 24,
@@ -468,7 +490,7 @@ const styles = StyleSheet.create({
 
   // Trail section
   trailSection: {
-    paddingTop: 32,
+    paddingTop: 24,
     paddingBottom: 8,
   },
   trailHeader: {
@@ -493,7 +515,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     width: 260,
     height: 180,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: '#F7F8FA',
   },
 
@@ -503,11 +525,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: 20,
-    marginTop: 32,
+    marginTop: 24,
     paddingVertical: 16,
     paddingHorizontal: 20,
     backgroundColor: '#F7F8FA',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   ugcText: {
     fontSize: 13,
@@ -520,7 +542,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D4A2E',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 14,
   },
   ugcBtnText: {
     color: '#FFFFFF',
@@ -548,13 +570,13 @@ const styles = StyleSheet.create({
   },
   langModal: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 24,
     width: width - 64,
     maxWidth: 320,
   },
   langModalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#191F28',
     marginBottom: 16,
@@ -569,7 +591,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   langItemActive: {
-    backgroundColor: '#f0f7f0',
+    backgroundColor: '#F7F8FA',
   },
   langFlag: {
     fontSize: 22,

@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 14,
   },
   loginPromptBtnText: {
     color: '#FFFFFF',
@@ -362,13 +362,13 @@ const styles = StyleSheet.create({
   // ===== CTA section =====
   ctaSection: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 24,
     paddingBottom: 12,
   },
   startWalkBtn: {
     backgroundColor: colors.primary,
     paddingVertical: 18,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -405,29 +405,29 @@ const styles = StyleSheet.create({
   // ===== Recent section =====
   recentSection: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 24,
   },
   recentTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#F2F4F6',
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: '#F2F4F6',
   },
   activityIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -462,19 +462,19 @@ const styles = StyleSheet.create({
   skeletonItem: {
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: '#F2F4F6',
   },
   skeletonTitle: {
     height: 14,
     width: '40%',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F7F8FA',
     borderRadius: 4,
     marginBottom: 8,
   },
   skeletonMeta: {
     height: 12,
     width: '55%',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F7F8FA',
     borderRadius: 4,
   },
 

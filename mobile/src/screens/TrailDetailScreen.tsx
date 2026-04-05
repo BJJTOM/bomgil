@@ -108,6 +108,7 @@ function TrailDetailScreenInner() {
   });
   const [savedOffline, setSavedOffline] = useState(false);
   const [savingOffline, setSavingOffline] = useState(false);
+  const [showAllSpots, setShowAllSpots] = useState(false);
 
   useEffect(() => {
     if (trailId) {
@@ -378,7 +379,7 @@ function TrailDetailScreenInner() {
             <Text style={styles.sectionTitle}>
               {'\uACBD\uC720\uC9C0'} <Text style={styles.sectionCount}>{spots.length}</Text>
             </Text>
-            {(spots || []).map((spot, index) => (
+            {(showAllSpots ? spots : (spots || []).slice(0, 3)).map((spot, index) => (
               <View key={spot.id} style={styles.spotItem}>
                 <View style={styles.spotDotColumn}>
                   <View style={styles.spotDot}>
@@ -418,6 +419,16 @@ function TrailDetailScreenInner() {
                 </View>
               </View>
             ))}
+            {(spots || []).length > 3 && !showAllSpots && (
+              <TouchableOpacity
+                style={styles.showMoreBtn}
+                onPress={() => setShowAllSpots(true)}
+              >
+                <Text style={styles.showMoreText}>
+                  +{(spots || []).length - 3}개 경유지 더보기
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -634,8 +645,8 @@ const styles = StyleSheet.create({
     right: 20,
   },
   coverTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
     marginBottom: 4,
   },
@@ -683,7 +694,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0F0',
   },
   actionBtnSaved: {
-    backgroundColor: '#f0f7f0',
+    backgroundColor: '#F7F8FA',
   },
   actionBtnPrimary: {
     backgroundColor: '#2D4A2E',
@@ -713,21 +724,21 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#191F28',
     marginBottom: 14,
   },
   sectionCount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#8B95A1',
   },
 
   // ── Description ────────────────────────────────────────
   descText: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 22,
     color: '#191F28',
   },
   tagsRow: {
@@ -739,7 +750,7 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: '#F7F8FA',
   },
   tagText: {
@@ -775,7 +786,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f0f7f0',
+    backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -805,10 +816,10 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   tipBox: {
-    backgroundColor: '#f0f7f0',
+    backgroundColor: '#F7F8FA',
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 8,
   },
   tipText: {
@@ -819,7 +830,7 @@ const styles = StyleSheet.create({
   spotPhoto: {
     width: 80,
     height: 60,
-    borderRadius: 8,
+    borderRadius: 12,
     marginRight: 6,
     marginTop: 8,
   },
@@ -846,7 +857,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: '#F7F8FA',
-    borderRadius: 16,
+    borderRadius: 14,
     marginBottom: 12,
   },
   writeReviewBtnText: {
@@ -898,7 +909,7 @@ const styles = StyleSheet.create({
   reviewSubmitBtn: {
     backgroundColor: '#2D4A2E',
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
   },
   reviewSubmitDisabled: {
@@ -970,7 +981,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#d4f5e4',
+    backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -991,14 +1002,26 @@ const styles = StyleSheet.create({
     color: '#191F28',
   },
   guideBadge: {
-    backgroundColor: 'rgba(45,74,46,0.1)',
+    backgroundColor: '#F7F8FA',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 20,
   },
   guideBadgeText: {
     fontSize: 11,
     color: '#2D4A2E',
     fontWeight: '600',
+  },
+
+  // ── Show More Spots ───────────────────────────────────
+  showMoreBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  showMoreText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2D4A2E',
   },
 });

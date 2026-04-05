@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   emptyResetText: {
     color: '#FFFFFF',

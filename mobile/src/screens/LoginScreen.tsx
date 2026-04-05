@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   // Card
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -227,8 +227,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 24,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   // Error
   errorBox: {
     backgroundColor: 'rgba(255,75,75,0.08)',
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 20,
   },
@@ -261,9 +261,9 @@ const styles = StyleSheet.create({
     height: 48,
     borderWidth: 1,
     borderColor: colors.borderDefault,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
     backgroundColor: '#FFFFFF',
   },
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   loginBtn: {
     backgroundColor: colors.primary,
     height: 52,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
 
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderWidth: 1,
     borderColor: colors.borderDefault,
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 10,
     marginBottom: 10,
   },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 52,
     backgroundColor: '#FEE500',
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 10,
   },
   kakaoIcon: {
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: 'rgba(45,74,46,0.3)',
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 8,
   },
   guestIcon: {

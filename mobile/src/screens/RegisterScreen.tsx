@@ -276,7 +276,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.warm,
+    backgroundColor: '#FAFAFA',
   },
   scroll: {
     flexGrow: 1,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   brandIcon: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -312,19 +312,19 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textSecondary,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 28,
     shadowColor: '#000',
     shadowOpacity: 0.04,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderDefault,
     borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
     backgroundColor: '#fff',
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   },
   registerBtn: {
     backgroundColor: colors.primary,
-    height: 50,
+    height: 52,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -408,8 +408,8 @@ const styles = StyleSheet.create({
   },
   registerBtnText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   dividerRow: {
     flexDirection: 'row',

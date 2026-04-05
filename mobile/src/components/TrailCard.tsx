@@ -153,8 +153,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
   },
   imagePlaceholder: {
     width: '100%',
@@ -181,13 +179,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   content: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 14,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textPrimary,
     lineHeight: 20,
     marginBottom: 4,
@@ -207,7 +205,7 @@ const styles = StyleSheet.create({
   horizontalCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   horizontalImage: {
@@ -237,7 +235,7 @@ const styles = StyleSheet.create({
   },
   horizontalTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textPrimary,
     lineHeight: 20,
     marginBottom: 4,

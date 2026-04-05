@@ -111,13 +111,21 @@ export default function ExploreScreen() {
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['trails', queryParams],
     queryFn: async () => {
-      const { data: res } = await api.get('/trails/', { params: queryParams });
-      return res as PaginatedResponse<Trail>;
+      try {
+        const { data: res } = await api.get('/trails/', { params: queryParams });
+        return res;
+      } catch (e) {
+        console.log('Trails fetch error:', e);
+        return { results: [] };
+      }
     },
+    retry: 1,
+    staleTime: 30000,
   });
 
   const trails = useMemo(() => {
-    const allTrails = data?.results || [];
+    const raw = data?.results ?? (Array.isArray(data) ? data : []);
+    const allTrails = raw as Trail[];
     if (!search.trim()) return allTrails;
     const q = search.toLowerCase();
     return allTrails.filter(

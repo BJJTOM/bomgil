@@ -11,6 +11,7 @@ import {
   Animated,
   StatusBar,
   AppState,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -19,17 +20,30 @@ import { colors } from '../theme/colors';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
+import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
 
-const { width, height } = Dimensions.get('window');
-
-interface LocationPoint {
-  lat: number;
-  lng: number;
-  ele: number | null;
-  time: string;
-}
+const { width } = Dimensions.get('window');
 
 type WalkState = 'ready' | 'walking' | 'paused';
+
+// Format pace as min'sec"
+function formatPace(pace: number): string {
+  if (pace <= 0 || pace > 30) return "--'--\"";
+  const min = Math.floor(pace);
+  const sec = Math.round((pace - min) * 60);
+  return `${min}'${sec.toString().padStart(2, '0')}"`;
+}
+
+// Format duration as hh:mm:ss
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function WalkScreen() {
   const insets = useSafeAreaInsets();
@@ -39,21 +53,37 @@ export default function WalkScreen() {
   const trailId = route.params?.trailId;
 
   const [state, setState] = useState<WalkState>('ready');
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [distance, setDistance] = useState(0);
-  const [locations, setLocations] = useState<LocationPoint[]>([]);
-  const [steps, setSteps] = useState(0);
+  const [stats, setStats] = useState<WalkStats>({
+    distance: 0,
+    duration: 0,
+    totalTime: 0,
+    pace: 0,
+    currentPace: 0,
+    speed: 0,
+    steps: 0,
+    cadence: 0,
+    calories: 0,
+    elevationGain: 0,
+    elevationLoss: 0,
+    maxElevation: 0,
+    minElevation: 0,
+    maxSpeed: 0,
+    splits: [],
+    isAutoPaused: false,
+  });
   const [gpsReady, setGpsReady] = useState(false);
   const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
   const [isBackground, setIsBackground] = useState(false);
+  const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
 
+  const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const pausedTimeRef = useRef<number>(0);
 
   // Pulse animation for start button
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Auto-pause pulse animation
+  const autoPausePulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (state === 'ready') {
@@ -76,17 +106,29 @@ export default function WalkScreen() {
     }
   }, [state]);
 
-  const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
+  // Auto-pause pulse effect
+  useEffect(() => {
+    if (stats.isAutoPaused) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(autoPausePulse, {
+            toValue: 0.5,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(autoPausePulse, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      autoPausePulse.setValue(1);
+    }
+  }, [stats.isAutoPaused]);
 
   const requestPermission = async () => {
     if (Platform.OS === 'ios') {
@@ -107,8 +149,6 @@ export default function WalkScreen() {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background') {
         setIsBackground(true);
-        // GPS keeps running via watchPosition — continues in background
-        // on Android with foreground service permissions
       } else if (nextState === 'active') {
         setIsBackground(false);
       }
@@ -118,16 +158,15 @@ export default function WalkScreen() {
 
   // Take photo with GPS tag
   const handleTakePhoto = useCallback(async () => {
-    if (locations.length === 0) {
-      Alert.alert('GPS 대기 중', '위치 정보를 아직 받지 못했습니다.');
+    if (!currentPos) {
+      Alert.alert('GPS \uB300\uAE30 \uC911', '\uC704\uCE58 \uC815\uBCF4\uB97C \uC544\uC9C1 \uBC1B\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.');
       return;
     }
-    const lastLoc = locations[locations.length - 1];
-    const photo = await takeTaggedPhoto(lastLoc.lat, lastLoc.lng);
+    const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
     if (photo) {
       setTaggedPhotos((prev) => [...prev, photo]);
     }
-  }, [locations]);
+  }, [currentPos]);
 
   // Request GPS on mount
   useEffect(() => {
@@ -145,123 +184,103 @@ export default function WalkScreen() {
     })();
   }, []);
 
-  const startWalk = useCallback(() => {
-    setState('walking');
-    startTimeRef.current = Date.now();
-
-    timerRef.current = setInterval(() => {
-      setElapsedSeconds(
-        Math.floor((Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000),
-      );
-    }, 1000);
-
+  const startGpsTracking = useCallback(() => {
     watchIdRef.current = Geolocation.watchPosition(
-      (position) => {
-        const point: LocationPoint = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          ele: position.coords.altitude,
-          time: new Date().toISOString(),
-        };
-        setLocations((prev) => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const d = haversine(last.lat, last.lng, point.lat, point.lng);
-            if (d > 0.003) {
-              setDistance((prevDist) => prevDist + d);
-              setSteps((prevSteps) => prevSteps + Math.round(d * 1300));
-              return [...prev, point];
-            }
-            return prev;
-          }
-          return [...prev, point];
-        });
+      (pos) => {
+        const point = engineRef.current.addPoint(
+          pos.coords.latitude,
+          pos.coords.longitude,
+          pos.coords.altitude,
+          pos.coords.accuracy,
+          pos.timestamp,
+        );
+        if (point) {
+          setCurrentPos({ lat: point.lat, lng: point.lng });
+        }
+        setStats(engineRef.current.getStats());
       },
-      (error) => console.warn('GPS error:', error),
+      (err) => console.log('GPS error:', err),
       {
         enableHighAccuracy: true,
-        distanceFilter: 5,
-        interval: 3000,
-        fastestInterval: 2000,
+        distanceFilter: 3,
+        interval: 2000,
+        fastestInterval: 1000,
         showsBackgroundLocationIndicator: true,
       },
     );
   }, []);
 
+  const startWalk = useCallback(() => {
+    engineRef.current.start();
+    setState('walking');
+
+    startGpsTracking();
+
+    // Update stats every second (for timer)
+    timerRef.current = setInterval(() => {
+      setStats(engineRef.current.getStats());
+    }, 1000);
+  }, [startGpsTracking]);
+
   const pauseWalk = () => {
     setState('paused');
-    pausedTimeRef.current += Date.now() - startTimeRef.current;
     if (timerRef.current) clearInterval(timerRef.current);
     if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
   };
 
   const resumeWalk = () => {
     setState('walking');
-    startTimeRef.current = Date.now();
+    startGpsTracking();
     timerRef.current = setInterval(() => {
-      setElapsedSeconds(
-        Math.floor((Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000),
-      );
+      setStats(engineRef.current.getStats());
     }, 1000);
-    watchIdRef.current = Geolocation.watchPosition(
-      (position) => {
-        const point: LocationPoint = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          ele: position.coords.altitude,
-          time: new Date().toISOString(),
-        };
-        setLocations((prev) => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const d = haversine(last.lat, last.lng, point.lat, point.lng);
-            if (d > 0.003) {
-              setDistance((prevDist) => prevDist + d);
-              setSteps((prevSteps) => prevSteps + Math.round(d * 1300));
-              return [...prev, point];
-            }
-            return prev;
-          }
-          return [...prev, point];
-        });
-      },
-      () => {},
-      { enableHighAccuracy: true, distanceFilter: 5, interval: 3000, fastestInterval: 2000 },
-    );
   };
 
   const completeWalk = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    // Stop GPS and timer
     if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
 
-    const finalSteps = steps > 0 ? steps : Math.round(distance * 1300);
-    const calories = Math.round(distance * 65);
+    const finalStats = engineRef.current.getStats();
+    const trackPoints = engineRef.current.getTrackPoints();
 
-    if (isAuthenticated && locations.length > 0) {
+    // Save to API
+    if (isAuthenticated && trackPoints.length > 0) {
       try {
-        const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+        const dateLabel = new Date().toLocaleDateString('ko-KR', {
+          month: 'long',
+          day: 'numeric',
+        });
         await api.post('/activities/', {
           trail: trailId || null,
+          track_points: trackPoints,
           source: 'phone_gps',
-          title: `${dateLabel} \uAC77\uAE30`,
-          started_at: new Date(Date.now() - elapsedSeconds * 1000).toISOString(),
+          title: `${dateLabel} \uB3C4\uBCF4`,
+          started_at: new Date(
+            Date.now() - finalStats.totalTime * 1000,
+          ).toISOString(),
           finished_at: new Date().toISOString(),
-          total_steps: finalSteps,
-          distance_km: distance.toFixed(2),
-          duration_minutes: Math.round(elapsedSeconds / 60),
-          calories_burned: calories,
-          track_points: locations,
+          total_steps: finalStats.steps,
+          calories_burned: finalStats.calories,
+          distance_km: finalStats.distance.toFixed(2),
+          duration_minutes: Math.round(finalStats.duration / 60),
+          elevation_gain_m: finalStats.elevationGain,
         });
-      } catch (err) {
-        console.warn('Failed to save activity:', err);
+      } catch (e) {
+        console.log('Save error:', e);
       }
     }
 
     navigation.replace('WalkComplete', {
-      distance: distance.toFixed(2),
-      duration: elapsedSeconds,
-      steps: finalSteps,
-      calories,
+      distance: finalStats.distance.toFixed(2),
+      duration: String(Math.round(finalStats.duration)),
+      steps: String(finalStats.steps),
+      calories: String(finalStats.calories),
+      pace: formatPace(finalStats.pace),
+      elevationGain: String(finalStats.elevationGain),
+      elevationLoss: String(finalStats.elevationLoss),
+      maxSpeed: finalStats.maxSpeed.toFixed(1),
+      splits: JSON.stringify(finalStats.splits),
       taggedPhotos,
     });
   };
@@ -279,19 +298,6 @@ export default function WalkScreen() {
       if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
     };
   }, []);
-
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return h > 0
-      ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-      : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  const pace = elapsedSeconds > 0 && distance > 0.01 ? elapsedSeconds / 60 / distance : 0;
-  const paceMin = Math.floor(pace);
-  const paceSec = Math.round((pace - paceMin) * 60);
 
   // ---- READY STATE ----
   if (state === 'ready') {
@@ -326,7 +332,7 @@ export default function WalkScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Pulse ring effect (static outer ring) */}
+        {/* Pulse ring effect */}
         <View style={styles.pulseRing} />
 
         {/* Hint */}
@@ -341,18 +347,28 @@ export default function WalkScreen() {
   return (
     <View style={styles.walkContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#0d1a0e" />
-      {/* Status indicator */}
+
+      {/* Top status bar */}
       <View style={[styles.statusBar, { top: insets.top + 12 }]}>
         <View style={styles.statusPill}>
           <View
             style={[
               styles.statusDot,
-              state === 'walking' ? styles.statusDotLive : styles.statusDotPaused,
+              state === 'walking'
+                ? stats.isAutoPaused
+                  ? styles.statusDotAutoPaused
+                  : styles.statusDotLive
+                : styles.statusDotPaused,
             ]}
           />
           <Text style={styles.statusText}>
-            {state === 'walking' ? '\uAE30\uB85D \uC911' : '\uC77C\uC2DC\uC815\uC9C0'}
+            {state === 'walking'
+              ? stats.isAutoPaused
+                ? '\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0'
+                : '\uAE30\uB85D \uC911'
+              : '\uC77C\uC2DC\uC815\uC9C0'}
           </Text>
+          <Text style={styles.statusTimer}>{formatTime(stats.duration)}</Text>
         </View>
         {isBackground && (
           <View style={styles.bgTrackingPill}>
@@ -370,44 +386,103 @@ export default function WalkScreen() {
           <Text style={styles.cameraBtnIcon}>{'\u{1F4F7}'}</Text>
         </TouchableOpacity>
       )}
-      {/* Photo count badge */}
       {taggedPhotos.length > 0 && (
         <View style={[styles.photoBadge, { top: insets.top + 10 }]}>
           <Text style={styles.photoBadgeText}>{taggedPhotos.length}</Text>
         </View>
       )}
 
-      {/* Full screen stats - Nike Run style */}
-      <View style={styles.fullScreenStats}>
-        {/* Big distance at top center */}
-        <View style={styles.distanceRow}>
-          <Text style={styles.distanceBig}>{distance.toFixed(2)}</Text>
-          <Text style={styles.distanceUnit}>km</Text>
-        </View>
+      {/* Main stats area */}
+      <ScrollView
+        style={styles.statsScroll}
+        contentContainerStyle={styles.statsScrollContent}
+        showsVerticalScrollIndicator={false}>
+        <Animated.View style={[styles.fullScreenStats, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
+          {/* Big distance */}
+          <View style={styles.distanceRow}>
+            <Text style={styles.distanceBig}>{stats.distance.toFixed(2)}</Text>
+            <Text style={styles.distanceUnit}>km</Text>
+          </View>
 
-        {/* Timer below */}
-        <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
+          {/* Current pace - highlighted */}
+          <View style={styles.currentPaceContainer}>
+            <Text style={styles.currentPaceLabel}>{'\uD604\uC7AC \uD398\uC774\uC2A4'}</Text>
+            <Text style={styles.currentPaceValue}>{formatPace(stats.currentPace)}</Text>
+            <Text style={styles.currentPaceUnit}>/km</Text>
+          </View>
 
-        {/* Secondary stats */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>
-              {pace > 0
-                ? `${paceMin}'${String(paceSec).padStart(2, '0')}"`
-                : "--'--\""}
-            </Text>
-            <Text style={styles.statLabel}>{'\uD398\uC774\uC2A4'}</Text>
+          {/* 4-column stats grid */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.steps.toLocaleString()}</Text>
+              <Text style={styles.statLabel}>{'\uAC78\uC74C'}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.calories}</Text>
+              <Text style={styles.statLabel}>{'\uCE7C\uB85C\uB9AC'}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m
+              </Text>
+              <Text style={styles.statLabel}>{'\uACE0\uB3C4'}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.speed.toFixed(1)}</Text>
+              <Text style={styles.statLabel}>km/h</Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{Math.round(distance * 65)}</Text>
-            <Text style={styles.statLabel}>kcal</Text>
+
+          {/* Secondary stats row */}
+          <View style={styles.secondaryStatsRow}>
+            <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatValue}>{formatPace(stats.pace)}</Text>
+              <Text style={styles.secondaryStatLabel}>{'\uD3C9\uADE0 \uD398\uC774\uC2A4'}</Text>
+            </View>
+            <View style={styles.secondaryStatDivider} />
+            <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatValue}>{stats.cadence}</Text>
+              <Text style={styles.secondaryStatLabel}>{'\uCF00\uC774\uB358\uC2A4'}</Text>
+            </View>
+            <View style={styles.secondaryStatDivider} />
+            <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatValue}>{stats.maxSpeed.toFixed(1)}</Text>
+              <Text style={styles.secondaryStatLabel}>{'\uCD5C\uACE0 km/h'}</Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{steps.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>{'\uAC78\uC74C'}</Text>
-          </View>
+
+          {/* Km Splits */}
+          {stats.splits.length > 0 && (
+            <View style={styles.splitsContainer}>
+              <Text style={styles.splitsTitle}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
+              {stats.splits.map((split: KmSplit) => (
+                <View key={split.km} style={styles.splitRow}>
+                  <Text style={styles.splitKm}>{split.km}km</Text>
+                  <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
+                  {split.elevationGain > 0 && (
+                    <Text style={styles.splitEle}>
+                      {'\u2191'}{Math.round(split.elevationGain)}m
+                    </Text>
+                  )}
+                  {split.elevationLoss > 0 && (
+                    <Text style={styles.splitEleLoss}>
+                      {'\u2193'}{Math.round(split.elevationLoss)}m
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </Animated.View>
+      </ScrollView>
+
+      {/* Auto-pause indicator */}
+      {stats.isAutoPaused && state === 'walking' && (
+        <View style={styles.autoPauseIndicator}>
+          <Animated.View style={[styles.autoPauseDot, { opacity: autoPausePulse }]} />
+          <Text style={styles.autoPauseText}>{'\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0'}</Text>
         </View>
-      </View>
+      )}
 
       {/* Controls at bottom */}
       <View style={[styles.controlsArea, { paddingBottom: insets.bottom + 24 }]}>
@@ -521,9 +596,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(168,230,207,0.15)',
     alignSelf: 'center',
-    // Centered on the start button
     top: '50%',
-    marginTop: -86 + 70 - 64 + 20, // rough center offset
+    marginTop: -86 + 70 - 64 + 20,
   },
   hintText: {
     fontSize: 13,
@@ -563,16 +637,32 @@ const styles = StyleSheet.create({
   statusDotPaused: {
     backgroundColor: '#FACC15',
   },
+  statusDotAutoPaused: {
+    backgroundColor: '#F97316',
+  },
   statusText: {
     fontSize: 13,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.8)',
   },
-  fullScreenStats: {
+  statusTimer: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    fontVariant: ['tabular-nums'],
+  },
+  statsScroll: {
     flex: 1,
+    marginTop: 80,
+  },
+  statsScrollContent: {
+    paddingBottom: 24,
+  },
+  fullScreenStats: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: 40,
   },
   distanceRow: {
     flexDirection: 'row',
@@ -592,25 +682,41 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     marginLeft: 6,
   },
-  timerText: {
+  currentPaceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 32,
+    gap: 6,
+  },
+  currentPaceLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    marginRight: 4,
+  },
+  currentPaceValue: {
     fontSize: 28,
-    fontWeight: '300',
-    color: 'rgba(255,255,255,0.6)',
-    marginBottom: 40,
-    letterSpacing: 2,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  currentPaceUnit: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginBottom: 32,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 16,
   },
   statItem: {
     alignItems: 'center',
     flex: 1,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 4,
@@ -620,6 +726,92 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  secondaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  secondaryStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  secondaryStatValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
+  },
+  secondaryStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  secondaryStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  splitsContainer: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  splitsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  splitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 12,
+  },
+  splitKm: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    width: 40,
+  },
+  splitPace: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.accent,
+    flex: 1,
+  },
+  splitEle: {
+    fontSize: 12,
+    color: '#4ADE80',
+  },
+  splitEleLoss: {
+    fontSize: 12,
+    color: '#F97316',
+  },
+  autoPauseIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  autoPauseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F97316',
+  },
+  autoPauseText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#F97316',
   },
   controlsArea: {
     paddingHorizontal: 24,

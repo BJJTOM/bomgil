@@ -44,6 +44,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
 import { saveTrailOffline, isSaved, getSavedTrail } from '../utils/offlineStorage';
+import SafeMapView from '../components/SafeMapView';
 
 const { width } = Dimensions.get('window');
 
@@ -356,20 +357,33 @@ function TrailDetailScreenInner() {
             )}
           </View>
 
-          {/* Map — placeholder (no Google Maps API key) */}
+          {/* Map */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>경로 지도</Text>
-            <View style={styles.mapContainer}>
-              <View style={styles.mapFallback}>
-                <Text style={{ fontSize: 40 }}>🗺️</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8, fontWeight: '500' }}>
-                  {trail?.region || ''} {trail?.country || ''}
-                </Text>
-                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4 }}>
-                  {trail?.start_lat ? `${parseFloat(String(trail.start_lat)).toFixed(4)}°N, ${parseFloat(String(trail.start_lng)).toFixed(4)}°E` : '위치 정보 없음'}
-                </Text>
+            <Text style={styles.sectionTitle}>{'\uACBD\uB85C \uC9C0\uB3C4'}</Text>
+            {trail?.start_lat ? (
+              <SafeMapView
+                lat={parseFloat(String(trail.start_lat))}
+                lng={parseFloat(String(trail.start_lng))}
+                endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
+                endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
+                pathCoordinates={trail.path_coordinates as [number, number][] | undefined}
+                region={trail.region}
+                country={trail.country}
+                height={220}
+              />
+            ) : (
+              <View style={styles.mapContainer}>
+                <View style={styles.mapFallback}>
+                  <Text style={{ fontSize: 40 }}>{'\u{1F5FA}\uFE0F'}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8, fontWeight: '500' }}>
+                    {trail?.region || ''} {trail?.country || ''}
+                  </Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4 }}>
+                    {'\uC704\uCE58 \uC815\uBCF4 \uC5C6\uC74C'}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
           </View>
 
           {/* Spots Timeline */}

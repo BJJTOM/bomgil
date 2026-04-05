@@ -13,8 +13,25 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+import { KmSplit } from '../utils/walkEngine';
 
 const { width } = Dimensions.get('window');
+
+// Format pace as min'sec"
+function formatPace(pace: string | number): string {
+  if (typeof pace === 'string') {
+    if (pace.includes("'")) return pace; // already formatted
+    const n = parseFloat(pace);
+    if (isNaN(n) || n <= 0 || n > 30) return "--'--\"";
+    const min = Math.floor(n);
+    const sec = Math.round((n - min) * 60);
+    return `${min}'${sec.toString().padStart(2, '0')}"`;
+  }
+  if (pace <= 0 || pace > 30) return "--'--\"";
+  const min = Math.floor(pace);
+  const sec = Math.round((pace - min) * 60);
+  return `${min}'${sec.toString().padStart(2, '0')}"`;
+}
 
 export default function WalkCompleteScreen() {
   const insets = useSafeAreaInsets();
@@ -23,27 +40,49 @@ export default function WalkCompleteScreen() {
 
   const {
     distance = '0',
-    duration = 0,
-    steps = 0,
-    calories = 0,
+    duration = '0',
+    steps = '0',
+    calories = '0',
+    pace = '--',
+    elevationGain = '0',
+    elevationLoss = '0',
+    maxSpeed = '0',
+    splits: splitsJson = '[]',
     taggedPhotos = [],
   } = route.params || {};
 
-  // Duration comes as seconds now
-  const totalSeconds = typeof duration === 'number' ? duration : parseInt(duration);
+  const totalSeconds =
+    typeof duration === 'number' ? duration : parseInt(duration) || 0;
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  const timeStr = hours > 0
-    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  const timeStr =
+    hours > 0
+      ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Pace
-  const distNum = typeof distance === 'string' ? parseFloat(distance) : distance;
-  const pace = totalSeconds > 0 && distNum > 0.01 ? totalSeconds / 60 / distNum : 0;
-  const paceMin = Math.floor(pace);
-  const paceSec = Math.round((pace - paceMin) * 60);
-  const paceStr = pace > 0 ? `${paceMin}'${String(paceSec).padStart(2, '0')}"` : '--';
+  const distNum =
+    typeof distance === 'string' ? parseFloat(distance) : distance;
+  const stepsNum = typeof steps === 'string' ? parseInt(steps) : steps;
+  const caloriesNum =
+    typeof calories === 'string' ? parseInt(calories) : calories;
+  const eleGain =
+    typeof elevationGain === 'string'
+      ? parseInt(elevationGain)
+      : elevationGain;
+  const eleLoss =
+    typeof elevationLoss === 'string'
+      ? parseInt(elevationLoss)
+      : elevationLoss;
+  const maxSpeedNum =
+    typeof maxSpeed === 'string' ? parseFloat(maxSpeed) : maxSpeed;
+
+  let splits: KmSplit[] = [];
+  try {
+    splits = typeof splitsJson === 'string' ? JSON.parse(splitsJson) : splitsJson;
+  } catch {
+    splits = [];
+  }
 
   // Date
   const dateStr = new Date().toLocaleDateString('ko-KR', {
@@ -56,7 +95,7 @@ export default function WalkCompleteScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Roami - ${distNum.toFixed(2)}km \uC644\uB8CC!\n${distNum.toFixed(2)}km, ${steps.toLocaleString()} \uAC78\uC74C, ${timeStr}`,
+        message: `Roami - ${distNum.toFixed(2)}km \uC644\uB8CC!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} \uAC78\uC74C, ${timeStr}`,
       });
     } catch {}
   };
@@ -83,27 +122,82 @@ export default function WalkCompleteScreen() {
             <Text style={styles.distanceUnit}>km</Text>
           </View>
 
-          {/* Stats grid */}
+          {/* Primary stats grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCell}>
               <Text style={styles.statValue}>{timeStr}</Text>
               <Text style={styles.statLabel}>{'\uC2DC\uAC04'}</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{paceStr}</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>
+                {typeof pace === 'string' && pace.includes("'") ? pace : formatPace(pace)}
+              </Text>
               <Text style={styles.statLabel}>{'\uD398\uC774\uC2A4'}</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{calories}</Text>
+              <Text style={styles.statValue}>{caloriesNum}</Text>
               <Text style={styles.statLabel}>kcal</Text>
             </View>
           </View>
 
-          {/* Steps + Date */}
+          {/* Extended stats */}
+          <View style={styles.extendedStatsGrid}>
+            <View style={styles.extendedStatCell}>
+              <Text style={styles.extendedStatValue}>
+                {stepsNum.toLocaleString()}
+              </Text>
+              <Text style={styles.extendedStatLabel}>{'\uAC78\uC74C'}</Text>
+            </View>
+            <View style={styles.extendedStatCell}>
+              <Text style={styles.extendedStatValue}>
+                {eleGain > 0 ? `+${eleGain}m` : '0m'}
+              </Text>
+              <Text style={styles.extendedStatLabel}>{'\uB204\uC801\uC0C1\uC2B9'}</Text>
+            </View>
+            <View style={styles.extendedStatCell}>
+              <Text style={styles.extendedStatValue}>
+                {eleLoss > 0 ? `-${eleLoss}m` : '0m'}
+              </Text>
+              <Text style={styles.extendedStatLabel}>{'\uB204\uC801\uD558\uAC15'}</Text>
+            </View>
+            <View style={styles.extendedStatCell}>
+              <Text style={styles.extendedStatValue}>
+                {maxSpeedNum > 0 ? `${maxSpeedNum.toFixed(1)}` : '0'}
+              </Text>
+              <Text style={styles.extendedStatLabel}>{'\uCD5C\uACE0 km/h'}</Text>
+            </View>
+          </View>
+
+          {/* Km Splits Table */}
+          {splits.length > 0 && (
+            <View style={styles.splitsSection}>
+              <Text style={styles.splitsSectionTitle}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
+              <View style={styles.splitsHeader}>
+                <Text style={styles.splitsHeaderText}>{'\uAD6C\uAC04'}</Text>
+                <Text style={styles.splitsHeaderText}>{'\uD398\uC774\uC2A4'}</Text>
+                <Text style={styles.splitsHeaderText}>{'\uACE0\uB3C4'}</Text>
+              </View>
+              {splits.map((split: KmSplit) => (
+                <View key={split.km} style={styles.splitTableRow}>
+                  <Text style={styles.splitTableKm}>{split.km}km</Text>
+                  <Text style={styles.splitTablePace}>
+                    {formatPace(split.pace)}
+                  </Text>
+                  <Text style={styles.splitTableEle}>
+                    {split.elevationGain > 0
+                      ? `\u2191${Math.round(split.elevationGain)}m`
+                      : '-'}
+                    {split.elevationLoss > 0
+                      ? ` \u2193${Math.round(split.elevationLoss)}m`
+                      : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Date */}
           <View style={styles.stepsDateRow}>
-            <Text style={styles.stepsText}>
-              {steps.toLocaleString()} {'\uAC78\uC74C'}
-            </Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
 
@@ -124,11 +218,15 @@ export default function WalkCompleteScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               data={taggedPhotos}
-              keyExtractor={(_, i) => String(i)}
+              keyExtractor={(_: any, i: number) => String(i)}
               contentContainerStyle={styles.photosList}
-              renderItem={({ item }) => (
+              renderItem={({ item }: { item: any }) => (
                 <View style={styles.photoCard}>
-                  <Image source={{ uri: item.uri }} style={styles.photoImage} resizeMode="cover" />
+                  <Image
+                    source={{ uri: item.uri }}
+                    style={styles.photoImage}
+                    resizeMode="cover"
+                  />
                   <View style={styles.photoLocationBadge}>
                     <Text style={styles.photoLocationText}>
                       {'\u{1F4CD}'} {item.lat.toFixed(4)}, {item.lng.toFixed(4)}
@@ -142,7 +240,10 @@ export default function WalkCompleteScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={handleShare}
+            activeOpacity={0.85}>
             <Text style={styles.shareBtnIcon}>{'\u2B06\uFE0F'}</Text>
             <Text style={styles.shareBtnText}>{'\uACF5\uC720\uD558\uAE30'}</Text>
           </TouchableOpacity>
@@ -152,7 +253,9 @@ export default function WalkCompleteScreen() {
               style={styles.secondaryBtn}
               onPress={() => navigation.navigate('Activity')}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>{'\uD65C\uB3D9 \uAE30\uB85D \uBCF4\uAE30'}</Text>
+              <Text style={styles.secondaryBtnText}>
+                {'\uD65C\uB3D9 \uAE30\uB85D \uBCF4\uAE30'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.secondaryBtn}
@@ -233,7 +336,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: 8,
   },
   statCell: {
     flex: 1,
@@ -252,14 +355,85 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.4)',
   },
-  stepsDateRow: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+  extendedStatsGrid: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+    marginTop: 4,
   },
-  stepsText: {
+  extendedStatCell: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 1,
+  },
+  extendedStatValue: {
     fontSize: 15,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
+  },
+  extendedStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.35)',
+  },
+  splitsSection: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  splitsSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  splitsHeader: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 4,
+  },
+  splitsHeaderText: {
+    flex: 1,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '500',
+  },
+  splitTableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  splitTableKm: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+  },
+  splitTablePace: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  splitTableEle: {
+    flex: 1,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'right',
+  },
+  stepsDateRow: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   dateText: {
     fontSize: 13,

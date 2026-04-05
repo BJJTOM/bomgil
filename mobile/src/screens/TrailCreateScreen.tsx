@@ -18,12 +18,7 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 
-// Use built-in navigator.geolocation — no native module linking needed
-const GeoLocation = {
-  getCurrentPosition: (success: any, error: any, options: any) => {
-    navigator.geolocation.getCurrentPosition(success, error, options);
-  },
-};
+import Geolocation from '@react-native-community/geolocation';
 
 const DIFFICULTY_OPTIONS = [
   { value: 'easy', label: '쉬움' },
@@ -70,7 +65,7 @@ export default function TrailCreateScreen() {
   const [coverImage, setCoverImage] = useState<{ uri: string; type?: string; fileName?: string } | null>(null);
 
   const useCurrentLocation = (target: 'start' | 'end') => {
-    GeoLocation.getCurrentPosition(
+    Geolocation.getCurrentPosition(
       (pos) => {
         const lat = String(pos.coords.latitude);
         const lng = String(pos.coords.longitude);

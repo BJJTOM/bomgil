@@ -17,18 +17,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
-// Use built-in navigator.geolocation — no native module linking needed
-const GeoLocation = {
-  getCurrentPosition: (success: any, error: any, options: any) => {
-    navigator.geolocation.getCurrentPosition(success, error, options);
-  },
-  watchPosition: (success: any, error: any, options: any) => {
-    return navigator.geolocation.watchPosition(success, error, options);
-  },
-  clearWatch: (id: number) => {
-    navigator.geolocation.clearWatch(id);
-  },
-};
+import Geolocation from '@react-native-community/geolocation';
+
+// Configure for high accuracy
+Geolocation.setRNConfiguration({
+  skipPermissionRequests: false,
+  authorizationLevel: 'whenInUse',
+  enableBackgroundLocationUpdates: false,
+});
+
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
@@ -190,7 +187,7 @@ export default function WalkScreen() {
     (async () => {
       const hasPermission = await requestPermission();
       if (hasPermission) {
-        GeoLocation.getCurrentPosition(
+        Geolocation.getCurrentPosition(
           () => setGpsReady(true),
           () => setGpsReady(true),
           { enableHighAccuracy: true, timeout: 5000 },
@@ -202,7 +199,7 @@ export default function WalkScreen() {
   }, []);
 
   const startGpsTracking = useCallback(() => {
-    watchIdRef.current = GeoLocation.watchPosition(
+    watchIdRef.current = Geolocation.watchPosition(
       (pos) => {
         const point = engineRef.current.addPoint(
           pos.coords.latitude,
@@ -219,9 +216,8 @@ export default function WalkScreen() {
       (err) => console.log('GPS error:', err),
       {
         enableHighAccuracy: true,
-        distanceFilter: 3,
-        interval: 2000,
-        fastestInterval: 1000,
+        distanceFilter: 5,
+        timeout: 10000,
       },
     );
   }, []);
@@ -241,7 +237,7 @@ export default function WalkScreen() {
   const pauseWalk = () => {
     setState('paused');
     if (timerRef.current) clearInterval(timerRef.current);
-    if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
+    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
   };
 
   const resumeWalk = () => {
@@ -254,7 +250,7 @@ export default function WalkScreen() {
 
   const completeWalk = async () => {
     // Stop GPS and timer
-    if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
+    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
 
     const finalStats = engineRef.current.getStats();
@@ -311,7 +307,7 @@ export default function WalkScreen() {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
+      if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
     };
   }, []);
 

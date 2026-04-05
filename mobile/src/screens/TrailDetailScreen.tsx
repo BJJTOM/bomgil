@@ -26,9 +26,9 @@ class TrailDetailErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' }}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
-          <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'화면을 불러올 수 없습니다'}</Text>
-          <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'잠시 후 다시 시도해주세요'}</Text>
+          <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
+          <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uD654\uBA74\uC744 \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+          <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'\uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694'}</Text>
         </View>
       );
     }
@@ -38,8 +38,6 @@ class TrailDetailErrorBoundary extends React.Component<
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
-// MapView removed — causes crash without Google Maps API key
-// import MapView, { Polyline, Marker } from 'react-native-maps';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
@@ -124,7 +122,6 @@ function TrailDetailScreenInner() {
         const { data } = await api.get(`/trails/${trailId}/`);
         return data as Trail;
       } catch (e) {
-        // Fallback to offline cache
         const cached = await getSavedTrail(trailId);
         if (cached) return cached.trail as Trail;
         throw e;
@@ -181,9 +178,9 @@ function TrailDetailScreenInner() {
     setSavingOffline(false);
     if (success) {
       setSavedOffline(true);
-      Alert.alert('저장 완료', '오프라인에서도 이 코스를 확인할 수 있습니다.');
+      Alert.alert('\uC800\uC7A5 \uC644\uB8CC', '\uC624\uD504\uB77C\uC778\uC5D0\uC11C\uB3C4 \uC774 \uCF54\uC2A4\uB97C \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.');
     } else {
-      Alert.alert('저장 실패', '코스를 저장하지 못했습니다. 다시 시도해주세요.');
+      Alert.alert('\uC800\uC7A5 \uC2E4\uD328', '\uCF54\uC2A4\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.');
     }
   };
 
@@ -196,13 +193,15 @@ function TrailDetailScreenInner() {
     } catch {}
   };
 
+  // --- Error / Loading States ---
+
   if (!trailId) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 찾을 수 없습니다'}</Text>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uCF54\uC2A4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'\uB3CC\uC544\uAC00\uAE30'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -211,11 +210,11 @@ function TrailDetailScreenInner() {
   if (error) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 불러올 수 없습니다'}</Text>
-        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'네트워크 연결을 확인해주세요'}</Text>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
+        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'\uCF54\uC2A4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'\uB124\uD2B8\uC6CC\uD06C \uC5F0\uACB0\uC744 \uD655\uC778\uD574\uC8FC\uC138\uC694'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'\uB3CC\uC544\uAC00\uAE30'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -236,10 +235,18 @@ function TrailDetailScreenInner() {
       ? (safeReviews.reduce((sum: number, r: Review) => sum + (r.rating || 0), 0) / safeReviews.length).toFixed(1)
       : null;
 
+  const statsItems = [
+    formatDistance(trail.distance_km),
+    formatDuration(trail.estimated_minutes),
+    diff.label,
+    SEASON_LABELS[trail?.best_season || ''] || trail?.best_season || '',
+  ].filter(Boolean);
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
-        {/* Cover Image with Gradient */}
+
+        {/* ===== 1. Cover Image ===== */}
         <View style={styles.coverContainer}>
           {trail.cover_image || trail.thumbnail_url ? (
             <Image
@@ -252,346 +259,293 @@ function TrailDetailScreenInner() {
               <Text style={styles.coverEmoji}>{'\u{1F97E}'}</Text>
             </View>
           )}
-          <View style={styles.coverGradient} />
+
+          {/* Gradient overlay */}
+          <View style={styles.coverGradientTop} />
+          <View style={styles.coverGradientBottom} />
 
           {/* Back button */}
           <TouchableOpacity
             style={[styles.backButton, { top: insets.top + 8 }]}
-            onPress={() => navigation.goBack()}>
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}>
             <Text style={styles.backIcon}>{'\u2190'}</Text>
           </TouchableOpacity>
 
-          {/* Overlay content */}
-          <View style={styles.coverContent}>
-            <View style={[styles.diffBadge, { backgroundColor: diff.bg }]}>
-              <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
-            </View>
-            <Text style={styles.coverTitle}>{trail?.title || ''}</Text>
+          {/* Difficulty badge */}
+          <View style={[styles.diffBadge, { top: insets.top + 8 }, { backgroundColor: diff.bg }]}>
+            <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
+          </View>
+
+          {/* Title overlay at bottom */}
+          <View style={styles.coverOverlay}>
+            <Text style={styles.coverTitle} numberOfLines={2}>{trail?.title || ''}</Text>
             <Text style={styles.coverRegion}>
               {[trail?.region, trail?.country].filter(Boolean).join(', ')}
             </Text>
           </View>
         </View>
 
-        <View style={styles.body}>
-          {/* Info Cards Row */}
-          <View style={styles.infoRow}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>{'\uAC70\uB9AC'}</Text>
-              <Text style={styles.infoValue}>{formatDistance(trail.distance_km)}</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>{'\uC2DC\uAC04'}</Text>
-              <Text style={styles.infoValue}>{formatDuration(trail.estimated_minutes)}</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>{'\uB204\uC801\uC0C1\uC2B9'}</Text>
-              <Text style={styles.infoValue}>
-                {trail?.elevation_gain ? `${trail.elevation_gain}m` : '-'}
-              </Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>{'\uC2DC\uC990'}</Text>
-              <Text style={styles.infoValue}>
-                {SEASON_LABELS[trail?.best_season || ''] || trail?.best_season || '-'}
-              </Text>
-            </View>
-          </View>
+        {/* ===== 2. Quick Stats Line ===== */}
+        <View style={styles.statsLine}>
+          <Text style={styles.statsText}>
+            {statsItems.join('  \u00B7  ')}
+          </Text>
+        </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[
-                styles.likeBtn,
-                trail.is_liked && styles.likeBtnActive,
-              ]}
-              onPress={() => likeMutation.mutate()}>
-              <Text style={styles.likeBtnEmoji}>
-                {trail.is_liked ? '\u2764\uFE0F' : '\u{1F90D}'}
-              </Text>
-              <Text
-                style={[
-                  styles.likeBtnCount,
-                  trail.is_liked && styles.likeBtnCountActive,
-                ]}>
-                {trail.like_count ?? 0}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-              <Text style={styles.shareBtnEmoji}>{'\u2B06\uFE0F'}</Text>
-              <Text style={styles.shareBtnText}>{'\uACF5\uC720'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveOfflineBtn, savedOffline && styles.saveOfflineBtnActive]}
-              onPress={handleSaveOffline}
-              disabled={savingOffline}>
-              <Text style={styles.saveOfflineBtnEmoji}>
-                {savedOffline ? '\u2705' : '\u{1F4E5}'}
-              </Text>
-              <Text
-                style={[
-                  styles.saveOfflineBtnText,
-                  savedOffline && styles.saveOfflineBtnTextActive,
-                ]}>
-                {savingOffline ? '저장 중...' : savedOffline ? '저장됨' : '저장'}
-              </Text>
-            </TouchableOpacity>
-            <View style={{ flex: 1 }} />
-            <Text style={styles.viewCount}>
-              {'\u{1F441}'} {trail.view_count ?? 0}
+        {/* ===== 3. Action Bar ===== */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.actionRow}
+          bounces={false}>
+          <TouchableOpacity
+            style={[styles.actionBtn, trail.is_liked && styles.actionBtnLiked]}
+            onPress={() => likeMutation.mutate()}
+            activeOpacity={0.7}>
+            <Text style={styles.actionBtnIcon}>{trail.is_liked ? '\u2764\uFE0F' : '\u{1F90D}'}</Text>
+            <Text style={[styles.actionBtnText, trail.is_liked && styles.actionBtnTextLiked]}>
+              {'\uC88B\uC544\uC694'} {trail.like_count ?? 0}
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          {/* Description Section */}
-          <View style={styles.descCard}>
-            <Text style={styles.sectionTitle}>{'\uCF54\uC2A4 \uC18C\uAC1C'}</Text>
-            <Text style={styles.descText}>{trail?.description || ''}</Text>
-            {(trail?.tags || []).length > 0 && (
-              <View style={styles.tagsRow}>
-                {(trail?.tags || []).map((tag) => (
-                  <View key={tag.id} style={styles.tag}>
-                    <Text style={styles.tagText}>#{tag.name}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.7}>
+            <Text style={styles.actionBtnIcon}>{'\u2197\uFE0F'}</Text>
+            <Text style={styles.actionBtnText}>{'\uACF5\uC720'}</Text>
+          </TouchableOpacity>
 
-          {/* Map */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{'\uACBD\uB85C \uC9C0\uB3C4'}</Text>
-            {trail?.start_lat ? (
-              <SafeMapView
-                lat={parseFloat(String(trail.start_lat))}
-                lng={parseFloat(String(trail.start_lng))}
-                endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
-                endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
-                pathCoordinates={trail.path_coordinates as [number, number][] | undefined}
-                region={trail.region}
-                country={trail.country}
-                height={220}
-              />
-            ) : (
-              <View style={styles.mapContainer}>
-                <View style={styles.mapFallback}>
-                  <Text style={{ fontSize: 40 }}>{'\u{1F5FA}\uFE0F'}</Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8, fontWeight: '500' }}>
-                    {trail?.region || ''} {trail?.country || ''}
-                  </Text>
-                  <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 4 }}>
-                    {'\uC704\uCE58 \uC815\uBCF4 \uC5C6\uC74C'}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
+          <TouchableOpacity
+            style={[styles.actionBtn, savedOffline && styles.actionBtnSaved]}
+            onPress={handleSaveOffline}
+            disabled={savingOffline}
+            activeOpacity={0.7}>
+            <Text style={styles.actionBtnIcon}>{savedOffline ? '\u2705' : '\u{1F4E5}'}</Text>
+            <Text style={[styles.actionBtnText, savedOffline && styles.actionBtnTextSaved]}>
+              {savingOffline ? '\uC800\uC7A5 \uC911...' : savedOffline ? '\uC800\uC7A5\uB428' : '\uC800\uC7A5'}
+            </Text>
+          </TouchableOpacity>
 
-          {/* Spots Timeline */}
-          {(spots || []).length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {'\uCF54\uC2A4 \uC2A4\uD31F'} ({(spots || []).length})
-              </Text>
-              {(spots || []).map((spot, index) => (
-                <View key={spot.id} style={styles.spotItem}>
-                  <View style={styles.spotTimeline}>
-                    <Text style={styles.spotIcon}>
-                      {SPOT_ICONS[spot.spot_type] || '\u{1F4CD}'}
-                    </Text>
-                    {index < spots.length - 1 && <View style={styles.spotLine} />}
-                  </View>
-                  <View style={styles.spotContent}>
-                    <Text style={styles.spotName}>{spot?.name || ''}</Text>
-                    <Text style={styles.spotDistance}>{spot?.distance_from_start_km != null ? `${spot.distance_from_start_km}km` : ''}</Text>
-                    {spot.description ? (
-                      <Text style={styles.spotDesc} numberOfLines={2}>
-                        {spot.description}
-                      </Text>
-                    ) : null}
-                    {spot.tip ? (
-                      <View style={styles.tipBox}>
-                        <Text style={styles.tipText}>{spot.tip}</Text>
-                      </View>
-                    ) : null}
-                    {spot.images && spot.images.length > 0 && (
-                      <FlatList
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        data={spot.images}
-                        keyExtractor={(img) => String(img.id)}
-                        renderItem={({ item: img }) => (
-                          <Image
-                            source={{ uri: img.image }}
-                            style={styles.spotPhoto}
-                            resizeMode="cover"
-                          />
-                        )}
-                      />
-                    )}
-                  </View>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnPrimary]}
+            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
+            activeOpacity={0.7}>
+            <Text style={styles.actionBtnIcon}>{'\u{1F6B6}'}</Text>
+            <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>{'\uAC77\uAE30'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* ===== 4. Description ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{'\uC18C\uAC1C'}</Text>
+          <Text style={styles.descText}>{trail?.description || ''}</Text>
+          {(trail?.tags || []).length > 0 && (
+            <View style={styles.tagsRow}>
+              {(trail?.tags || []).map((tag) => (
+                <View key={tag.id} style={styles.tag}>
+                  <Text style={styles.tagText}>#{tag.name}</Text>
                 </View>
               ))}
             </View>
           )}
+        </View>
 
-          {/* Reviews */}
-          <View style={styles.section}>
-            <View style={styles.reviewsHeader}>
-              <View style={styles.reviewsTitleRow}>
-                <Text style={styles.sectionTitle}>{'\uB9AC\uBDF0'}</Text>
-                {avgRating && (
-                  <View style={styles.ratingBadge}>
-                    <Text style={styles.ratingBadgeText}>
-                      {'\u2605'} {avgRating} ({safeReviews.length})
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.writeReviewBtn}
-                onPress={() => setShowReviewForm(!showReviewForm)}>
-                <Text style={styles.writeReviewBtnText}>{'\uB9AC\uBDF0 \uC791\uC131'}</Text>
-              </TouchableOpacity>
+        {/* ===== 5. Map ===== */}
+        <View style={styles.mapSection}>
+          {trail?.start_lat ? (
+            <SafeMapView
+              lat={parseFloat(String(trail.start_lat))}
+              lng={parseFloat(String(trail.start_lng))}
+              endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
+              endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
+              pathCoordinates={trail.path_coordinates as [number, number][] | undefined}
+              region={trail.region}
+              country={trail.country}
+              height={200}
+            />
+          ) : (
+            <View style={styles.mapFallback}>
+              <Text style={{ fontSize: 32 }}>{'\u{1F5FA}\uFE0F'}</Text>
+              <Text style={{ color: '#8B95A1', fontSize: 13, marginTop: 6 }}>
+                {trail?.region || ''} {trail?.country || ''}
+              </Text>
             </View>
+          )}
+        </View>
 
-            {/* Rating Distribution */}
-            {safeReviews.length > 0 && (
-              <View style={styles.ratingDistCard}>
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = safeReviews.filter((r: Review) => r.rating === star).length;
-                  const pct = (count / safeReviews.length) * 100;
-                  return (
-                    <View key={star} style={styles.ratingDistRow}>
-                      <Text style={styles.ratingDistStar}>{star}</Text>
-                      <Text style={styles.ratingDistStarIcon}>{'\u2605'}</Text>
-                      <View style={styles.ratingDistBar}>
-                        <View
-                          style={[styles.ratingDistFill, { width: `${pct}%` }]}
-                        />
-                      </View>
-                      <Text style={styles.ratingDistCount}>{count}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Review Form */}
-            {showReviewForm && (
-              <View style={styles.reviewFormCard}>
-                <Text style={styles.reviewFormTitle}>{'\uB9AC\uBDF0 \uC791\uC131'}</Text>
-                <Text style={styles.reviewFormLabel}>{'\uD3C9\uC810'}</Text>
-                <View style={styles.starRow}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity
-                      key={star}
-                      onPress={() => setReviewForm((p) => ({ ...p, rating: star }))}>
-                      <Text
-                        style={[
-                          styles.starSelect,
-                          star <= reviewForm.rating && styles.starSelectFilled,
-                        ]}>
-                        {'\u2605'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={styles.reviewFormLabel}>{'\uB0B4\uC6A9'}</Text>
-                <TextInput
-                  style={styles.reviewInput}
-                  multiline
-                  numberOfLines={4}
-                  maxLength={1000}
-                  placeholder={'\uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uC8FC\uC138\uC694'}
-                  placeholderTextColor={colors.textTertiary}
-                  value={reviewForm.content}
-                  onChangeText={(text) => setReviewForm((p) => ({ ...p, content: text }))}
-                  textAlignVertical="top"
-                />
-                <View style={styles.reviewFormActions}>
-                  <TouchableOpacity
-                    style={styles.reviewCancelBtn}
-                    onPress={() => setShowReviewForm(false)}>
-                    <Text style={styles.reviewCancelText}>{'\uCDE8\uC18C'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.reviewSubmitBtn,
-                      (!reviewForm.content || createReview.isPending) && styles.reviewSubmitDisabled,
-                    ]}
-                    onPress={() => createReview.mutate(reviewForm)}
-                    disabled={!reviewForm.content || createReview.isPending}>
-                    <Text style={styles.reviewSubmitText}>
-                      {createReview.isPending ? '\uC81C\uCD9C \uC911...' : '\uC81C\uCD9C'}
+        {/* ===== 6. Spots ===== */}
+        {(spots || []).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {'\uACBD\uC720\uC9C0'} <Text style={styles.sectionCount}>{spots.length}</Text>
+            </Text>
+            {(spots || []).map((spot, index) => (
+              <View key={spot.id} style={styles.spotItem}>
+                <View style={styles.spotDotColumn}>
+                  <View style={styles.spotDot}>
+                    <Text style={styles.spotDotIcon}>
+                      {SPOT_ICONS[spot.spot_type] || '\u{1F4CD}'}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Review List */}
-            {safeReviews.slice(0, 5).map((review: Review) => (
-              <View key={review.id} style={styles.reviewItem}>
-                <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>
-                  <View style={styles.ratingRow}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Text
-                        key={star}
-                        style={[styles.star, star <= review.rating && styles.starFilled]}>
-                        {'\u2605'}
-                      </Text>
-                    ))}
                   </View>
+                  {index < spots.length - 1 && <View style={styles.spotConnector} />}
                 </View>
-                <Text style={styles.reviewContent} numberOfLines={3}>
-                  {review.content}
-                </Text>
-                <Text style={styles.reviewDate}>
-                  {review.visited_date ? new Date(review.visited_date).toLocaleDateString('ko-KR') : ''}
-                </Text>
+                <View style={styles.spotContent}>
+                  <Text style={styles.spotName}>{spot?.name || ''}</Text>
+                  {spot.description ? (
+                    <Text style={styles.spotDesc} numberOfLines={2}>
+                      {spot.description}
+                    </Text>
+                  ) : null}
+                  {spot.tip ? (
+                    <View style={styles.tipBox}>
+                      <Text style={styles.tipText}>{spot.tip}</Text>
+                    </View>
+                  ) : null}
+                  {spot.images && spot.images.length > 0 && (
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={spot.images}
+                      keyExtractor={(img) => String(img.id)}
+                      renderItem={({ item: img }) => (
+                        <Image
+                          source={{ uri: img.image }}
+                          style={styles.spotPhoto}
+                          resizeMode="cover"
+                        />
+                      )}
+                    />
+                  )}
+                </View>
               </View>
             ))}
           </View>
+        )}
 
-          {/* Author Card */}
-          {trail.author && (
-          <View style={styles.authorCard}>
-            <Text style={styles.sectionTitle}>{'\uC791\uC131\uC790'}</Text>
-            <TouchableOpacity style={styles.authorRow}>
-              <View style={styles.authorAvatar}>
-                {trail.author.profile_image ? (
-                  <Image
-                    source={{ uri: trail.author.profile_image }}
-                    style={styles.authorAvatarImg}
-                  />
-                ) : (
-                  <Text style={styles.authorAvatarFallback}>{'\u{1F464}'}</Text>
-                )}
-              </View>
-              <View>
-                <Text style={styles.authorName}>{trail.author.nickname || ''}</Text>
-                {trail.author.is_guide && (
-                  <View style={styles.guideBadge}>
-                    <Text style={styles.guideBadgeText}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
-                  </View>
-                )}
-              </View>
+        {/* ===== 7. Reviews ===== */}
+        <View style={styles.section}>
+          <View style={styles.reviewsHeader}>
+            <View style={styles.reviewsTitleRow}>
+              <Text style={styles.sectionTitle}>{'\uB9AC\uBDF0'}</Text>
+              {avgRating && (
+                <Text style={styles.ratingInline}>
+                  {'\u2605'} {avgRating} ({safeReviews.length})
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.writeReviewBtn}
+              onPress={() => setShowReviewForm(!showReviewForm)}
+              activeOpacity={0.7}>
+              <Text style={styles.writeReviewBtnText}>
+                {showReviewForm ? '\uCDE8\uC18C' : '\uB9AC\uBDF0 \uC791\uC131'}
+              </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Review Form (collapsible) */}
+          {showReviewForm && (
+            <View style={styles.reviewForm}>
+              <View style={styles.starRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setReviewForm((p) => ({ ...p, rating: star }))}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                    <Text
+                      style={[
+                        styles.starSelect,
+                        star <= reviewForm.rating && styles.starSelectFilled,
+                      ]}>
+                      {'\u2605'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.reviewInput}
+                multiline
+                numberOfLines={4}
+                maxLength={1000}
+                placeholder={'\uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uC8FC\uC138\uC694'}
+                placeholderTextColor="#B0B8C1"
+                value={reviewForm.content}
+                onChangeText={(text) => setReviewForm((p) => ({ ...p, content: text }))}
+                textAlignVertical="top"
+              />
+              <TouchableOpacity
+                style={[
+                  styles.reviewSubmitBtn,
+                  (!reviewForm.content || createReview.isPending) && styles.reviewSubmitDisabled,
+                ]}
+                onPress={() => createReview.mutate(reviewForm)}
+                disabled={!reviewForm.content || createReview.isPending}
+                activeOpacity={0.7}>
+                <Text style={styles.reviewSubmitText}>
+                  {createReview.isPending ? '\uC81C\uCD9C \uC911...' : '\uC81C\uCD9C'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
 
-          {/* Walk CTA */}
-          <TouchableOpacity
-            style={styles.walkCta}
-            onPress={() =>
-              navigation.navigate('Walk', { trailId: trail.id, trail })
-            }>
-            <Text style={styles.walkCtaText}>{'\uC774 \uCF54\uC2A4 \uAC77\uAE30'}</Text>
-          </TouchableOpacity>
-
-          <View style={{ height: 40 }} />
+          {/* Review List */}
+          {safeReviews.length === 0 && !showReviewForm && (
+            <View style={styles.emptyReviews}>
+              <Text style={styles.emptyReviewsText}>{'\uC544\uC9C1 \uB9AC\uBDF0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+              <Text style={styles.emptyReviewsSub}>{'\uCCAB \uBC88\uC9F8 \uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uBCF4\uC138\uC694'}</Text>
+            </View>
+          )}
+          {safeReviews.slice(0, 5).map((review: Review) => (
+            <View key={review.id} style={styles.reviewItem}>
+              <View style={styles.reviewTop}>
+                <View style={styles.reviewAvatarSmall}>
+                  {review.author?.profile_image ? (
+                    <Image source={{ uri: review.author.profile_image }} style={styles.reviewAvatarImg} />
+                  ) : (
+                    <Text style={styles.reviewAvatarFallback}>{(review.author?.nickname || '?')[0]}</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>
+                  <Text style={styles.reviewStars}>
+                    {Array.from({ length: 5 }, (_, i) =>
+                      i < review.rating ? '\u2605' : '\u2606'
+                    ).join('')}
+                    {review.visited_date ? (
+                      '  ' + new Date(review.visited_date).toLocaleDateString('ko-KR')
+                    ) : ''}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.reviewContent} numberOfLines={4}>
+                {review.content}
+              </Text>
+            </View>
+          ))}
         </View>
+
+        {/* ===== 8. Author ===== */}
+        {trail.author && (
+          <View style={styles.authorRow}>
+            <View style={styles.authorAvatar}>
+              {trail.author.profile_image ? (
+                <Image source={{ uri: trail.author.profile_image }} style={styles.authorAvatarImg} />
+              ) : (
+                <Text style={styles.authorAvatarFallback}>
+                  {(trail.author.nickname || '?')[0]}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.authorName}>{trail.author.nickname || ''}</Text>
+            {trail.author.is_guide && (
+              <View style={styles.guideBadge}>
+                <Text style={styles.guideBadgeText}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Bottom spacing for tab bar */}
+        <View style={{ height: 120 }} />
       </ScrollView>
     </View>
   );
@@ -600,73 +554,88 @@ function TrailDetailScreenInner() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.warm,
+    backgroundColor: '#FAFAFA',
   },
   center: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // ── Cover ──────────────────────────────────────────────
   coverContainer: {
-    height: 300,
+    height: 280,
     position: 'relative',
+    backgroundColor: '#2D4A2E',
   },
   coverImage: {
-    width: width,
-    height: 300,
+    width: '100%',
+    height: '100%',
   },
   coverPlaceholder: {
-    width: width,
-    height: 300,
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: '#2D4A2E',
   },
   coverEmoji: {
-    fontSize: 80,
-    opacity: 0.3,
+    fontSize: 72,
+    opacity: 0.25,
   },
-  coverGradient: {
+  coverGradientTop: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
+    height: 80,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  coverGradientBottom: {
+    position: 'absolute',
     bottom: 0,
-    height: 180,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    left: 0,
+    right: 0,
+    height: 140,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   backButton: {
     position: 'absolute',
     left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
   backIcon: {
-    fontSize: 20,
-    color: colors.textPrimary,
-  },
-  coverContent: {
-    position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
+    fontSize: 18,
+    color: '#191F28',
+    marginTop: -1,
   },
   diffBadge: {
+    position: 'absolute',
+    left: 62,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    marginBottom: 8,
+    zIndex: 10,
   },
   diffText: {
     fontSize: 12,
     fontWeight: '700',
   },
+  coverOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
   coverTitle: {
-    fontSize: 28,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
   },
@@ -674,374 +643,266 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
   },
-  body: {
-    padding: 24,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  infoCard: {
-    flex: 1,
+
+  // ── Quick Stats ────────────────────────────────────────
+  statsLine: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F6',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
-  infoLabel: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    marginBottom: 4,
+  statsText: {
+    fontSize: 14,
+    color: '#8B95A1',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+
+  // ── Action Bar ─────────────────────────────────────────
   actionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F6',
+    backgroundColor: '#fff',
   },
-  likeBtn: {
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderRadius: 20,
+    backgroundColor: '#F7F8FA',
+    gap: 6,
+    minHeight: 40,
   },
-  likeBtnActive: {
-    backgroundColor: '#FF4B4B',
+  actionBtnLiked: {
+    backgroundColor: '#FFF0F0',
   },
-  likeBtnEmoji: {
-    fontSize: 16,
+  actionBtnSaved: {
+    backgroundColor: '#f0f7f0',
   },
-  likeBtnCount: {
+  actionBtnPrimary: {
+    backgroundColor: '#2D4A2E',
+  },
+  actionBtnIcon: {
     fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
   },
-  likeBtnCountActive: {
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8B95A1',
+  },
+  actionBtnTextLiked: {
+    color: '#DC2626',
+  },
+  actionBtnTextSaved: {
+    color: '#2D4A2E',
+  },
+  actionBtnTextPrimary: {
     color: '#fff',
   },
-  shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  shareBtnEmoji: {
-    fontSize: 16,
-  },
-  shareBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  saveOfflineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  saveOfflineBtnActive: {
-    backgroundColor: colors.primary50 || '#E8F5E9',
-    borderColor: colors.primary,
-  },
-  saveOfflineBtnEmoji: {
-    fontSize: 16,
-  },
-  saveOfflineBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  saveOfflineBtnTextActive: {
-    color: colors.primary,
-  },
-  viewCount: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  descCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 28,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+
+  // ── Sections ───────────────────────────────────────────
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 12,
+    color: '#191F28',
+    marginBottom: 14,
   },
+  sectionCount: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#8B95A1',
+  },
+
+  // ── Description ────────────────────────────────────────
   descText: {
     fontSize: 15,
-    color: colors.textSecondary,
     lineHeight: 24,
+    color: '#191F28',
   },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 20,
+    gap: 6,
+    marginTop: 16,
   },
   tag: {
-    backgroundColor: colors.primary50,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#F7F8FA',
   },
   tagText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '500',
+    fontSize: 12,
+    color: '#8B95A1',
   },
-  mapContainer: {
+
+  // ── Map ────────────────────────────────────────────────
+  mapSection: {
+    marginHorizontal: 20,
+    marginTop: 24,
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  map: {
-    height: 250,
-    width: '100%',
+    backgroundColor: '#F7F8FA',
   },
   mapFallback: {
-    height: 200,
+    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: '#F7F8FA',
   },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
+
+  // ── Spots ──────────────────────────────────────────────
   spotItem: {
     flexDirection: 'row',
     marginBottom: 4,
   },
-  spotTimeline: {
+  spotDotColumn: {
     width: 32,
     alignItems: 'center',
   },
-  spotIcon: {
-    fontSize: 16,
-    marginBottom: 4,
+  spotDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f7f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  spotLine: {
+  spotDotIcon: {
+    fontSize: 14,
+  },
+  spotConnector: {
     width: 2,
     flex: 1,
-    backgroundColor: colors.borderDefault,
+    backgroundColor: '#E5E8EB',
+    marginVertical: 2,
   },
   spotContent: {
     flex: 1,
     paddingLeft: 12,
     paddingBottom: 20,
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 4,
   },
   spotName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  spotDistance: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginBottom: 4,
+    color: '#191F28',
   },
   spotDesc: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: '#8B95A1',
+    marginTop: 3,
     lineHeight: 19,
-    marginBottom: 6,
   },
   tipBox: {
-    backgroundColor: colors.accentLight,
-    padding: 10,
+    backgroundColor: '#f0f7f0',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 10,
-    marginBottom: 8,
+    marginTop: 8,
   },
   tipText: {
     fontSize: 13,
-    color: colors.primary,
+    color: '#2D4A2E',
     lineHeight: 18,
   },
   spotPhoto: {
-    width: 100,
-    height: 75,
-    borderRadius: 10,
-    marginRight: 8,
-    marginTop: 4,
+    width: 80,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 6,
+    marginTop: 8,
   },
+
+  // ── Reviews ────────────────────────────────────────────
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   reviewsTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  ratingBadge: {
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  ratingBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#B45309',
+  ratingInline: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFB800',
+    marginBottom: 12,
   },
   writeReviewBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 16,
+    marginBottom: 12,
   },
   writeReviewBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: '#8B95A1',
   },
-  ratingDistCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  ratingDistRow: {
-    flexDirection: 'row',
+  emptyReviews: {
+    paddingVertical: 32,
     alignItems: 'center',
-    paddingVertical: 4,
-    gap: 8,
   },
-  ratingDistStar: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    width: 14,
-    textAlign: 'right',
-  },
-  ratingDistStarIcon: {
-    fontSize: 12,
-    color: '#FBBF24',
-  },
-  ratingDistBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#F5F6F7',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  ratingDistFill: {
-    height: '100%',
-    backgroundColor: '#FBBF24',
-    borderRadius: 4,
-  },
-  ratingDistCount: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    width: 24,
-    textAlign: 'right',
-  },
-  reviewFormCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 28,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  reviewFormTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 20,
-  },
-  reviewFormLabel: {
-    fontSize: 14,
+  emptyReviewsText: {
+    fontSize: 15,
     fontWeight: '500',
-    color: colors.textSecondary,
-    marginBottom: 8,
+    color: '#B0B8C1',
+  },
+  emptyReviewsSub: {
+    fontSize: 13,
+    color: '#B0B8C1',
+    marginTop: 4,
+  },
+  reviewForm: {
+    backgroundColor: '#F7F8FA',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
   },
   starRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 20,
+    gap: 6,
+    marginBottom: 12,
   },
   starSelect: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#E5E8EB',
   },
   starSelectFilled: {
     color: '#FBBF24',
   },
   reviewInput: {
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
-    color: colors.textPrimary,
+    color: '#191F28',
     minHeight: 100,
-    marginBottom: 16,
-  },
-  reviewFormActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  reviewCancelBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  reviewCancelText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
+    marginBottom: 12,
   },
   reviewSubmitBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: colors.primary,
+    backgroundColor: '#2D4A2E',
+    paddingVertical: 12,
     borderRadius: 12,
+    alignItems: 'center',
   },
   reviewSubmitDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   reviewSubmitText: {
     fontSize: 14,
@@ -1049,99 +910,95 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   reviewItem: {
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F6',
   },
-  reviewHeader: {
+  reviewTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    gap: 10,
+    marginBottom: 8,
+  },
+  reviewAvatarSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F7F8FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  reviewAvatarImg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  reviewAvatarFallback: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B95A1',
   },
   reviewAuthor: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#191F28',
   },
-  ratingRow: {
-    flexDirection: 'row',
-  },
-  star: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  starFilled: {
+  reviewStars: {
+    fontSize: 12,
     color: '#FFB800',
+    marginTop: 1,
   },
   reviewContent: {
     fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 4,
+    color: '#191F28',
+    lineHeight: 22,
   },
-  reviewDate: {
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
-  authorCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 28,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
+
+  // ── Author ─────────────────────────────────────────────
   authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F4F6',
+    marginTop: 8,
   },
   authorAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(168,230,207,0.3)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#d4f5e4',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   authorAvatarImg: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   authorAvatarFallback: {
-    fontSize: 24,
-  },
-  authorName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#2D4A2E',
+  },
+  authorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#191F28',
   },
   guideBadge: {
-    marginTop: 4,
     backgroundColor: 'rgba(45,74,46,0.1)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
+    borderRadius: 10,
   },
   guideBadgeText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  walkCta: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  walkCtaText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 11,
+    color: '#2D4A2E',
+    fontWeight: '600',
   },
 });

@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -20,14 +19,14 @@ import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
-  manual_gpx: { label: 'GPX', icon: '📁' },
-  apple_watch: { label: 'Apple Watch', icon: '⌚' },
-  garmin: { label: 'Garmin', icon: '⌚' },
-  samsung_health: { label: 'Samsung Health', icon: '📱' },
-  google_fit: { label: 'Google Fit', icon: '📱' },
-  cashwalk: { label: 'Cashwalk', icon: '🚶' },
-  phone_gps: { label: 'GPS', icon: '📍' },
-  strava: { label: 'Strava', icon: '🏃' },
+  manual_gpx: { label: 'GPX', icon: '\uD83D\uDCC1' },
+  apple_watch: { label: 'Apple Watch', icon: '\u231A' },
+  garmin: { label: 'Garmin', icon: '\u231A' },
+  samsung_health: { label: 'Samsung Health', icon: '\uD83D\uDCF1' },
+  google_fit: { label: 'Google Fit', icon: '\uD83D\uDCF1' },
+  cashwalk: { label: 'Cashwalk', icon: '\uD83D\uDEB6' },
+  phone_gps: { label: 'GPS', icon: '\uD83D\uDCCD' },
+  strava: { label: 'Strava', icon: '\uD83C\uDFC3' },
 };
 
 export default function ActivityScreen() {
@@ -64,19 +63,20 @@ export default function ActivityScreen() {
     if (!minutes) return '-';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
   };
 
-  const formatPace = (pace: string | null) => {
-    if (!pace) return '-';
-    const p = parseFloat(pace);
-    const min = Math.floor(p);
-    const sec = Math.round((p - min) * 60);
-    return `${min}'${sec.toString().padStart(2, '0')}"`;
-  };
+  // Today's date string
+  const now = new Date();
+  const todayDateStr = now.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
 
   // Today's stats
-  const today = new Date().toISOString().split('T')[0];
+  const today = now.toISOString().split('T')[0];
   const todayWeekly = stats?.weekly?.find((d) => d.date === today);
   const todayActivities = activities.filter(
     (a) => a.started_at && a.started_at.startsWith(today),
@@ -103,18 +103,18 @@ export default function ActivityScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.headerSimple}>
-          <Text style={styles.headerTitle}>활동 기록</Text>
+          <Text style={styles.headerTitle}>{'\uD65C\uB3D9 \uAE30\uB85D'}</Text>
         </View>
         <View style={styles.loginPrompt}>
-          <Text style={styles.loginPromptIcon}>🦶</Text>
+          <Text style={styles.loginPromptIcon}>{'\uD83E\uDDB6'}</Text>
           <Text style={styles.loginPromptTitle}>
-            로그인하고 걷기 기록을 시작하세요
+            {'\uB85C\uADF8\uC778\uD558\uACE0 \uAC77\uAE30 \uAE30\uB85D\uC744 \uC2DC\uC791\uD558\uC138\uC694'}
           </Text>
           <TouchableOpacity
             style={styles.loginPromptBtn}
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.85}>
-            <Text style={styles.loginPromptBtnText}>로그인</Text>
+            <Text style={styles.loginPromptBtnText}>{'\uB85C\uADF8\uC778'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -130,123 +130,81 @@ export default function ActivityScreen() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.headerTitle}>활동 기록</Text>
-              <Text style={styles.headerSub}>나의 걷기 활동을 기록해보세요</Text>
-            </View>
-            <View style={styles.headerBtns}>
-              <TouchableOpacity
-                style={styles.statsBtn}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('WalkStats')}>
-                <Text style={styles.statsBtnText}>통계 보기</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.addRecordBtn}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('AddRecord')}>
-                <Text style={styles.addRecordText}>+ 기록 추가</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Big Total Distance */}
+        {/* ===== TOP SECTION: Today's focus ===== */}
+        <View style={styles.todaySection}>
+          {/* Date */}
           <FadeInView delay={0}>
-          {statsLoading ? (
-            <ActivityIndicator
-              color={colors.primary}
-              style={{ marginVertical: 24 }}
-            />
-          ) : (
-            <View style={styles.totalDistanceWrap}>
-              <Text style={styles.totalDistanceLabel}>총 거리</Text>
-              <Text style={styles.totalDistanceValue}>
-                {stats?.total_distance_km.toFixed(1) || '0.0'}
-              </Text>
-              <Text style={styles.totalDistanceUnit}>km</Text>
-            </View>
-          )}
+            <Text style={styles.todayDate}>{todayDateStr}</Text>
           </FadeInView>
 
-          {/* Today's Rings */}
-          <FadeInView delay={100}>
-          <View style={styles.ringsRow}>
-            <View style={styles.ringItem}>
-              <View style={[styles.ringCircle, styles.ringSteps]}>
-                <Text style={styles.ringValue}>
-                  {todayStats.steps.toLocaleString()}
-                </Text>
-              </View>
-              <Text style={styles.ringLabel}>걸음</Text>
-            </View>
-            <View style={styles.ringItem}>
-              <View style={[styles.ringCircle, styles.ringDistance]}>
-                <Text style={styles.ringValue}>
+          {/* Big distance number */}
+          <FadeInView delay={50}>
+            {statsLoading ? (
+              <ActivityIndicator
+                color={colors.primary}
+                style={{ marginVertical: 32 }}
+              />
+            ) : (
+              <View style={styles.bigDistanceWrap}>
+                <Text style={styles.bigDistanceValue}>
                   {todayStats.distance.toFixed(1)}
                 </Text>
+                <Text style={styles.bigDistanceUnit}>km</Text>
               </View>
-              <Text style={styles.ringLabel}>km</Text>
-            </View>
-            <View style={styles.ringItem}>
-              <View style={[styles.ringCircle, styles.ringCalories]}>
-                <Text style={styles.ringValue}>{todayStats.calories}</Text>
-              </View>
-              <Text style={styles.ringLabel}>kcal</Text>
-            </View>
-          </View>
+            )}
           </FadeInView>
 
-          {/* Start Walking CTA */}
-          <TouchableOpacity
-            style={styles.startWalkBtn}
-            onPress={() => navigation.navigate('Walk')}
-            activeOpacity={0.85}>
-            <Text style={styles.startWalkText}>🚶 걷기 시작</Text>
-          </TouchableOpacity>
-
-          {/* Weekly Chart */}
-          {stats && stats.weekly && stats.weekly.length > 0 && (
-            <View style={styles.weeklyCard}>
-              <Text style={styles.weeklyTitle}>이번 주 거리</Text>
-              <View style={styles.weeklyBars}>
-                {stats.weekly.map((day) => {
-                  const km = parseFloat(day.total_distance_km);
-                  const maxKm = Math.max(
-                    ...stats.weekly.map((d) =>
-                      parseFloat(d.total_distance_km),
-                    ),
-                    1,
-                  );
-                  const height = Math.max((km / maxKm) * 100, 4);
-                  const dayLabel = new Date(day.date).toLocaleDateString(
-                    'ko-KR',
-                    { weekday: 'short' },
-                  );
-                  return (
-                    <View key={day.date} style={styles.weeklyBarCol}>
-                      <View style={styles.weeklyBarTrack}>
-                        <View
-                          style={[
-                            styles.weeklyBar,
-                            { height: `${height}%` },
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.weeklyBarLabel}>{dayLabel}</Text>
-                    </View>
-                  );
-                })}
-              </View>
+          {/* Steps + Calories row */}
+          <FadeInView delay={100}>
+            <View style={styles.subStatsRow}>
+              <Text style={styles.subStatText}>
+                {todayStats.steps.toLocaleString()} {'\uAC78\uC74C'}
+              </Text>
+              <Text style={styles.subStatDot}>{'\u00B7'}</Text>
+              <Text style={styles.subStatText}>
+                {todayStats.calories} kcal
+              </Text>
             </View>
-          )}
+          </FadeInView>
         </View>
 
-        {/* Recent Activities */}
+        {/* ===== MIDDLE SECTION: CTA buttons ===== */}
+        <View style={styles.ctaSection}>
+          <FadeInView delay={150}>
+            <TouchableOpacity
+              style={styles.startWalkBtn}
+              onPress={() => navigation.navigate('Walk')}
+              activeOpacity={0.85}>
+              <Text style={styles.startWalkText}>{'\uD83D\uDEB6 \uAC77\uAE30 \uC2DC\uC791'}</Text>
+            </TouchableOpacity>
+          </FadeInView>
+
+          <FadeInView delay={200}>
+            <View style={styles.secondaryRow}>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('AddRecord')}>
+                <Text style={styles.secondaryBtnText}>{'\uAE30\uB85D \uCD94\uAC00'}</Text>
+              </TouchableOpacity>
+              <Text style={styles.secondaryDot}>{'\u00B7'}</Text>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('WalkStats')}>
+                <Text style={styles.secondaryBtnText}>{'\uD1B5\uACC4 \uBCF4\uAE30'}</Text>
+              </TouchableOpacity>
+            </View>
+          </FadeInView>
+        </View>
+
+        {/* ===== BOTTOM SECTION: Recent activities ===== */}
         <View style={styles.recentSection}>
-          <Text style={styles.recentTitle}>최근 활동</Text>
+          <FadeInView delay={250}>
+            <Text style={styles.recentTitle}>{'\uCD5C\uADFC \uD65C\uB3D9'}</Text>
+          </FadeInView>
+
           {activitiesLoading ? (
             <>
               {[1, 2, 3].map((i) => (
@@ -259,87 +217,52 @@ export default function ActivityScreen() {
           ) : activities.length === 0 ? (
             <View style={styles.noRecords}>
               <Text style={styles.noRecordsText}>
-                아직 활동 기록이 없어요
+                {'\uC544\uC9C1 \uD65C\uB3D9 \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694'}
               </Text>
             </View>
           ) : (
-            activities.map((activity) => (
-              <TouchableOpacity
-                key={activity.id}
-                style={styles.activityCard}
-                activeOpacity={0.7}>
-                <View style={styles.activityHeader}>
-                  <View style={styles.activityTitleRow}>
-                    <Text style={styles.activityIcon}>
-                      {SOURCE_LABELS[activity.source]?.icon || '📍'}
-                    </Text>
-                    <View style={styles.activityTitleInfo}>
-                      <Text style={styles.activityTitle}>
-                        {activity.title ||
-                          `${SOURCE_LABELS[activity.source]?.label || ''} 기록`}
-                      </Text>
-                      <Text style={styles.activityDate}>
-                        {activity.started_at
-                          ? new Date(activity.started_at).toLocaleDateString(
-                              'ko-KR',
-                              {
-                                month: 'long',
-                                day: 'numeric',
-                                weekday: 'short',
-                              },
-                            )
-                          : new Date(activity.created_at).toLocaleDateString(
-                              'ko-KR',
-                              {
-                                month: 'long',
-                                day: 'numeric',
-                                weekday: 'short',
-                              },
-                            )}
-                        {' · '}
-                        {SOURCE_LABELS[activity.source]?.label || ''}
+            activities.map((activity) => {
+              const dateStr = activity.started_at
+                ? new Date(activity.started_at).toLocaleDateString('ko-KR', {
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : new Date(activity.created_at).toLocaleDateString('ko-KR', {
+                    month: 'long',
+                    day: 'numeric',
+                  });
+              const sourceInfo = SOURCE_LABELS[activity.source];
+              const distanceStr = activity.distance_km
+                ? `${parseFloat(activity.distance_km).toFixed(1)}km`
+                : '';
+              const durationStr = formatDuration(activity.duration_minutes);
+
+              return (
+                <FadeInView key={activity.id} delay={300}>
+                  <TouchableOpacity
+                    style={styles.activityItem}
+                    activeOpacity={0.7}>
+                    <View style={styles.activityIconWrap}>
+                      <Text style={styles.activityIcon}>
+                        {sourceInfo?.icon || '\uD83D\uDCCD'}
                       </Text>
                     </View>
-                  </View>
-                  <View style={styles.distanceBadge}>
-                    <Text style={styles.distanceBadgeText}>
-                      {activity.distance_km
-                        ? `${parseFloat(activity.distance_km).toFixed(1)}km`
-                        : '-'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.activityStats}>
-                  <View style={styles.activityStatItem}>
-                    <Text style={styles.activityStatLabel}>거리</Text>
-                    <Text style={styles.activityStatValue}>
-                      {activity.distance_km
-                        ? `${parseFloat(activity.distance_km).toFixed(1)}km`
-                        : '-'}
-                    </Text>
-                  </View>
-                  <View style={styles.activityStatItem}>
-                    <Text style={styles.activityStatLabel}>시간</Text>
-                    <Text style={styles.activityStatValue}>
-                      {formatDuration(activity.duration_minutes)}
-                    </Text>
-                  </View>
-                  <View style={styles.activityStatItem}>
-                    <Text style={styles.activityStatLabel}>걸음</Text>
-                    <Text style={styles.activityStatValue}>
-                      {activity.total_steps?.toLocaleString() || '-'}
-                    </Text>
-                  </View>
-                  <View style={styles.activityStatItem}>
-                    <Text style={styles.activityStatLabel}>페이스</Text>
-                    <Text style={styles.activityStatValue}>
-                      {formatPace(activity.avg_pace_min_km)}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))
+                    <View style={styles.activityInfo}>
+                      <View style={styles.activityTopRow}>
+                        <Text style={styles.activityDateText}>{dateStr}</Text>
+                        <Text style={styles.activityTitle}>
+                          {activity.title ||
+                            `${sourceInfo?.label || ''} \uAE30\uB85D`}
+                        </Text>
+                      </View>
+                      <Text style={styles.activityMeta}>
+                        {[distanceStr, durationStr].filter(Boolean).join(' \u00B7 ')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </FadeInView>
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -358,6 +281,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
   loginPrompt: {
     flex: 1,
@@ -388,275 +316,165 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Header section (light gradient feel)
-  headerSection: {
-    backgroundColor: colors.primary50,
-    paddingTop: 12,
+  // ===== Today section =====
+  todaySection: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 8,
     paddingHorizontal: 20,
-    paddingBottom: 24,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+  todayDate: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.textSecondary,
     marginBottom: 24,
   },
-  headerTitle: {
-    fontSize: 22,
+  bigDistanceWrap: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  bigDistanceValue: {
+    fontSize: 72,
     fontWeight: '700',
     color: colors.textPrimary,
+    lineHeight: 80,
+    letterSpacing: -2,
   },
-  headerSub: {
-    fontSize: 13,
+  bigDistanceUnit: {
+    fontSize: 16,
     color: colors.textTertiary,
     marginTop: 2,
   },
-  headerBtns: {
+  subStatsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  statsBtn: {
-    backgroundColor: 'rgba(45,74,46,0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 9999,
+  subStatText: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
-  statsBtnText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  addRecordBtn: {
-    backgroundColor: 'rgba(45,74,46,0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 9999,
-  },
-  addRecordText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-
-  // Total distance
-  totalDistanceWrap: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  totalDistanceLabel: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  totalDistanceValue: {
-    fontSize: 56,
-    fontWeight: '700',
-    color: colors.primary,
-    lineHeight: 60,
-  },
-  totalDistanceUnit: {
+  subStatDot: {
     fontSize: 14,
     color: colors.textTertiary,
-    marginTop: 4,
   },
 
-  // Today's rings
-  ringsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginBottom: 24,
+  // ===== CTA section =====
+  ctaSection: {
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 12,
   },
-  ringItem: {
-    alignItems: 'center',
-  },
-  ringCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 4,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  ringSteps: {
-    borderColor: '#2D4A2E',
-  },
-  ringDistance: {
-    borderColor: '#A8E6CF',
-  },
-  ringCalories: {
-    borderColor: '#FF6B6B',
-  },
-  ringValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  ringLabel: {
-    fontSize: 10,
-    color: colors.textTertiary,
-  },
-
-  // Start walk
   startWalkBtn: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   startWalkText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
-
-  // Weekly chart
-  weeklyCard: {
-    marginTop: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-  },
-  weeklyTitle: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginBottom: 12,
-  },
-  weeklyBars: {
+  secondaryRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 60,
-    gap: 6,
-  },
-  weeklyBarCol: {
-    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
+    marginTop: 16,
+    gap: 8,
   },
-  weeklyBarTrack: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'flex-end',
+  secondaryBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  weeklyBar: {
-    width: '100%',
-    backgroundColor: 'rgba(45,74,46,0.3)',
-    borderRadius: 2,
+  secondaryBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
   },
-  weeklyBarLabel: {
-    fontSize: 9,
+  secondaryDot: {
+    fontSize: 14,
     color: colors.textTertiary,
-    marginTop: 4,
   },
 
-  // Recent activities
+  // ===== Recent section =====
   recentSection: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 28,
   },
   recentTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-
-  // Activity card
-  activityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  activityTitleRow: {
+  activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  activityIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
   activityIcon: {
     fontSize: 18,
   },
-  activityTitleInfo: {
+  activityInfo: {
     flex: 1,
   },
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  activityDate: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  distanceBadge: {
-    backgroundColor: '#111111',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 9999,
-  },
-  distanceBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  activityStats: {
+  activityTopRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 3,
   },
-  activityStatItem: {
-    flex: 1,
-  },
-  activityStatLabel: {
-    fontSize: 10,
-    color: colors.textTertiary,
-    marginBottom: 2,
-  },
-  activityStatValue: {
+  activityDateText: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
   },
+  activityTitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  activityMeta: {
+    fontSize: 13,
+    color: colors.textTertiary,
+  },
 
   // Skeleton
   skeletonItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
   },
   skeletonTitle: {
-    height: 16,
+    height: 14,
     width: '40%',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: '#F0F0F0',
     borderRadius: 4,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   skeletonMeta: {
     height: 12,
-    width: '65%',
-    backgroundColor: colors.bgSecondary,
+    width: '55%',
+    backgroundColor: '#F0F0F0',
     borderRadius: 4,
   },
 

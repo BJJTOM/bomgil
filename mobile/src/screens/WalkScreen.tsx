@@ -15,8 +15,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Geolocation from 'react-native-geolocation-service';
 import { colors } from '../theme/colors';
+
+// Use built-in navigator.geolocation — no native module linking needed
+const GeoLocation = {
+  getCurrentPosition: (success: any, error: any, options: any) => {
+    navigator.geolocation.getCurrentPosition(success, error, options);
+  },
+  watchPosition: (success: any, error: any, options: any) => {
+    return navigator.geolocation.watchPosition(success, error, options);
+  },
+  clearWatch: (id: number) => {
+    navigator.geolocation.clearWatch(id);
+  },
+};
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
@@ -131,17 +143,23 @@ export default function WalkScreen() {
   }, [stats.isAutoPaused]);
 
   const requestPermission = async () => {
-    if (Platform.OS === 'ios') {
-      const auth = await Geolocation.requestAuthorization('whenInUse');
-      return auth === 'granted';
-    }
     if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '\uC704\uCE58 \uAD8C\uD55C',
+            message: '\uAC77\uAE30 \uACBD\uB85C\uB97C \uAE30\uB85D\uD558\uB824\uBA74 \uC704\uCE58 \uC815\uBCF4\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4',
+            buttonPositive: '\uD5C8\uC6A9',
+            buttonNegative: '\uAC70\uBD80',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch {
+        return false;
+      }
     }
-    return false;
+    return true;
   };
 
   // Background/foreground tracking
@@ -158,13 +176,12 @@ export default function WalkScreen() {
 
   // Take photo with GPS tag
   const handleTakePhoto = useCallback(async () => {
-    if (!currentPos) {
-      Alert.alert('GPS \uB300\uAE30 \uC911', '\uC704\uCE58 \uC815\uBCF4\uB97C \uC544\uC9C1 \uBC1B\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.');
-      return;
-    }
-    const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
-    if (photo) {
-      setTaggedPhotos((prev) => [...prev, photo]);
+    if (!currentPos) return;
+    try {
+      const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
+      if (photo) setTaggedPhotos(prev => [...prev, photo]);
+    } catch {
+      // Camera not available — silently ignore
     }
   }, [currentPos]);
 
@@ -173,7 +190,7 @@ export default function WalkScreen() {
     (async () => {
       const hasPermission = await requestPermission();
       if (hasPermission) {
-        Geolocation.getCurrentPosition(
+        GeoLocation.getCurrentPosition(
           () => setGpsReady(true),
           () => setGpsReady(true),
           { enableHighAccuracy: true, timeout: 5000 },
@@ -185,7 +202,7 @@ export default function WalkScreen() {
   }, []);
 
   const startGpsTracking = useCallback(() => {
-    watchIdRef.current = Geolocation.watchPosition(
+    watchIdRef.current = GeoLocation.watchPosition(
       (pos) => {
         const point = engineRef.current.addPoint(
           pos.coords.latitude,
@@ -205,7 +222,6 @@ export default function WalkScreen() {
         distanceFilter: 3,
         interval: 2000,
         fastestInterval: 1000,
-        showsBackgroundLocationIndicator: true,
       },
     );
   }, []);
@@ -225,7 +241,7 @@ export default function WalkScreen() {
   const pauseWalk = () => {
     setState('paused');
     if (timerRef.current) clearInterval(timerRef.current);
-    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+    if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
   };
 
   const resumeWalk = () => {
@@ -238,7 +254,7 @@ export default function WalkScreen() {
 
   const completeWalk = async () => {
     // Stop GPS and timer
-    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+    if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
 
     const finalStats = engineRef.current.getStats();
@@ -295,7 +311,7 @@ export default function WalkScreen() {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+      if (watchIdRef.current !== null) GeoLocation.clearWatch(watchIdRef.current);
     };
   }, []);
 

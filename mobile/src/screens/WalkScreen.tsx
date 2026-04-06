@@ -284,6 +284,7 @@ export default function WalkScreen() {
                 startLng: startCoord[0],
                 endLat: endCoord[1],
                 endLng: endCoord[0],
+                manualMode: false,
               });
             },
           },

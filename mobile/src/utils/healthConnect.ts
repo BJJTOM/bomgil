@@ -27,11 +27,19 @@ export async function initHealthConnect(): Promise<boolean> {
 export async function requestHealthPermissions(): Promise<boolean> {
   try {
     const granted = await requestPermission(PERMISSIONS);
-    console.log('[Moru] Health permissions granted:', granted?.length || 0);
     return (granted?.length || 0) > 0;
   } catch (e) {
-    console.log('[Moru] Health permission error:', e);
-    return false;
+    // Try with fewer permissions as fallback
+    try {
+      const minPerms: Permission[] = [
+        { accessType: 'read', recordType: 'ExerciseSession' },
+        { accessType: 'read', recordType: 'Steps' },
+      ];
+      const granted = await requestPermission(minPerms);
+      return (granted?.length || 0) > 0;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -71,14 +79,23 @@ export async function getWalkSessions(days: number = 30): Promise<HealthWalkSess
       },
     });
 
-    // Filter walking sessions only
+    // Include walking + general exercise sessions
+    // exerciseType 79 = walking, 56 = hiking, 0 = unknown/other
     const walkSessions = sessions.records.filter(
-      (s: any) => s.exerciseType === 79 || s.exerciseType === 'walking' || s.exerciseType === 'EXERCISE_TYPE_WALKING'
+      (s: any) => {
+        const t = s.exerciseType;
+        return t === 79 || t === 56 || t === 0 || t === 'walking' || t === 'hiking' ||
+               t === 'EXERCISE_TYPE_WALKING' || t === 'EXERCISE_TYPE_HIKING' ||
+               typeof t === 'undefined'; // include if type is not set
+      }
     );
+
+    // If no walking sessions found, just return ALL sessions
+    const sessionsToProcess = walkSessions.length > 0 ? walkSessions : sessions.records;
 
     const results: HealthWalkSession[] = [];
 
-    for (const session of walkSessions) {
+    for (const session of sessionsToProcess) {
       const sessionStart = session.startTime;
       const sessionEnd = session.endTime;
       const durationMs = new Date(sessionEnd).getTime() - new Date(sessionStart).getTime();

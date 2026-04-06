@@ -126,28 +126,54 @@ export default function HealthImportScreen() {
     if (importing) return;
     setImporting(session.id);
     try {
-      const payload = {
+      // Format track_points for our API
+      const trackPoints = session.trackPoints.map(p => ({
+        lat: p.lat,
+        lng: p.lng,
+        ele: p.ele || null,
+        time: p.time || new Date().toISOString(),
+      }));
+
+      const payload: any = {
         title: session.title,
         source: 'samsung_health',
         started_at: session.startTime,
         finished_at: session.endTime,
-        duration_minutes: session.duration,
-        distance_km: session.distance.toFixed(2),
-        total_steps: session.steps,
-        calories_burned: session.calories,
-        avg_heart_rate: session.heartRateAvg || null,
-        track_points: session.trackPoints.length > 0 ? session.trackPoints : null,
+        total_steps: session.steps || 0,
+        calories_burned: session.calories || 0,
       };
+
+      // Only include track_points if we have them
+      if (trackPoints.length > 0) {
+        payload.track_points = trackPoints;
+      }
 
       const { data } = await api.post('/activities/', payload);
       Alert.alert('가져오기 완료', `${session.title} 기록을 가져왔습니다.`, [
         {
           text: '확인',
-          onPress: () => navigation.navigate('ActivityDetail', { activity: data }),
+          onPress: () => navigation.navigate('ActivityDetail', {
+            activity: {
+              ...data,
+              distance_km: session.distance.toFixed(2),
+              duration_minutes: session.duration,
+              total_steps: session.steps,
+              calories_burned: session.calories,
+              track_points: trackPoints,
+            },
+          }),
         },
       ]);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail || '가져오기에 실패했습니다.';
+      const errData = e?.response?.data;
+      let msg = '가져오기에 실패했습니다.';
+      if (errData && typeof errData === 'object') {
+        const firstKey = Object.keys(errData)[0];
+        const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
+        msg = `${firstKey}: ${firstVal}`;
+      } else if (errData?.detail) {
+        msg = errData.detail;
+      }
       Alert.alert('오류', msg);
     }
     setImporting(null);

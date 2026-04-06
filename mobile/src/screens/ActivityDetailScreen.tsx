@@ -60,18 +60,41 @@ export default function ActivityDetailScreen() {
 
   // Load extra data from AsyncStorage if not passed via params
   useEffect(() => {
-    if (taggedPhotos.length === 0 && walkSpots.length === 0 && activity?.id) {
+    if (activity?.id) {
       loadExtraData();
     }
   }, []);
 
   const loadExtraData = async () => {
     try {
-      const raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
+      // Try exact ID match first
+      let raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
+
+      // If not found, scan all activity keys for closest match
+      if (!raw) {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const actKeys = allKeys.filter(k => k.startsWith('activity_') && k.endsWith('_extra'));
+        // Try the most recent one
+        if (actKeys.length > 0) {
+          const sortedKeys = actKeys.sort().reverse();
+          for (const key of sortedKeys) {
+            const val = await AsyncStorage.getItem(key);
+            if (val) {
+              raw = val;
+              break;
+            }
+          }
+        }
+      }
+
       if (raw) {
         const extra = JSON.parse(raw);
-        if (extra.taggedPhotos?.length) setTaggedPhotos(extra.taggedPhotos);
-        if (extra.spots?.length) setWalkSpots(extra.spots);
+        if (extra.taggedPhotos?.length && taggedPhotos.length === 0) setTaggedPhotos(extra.taggedPhotos);
+        if (extra.spots?.length && walkSpots.length === 0) setWalkSpots(extra.spots);
+        // Also set routeCoords if track_points are empty
+        if (extra.routeCoords?.length && (!activity.track_points || activity.track_points.length === 0)) {
+          activity.track_points = extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }));
+        }
       }
     } catch (e) {
       console.log('Failed to load activity extra data:', e);
@@ -212,7 +235,6 @@ export default function ActivityDetailScreen() {
             name: coverImage.fileName || 'cover.jpg',
           } as any);
           await api.patch(`/trails/${trailId}/`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
           });
         } catch (imgErr) {
           console.log('Cover image upload failed:', imgErr);

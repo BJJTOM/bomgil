@@ -59,28 +59,20 @@ export default function ActivityDetailScreen() {
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
 
-  // Load extra data from AsyncStorage if not passed via params
+  // Load extra data from AsyncStorage — only exact ID match
   useEffect(() => {
-    if (taggedPhotos.length === 0 || walkSpots.length === 0) {
+    if (activity?.id && (taggedPhotos.length === 0 && walkSpots.length === 0)) {
       loadExtraData();
     }
   }, []);
 
   const loadExtraData = async () => {
     try {
-      // Try exact ID match first
-      let raw = activity?.id ? await AsyncStorage.getItem(`activity_${activity.id}_extra`) : null;
-
-      // If not found, try latest
-      if (!raw) {
-        raw = await AsyncStorage.getItem('activity_latest_extra');
-      }
-
+      const raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
       if (raw) {
         const extra = JSON.parse(raw);
-        if (extra.taggedPhotos?.length && taggedPhotos.length === 0) setTaggedPhotos(extra.taggedPhotos);
-        if (extra.spots?.length && walkSpots.length === 0) setWalkSpots(extra.spots);
-        // Also set routeCoords if track_points are empty
+        if (extra.taggedPhotos?.length) setTaggedPhotos(extra.taggedPhotos);
+        if (extra.spots?.length) setWalkSpots(extra.spots);
         if (extra.routeCoords?.length && (!activity.track_points || activity.track_points.length === 0)) {
           activity.track_points = extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }));
         }
@@ -275,17 +267,20 @@ export default function ActivityDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* 1. Route map preview — always visible */}
-          <View style={styles.mapSection}>
-            <SafeMapView
-              lat={firstPoint?.lat || 37.5665}
-              lng={firstPoint?.lng || 126.978}
-              endLat={hasPath ? lastPoint?.lat : undefined}
-              endLng={hasPath ? lastPoint?.lng : undefined}
-              pathCoordinates={hasPath ? pathCoords : undefined}
-              height={220}
-            />
-          </View>
+          {/* 1. Route map preview — only if we have GPS data */}
+          {trackPoints.length > 0 && (
+            <View style={styles.mapSection}>
+              <SafeMapView
+                lat={firstPoint.lat}
+                lng={firstPoint.lng}
+                endLat={hasPath ? lastPoint.lat : undefined}
+                endLng={hasPath ? lastPoint.lng : undefined}
+                pathCoordinates={hasPath ? pathCoords : (trackPoints.length === 1 ? [[firstPoint.lng, firstPoint.lat]] : undefined)}
+                height={220}
+                spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
+              />
+            </View>
+          )}
 
           {/* 2. Title & Date */}
           <View style={styles.titleSection}>

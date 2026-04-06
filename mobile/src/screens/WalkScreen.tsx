@@ -120,9 +120,14 @@ export default function WalkScreen() {
       ).catch(() => {});
     }
     Geolocation.getCurrentPosition(
-      (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCurrentPos(p);
+        // Record start position as first route point
+        setRouteCoords([[p.lng, p.lat]]);
+      },
       () => {},
-      { enableHighAccuracy: true, timeout: 5000 },
+      { enableHighAccuracy: true, timeout: 10000 },
     );
     const timer = setInterval(() => {
       setCountdown(prev => {

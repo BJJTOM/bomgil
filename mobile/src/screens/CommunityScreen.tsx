@@ -29,6 +29,42 @@ const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text:
   funny: { emoji: '\u{1F604}', label: '재밌어요', bg: '#F0FDF4', text: '#15803D' },
 };
 
+// Extracted to avoid re-creation on every render
+function ExpandableContent({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > 150;
+  return (
+    <View>
+      <Text style={styles.storyContent}>
+        {isLong && !expanded ? content.slice(0, 150) + '...' : content}
+      </Text>
+      {isLong && !expanded && (
+        <TouchableOpacity onPress={() => setExpanded(true)}>
+          <Text style={styles.showMoreText}>더보기</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function LikeLabel({ isLiked, onPress }: { isLiked: boolean; onPress: () => void }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 1.3, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+    onPress();
+  };
+  return (
+    <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
+      <Animated.Text style={[styles.actionLabel, { transform: [{ scale: scaleAnim }] }, isLiked && { color: '#ED4956' }]}>
+        {isLiked ? '♥' : '♡'} 좋아요
+      </Animated.Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -76,42 +112,6 @@ export default function CommunityScreen() {
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}일 전`;
     return new Date(dateStr).toLocaleDateString('ko-KR');
-  };
-
-  const ExpandableContent = ({ content, storyId }: { content: string; storyId: number }) => {
-    const [expanded, setExpanded] = useState(false);
-    const isLong = content.length > 150;
-
-    return (
-      <View>
-        <Text style={styles.storyContent}>
-          {isLong && !expanded ? content.slice(0, 150) + '...' : content}
-        </Text>
-        {isLong && !expanded && (
-          <TouchableOpacity onPress={() => setExpanded(true)}>
-            <Text style={styles.showMoreText}>더보기</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
-
-  const LikeLabel = ({ isLiked, onPress }: { isLiked: boolean; onPress: () => void }) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const handlePress = () => {
-      Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 1.3, duration: 100, useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-      ]).start();
-      onPress();
-    };
-    return (
-      <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
-        <Animated.Text style={[styles.actionLabel, { transform: [{ scale: scaleAnim }] }, isLiked && { color: '#ED4956' }]}>
-          {isLiked ? '♥' : '♡'} {'좋아요'}
-        </Animated.Text>
-      </TouchableOpacity>
-    );
   };
 
   const renderStory = ({ item, index }: { item: WalkStory; index: number }) => {
@@ -169,7 +169,7 @@ export default function CommunityScreen() {
             {item.title ? (
               <Text style={styles.storyTitle}>{item.title}</Text>
             ) : null}
-            <ExpandableContent content={item.content} storyId={item.id} />
+            <ExpandableContent content={item.content} />
           </View>
 
           {/* Photo Grid */}

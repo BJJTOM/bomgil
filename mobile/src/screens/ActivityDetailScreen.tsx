@@ -329,9 +329,8 @@ export default function ActivityDetailScreen() {
             </View>
           )}
 
-          {/* 5. Course draft section */}
-          {hasPath && (
-            <View style={styles.section}>
+          {/* 5. Course draft section — always visible */}
+          <View style={styles.section}>
               {!courseExpanded ? (
                 <TouchableOpacity
                   style={styles.courseToggleBtn}
@@ -490,7 +489,6 @@ export default function ActivityDetailScreen() {
                 </View>
               )}
             </View>
-          )}
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

@@ -51,7 +51,24 @@ export default function TrailCreateScreen() {
           <Text style={styles.cardArrow}>{'›'}</Text>
         </TouchableOpacity>
 
-        {/* Card 2: Manual Input */}
+        {/* Card 2: Draw on Map (AI route) */}
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('TrailDraw')}>
+          <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF' }]}>
+            <Text style={styles.cardIcon}>{'🗺'}</Text>
+          </View>
+          <View style={styles.cardTextWrap}>
+            <Text style={styles.cardTitle}>지도에서 경로 만들기</Text>
+            <Text style={styles.cardDesc}>
+              지도를 탭해서 경유지를 찍으면{'\n'}AI가 실제 도보 경로를 자동 생성
+            </Text>
+          </View>
+          <Text style={styles.cardArrow}>{'›'}</Text>
+        </TouchableOpacity>
+
+        {/* Card 3: Manual Input */}
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.7}

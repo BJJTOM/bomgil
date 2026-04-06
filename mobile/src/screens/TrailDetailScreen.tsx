@@ -422,7 +422,20 @@ function TrailDetailScreenInner() {
         )}
 
         {/* ===== 5. Map ===== */}
-        <View style={styles.mapSection}>
+        <TouchableOpacity
+          style={styles.mapSection}
+          activeOpacity={0.95}
+          onPress={() => navigation.navigate('MapDetail', {
+            pathCoordinates: (trail.path_data?.coordinates || trail.path_coordinates) || [],
+            startLat: parseFloat(String(trail.start_lat)),
+            startLng: parseFloat(String(trail.start_lng)),
+            endLat: trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined,
+            endLng: trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined,
+            spots: (spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type })),
+            title: trail.title,
+            distance: trail.distance_km ? parseFloat(trail.distance_km) : undefined,
+            duration: trail.estimated_minutes,
+          })}>
           {trail?.start_lat ? (
             <SafeMapView
               lat={parseFloat(String(trail.start_lat))}
@@ -443,7 +456,7 @@ function TrailDetailScreenInner() {
               </Text>
             </View>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* ===== 6. Spots ===== */}
         {(spots || []).length > 0 && (

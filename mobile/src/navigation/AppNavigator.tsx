@@ -42,6 +42,7 @@ import WalkStatsScreen from '../screens/WalkStatsScreen';
 import AddRecordScreen from '../screens/AddRecordScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import MyTrailsScreen from '../screens/MyTrailsScreen';
+import MapDetailScreen from '../screens/MapDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -188,6 +189,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AddRecord" component={AddRecordScreen} />
         <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
         <Stack.Screen name="MyTrails" component={MyTrailsScreen} />
+        <Stack.Screen name="MapDetail" component={MapDetailScreen} options={{ gestureEnabled: true }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

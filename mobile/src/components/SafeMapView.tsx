@@ -153,8 +153,8 @@ export default function SafeMapView({
         <MapView
           style={{ flex: 1 }}
           styleURL="mapbox://styles/mapbox/outdoors-v12"
-          scrollEnabled={false}
-          zoomEnabled={false}
+          scrollEnabled={true}
+          zoomEnabled={true}
           pitchEnabled={false}
           rotateEnabled={false}
           attributionEnabled={false}
@@ -178,26 +178,39 @@ export default function SafeMapView({
             animationDuration={0}
           />
 
-          {/* Path lines — double-line effect for premium look */}
+          {/* Path lines — triple-line premium effect */}
           {pathGeoJSON && (
             <ShapeSource id="pathSource" shape={pathGeoJSON}>
-              {/* Background border line (white, wider) */}
+              {/* Outer glow (subtle shadow) */}
+              <LineLayer
+                id="pathLineGlow"
+                style={{
+                  lineColor: '#2D4A2E',
+                  lineWidth: 14,
+                  lineOpacity: 0.1,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                  lineBlur: 4,
+                }}
+              />
+              {/* White border */}
               <LineLayer
                 id="pathLineBorder"
                 style={{
                   lineColor: '#FFFFFF',
                   lineWidth: 8,
-                  lineOpacity: 0.8,
+                  lineOpacity: 0.9,
                   lineCap: 'round',
                   lineJoin: 'round',
                 }}
+                aboveLayerID="pathLineGlow"
               />
-              {/* Main route line (brand green, narrower) */}
+              {/* Main route line (brand green) */}
               <LineLayer
                 id="pathLine"
                 style={{
                   lineColor: '#2D4A2E',
-                  lineWidth: 5,
+                  lineWidth: 4.5,
                   lineCap: 'round',
                   lineJoin: 'round',
                 }}
@@ -219,21 +232,21 @@ export default function SafeMapView({
             </PointAnnotation>
           ))}
 
-          {/* Start marker — green with pulsing outer ring */}
+          {/* Start marker — labeled green pin */}
           <PointAnnotation id="start" coordinate={[lng, lat]}>
             <View style={styles.startMarkerOuter}>
               <View style={styles.startMarkerPulse} />
-              <View style={styles.startMarkerInner} />
+              <View style={styles.startPin}>
+                <Text style={styles.startPinText}>S</Text>
+              </View>
             </View>
           </PointAnnotation>
 
-          {/* End marker — red with checkmark */}
+          {/* End marker — labeled red pin */}
           {endLat != null && endLng != null && (
             <PointAnnotation id="end" coordinate={[endLng, endLat]}>
-              <View style={styles.endMarkerOuter}>
-                <View style={styles.endMarkerInner}>
-                  <Text style={styles.endMarkerIcon}>{'\u2713'}</Text>
-                </View>
+              <View style={styles.endPin}>
+                <Text style={styles.endPinText}>E</Text>
               </View>
             </PointAnnotation>
           )}
@@ -245,10 +258,14 @@ export default function SafeMapView({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   placeholder: {
     flex: 1,
@@ -269,37 +286,62 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Start marker — green circle with white border + pulsing outer ring
+  // Start marker — labeled green pin
   startMarkerOuter: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   startMarkerPulse: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(45, 74, 46, 0.2)',
-    borderWidth: 2,
-    borderColor: 'rgba(45, 74, 46, 0.3)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(45, 74, 46, 0.15)',
   },
-  startMarkerInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  startPin: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#2D4A2E',
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  startPinText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  endPin: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EF4444',
+    borderWidth: 3,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  endPinText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
   },
 
-  // End marker — red circle with white border + checkmark
+  // Legacy end marker (keep for compat)
   endMarkerOuter: {
     width: 28,
     height: 28,

@@ -396,8 +396,17 @@ export default function WalkScreen() {
           />
           {routeGeoJSON && (
             <Mapbox.ShapeSource id="route" shape={routeGeoJSON}>
+              <Mapbox.LineLayer id="routeGlow" style={{
+                lineColor: '#4ADE80', lineWidth: 14,
+                lineOpacity: 0.15, lineCap: 'round', lineJoin: 'round',
+                lineBlur: 3,
+              }} />
+              <Mapbox.LineLayer id="routeBorder" style={{
+                lineColor: '#FFFFFF', lineWidth: 8,
+                lineOpacity: 0.8, lineCap: 'round', lineJoin: 'round',
+              }} />
               <Mapbox.LineLayer id="routeLine" style={{
-                lineColor: '#4ADE80', lineWidth: 5,
+                lineColor: '#4ADE80', lineWidth: 4.5,
                 lineCap: 'round', lineJoin: 'round',
               }} />
             </Mapbox.ShapeSource>

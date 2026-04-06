@@ -113,7 +113,7 @@ export default function ChatRoomScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       {/* Header */}

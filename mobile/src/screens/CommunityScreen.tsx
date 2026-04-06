@@ -13,7 +13,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
-import CommunityFeedTab from './community/CommunityFeedTab';
 import CommunityBoardTab from './community/CommunityBoardTab';
 import CommunityGroupTab from './community/CommunityGroupTab';
 import CommunityChallengeTab from './community/CommunityChallengeTab';
@@ -21,8 +20,7 @@ import CommunityChallengeTab from './community/CommunityChallengeTab';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const TABS = [
-  { key: 'feed', label: '피드', icon: '📝' },
-  { key: 'board', label: '게시판', icon: '💬' },
+  { key: 'feed', label: '피드', icon: '💬' },
   { key: 'group', label: '모임', icon: '👥' },
   { key: 'challenge', label: '챌린지', icon: '🏆' },
 ];
@@ -69,8 +67,7 @@ export default function CommunityScreen() {
   const getFabAction = () => {
     if (!isAuthenticated) return () => navigation.navigate('Login');
     switch (TABS[activeTab].key) {
-      case 'feed': return () => navigation.navigate('CommunityWrite');
-      case 'board': return () => navigation.navigate('PostCreate');
+      case 'feed': return () => navigation.navigate('PostCreate');
       case 'group': return () => navigation.navigate('GroupCreate');
       default: return null;
     }
@@ -136,7 +133,6 @@ export default function CommunityScreen() {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
         scrollEventThrottle={16}>
-        <View style={{ width: SCREEN_WIDTH }}><CommunityFeedTab /></View>
         <View style={{ width: SCREEN_WIDTH }}><CommunityBoardTab /></View>
         <View style={{ width: SCREEN_WIDTH }}><CommunityGroupTab /></View>
         <View style={{ width: SCREEN_WIDTH }}><CommunityChallengeTab /></View>

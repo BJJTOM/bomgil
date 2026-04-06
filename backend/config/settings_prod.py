@@ -49,7 +49,7 @@ STORAGES = {
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     x.strip() for x in
-    os.environ.get("CORS_ALLOWED_ORIGINS", "https://frontend-sigma-nine-57.vercel.app").split(",")
+    os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com,https://frontend-sigma-nine-57.vercel.app").split(",")
     if x.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True

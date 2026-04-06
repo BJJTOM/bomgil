@@ -49,6 +49,9 @@ export default function WalkCompleteScreen() {
     maxSpeed = '0',
     splits: splitsJson = '[]',
     taggedPhotos = [],
+    spots = [],
+    routeCoords = [],
+    trackPoints = [],
   } = route.params || {};
 
   const totalSeconds =
@@ -209,9 +212,24 @@ export default function WalkCompleteScreen() {
           <View style={styles.secondaryRow}>
             <TouchableOpacity
               style={styles.secondaryBtn}
-              onPress={() => navigation.navigate('Activity')}
+              onPress={() => navigation.navigate('ActivityDetail', {
+                activity: {
+                  title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 도보`,
+                  distance_km: distance,
+                  duration_minutes: Math.round(totalSeconds / 60),
+                  total_steps: parseInt(steps) || 0,
+                  calories_burned: parseInt(calories) || 0,
+                  elevation_gain_m: parseFloat(elevationGain) || 0,
+                  source: 'phone_gps',
+                  started_at: new Date(Date.now() - totalSeconds * 1000).toISOString(),
+                  created_at: new Date().toISOString(),
+                  track_points: trackPoints,
+                },
+                taggedPhotos,
+                spots,
+              })}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>활동 기록</Text>
+              <Text style={styles.secondaryBtnText}>활동 상세</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.secondaryBtn}

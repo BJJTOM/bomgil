@@ -267,19 +267,20 @@ export default function WalkScreen() {
           duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
           elevation_gain_m: finalStats.elevationGain,
         });
-        // Save spots, photos, and route locally keyed by activity ID
+        // Save spots, photos, and route locally
+        const extraData = JSON.stringify({ spots, taggedPhotos, routeCoords });
         if (actRes?.data?.id) {
-          try {
-            await AsyncStorage.setItem(
-              `activity_${actRes.data.id}_extra`,
-              JSON.stringify({ spots, taggedPhotos, routeCoords }),
-            );
-          } catch (storageErr) {
-            console.log('AsyncStorage save error:', storageErr);
-          }
+          await AsyncStorage.setItem(`activity_${actRes.data.id}_extra`, extraData).catch(() => {});
         }
+        // Always save as latest too
+        await AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {});
       } catch (e) { console.log('Save error:', e); }
     }
+    // Also save even if not authenticated
+    try {
+      const extraData = JSON.stringify({ spots, taggedPhotos, routeCoords });
+      await AsyncStorage.setItem('activity_latest_extra', extraData);
+    } catch {}
     const goToComplete = () => {
       navigation.replace('WalkComplete', {
         distance: finalStats.distance.toFixed(2),

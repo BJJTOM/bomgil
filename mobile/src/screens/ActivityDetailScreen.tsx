@@ -60,7 +60,7 @@ export default function ActivityDetailScreen() {
 
   // Load extra data from AsyncStorage if not passed via params
   useEffect(() => {
-    if (activity?.id) {
+    if (taggedPhotos.length === 0 || walkSpots.length === 0) {
       loadExtraData();
     }
   }, []);
@@ -68,23 +68,11 @@ export default function ActivityDetailScreen() {
   const loadExtraData = async () => {
     try {
       // Try exact ID match first
-      let raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
+      let raw = activity?.id ? await AsyncStorage.getItem(`activity_${activity.id}_extra`) : null;
 
-      // If not found, scan all activity keys for closest match
+      // If not found, try latest
       if (!raw) {
-        const allKeys = await AsyncStorage.getAllKeys();
-        const actKeys = allKeys.filter(k => k.startsWith('activity_') && k.endsWith('_extra'));
-        // Try the most recent one
-        if (actKeys.length > 0) {
-          const sortedKeys = actKeys.sort().reverse();
-          for (const key of sortedKeys) {
-            const val = await AsyncStorage.getItem(key);
-            if (val) {
-              raw = val;
-              break;
-            }
-          }
-        }
+        raw = await AsyncStorage.getItem('activity_latest_extra');
       }
 
       if (raw) {

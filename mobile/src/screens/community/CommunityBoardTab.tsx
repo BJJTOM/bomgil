@@ -8,27 +8,25 @@ import {
   Image,
   RefreshControl,
   TextInput,
+  ScrollView,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import api from '../../api/client';
 import { colors } from '../../theme/colors';
 import { CommunityPost } from '../../types';
+import { useAuthStore } from '../../stores/auth';
 import { FadeInView } from '../../components/FadeInView';
 
 const CATEGORIES = [
-  { key: '', label: '전체', icon: '📋' },
-  { key: 'free', label: '자유', icon: '💭' },
-  { key: 'qna', label: '질문', icon: '❓' },
-  { key: 'recommend', label: '추천', icon: '👍' },
-  { key: 'review', label: '후기', icon: '⭐' },
-  { key: 'meetup', label: '번개', icon: '⚡' },
-  { key: 'tip', label: '꿀팁', icon: '🍯' },
+  { key: '', label: '전체' },
+  { key: 'free', label: '자유' },
+  { key: 'qna', label: '질문' },
+  { key: 'recommend', label: '추천' },
+  { key: 'review', label: '후기' },
+  { key: 'meetup', label: '번개' },
+  { key: 'tip', label: '꿀팁' },
 ];
-
-const CATEGORY_ICON: Record<string, string> = {
-  free: '💭', qna: '❓', recommend: '👍', review: '⭐', meetup: '⚡', tip: '🍯',
-};
 
 const timeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -44,9 +42,10 @@ const timeAgo = (dateStr: string) => {
 
 export default function CommunityBoardTab() {
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthStore();
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
 
   const { data: posts = [], isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
     queryKey: ['community-posts', category, searchQuery],
@@ -59,38 +58,20 @@ export default function CommunityBoardTab() {
     },
   });
 
-  const { data: popularPosts = [] } = useQuery<CommunityPost[]>({
-    queryKey: ['community-posts-popular'],
-    queryFn: async () => {
-      const { data } = await api.get('/community/posts/popular/');
-      return (data.results ?? data).slice(0, 5);
-    },
-    staleTime: 60000,
-  });
-
-  const renderCategory = useCallback(({ item }: { item: typeof CATEGORIES[0] }) => (
-    <TouchableOpacity
-      style={[styles.categoryChip, category === item.key && styles.categoryChipActive]}
-      onPress={() => setCategory(item.key)}
-      activeOpacity={0.7}>
-      <Text style={[styles.categoryChipText, category === item.key && styles.categoryChipTextActive]}>
-        {item.icon} {item.label}
-      </Text>
-    </TouchableOpacity>
-  ), [category]);
-
-  const renderPopular = useCallback(({ item }: { item: CommunityPost }) => (
-    <TouchableOpacity
-      style={styles.popularCard}
-      activeOpacity={0.6}
-      onPress={() => navigation.navigate('PostDetail', { postId: item.id })}>
-      <View style={styles.popularRank}>
-        <Text style={styles.popularRankIcon}>🔥</Text>
-      </View>
-      <Text style={styles.popularTitle} numberOfLines={1}>{item.title}</Text>
-      <Text style={styles.popularStat}>♡ {item.like_count}</Text>
-    </TouchableOpacity>
-  ), []);
+  const handleLike = useCallback((postId: number) => {
+    if (!isAuthenticated) { navigation.navigate('Login'); return; }
+    queryClient.setQueryData(['community-posts', category, searchQuery], (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((p: any) =>
+        p.id === postId
+          ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 }
+          : p,
+      );
+    });
+    api.post(`/community/posts/${postId}/like/`).catch(() => {
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+    });
+  }, [isAuthenticated, category, searchQuery]);
 
   const renderPost = useCallback(({ item, index }: { item: CommunityPost; index: number }) => (
     <FadeInView delay={index * 30}>
@@ -99,17 +80,13 @@ export default function CommunityBoardTab() {
         activeOpacity={0.6}
         onPress={() => navigation.navigate('PostDetail', { postId: item.id })}>
         <View style={styles.postContent}>
-          {/* Header: category + pinned */}
+          {/* Header */}
           <View style={styles.postHeader}>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>
-                {CATEGORY_ICON[item.category] || '📋'} {item.category_display}
-              </Text>
+              <Text style={styles.categoryBadgeText}>{item.category_display}</Text>
             </View>
             {item.is_pinned && (
-              <View style={styles.pinnedBadge}>
-                <Text style={styles.pinnedBadgeText}>📌 고정</Text>
-              </View>
+              <View style={styles.pinnedBadge}><Text style={styles.pinnedBadgeText}>고정</Text></View>
             )}
           </View>
 
@@ -118,26 +95,35 @@ export default function CommunityBoardTab() {
 
           {/* Meta */}
           <View style={styles.postMeta}>
-            <View style={styles.postAuthor}>
+            <TouchableOpacity
+              style={styles.postAuthor}
+              onPress={() => navigation.navigate('Profile', { nickname: item.author_nickname })}
+              activeOpacity={0.7}>
               {item.author_image ? (
                 <Image source={{ uri: item.author_image }} style={styles.miniAvatar} />
               ) : (
-                <View style={styles.miniAvatarPlaceholder}>
-                  <Text style={{ fontSize: 9 }}>👤</Text>
-                </View>
+                <View style={styles.miniAvatarPlaceholder}><Text style={{ fontSize: 8, color: colors.textTertiary }}>U</Text></View>
               )}
               <Text style={styles.postAuthorName}>{item.author_nickname}</Text>
-              <Text style={styles.postTime}>{timeAgo(item.created_at)}</Text>
-            </View>
+            </TouchableOpacity>
+            <Text style={styles.postTime}>{timeAgo(item.created_at)}</Text>
           </View>
 
-          {/* Stats — 통일된 아이콘 */}
+          {/* Stats — 심플 아이콘, 리스트에서도 좋아요 가능 */}
           <View style={styles.postStats}>
-            <Text style={[styles.postStat, item.is_liked && { color: '#FF4B4B' }]}>
-              {item.is_liked ? '♥' : '♡'} {item.like_count}
-            </Text>
-            <Text style={styles.postStat}>💬 {item.comment_count}</Text>
-            <Text style={styles.postStat}>👁 {item.view_count}</Text>
+            <TouchableOpacity style={styles.statBtn} onPress={() => handleLike(item.id)} activeOpacity={0.6}>
+              <Text style={[styles.statIcon, item.is_liked && { color: '#FF4B4B' }]}>
+                {item.is_liked ? '♥' : '♡'}
+              </Text>
+              <Text style={[styles.statText, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
+            </TouchableOpacity>
+            <View style={styles.statBtn}>
+              <Text style={styles.statIcon}>◻</Text>
+              <Text style={styles.statText}>{item.comment_count}</Text>
+            </View>
+            <View style={styles.statBtn}>
+              <Text style={styles.statText}>조회 {item.view_count}</Text>
+            </View>
           </View>
         </View>
 
@@ -147,14 +133,14 @@ export default function CommunityBoardTab() {
         )}
       </TouchableOpacity>
     </FadeInView>
-  ), []);
+  ), [category, searchQuery, isAuthenticated]);
 
-  const ListHeader = useCallback(() => (
-    <View>
+  return (
+    <View style={styles.container}>
       {/* Search bar */}
       <View style={styles.searchBar}>
         <View style={styles.searchInputWrap}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={styles.searchIcon}>Q</Text>
           <TextInput
             style={styles.searchInput}
             placeholder="게시글 검색"
@@ -171,48 +157,30 @@ export default function CommunityBoardTab() {
         </View>
       </View>
 
-      {/* Popular posts — only show when no search/filter active */}
-      {!category && !searchQuery && popularPosts.length > 0 && (
-        <View style={styles.popularSection}>
-          <Text style={styles.popularSectionTitle}>🔥 인기글</Text>
-          <FlatList
-            data={popularPosts}
-            keyExtractor={(item) => `pop-${item.id}`}
-            renderItem={renderPopular}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.popularList}
-          />
-        </View>
-      )}
-    </View>
-  ), [category, searchQuery, popularPosts]);
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>로딩 중...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      {/* Category filter */}
-      <FlatList
-        data={CATEGORIES}
-        keyExtractor={(item) => item.key}
-        renderItem={renderCategory}
+      {/* Category filter — horizontal scroll, 잘리지 않게 */}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryList}
-        style={styles.categoryBar}
-      />
+        style={styles.categoryBar}>
+        {CATEGORIES.map((item) => (
+          <TouchableOpacity
+            key={item.key}
+            style={[styles.categoryChip, category === item.key && styles.categoryChipActive]}
+            onPress={() => setCategory(item.key)}
+            activeOpacity={0.7}>
+            <Text style={[styles.categoryChipText, category === item.key && styles.categoryChipTextActive]}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {/* Posts */}
-      {posts.length === 0 && !isLoading ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}><Text style={styles.loadingText}>로딩 중...</Text></View>
+      ) : posts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📭</Text>
           <Text style={styles.emptyTitle}>
             {searchQuery ? `'${searchQuery}' 검색 결과가 없어요` : '아직 게시글이 없어요'}
           </Text>
@@ -225,7 +193,6 @@ export default function CommunityBoardTab() {
           data={posts}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderPost}
-          ListHeaderComponent={ListHeader}
           contentContainerStyle={styles.postList}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -241,46 +208,32 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { fontSize: 14, color: colors.textTertiary },
 
-  // Category pills
-  categoryBar: { flexGrow: 0 },
-  categoryList: { paddingHorizontal: 20, paddingVertical: 10, gap: 8 },
-  categoryChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#F2F4F6',
-  },
-  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryChipText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
-  categoryChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-
   // Search
-  searchBar: { paddingHorizontal: 20, paddingBottom: 8 },
+  searchBar: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 },
   searchInputWrap: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FA',
     borderRadius: 12, paddingHorizontal: 12, height: 40,
   },
-  searchIcon: { fontSize: 14, marginRight: 6 },
+  searchIcon: { fontSize: 13, fontWeight: '700', color: colors.textTertiary, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
   searchClear: { fontSize: 14, color: colors.textTertiary, padding: 4 },
 
-  // Popular posts
-  popularSection: { paddingBottom: 12 },
-  popularSectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, paddingHorizontal: 20, paddingBottom: 10 },
-  popularList: { paddingHorizontal: 20, gap: 8 },
-  popularCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFF7ED', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
-    gap: 8, width: 220,
+  // Category — ScrollView로 잘리지 않게
+  categoryBar: { flexGrow: 0, marginBottom: 4 },
+  categoryList: { paddingHorizontal: 20, paddingVertical: 8, gap: 8 },
+  categoryChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: '#F7F8FA',
   },
-  popularRank: { width: 24, alignItems: 'center' },
-  popularRankIcon: { fontSize: 14 },
-  popularTitle: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.textPrimary },
-  popularStat: { fontSize: 11, color: '#C2410C' },
+  categoryChipActive: { backgroundColor: colors.primary },
+  categoryChipText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
+  categoryChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
 
   // Post list
   postList: { paddingBottom: 100 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#F2F4F6', marginHorizontal: 20 },
 
-  // Post card — 당근마켓 스타일
+  // Post card
   postCard: {
     flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF',
   },
@@ -289,25 +242,26 @@ const styles = StyleSheet.create({
   categoryBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, backgroundColor: '#F0F7F0' },
   categoryBadgeText: { fontSize: 11, fontWeight: '600', color: colors.primary },
   pinnedBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FFF7ED' },
-  pinnedBadgeText: { fontSize: 10, color: '#C2410C' },
-
+  pinnedBadgeText: { fontSize: 10, fontWeight: '600', color: '#C2410C' },
   postTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, lineHeight: 22, marginBottom: 8 },
 
-  postMeta: { marginBottom: 6 },
+  postMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   miniAvatar: { width: 16, height: 16, borderRadius: 8 },
   miniAvatarPlaceholder: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
   postAuthorName: { fontSize: 12, color: colors.textSecondary },
-  postTime: { fontSize: 11, color: colors.textTertiary, marginLeft: 4 },
+  postTime: { fontSize: 11, color: colors.textTertiary },
 
-  postStats: { flexDirection: 'row', gap: 10 },
-  postStat: { fontSize: 11, color: colors.textTertiary },
+  // Stats — 심플 아이콘, 사이즈 업
+  postStats: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  statBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statIcon: { fontSize: 15, color: colors.textTertiary },
+  statText: { fontSize: 12, color: colors.textTertiary },
 
   postThumbnail: { width: 72, height: 72, borderRadius: 10, backgroundColor: '#F7F8FA' },
 
   // Empty
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyIcon: { fontSize: 40, marginBottom: 16 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 6, textAlign: 'center' },
   emptyDesc: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
 });

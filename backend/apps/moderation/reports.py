@@ -28,6 +28,8 @@ class Report(models.Model):
     class Meta:
         ordering = ["-created_at"]
         unique_together = ["reporter", "content_type", "object_id"]
+        verbose_name = "신고"
+        verbose_name_plural = "신고"
 
     def __str__(self):
         return f"Report by {self.reporter} - {self.reason}"
@@ -44,6 +46,8 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "알림"
+        verbose_name_plural = "알림"
 
     def __str__(self):
         return f"{self.user.nickname}: {self.message[:50]}"

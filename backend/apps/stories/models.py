@@ -36,6 +36,8 @@ class WalkStory(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "걸은 이야기"
+        verbose_name_plural = "걸은 이야기"
 
     def __str__(self):
         return self.title or f"{self.author.nickname}의 이야기"
@@ -49,6 +51,8 @@ class StoryPhoto(models.Model):
 
     class Meta:
         ordering = ["order"]
+        verbose_name = "이야기 사진"
+        verbose_name_plural = "이야기 사진"
 
 
 class StoryLike(models.Model):
@@ -60,6 +64,8 @@ class StoryLike(models.Model):
 
     class Meta:
         unique_together = ["user", "story"]
+        verbose_name = "이야기 좋아요"
+        verbose_name_plural = "이야기 좋아요"
 
 
 class StoryComment(models.Model):
@@ -76,6 +82,8 @@ class StoryComment(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+        verbose_name = "이야기 댓글"
+        verbose_name_plural = "이야기 댓글"
 
     def __str__(self):
         return f"{self.author.nickname}: {self.content[:30]}"
@@ -90,6 +98,8 @@ class CommentLike(models.Model):
 
     class Meta:
         unique_together = ["user", "comment"]
+        verbose_name = "댓글 좋아요"
+        verbose_name_plural = "댓글 좋아요"
 
 
 class Notification(models.Model):
@@ -114,3 +124,5 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "이야기 알림"
+        verbose_name_plural = "이야기 알림"

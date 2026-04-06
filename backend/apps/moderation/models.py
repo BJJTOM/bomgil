@@ -24,6 +24,8 @@ class ModerationLog(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "운영 로그"
+        verbose_name_plural = "운영 로그"
 
     def __str__(self):
         return f"{self.moderator} - {self.action} - {self.content_type} #{self.object_id}"

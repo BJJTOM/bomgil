@@ -48,6 +48,8 @@ class WalkPlan(models.Model):
 
     class Meta:
         ordering = ["planned_date", "planned_time"]
+        verbose_name = "걷기 일정"
+        verbose_name_plural = "걷기 일정"
         indexes = [
             models.Index(fields=["planned_date"]),
             models.Index(fields=["companion_status"]),
@@ -86,6 +88,8 @@ class CompanionRequest(models.Model):
     class Meta:
         unique_together = ["requester", "walk_plan"]
         ordering = ["-created_at"]
+        verbose_name = "동행 요청"
+        verbose_name_plural = "동행 요청"
 
     def __str__(self):
         return f"{self.requester.nickname} → {self.walk_plan}"
@@ -117,6 +121,8 @@ class CompanionReview(models.Model):
     class Meta:
         unique_together = ["reviewer", "walk_plan"]
         ordering = ["-created_at"]
+        verbose_name = "동행 후기"
+        verbose_name_plural = "동행 후기"
 
     def __str__(self):
         return f"{self.reviewer.nickname} → {self.reviewed_user.nickname} ({self.rating}★)"
@@ -148,6 +154,8 @@ class SafetyReport(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "안전 신고"
+        verbose_name_plural = "안전 신고"
 
     def __str__(self):
         return f"Safety: {self.reporter.nickname} → {self.reported_user.nickname}"
@@ -163,6 +171,10 @@ class ChatRoom(models.Model):
         settings.AUTH_USER_MODEL, related_name="chat_rooms"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "채팅방"
+        verbose_name_plural = "채팅방"
 
     def __str__(self):
         return self.name or f"Chat: {self.walk_plan}"
@@ -180,6 +192,8 @@ class ChatMessage(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+        verbose_name = "채팅 메시지"
+        verbose_name_plural = "채팅 메시지"
 
     def __str__(self):
         return f"{self.sender.nickname}: {self.content[:30]}"

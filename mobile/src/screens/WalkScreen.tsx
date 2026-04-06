@@ -11,6 +11,8 @@ import {
   StatusBar,
   AppState,
   Dimensions,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -33,6 +35,22 @@ import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
 const { width: SW, height: SH } = Dimensions.get('window');
 
 type WalkState = 'countdown' | 'walking' | 'paused';
+
+const SPOT_TYPES = [
+  { value: '맛집', color: '#D85A30' },
+  { value: '카페', color: '#378ADD' },
+  { value: '포토', color: '#7F77DD' },
+  { value: '휴식', color: '#888780' },
+  { value: '전망', color: '#EF9F27' },
+];
+
+interface WalkSpot {
+  name: string;
+  type: string;
+  description: string;
+  lat: number;
+  lng: number;
+}
 
 function formatPace(pace: number): string {
   if (pace <= 0 || pace > 30) return "--'--\"";
@@ -71,6 +89,12 @@ export default function WalkScreen() {
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [showStopModal, setShowStopModal] = useState(false);
+  const [spots, setSpots] = useState<WalkSpot[]>([]);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [spotName, setSpotName] = useState('');
+  const [spotType, setSpotType] = useState('맛집');
+  const [spotDesc, setSpotDesc] = useState('');
+  const fromTrailCreate = route.params?.fromTrailCreate;
 
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
@@ -137,6 +161,28 @@ export default function WalkScreen() {
     } catch {}
   }, [currentPos]);
 
+  const handleAddSpot = useCallback(() => {
+    if (!spotName.trim()) {
+      Alert.alert('필수 입력', '장소 이름을 입력해주세요.');
+      return;
+    }
+    if (!currentPos) {
+      Alert.alert('위치 오류', 'GPS 위치를 가져올 수 없습니다.');
+      return;
+    }
+    setSpots(prev => [...prev, {
+      name: spotName.trim(),
+      type: spotType,
+      description: spotDesc.trim(),
+      lat: currentPos.lat,
+      lng: currentPos.lng,
+    }]);
+    setSpotName('');
+    setSpotType('맛집');
+    setSpotDesc('');
+    setShowSpotModal(false);
+  }, [spotName, spotType, spotDesc, currentPos]);
+
   const startGps = useCallback(() => {
     try {
       watchIdRef.current = Geolocation.watchPosition(
@@ -189,7 +235,7 @@ export default function WalkScreen() {
           trail: trailId || null,
           track_points: trackPoints.length > 0 ? trackPoints : [],
           source: 'phone_gps',
-          title: `${dateLabel} \uB3C4\uBCF4`,
+          title: `${dateLabel} 도보`,
           started_at: new Date(Date.now() - finalStats.totalTime * 1000).toISOString(),
           finished_at: new Date().toISOString(),
           total_steps: finalStats.steps, calories_burned: finalStats.calories,
@@ -199,16 +245,53 @@ export default function WalkScreen() {
         });
       } catch (e) { console.log('Save error:', e); }
     }
-    navigation.replace('WalkComplete', {
-      distance: finalStats.distance.toFixed(2),
-      duration: String(Math.round(finalStats.duration)),
-      steps: String(finalStats.steps), calories: String(finalStats.calories),
-      pace: formatPace(finalStats.pace),
-      elevationGain: String(finalStats.elevationGain),
-      elevationLoss: String(finalStats.elevationLoss),
-      maxSpeed: finalStats.maxSpeed.toFixed(1),
-      splits: JSON.stringify(finalStats.splits), taggedPhotos,
-    });
+    const goToComplete = () => {
+      navigation.replace('WalkComplete', {
+        distance: finalStats.distance.toFixed(2),
+        duration: String(Math.round(finalStats.duration)),
+        steps: String(finalStats.steps), calories: String(finalStats.calories),
+        pace: formatPace(finalStats.pace),
+        elevationGain: String(finalStats.elevationGain),
+        elevationLoss: String(finalStats.elevationLoss),
+        maxSpeed: finalStats.maxSpeed.toFixed(1),
+        splits: JSON.stringify(finalStats.splits), taggedPhotos,
+      });
+    };
+
+    // If came from TrailCreate, offer to share as course
+    if (fromTrailCreate && routeCoords.length >= 2) {
+      Alert.alert(
+        '코스로 공유하시겠어요?',
+        '걸은 경로를 코스로 등록할 수 있어요.',
+        [
+          {
+            text: '아니요',
+            style: 'cancel',
+            onPress: goToComplete,
+          },
+          {
+            text: '코스 등록',
+            onPress: () => {
+              const startCoord = routeCoords[0];
+              const endCoord = routeCoords[routeCoords.length - 1];
+              navigation.replace('TrailPublish', {
+                pathData: routeCoords,
+                distance: parseFloat(finalStats.distance.toFixed(2)),
+                duration: Math.max(1, Math.round(finalStats.duration / 60)),
+                elevationGain: finalStats.elevationGain,
+                spots,
+                startLat: startCoord[1],
+                startLng: startCoord[0],
+                endLat: endCoord[1],
+                endLng: endCoord[0],
+              });
+            },
+          },
+        ],
+      );
+    } else {
+      goToComplete();
+    }
   };
 
   const handleStop = () => setShowStopModal(true);
@@ -233,7 +316,7 @@ export default function WalkScreen() {
         <TouchableOpacity
           style={[styles.backBtn, { top: insets.top + 12 }]}
           onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>{'\u2190'}</Text>
+          <Text style={styles.backBtnText}>{'←'}</Text>
         </TouchableOpacity>
 
         <View style={styles.countdownContent}>
@@ -243,7 +326,7 @@ export default function WalkScreen() {
               <Text style={styles.countdownNumber}>{countdown}</Text>
             </View>
           </Animated.View>
-          <Text style={styles.countdownHint}>{'\uACBD\uB85C \uC790\uB3D9 \uAE30\uB85D'}</Text>
+          <Text style={styles.countdownHint}>경로 자동 기록</Text>
         </View>
       </View>
     );
@@ -293,6 +376,16 @@ export default function WalkScreen() {
               </View>
             </Mapbox.PointAnnotation>
           ))}
+          {spots.map((s, i) => {
+            const spotColor = SPOT_TYPES.find(t => t.value === s.type)?.color || '#888';
+            return (
+              <Mapbox.PointAnnotation key={`spot-${i}`} id={`spot-${i}`} coordinate={[s.lng, s.lat]}>
+                <View style={[styles.spotMarker, { backgroundColor: spotColor }]}>
+                  <Text style={styles.spotMarkerText}>{s.type.charAt(0)}</Text>
+                </View>
+              </Mapbox.PointAnnotation>
+            );
+          })}
         </Mapbox.MapView>
 
         {/* Map top-left: status pill */}
@@ -302,7 +395,7 @@ export default function WalkScreen() {
             : styles.dotYellow
           ]} />
           <Text style={styles.mapStatusText}>
-            {state === 'walking' ? (stats.isAutoPaused ? '\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0' : '\uAE30\uB85D \uC911') : '\uC77C\uC2DC\uC815\uC9C0'}
+            {state === 'walking' ? (stats.isAutoPaused ? '자동 일시정지' : '기록 중') : '일시정지'}
           </Text>
         </View>
 
@@ -320,6 +413,21 @@ export default function WalkScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Map bottom-right: spot button */}
+        {state === 'walking' && (
+          <TouchableOpacity
+            style={[styles.spotBtn, { top: insets.top + 64 }]}
+            onPress={() => setShowSpotModal(true)}
+            activeOpacity={0.8}>
+            <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>+ 스팟</Text>
+            {spots.length > 0 && (
+              <View style={styles.spotBadge}>
+                <Text style={styles.spotBadgeText}>{spots.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
         {/* Map bottom gradient fade */}
         <View style={styles.mapFade} />
       </View>
@@ -328,7 +436,7 @@ export default function WalkScreen() {
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
 
         {/* Time */}
-        <Text style={styles.timeLabel}>{'\uC2DC\uAC04'}</Text>
+        <Text style={styles.timeLabel}>시간</Text>
         <Text style={styles.timeValue}>{formatTime(stats.duration)}</Text>
 
         {/* Distance */}
@@ -339,7 +447,7 @@ export default function WalkScreen() {
 
         {/* Pace */}
         <View style={styles.paceRow}>
-          <Text style={styles.paceLabel}>{'\uD604\uC7AC \uD398\uC774\uC2A4'}</Text>
+          <Text style={styles.paceLabel}>현재 페이스</Text>
           <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
           <Text style={styles.paceUnit}>/km</Text>
         </View>
@@ -348,7 +456,7 @@ export default function WalkScreen() {
         <View style={styles.grid}>
           <View style={styles.gridItem}>
             <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
-            <Text style={styles.gridLabel}>{'\uAC78\uC74C'}</Text>
+            <Text style={styles.gridLabel}>걸음</Text>
           </View>
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
@@ -363,7 +471,7 @@ export default function WalkScreen() {
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
             <Text style={styles.gridVal}>{stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m</Text>
-            <Text style={styles.gridLabel}>{'\uACE0\uB3C4'}</Text>
+            <Text style={styles.gridLabel}>고도</Text>
           </View>
         </View>
       </Animated.View>
@@ -396,7 +504,7 @@ export default function WalkScreen() {
             <View style={styles.modalIconWrap}>
               <Text style={styles.modalIcon}>{'\uD83D\uDEB6'}</Text>
             </View>
-            <Text style={styles.modalTitle}>{'\uAC78\uAE30\uB97C \uC885\uB8CC\uD560\uAE4C\uC694?'}</Text>
+            <Text style={styles.modalTitle}>걸기를 종료할까요?</Text>
             <View style={styles.modalStats}>
               <View style={styles.modalStatItem}>
                 <Text style={styles.modalStatVal}>{stats.distance.toFixed(2)}</Text>
@@ -405,25 +513,101 @@ export default function WalkScreen() {
               <View style={styles.modalStatDivider} />
               <View style={styles.modalStatItem}>
                 <Text style={styles.modalStatVal}>{formatTime(stats.duration)}</Text>
-                <Text style={styles.modalStatLabel}>{'\uC2DC\uAC04'}</Text>
+                <Text style={styles.modalStatLabel}>시간</Text>
               </View>
               <View style={styles.modalStatDivider} />
               <View style={styles.modalStatItem}>
                 <Text style={styles.modalStatVal}>{stats.steps.toLocaleString()}</Text>
-                <Text style={styles.modalStatLabel}>{'\uAC78\uC74C'}</Text>
+                <Text style={styles.modalStatLabel}>걸음</Text>
               </View>
             </View>
             <TouchableOpacity
               style={styles.modalStopBtn}
               onPress={() => { setShowStopModal(false); completeWalk(); }}
               activeOpacity={0.85}>
-              <Text style={styles.modalStopBtnText}>{'\uC885\uB8CC\uD558\uAE30'}</Text>
+              <Text style={styles.modalStopBtnText}>종료하기</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalCancelBtn}
               onPress={() => setShowStopModal(false)}
               activeOpacity={0.85}>
-              <Text style={styles.modalCancelBtnText}>{'\uACC4\uC18D \uAC77\uAE30'}</Text>
+              <Text style={styles.modalCancelBtnText}>계속 걷기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ====== SPOT CREATION MODAL ====== */}
+      <Modal visible={showSpotModal} transparent animationType="slide">
+        <View style={styles.spotModalOverlay}>
+          <View style={styles.spotModalCard}>
+            <View style={styles.spotModalHandle} />
+            <Text style={styles.spotModalTitle}>스팟 추가</Text>
+
+            <Text style={styles.spotFieldLabel}>장소 이름 *</Text>
+            <TextInput
+              style={styles.spotInput}
+              placeholder="예: 전망 좋은 카페"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={spotName}
+              onChangeText={setSpotName}
+              maxLength={30}
+            />
+
+            <Text style={styles.spotFieldLabel}>유형</Text>
+            <View style={styles.spotTypeRow}>
+              {SPOT_TYPES.map(t => (
+                <TouchableOpacity
+                  key={t.value}
+                  style={[
+                    styles.spotTypeChip,
+                    spotType === t.value && { backgroundColor: t.color },
+                  ]}
+                  onPress={() => setSpotType(t.value)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.spotTypeChipText,
+                      spotType === t.value && { color: '#fff' },
+                    ]}>
+                    {t.value}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.spotFieldLabel}>한줄 설명</Text>
+            <TextInput
+              style={styles.spotInput}
+              placeholder="선택사항"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={spotDesc}
+              onChangeText={setSpotDesc}
+              maxLength={50}
+            />
+
+            {currentPos && (
+              <Text style={styles.spotGpsText}>
+                GPS: {currentPos.lat.toFixed(5)}, {currentPos.lng.toFixed(5)}
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.spotAddBtn}
+              onPress={handleAddSpot}
+              activeOpacity={0.85}>
+              <Text style={styles.spotAddBtnText}>추가</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.spotCancelBtn}
+              onPress={() => {
+                setShowSpotModal(false);
+                setSpotName('');
+                setSpotDesc('');
+              }}
+              activeOpacity={0.85}>
+              <Text style={styles.spotCancelBtnText}>취소</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -822,6 +1006,145 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+  },
+
+  // ---- SPOT BUTTON ----
+  spotBtn: {
+    position: 'absolute',
+    right: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  spotBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF9F27',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spotBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ---- SPOT MARKERS ----
+  spotMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  spotMarkerText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+  },
+
+  // ---- SPOT MODAL ----
+  spotModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  spotModalCard: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  spotModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  spotModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  spotFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  spotInput: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#fff',
+  },
+  spotTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  spotTypeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  spotTypeChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+  },
+  spotGpsText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  spotAddBtn: {
+    backgroundColor: '#4ADE80',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  spotAddBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111',
+  },
+  spotCancelBtn: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  spotCancelBtnText: {
     fontSize: 15,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.5)',

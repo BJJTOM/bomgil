@@ -12,19 +12,20 @@ from django.views.decorators.csrf import csrf_exempt
 def _tmp_wipe(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
-    from apps.trails.models import Trail
-    from apps.activities.models import ActivityTrack
-    from apps.stories.models import WalkStory
-    from apps.spots.models import Spot
-    from apps.reviews.models import Review
-    from apps.accounts.models import CustomUser
-    tc = Trail.objects.all().delete()
-    ac = ActivityTrack.objects.all().delete()
-    sc = WalkStory.objects.all().delete()
-    spc = Spot.objects.all().delete()
-    rc = Review.objects.all().delete()
-    uc = CustomUser.objects.filter(is_superuser=False).delete()
-    return JsonResponse({"trails": tc[0], "activities": ac[0], "stories": sc[0], "spots": spc[0], "reviews": rc[0], "users": uc[0]})
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM reviews_review")
+            cursor.execute("DELETE FROM spots_spot")
+            cursor.execute("DELETE FROM stories_walkstory")
+            cursor.execute("DELETE FROM activities_activitytrack")
+            cursor.execute("DELETE FROM trails_trail_tags")
+            cursor.execute("DELETE FROM trails_traillike")
+            cursor.execute("DELETE FROM trails_trail")
+            cursor.execute("DELETE FROM accounts_customuser WHERE is_superuser = false")
+        return JsonResponse({"status": "ok", "msg": "all data wiped"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 def _platform_stats(request):
     from apps.trails.models import Trail

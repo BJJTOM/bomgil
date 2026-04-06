@@ -29,6 +29,8 @@ import RankingsScreen from '../screens/RankingsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import TrailCreateScreen from '../screens/TrailCreateScreen';
+import TrailDrawScreen from '../screens/TrailDrawScreen';
+import TrailPublishScreen from '../screens/TrailPublishScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import LikedTrailsScreen from '../screens/LikedTrailsScreen';
@@ -172,6 +174,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
         <Stack.Screen name="TrailCreate" component={TrailCreateScreen} />
+        <Stack.Screen name="TrailDraw" component={TrailDrawScreen} />
+        <Stack.Screen name="TrailPublish" component={TrailPublishScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
         <Stack.Screen name="LikedTrails" component={LikedTrailsScreen} />

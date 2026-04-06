@@ -138,7 +138,8 @@ class PostDetailSerializer(serializers.ModelSerializer):
 class PostCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
-        fields = ['category', 'title', 'content', 'trail']
+        fields = ['id', 'category', 'title', 'content', 'trail']
+        read_only_fields = ['id']
 
     def validate_title(self, value):
         return sanitize(value)

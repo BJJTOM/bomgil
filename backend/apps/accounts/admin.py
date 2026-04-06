@@ -8,5 +8,5 @@ from .models import CustomUser
 class CustomUserAdmin(UserAdmin):
     list_display = ["username", "nickname", "email", "is_guide", "is_staff"]
     fieldsets = UserAdmin.fieldsets + (
-        ("Profile", {"fields": ("nickname", "profile_image", "bio", "preferred_language", "is_guide")}),
+        ("프로필", {"fields": ("nickname", "profile_image", "bio", "preferred_language", "is_guide")}),
     )

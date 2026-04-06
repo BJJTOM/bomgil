@@ -48,6 +48,8 @@ class ActivityTrack(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "활동 기록"
+        verbose_name_plural = "활동 기록"
 
     def __str__(self):
         return self.title or f"{self.user.nickname}의 활동 기록"
@@ -65,6 +67,8 @@ class DailyActivitySummary(models.Model):
     class Meta:
         unique_together = ["user", "date"]
         ordering = ["-date"]
+        verbose_name = "일별 활동 요약"
+        verbose_name_plural = "일별 활동 요약"
 
     def __str__(self):
         return f"{self.user.nickname} - {self.date}"

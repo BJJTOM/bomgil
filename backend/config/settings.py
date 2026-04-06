@@ -169,6 +169,8 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
         "trail_create": "20/day",
+        "login": "5/minute",
+        "register": "3/minute",
     },
     "DEFAULT_PAGINATION_CLASS": "config.pagination.DefaultCursorPagination",
 }

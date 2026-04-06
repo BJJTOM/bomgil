@@ -141,9 +141,18 @@ class PhoneVerifyView(APIView):
         return Response({"verified": True})
 
 
+class LoginRateThrottle(AnonRateThrottle):
+    rate = '5/minute'
+
+
+class RegisterRateThrottle(AnonRateThrottle):
+    rate = '3/minute'
+
+
 class EmailLoginView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         from .serializers import EmailLoginSerializer
@@ -231,3 +240,15 @@ class GuestLoginView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class ThrottledRegisterView(APIView):
+    """Proxy to dj-rest-auth RegisterView with rate limiting."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [RegisterRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        from dj_rest_auth.registration.views import RegisterView
+        view = RegisterView.as_view()
+        return view(request, *args, **kwargs)

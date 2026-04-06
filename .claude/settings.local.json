@@ -48,7 +48,8 @@
       "Bash(ls -la /Users/tom/Desktop/map_ai/mobile/src/screens/*.tsx)",
       "Bash(ls -la /Users/tom/Desktop/map_ai/backend/apps/accounts/badges.py /Users/tom/Desktop/map_ai/backend/apps/trails/recommendations.py /Users/tom/Desktop/map_ai/backend/apps/accounts/migrations/0003_*.py)",
       "Bash(curl:*)",
-      "Bash(python3 -c \"import sys; [print\\(l[:150]\\) for l in sys.stdin]\")"
+      "Bash(python3 -c \"import sys; [print\\(l[:150]\\) for l in sys.stdin]\")",
+      "Bash(git merge:*)"
     ]
   }
 }

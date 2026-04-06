@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { FadeInView } from '../components/FadeInView';
 import api from '../api/client';
-import { Linking } from 'react-native';
+import { Linking, NativeModules } from 'react-native';
 import {
   initHealthConnect,
   requestHealthPermissions,
@@ -23,6 +23,8 @@ import {
   getWalkSessions,
   HealthWalkSession,
 } from '../utils/healthConnect';
+
+const { HealthConnectModule } = NativeModules;
 
 export default function HealthImportScreen() {
   const insets = useSafeAreaInsets();
@@ -64,47 +66,13 @@ export default function HealthImportScreen() {
     }
   }, [initialize]);
 
-  const handleRequestPermission = async () => {
-    setLoading(true);
+  const handleRequestPermission = () => {
+    // Open Health Connect permission management via native module
     try {
-      const granted = await requestHealthPermissions();
-      setPermissionGranted(granted);
-      if (granted) {
-        const data = await getWalkSessions(30);
-        setSessions(data);
-      } else {
-        // Fallback: open Health Connect settings manually
-        Alert.alert(
-          '권한 설정',
-          'Health Connect 앱에서 Moru의 권한을 직접 허용해주세요.',
-          [
-            { text: '취소', style: 'cancel' },
-            {
-              text: '설정 열기',
-              onPress: () => {
-                Linking.openURL('content://com.google.android.healthconnect.controller/onboarding').catch(() => {
-                  Linking.openSettings();
-                });
-              },
-            },
-          ],
-        );
-      }
-    } catch (e) {
-      // Direct fallback to Health Connect app
-      Alert.alert(
-        '권한 필요',
-        'Health Connect 설정에서 직접 권한을 허용해주세요.\n\n설정 → 앱 → Health Connect → 앱 권한',
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '설정 열기',
-            onPress: () => Linking.openSettings(),
-          },
-        ],
-      );
+      HealthConnectModule?.openPermissions();
+    } catch {
+      Linking.openSettings();
     }
-    setLoading(false);
   };
 
   // Re-check permissions when screen comes into focus
@@ -122,8 +90,25 @@ export default function HealthImportScreen() {
     return unsubscribe;
   }, [navigation, permissionGranted]);
 
-  const handleImport = async (session: HealthWalkSession) => {
+  const formatDurationShort = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  };
+
+  const handleImport = (session: HealthWalkSession) => {
     if (importing) return;
+    Alert.alert(
+      '기록 가져오기',
+      `${session.title}\n\n거리: ${session.distance.toFixed(2)}km\n시간: ${formatDurationShort(session.duration)}\n걸음: ${session.steps.toLocaleString()}\n\n이 기록을 가져올까요?`,
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '가져오기', onPress: () => doImport(session) },
+      ],
+    );
+  };
+
+  const doImport = async (session: HealthWalkSession) => {
     setImporting(session.id);
     try {
       // Format track_points for our API

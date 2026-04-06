@@ -30,6 +30,7 @@ export default function ActivityDetailScreen() {
   const route = useRoute<any>();
   const activity: ActivityTrack = route.params?.activity;
   const taggedPhotos: any[] = route.params?.taggedPhotos || [];
+  const walkSpots: any[] = route.params?.spots || [];
 
   if (!activity) return null;
 
@@ -159,6 +160,53 @@ export default function ActivityDetailScreen() {
                 />
               ))}
             </ScrollView>
+          </View>
+        )}
+
+        {/* Walk spots */}
+        {walkSpots.length > 0 && (
+          <View style={styles.spotsSection}>
+            <Text style={styles.mapSectionTitle}>스팟 ({walkSpots.length})</Text>
+            {walkSpots.map((spot: any, idx: number) => (
+              <View key={idx} style={styles.spotItem}>
+                <View style={[styles.spotDot, { backgroundColor: spot.type === 'restaurant' ? '#D85A30' : spot.type === 'cafe' ? '#378ADD' : spot.type === 'photo' ? '#7F77DD' : spot.type === 'view' ? '#EF9F27' : '#888780' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.spotName}>{spot.name}</Text>
+                  {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Register as course */}
+        {hasPath && (
+          <View style={styles.courseSection}>
+            <TouchableOpacity
+              style={styles.courseBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                const startCoord = pathCoords[0];
+                const endCoord = pathCoords[pathCoords.length - 1];
+                navigation.navigate('TrailPublish', {
+                  pathData: pathCoords,
+                  distance,
+                  duration: duration || 0,
+                  elevationGain: elevation || 0,
+                  spots: walkSpots,
+                  startLat: startCoord[1],
+                  startLng: startCoord[0],
+                  endLat: endCoord[1],
+                  endLng: endCoord[0],
+                  manualMode: false,
+                });
+              }}>
+              <Text style={styles.courseBtnIcon}>🗺</Text>
+              <View>
+                <Text style={styles.courseBtnTitle}>코스로 등록하기</Text>
+                <Text style={styles.courseBtnDesc}>이 활동을 코스로 공유해보세요</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -316,5 +364,71 @@ const styles = StyleSheet.create({
     height: SW * 0.4,
     borderRadius: 12,
     marginRight: 10,
+  },
+  spotsSection: {
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  spotItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  spotDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  spotName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  spotDesc: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  courseSection: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  courseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  courseBtnIcon: {
+    fontSize: 28,
+  },
+  courseBtnTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  courseBtnDesc: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

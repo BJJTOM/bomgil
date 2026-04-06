@@ -255,6 +255,9 @@ export default function WalkScreen() {
         elevationLoss: String(finalStats.elevationLoss),
         maxSpeed: finalStats.maxSpeed.toFixed(1),
         splits: JSON.stringify(finalStats.splits), taggedPhotos,
+        spots,
+        routeCoords,
+        trackPoints: engineRef.current.getTrackPoints(),
       });
     };
 

@@ -55,13 +55,23 @@ export default function ActivityDetailScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const activity = route.params?.activity;
+  const [activity, setActivity] = useState<any>(route.params?.activity);
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
 
-  // Load extra data from AsyncStorage — try ID match, then latest as fallback
+  // Fetch full activity detail (with track_points) from API
   useEffect(() => {
-    // Only load from storage if no data was passed via params
+    if (activity?.id && (!activity.track_points || activity.track_points.length === 0)) {
+      api.get(`/activities/${activity.id}/`).then(res => {
+        if (res.data?.track_points?.length) {
+          setActivity((prev: any) => ({ ...prev, ...res.data }));
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Load extra data from AsyncStorage
+  useEffect(() => {
     if (taggedPhotos.length === 0 && walkSpots.length === 0) {
       loadExtraData();
     }

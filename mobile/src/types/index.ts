@@ -250,7 +250,10 @@ export interface CommunityPost {
   like_count: number;
   comment_count: number;
   view_count: number;
+  bookmark_count: number;
   is_liked: boolean;
+  is_bookmarked: boolean;
+  is_mine: boolean;
   is_pinned: boolean;
   comments?: PostComment[];
   created_at: string;
@@ -269,7 +272,10 @@ export interface PostComment {
   like_count: number;
   replies: PostComment[];
   is_liked: boolean;
+  is_mine: boolean;
+  is_deleted: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface CommunityGroup {

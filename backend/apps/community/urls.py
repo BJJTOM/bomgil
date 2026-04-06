@@ -4,15 +4,28 @@ from . import views
 urlpatterns = [
     # 게시판
     path('posts/', views.PostListView.as_view(), name='post-list'),
+    path('posts/popular/', views.PopularPostListView.as_view(), name='post-popular'),
+    path('posts/bookmarks/', views.MyBookmarkedPostsView.as_view(), name='post-bookmarks'),
     path('posts/create/', views.PostCreateView.as_view(), name='post-create'),
     path('posts/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
+    path('posts/<int:pk>/update/', views.PostUpdateView.as_view(), name='post-update'),
     path('posts/<int:pk>/like/', views.PostLikeView.as_view(), name='post-like'),
+    path('posts/<int:pk>/bookmark/', views.PostBookmarkView.as_view(), name='post-bookmark'),
     path('posts/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post-delete'),
     path('posts/<int:pk>/images/', views.PostImageUploadView.as_view(), name='post-images'),
+    path('posts/<int:pk>/images/<int:image_id>/', views.PostImageDeleteView.as_view(), name='post-image-delete'),
     path('posts/<int:pk>/comments/', views.PostCommentListView.as_view(), name='post-comments'),
     path('posts/<int:pk>/comments/create/', views.PostCommentCreateView.as_view(), name='post-comment-create'),
     path('posts/comments/<int:comment_id>/like/', views.CommentLikeView.as_view(), name='comment-like'),
     path('posts/comments/<int:comment_id>/reply/', views.CommentReplyView.as_view(), name='comment-reply'),
+    path('posts/comments/<int:comment_id>/update/', views.PostCommentUpdateView.as_view(), name='comment-update'),
+    path('posts/comments/<int:comment_id>/delete/', views.PostCommentDeleteView.as_view(), name='comment-delete'),
+
+    # 신고 / 차단
+    path('report/', views.ReportCreateView.as_view(), name='report-create'),
+    path('block/', views.UserBlockView.as_view(), name='user-block'),
+    path('unblock/', views.UserUnblockView.as_view(), name='user-unblock'),
+    path('blocked-users/', views.BlockedUsersView.as_view(), name='blocked-users'),
 
     # 모임
     path('groups/', views.GroupListView.as_view(), name='group-list'),

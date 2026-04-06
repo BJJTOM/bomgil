@@ -30,6 +30,7 @@ class Post(models.Model):
     like_count = models.PositiveIntegerField(default=0)
     comment_count = models.PositiveIntegerField(default=0)
     view_count = models.PositiveIntegerField(default=0)
+    bookmark_count = models.PositiveIntegerField(default=0)
     is_pinned = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,7 +62,9 @@ class PostComment(models.Model):
     )
     content = models.TextField(max_length=1000)
     like_count = models.PositiveIntegerField(default=0)
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['created_at']
@@ -86,6 +89,66 @@ class CommentLike(models.Model):
 
     class Meta:
         unique_together = ('user', 'comment')
+
+
+class PostBookmark(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='post_bookmarks')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='bookmarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')
+
+
+# ──────────────────────────────────────
+# 신고 / 차단
+# ──────────────────────────────────────
+
+class Report(models.Model):
+    REASON_CHOICES = [
+        ('spam', '스팸/광고'),
+        ('abuse', '욕설/비하'),
+        ('sexual', '성적 콘텐츠'),
+        ('harassment', '괴롭힘'),
+        ('misinformation', '허위정보'),
+        ('other', '기타'),
+    ]
+    TARGET_CHOICES = [
+        ('post', '게시글'),
+        ('comment', '댓글'),
+        ('user', '사용자'),
+        ('group', '모임'),
+    ]
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_made'
+    )
+    target_type = models.CharField(max_length=10, choices=TARGET_CHOICES)
+    target_id = models.PositiveIntegerField()
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    detail = models.TextField(max_length=500, blank=True, default='')
+    status = models.CharField(max_length=10, default='pending', choices=[
+        ('pending', '대기'),
+        ('reviewed', '검토완료'),
+        ('resolved', '처리완료'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class UserBlock(models.Model):
+    blocker = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocking'
+    )
+    blocked = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocked_by'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
 
 
 # ──────────────────────────────────────

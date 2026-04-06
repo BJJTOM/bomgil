@@ -51,18 +51,29 @@ export default function TrailCreateScreen() {
           <Text style={styles.cardArrow}>{'›'}</Text>
         </TouchableOpacity>
 
-        {/* Card 2: Draw on Map */}
+        {/* Card 2: Manual Input */}
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('TrailDraw')}>
-          <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF' }]}>
-            <Text style={styles.cardIcon}>{'✏️'}</Text>
+          onPress={() => navigation.navigate('TrailPublish', {
+            pathData: null,
+            distance: 0,
+            duration: 0,
+            elevationGain: 0,
+            spots: [],
+            startLat: null,
+            startLng: null,
+            endLat: null,
+            endLng: null,
+            manualMode: true,
+          })}>
+          <View style={[styles.cardIconWrap, { backgroundColor: '#FFF5EE' }]}>
+            <Text style={styles.cardIcon}>{'📝'}</Text>
           </View>
           <View style={styles.cardTextWrap}>
-            <Text style={styles.cardTitle}>지도에서 그리기</Text>
+            <Text style={styles.cardTitle}>직접 입력하기</Text>
             <Text style={styles.cardDesc}>
-              지도를 탭해서 경로를 직접{'\n'}그려서 코스를 만들어요
+              코스 정보를 직접 입력해서{'\n'}나만의 코스를 등록해요
             </Text>
           </View>
           <Text style={styles.cardArrow}>{'›'}</Text>

@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const { t } = useT();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showLangModal, setShowLangModal] = useState(false);
 
   const handleLogout = () => setShowLogoutModal(true);
 
@@ -49,6 +50,7 @@ export default function SettingsPage() {
           { label: language === "ko" ? "프로필 수정" : "Edit Profile", href: "/profile/edit", icon: "👤" },
           { label: language === "ko" ? "내 활동 기록" : "My Activities", href: "/activities", icon: "📊" },
           { label: language === "ko" ? "좋아요한 코스" : "Liked Trails", href: "/likes", icon: "❤️" },
+          { label: language === "ko" ? "저장한 코스" : "Saved Trails", href: "/saved", icon: "📥" },
         ] : [
           { label: language === "ko" ? "로그인" : "Login", href: "/auth/login", icon: "🔑" },
           { label: language === "ko" ? "회원가입" : "Sign Up", href: "/auth/register", icon: "✨" },
@@ -123,6 +125,9 @@ export default function SettingsPage() {
                 if (item.href) {
                   return <Link key={item.label} href={item.href} className="block hover:bg-bg-secondary transition-colors">{content}</Link>;
                 }
+                if (item.action === "language") {
+                  return <div key={item.label} onClick={() => setShowLangModal(true)} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
+                }
                 return <div key={item.label} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
               })}
             </div>
@@ -146,6 +151,31 @@ export default function SettingsPage() {
           <p className="text-[11px] text-text-tertiary">© 2026 Moru. All rights reserved.</p>
         </div>
       </div>
+
+      {/* Language Modal */}
+      {showLangModal && (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center px-10" onClick={() => setShowLangModal(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-[320px]" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-[17px] font-bold text-center mb-4">{language === "ko" ? "언어 설정" : "Language"}</h3>
+            {([
+              { code: "ko" as const, label: "한국어", flag: "🇰🇷" },
+              { code: "en" as const, label: "English", flag: "🇺🇸" },
+              { code: "ja" as const, label: "日本語", flag: "🇯🇵" },
+              { code: "zh" as const, label: "中文", flag: "🇨🇳" },
+            ]).map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => { setLanguage(lang.code); setShowLangModal(false); }}
+                className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl mb-1 transition-colors ${language === lang.code ? "bg-primary/10" : "hover:bg-bg-secondary"}`}
+              >
+                <span className="text-[22px]">{lang.flag}</span>
+                <span className="text-[15px] font-medium flex-1 text-left">{lang.label}</span>
+                {language === lang.code && <span className="text-primary font-bold">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Logout Modal */}
       {showLogoutModal && (

@@ -157,20 +157,27 @@ export async function getWalkSessions(days: number = 30): Promise<HealthWalkSess
         }
       } catch {}
 
-      // Read exercise route (GPS) — try multiple field names
+      // Read exercise route (GPS)
+      // Note: Health Connect exercise routes require explicit READ_EXERCISE_ROUTE permission
+      // and Samsung Health may not sync route data to Health Connect
       let trackPoints: { lat: number; lng: number; time: string; ele?: number }[] = [];
       try {
-        const route = (session as any).exerciseRoute?.route
-          || (session as any).route
-          || (session as any).exerciseRoute?.locations
-          || (session as any).locations;
-        if (route && Array.isArray(route)) {
-          trackPoints = route.map((p: any) => ({
-            lat: p.latitude || p.lat || 0,
-            lng: p.longitude || p.lng || 0,
-            time: p.time || p.timestamp || sessionStart,
-            ele: p.altitude || p.elevation || p.ele || null,
-          })).filter((p: any) => p.lat !== 0 && p.lng !== 0);
+        // Only use exerciseRoute.route — the official field
+        const route = (session as any).exerciseRoute?.route;
+        if (route && Array.isArray(route) && route.length > 0) {
+          // Validate: check if first point has valid lat/lng
+          const firstPoint = route[0];
+          const hasValidCoords = (firstPoint.latitude || firstPoint.lat) &&
+            Math.abs(firstPoint.latitude || firstPoint.lat) > 1;
+
+          if (hasValidCoords) {
+            trackPoints = route.map((p: any) => ({
+              lat: p.latitude || p.lat,
+              lng: p.longitude || p.lng,
+              time: p.time || sessionStart,
+              ele: p.altitude || null,
+            })).filter((p: any) => p.lat && p.lng && Math.abs(p.lat) > 1 && Math.abs(p.lng) > 1);
+          }
         }
       } catch {}
 

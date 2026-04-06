@@ -101,6 +101,10 @@ export default function TrailPublishScreen() {
   const [coverImage, setCoverImage] = useState<any>(null);
   const [spots, setSpots] = useState<Spot[]>(initialSpots);
   const [submitting, setSubmitting] = useState(false);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [newSpotName, setNewSpotName] = useState('');
+  const [newSpotType, setNewSpotType] = useState('photo');
+  const [newSpotDesc, setNewSpotDesc] = useState('');
 
   // Manual mode fields
   const [manualDistance, setManualDistance] = useState('');
@@ -141,6 +145,21 @@ export default function TrailPublishScreen() {
     ]);
   }, []);
 
+  const addSpot = useCallback(() => {
+    if (!newSpotName.trim()) return;
+    setSpots(prev => [...prev, {
+      name: newSpotName.trim(),
+      type: newSpotType,
+      description: newSpotDesc.trim(),
+      lat: startLat || 0,
+      lng: startLng || 0,
+    }]);
+    setNewSpotName('');
+    setNewSpotDesc('');
+    setNewSpotType('photo');
+    setShowSpotModal(false);
+  }, [newSpotName, newSpotType, newSpotDesc, startLat, startLng]);
+
   const removeSpot = useCallback((idx: number) => {
     setSpots(prev => prev.filter((_, i) => i !== idx));
   }, []);
@@ -175,9 +194,11 @@ export default function TrailPublishScreen() {
         estimated_minutes: Math.max(1, Math.round(duration)),
       };
 
+      // Always include region if provided
+      if (manualRegion.trim()) payload.region = manualRegion.trim();
+
       if (manualMode) {
-        // Manual mode — text region, no path data
-        payload.region = manualRegion.trim() || undefined;
+        // Manual mode — no path data
       } else {
         // GPS/draw mode — full path data
         const roundedPath = pathData.map((c: [number, number]) => [
@@ -221,8 +242,15 @@ export default function TrailPublishScreen() {
         },
       ]);
     } catch (err: any) {
-      console.log('Trail create error:', err?.response?.data || err);
-      Alert.alert('오류', '코스 등록에 실패했습니다. 다시 시도해주세요.');
+      const errData = err?.response?.data;
+      console.log('Trail create error:', errData || err);
+      let msg = '코스 등록에 실패했습니다.';
+      if (errData && typeof errData === 'object') {
+        const firstKey = Object.keys(errData)[0];
+        const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
+        msg = `${firstKey}: ${firstVal}`;
+      }
+      Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +258,7 @@ export default function TrailPublishScreen() {
     name, description, difficulty, country, seasons, transport,
     pathData, distance, duration, elevationGain,
     startLat, startLng, endLat, endLng,
-    spots, coverImage, navigation,
+    spots, coverImage, navigation, manualMode, manualRegion, manualDistance,
   ]);
 
   const durationH = Math.floor(duration / 60);
@@ -261,50 +289,70 @@ export default function TrailPublishScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
 
-        {/* 1. Map preview (only if route data exists) */}
-        {!manualMode && pathData && pathData.length > 1 && (
+        {/* 1. Map preview */}
+        {pathData && pathData.length > 1 && (
           <SafeMapView
-            lat={startLat}
-            lng={startLng}
-            endLat={endLat}
-            endLng={endLng}
+            lat={startLat || 37.5665}
+            lng={startLng || 126.978}
+            endLat={endLat || undefined}
+            endLng={endLng || undefined}
             pathCoordinates={pathData}
-            height={200}
+            height={220}
           />
         )}
 
-        {/* 2. Stats — auto or manual */}
-        {manualMode ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>코스 상세</Text>
+        {/* 2a. Auto stats (GPS mode) */}
+        {!manualMode && (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>km</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{durationLabel}</Text>
+              <Text style={styles.statLabel}>소요시간</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0'}m</Text>
+              <Text style={styles.statLabel}>고도</Text>
+            </View>
+          </View>
+        )}
 
-            <Text style={styles.fieldLabel}>출발 지역 *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="예: 서울 종로구"
-              placeholderTextColor={colors.textTertiary}
-              value={manualRegion}
-              onChangeText={setManualRegion}
-            />
+        {/* 2b. Location & details (always shown) */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>코스 위치</Text>
 
-            <Text style={styles.fieldLabel}>출발점</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="예: 경복궁역 3번 출구"
-              placeholderTextColor={colors.textTertiary}
-              value={startLocation}
-              onChangeText={setStartLocation}
-            />
+          <Text style={styles.fieldLabel}>지역 *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: 서울 종로구"
+            placeholderTextColor={colors.textTertiary}
+            value={manualRegion}
+            onChangeText={setManualRegion}
+          />
 
-            <Text style={styles.fieldLabel}>도착점</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="예: 안국역 1번 출구"
-              placeholderTextColor={colors.textTertiary}
-              value={endLocation}
-              onChangeText={setEndLocation}
-            />
+          <Text style={styles.fieldLabel}>출발점</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: 경복궁역 3번 출구"
+            placeholderTextColor={colors.textTertiary}
+            value={startLocation}
+            onChangeText={setStartLocation}
+          />
 
+          <Text style={styles.fieldLabel}>도착점</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: 안국역 1번 출구"
+            placeholderTextColor={colors.textTertiary}
+            value={endLocation}
+            onChangeText={setEndLocation}
+          />
+
+          {manualMode && (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>거리 (km) *</Text>
@@ -329,25 +377,8 @@ export default function TrailPublishScreen() {
                 />
               </View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
-              <Text style={styles.statLabel}>km</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{durationLabel}</Text>
-              <Text style={styles.statLabel}>소요시간</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0'}m</Text>
-              <Text style={styles.statLabel}>고도</Text>
-            </View>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* 3. Name */}
         <Text style={styles.fieldLabel}>코스 이름 *</Text>
@@ -466,36 +497,91 @@ export default function TrailPublishScreen() {
           textAlignVertical="top"
         />
 
-        {/* 11. Spots list */}
-        {spots.length > 0 && (
-          <>
-            <Text style={styles.fieldLabel}>등록된 스팟 ({spots.length})</Text>
-            {spots.map((spot, idx) => (
-              <View key={`spot-${idx}`} style={styles.spotCard}>
-                <View
-                  style={[
-                    styles.spotTypeBadge,
-                    { backgroundColor: SPOT_TYPE_COLORS[spot.type] || colors.textSecondary },
-                  ]}>
-                  <Text style={styles.spotTypeBadgeText}>{spot.type}</Text>
-                </View>
-                <View style={styles.spotInfo}>
-                  <Text style={styles.spotName}>{spot.name}</Text>
-                  {spot.description ? (
-                    <Text style={styles.spotDesc}>{spot.description}</Text>
-                  ) : null}
-                </View>
-                <TouchableOpacity
-                  style={styles.spotDeleteBtn}
-                  onPress={() => removeSpot(idx)}
-                  activeOpacity={0.7}>
-                  <Text style={styles.spotDeleteText}>{'✕'}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </>
-        )}
+        {/* 11. Spots list + add */}
+        <Text style={styles.fieldLabel}>경유지 / 스팟 ({spots.length})</Text>
+        {spots.map((spot, idx) => (
+          <View key={`spot-${idx}`} style={styles.spotCard}>
+            <View
+              style={[
+                styles.spotTypeBadge,
+                { backgroundColor: SPOT_TYPE_COLORS[spot.type] || colors.textSecondary },
+              ]}>
+              <Text style={styles.spotTypeBadgeText}>{spot.type}</Text>
+            </View>
+            <View style={styles.spotInfo}>
+              <Text style={styles.spotName}>{spot.name}</Text>
+              {spot.description ? (
+                <Text style={styles.spotDesc}>{spot.description}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              style={styles.spotDeleteBtn}
+              onPress={() => removeSpot(idx)}
+              activeOpacity={0.7}>
+              <Text style={styles.spotDeleteText}>{'✕'}</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        <TouchableOpacity
+          style={styles.addSpotBtn}
+          onPress={() => setShowSpotModal(true)}
+          activeOpacity={0.7}>
+          <Text style={styles.addSpotBtnText}>+ 경유지 추가</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Spot add modal */}
+      {showSpotModal && (
+        <View style={styles.spotModalOverlay}>
+          <View style={styles.spotModal}>
+            <Text style={styles.spotModalTitle}>경유지 추가</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="장소 이름 *"
+              placeholderTextColor={colors.textTertiary}
+              value={newSpotName}
+              onChangeText={setNewSpotName}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 10 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { value: 'restaurant', label: '맛집' },
+                  { value: 'cafe', label: '카페' },
+                  { value: 'photo', label: '포토' },
+                  { value: 'rest', label: '휴식' },
+                  { value: 'view', label: '전망' },
+                ].map(t => (
+                  <TouchableOpacity
+                    key={t.value}
+                    style={[styles.chipSmall, newSpotType === t.value && { backgroundColor: SPOT_TYPE_COLORS[t.label] || colors.primary }]}
+                    onPress={() => setNewSpotType(t.value)}>
+                    <Text style={[styles.chipSmallText, newSpotType === t.value && { color: '#fff' }]}>{t.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <TextInput
+              style={styles.input}
+              placeholder="한줄 설명 (선택)"
+              placeholderTextColor={colors.textTertiary}
+              value={newSpotDesc}
+              onChangeText={setNewSpotDesc}
+            />
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.spotModalBtn, { backgroundColor: '#F2F4F6' }]}
+                onPress={() => setShowSpotModal(false)}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.spotModalBtn, { backgroundColor: colors.primary }]}
+                onPress={addSpot}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>추가</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 12. Submit button */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
@@ -762,5 +848,57 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  addSpotBtn: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addSpotBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  spotModalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    zIndex: 100,
+  },
+  spotModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+  },
+  spotModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  spotModalBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  chipSmall: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F0E8',
+    borderWidth: 1,
+    borderColor: '#E8E5DE',
+  },
+  chipSmallText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#777',
   },
 });

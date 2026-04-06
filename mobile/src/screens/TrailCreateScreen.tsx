@@ -373,7 +373,7 @@ export default function TrailCreateScreen() {
         difficulty,
         distance_km: parseFloat(distanceKm) || 0,
         estimated_minutes: parseInt(estimatedMinutes, 10) || 0,
-        status: 'pending',
+        status: 'approved',
       };
 
       // Coordinates — round to 6 decimal places to fit DB constraint (9 digits total)

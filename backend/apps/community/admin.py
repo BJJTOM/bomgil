@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
-    Post, PostImage, PostComment, PostLike,
+    Post, PostImage, PostComment, PostLike, PostBookmark,
+    Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
 )
@@ -13,10 +14,21 @@ class PostImageInline(admin.TabularInline):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['title', 'author', 'category', 'like_count', 'comment_count', 'view_count', 'created_at']
+    list_display = ['title', 'author', 'category', 'like_count', 'comment_count', 'view_count', 'bookmark_count', 'created_at']
     list_filter = ['category', 'is_pinned']
     search_fields = ['title', 'content']
     inlines = [PostImageInline]
+
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ['reporter', 'target_type', 'target_id', 'reason', 'status', 'created_at']
+    list_filter = ['target_type', 'reason', 'status']
+
+
+@admin.register(UserBlock)
+class UserBlockAdmin(admin.ModelAdmin):
+    list_display = ['blocker', 'blocked', 'created_at']
 
 
 @admin.register(Group)

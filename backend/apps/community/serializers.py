@@ -1,7 +1,7 @@
 import re
 from rest_framework import serializers
 from .models import (
-    Post, PostImage, PostComment, PostLike, CommentLike,
+    Post, PostImage, PostComment, PostLike, CommentLike, PostBookmark, Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
 )
@@ -26,26 +26,33 @@ class PostCommentSerializer(serializers.ModelSerializer):
     author_image = serializers.ImageField(source='author.profile_image', read_only=True)
     replies = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    is_mine = serializers.SerializerMethodField()
 
     class Meta:
         model = PostComment
         fields = [
             'id', 'author', 'author_nickname', 'author_image',
             'parent', 'content', 'like_count', 'replies',
-            'is_liked', 'created_at',
+            'is_liked', 'is_mine', 'is_deleted', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['author', 'like_count']
+        read_only_fields = ['author', 'like_count', 'is_deleted']
 
     def get_replies(self, obj):
         if obj.parent is not None:
             return []
-        replies = obj.replies.select_related('author').all()[:10]
+        replies = obj.replies.filter(is_deleted=False).select_related('author').all()[:20]
         return PostCommentSerializer(replies, many=True, context=self.context).data
 
     def get_is_liked(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
+        return False
+
+    def get_is_mine(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.author_id == request.user.id
         return False
 
 
@@ -55,14 +62,15 @@ class PostListSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     thumbnail = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             'id', 'author', 'author_nickname', 'author_image',
             'category', 'category_display', 'title', 'thumbnail',
-            'like_count', 'comment_count', 'view_count',
-            'is_liked', 'is_pinned', 'created_at',
+            'like_count', 'comment_count', 'view_count', 'bookmark_count',
+            'is_liked', 'is_bookmarked', 'is_pinned', 'created_at',
         ]
 
     def get_thumbnail(self, obj):
@@ -75,6 +83,12 @@ class PostListSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def get_is_bookmarked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.bookmarks.filter(user=request.user).exists()
+        return False
+
 
 class PostDetailSerializer(serializers.ModelSerializer):
     author_nickname = serializers.CharField(source='author.nickname', read_only=True)
@@ -83,6 +97,8 @@ class PostDetailSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(source='post_images', many=True, read_only=True)
     comments = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
+    is_mine = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -90,17 +106,32 @@ class PostDetailSerializer(serializers.ModelSerializer):
             'id', 'author', 'author_nickname', 'author_image',
             'category', 'category_display', 'title', 'content',
             'images', 'trail', 'like_count', 'comment_count', 'view_count',
-            'comments', 'is_liked', 'is_pinned', 'created_at', 'updated_at',
+            'bookmark_count', 'comments', 'is_liked', 'is_bookmarked',
+            'is_mine', 'is_pinned', 'created_at', 'updated_at',
         ]
 
     def get_comments(self, obj):
-        top_level = obj.comments.filter(parent__isnull=True).select_related('author')[:20]
+        top_level = obj.comments.filter(
+            parent__isnull=True, is_deleted=False
+        ).select_related('author')[:30]
         return PostCommentSerializer(top_level, many=True, context=self.context).data
 
     def get_is_liked(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
+        return False
+
+    def get_is_bookmarked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.bookmarks.filter(user=request.user).exists()
+        return False
+
+    def get_is_mine(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.author_id == request.user.id
         return False
 
 
@@ -114,6 +145,37 @@ class PostCreateSerializer(serializers.ModelSerializer):
 
     def validate_content(self, value):
         return sanitize(value)
+
+
+class PostUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ['category', 'title', 'content']
+
+    def validate_title(self, value):
+        return sanitize(value)
+
+    def validate_content(self, value):
+        return sanitize(value)
+
+
+# ──────────────────────────────────────
+# 신고 / 차단
+# ──────────────────────────────────────
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['target_type', 'target_id', 'reason', 'detail']
+
+    def validate_detail(self, value):
+        return sanitize(value)
+
+
+class UserBlockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserBlock
+        fields = ['blocked']
 
 
 # ──────────────────────────────────────

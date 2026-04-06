@@ -58,7 +58,11 @@
       "Bash(cat /Users/tom/Desktop/map_ai/mobile/src/api/*.ts)",
       "Bash(mkdir -p /Users/tom/Desktop/map_ai/backend/apps/community)",
       "Bash(touch /Users/tom/Desktop/map_ai/backend/apps/community/__init__.py)",
-      "Bash(adb logcat:*)"
+      "Bash(adb logcat:*)",
+      "Bash(python manage.py makemigrations community)",
+      "Bash(npx tsc:*)",
+      "Bash(git status:*)",
+      "Bash(git ls-files:*)"
     ]
   }
 }

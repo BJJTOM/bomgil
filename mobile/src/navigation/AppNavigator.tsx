@@ -43,6 +43,13 @@ import AddRecordScreen from '../screens/AddRecordScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import MyTrailsScreen from '../screens/MyTrailsScreen';
 import MapDetailScreen from '../screens/MapDetailScreen';
+import PostDetailScreen from '../screens/PostDetailScreen';
+import PostCreateScreen from '../screens/PostCreateScreen';
+import GroupDetailScreen from '../screens/GroupDetailScreen';
+import GroupCreateScreen from '../screens/GroupCreateScreen';
+import GroupChatScreen from '../screens/GroupChatScreen';
+import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
+import HealthImportScreen from '../screens/HealthImportScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -190,6 +197,13 @@ export default function AppNavigator() {
         <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
         <Stack.Screen name="MyTrails" component={MyTrailsScreen} />
         <Stack.Screen name="MapDetail" component={MapDetailScreen} options={{ gestureEnabled: true }} />
+        <Stack.Screen name="PostDetail" component={PostDetailScreen} />
+        <Stack.Screen name="PostCreate" component={PostCreateScreen} />
+        <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+        <Stack.Screen name="GroupCreate" component={GroupCreateScreen} />
+        <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+        <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+        <Stack.Screen name="HealthImport" component={HealthImportScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

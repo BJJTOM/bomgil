@@ -1,15 +1,16 @@
-from django.db.models import F
+from django.db.models import F, Q
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
-    Post, PostComment, PostLike, CommentLike, PostImage,
+    Post, PostComment, PostLike, CommentLike, PostImage, PostBookmark,
+    Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
 )
 from .serializers import (
-    PostListSerializer, PostDetailSerializer, PostCreateSerializer,
-    PostCommentSerializer,
+    PostListSerializer, PostDetailSerializer, PostCreateSerializer, PostUpdateSerializer,
+    PostCommentSerializer, ReportSerializer, UserBlockSerializer,
     GroupListSerializer, GroupDetailSerializer, GroupCreateSerializer,
     GroupMessageSerializer, GroupMemberSerializer,
     ChallengeListSerializer, ChallengeDetailSerializer,
@@ -27,13 +28,54 @@ class PostListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = Post.objects.select_related('author').prefetch_related('post_images')
+
+        # 차단된 유저 필터링
+        if self.request.user.is_authenticated:
+            blocked_ids = UserBlock.objects.filter(
+                blocker=self.request.user
+            ).values_list('blocked_id', flat=True)
+            qs = qs.exclude(author_id__in=blocked_ids)
+
         category = self.request.query_params.get('category')
         if category:
             qs = qs.filter(category=category)
+
+        q = self.request.query_params.get('q')
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
+
         ordering = self.request.query_params.get('ordering', '-created_at')
         if ordering in ['-created_at', '-like_count', '-view_count', '-comment_count']:
             qs = qs.order_by('-is_pinned', ordering)
         return qs
+
+
+class PopularPostListView(generics.ListAPIView):
+    """인기글 — 좋아요순 상위 게시글"""
+    serializer_class = PostListSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        week_ago = timezone.now() - timedelta(days=7)
+        return Post.objects.filter(
+            created_at__gte=week_ago
+        ).select_related('author').prefetch_related('post_images').order_by('-like_count')[:20]
+
+
+class MyBookmarkedPostsView(generics.ListAPIView):
+    """내 북마크 목록"""
+    serializer_class = PostListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        bookmarked_ids = PostBookmark.objects.filter(
+            user=self.request.user
+        ).values_list('post_id', flat=True)
+        return Post.objects.filter(
+            id__in=bookmarked_ids
+        ).select_related('author').prefetch_related('post_images')
 
 
 class PostCreateView(generics.CreateAPIView):
@@ -58,6 +100,15 @@ class PostDetailView(generics.RetrieveAPIView):
         return Response(serializer.data)
 
 
+class PostUpdateView(generics.UpdateAPIView):
+    serializer_class = PostUpdateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['patch']
+
+    def get_queryset(self):
+        return Post.objects.filter(author=self.request.user)
+
+
 class PostLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -72,6 +123,20 @@ class PostLikeView(APIView):
         return Response({'liked': False})
 
 
+class PostBookmarkView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        post = generics.get_object_or_404(Post, pk=pk)
+        bm, created = PostBookmark.objects.get_or_create(user=request.user, post=post)
+        if created:
+            Post.objects.filter(pk=pk).update(bookmark_count=F('bookmark_count') + 1)
+            return Response({'bookmarked': True}, status=status.HTTP_201_CREATED)
+        bm.delete()
+        Post.objects.filter(pk=pk).update(bookmark_count=F('bookmark_count') - 1)
+        return Response({'bookmarked': False})
+
+
 class PostDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -84,9 +149,16 @@ class PostCommentListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return PostComment.objects.filter(
-            post_id=self.kwargs['pk'], parent__isnull=True
+        qs = PostComment.objects.filter(
+            post_id=self.kwargs['pk'], parent__isnull=True, is_deleted=False
         ).select_related('author')
+
+        if self.request.user.is_authenticated:
+            blocked_ids = UserBlock.objects.filter(
+                blocker=self.request.user
+            ).values_list('blocked_id', flat=True)
+            qs = qs.exclude(author_id__in=blocked_ids)
+        return qs
 
 
 class PostCommentCreateView(generics.CreateAPIView):
@@ -97,6 +169,37 @@ class PostCommentCreateView(generics.CreateAPIView):
         post = generics.get_object_or_404(Post, pk=self.kwargs['pk'])
         serializer.save(author=self.request.user, post=post)
         Post.objects.filter(pk=post.pk).update(comment_count=F('comment_count') + 1)
+
+
+class PostCommentUpdateView(APIView):
+    """댓글 수정"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, comment_id):
+        comment = generics.get_object_or_404(
+            PostComment, pk=comment_id, author=request.user
+        )
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({'error': '내용을 입력하세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        comment.content = content
+        comment.save(update_fields=['content', 'updated_at'])
+        return Response(PostCommentSerializer(comment, context={'request': request}).data)
+
+
+class PostCommentDeleteView(APIView):
+    """댓글 삭제 (soft delete)"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, comment_id):
+        comment = generics.get_object_or_404(
+            PostComment, pk=comment_id, author=request.user
+        )
+        comment.is_deleted = True
+        comment.content = '삭제된 댓글입니다.'
+        comment.save(update_fields=['is_deleted', 'content'])
+        Post.objects.filter(pk=comment.post_id).update(comment_count=F('comment_count') - 1)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentLikeView(APIView):
@@ -134,6 +237,63 @@ class PostImageUploadView(APIView):
             obj = PostImage.objects.create(post=post, image=img, order=i)
             created.append({'id': obj.id, 'image': obj.image.url, 'order': obj.order})
         return Response(created, status=status.HTTP_201_CREATED)
+
+
+class PostImageDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk, image_id):
+        img = generics.get_object_or_404(PostImage, pk=image_id, post__pk=pk, post__author=request.user)
+        img.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ──────────────────────────────────────
+# 신고 / 차단
+# ──────────────────────────────────────
+
+class ReportCreateView(generics.CreateAPIView):
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(reporter=self.request.user)
+
+
+class UserBlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        blocked_id = request.data.get('user_id')
+        if not blocked_id or int(blocked_id) == request.user.id:
+            return Response({'error': '차단할 수 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        _, created = UserBlock.objects.get_or_create(
+            blocker=request.user, blocked_id=blocked_id
+        )
+        if created:
+            return Response({'blocked': True}, status=status.HTTP_201_CREATED)
+        return Response({'blocked': True})
+
+
+class UserUnblockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        blocked_id = request.data.get('user_id')
+        UserBlock.objects.filter(blocker=request.user, blocked_id=blocked_id).delete()
+        return Response({'unblocked': True})
+
+
+class BlockedUsersView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocks = UserBlock.objects.filter(blocker=request.user).select_related('blocked')
+        data = [
+            {'user_id': b.blocked_id, 'nickname': b.blocked.nickname, 'created_at': b.created_at}
+            for b in blocks
+        ]
+        return Response(data)
 
 
 # ──────────────────────────────────────

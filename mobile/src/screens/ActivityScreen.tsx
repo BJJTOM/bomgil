@@ -188,6 +188,15 @@ export default function ActivityScreen() {
             </TouchableOpacity>
           </FadeInView>
 
+          <FadeInView delay={175}>
+            <TouchableOpacity
+              style={styles.watchImportBtn}
+              onPress={() => navigation.navigate('HealthImport')}
+              activeOpacity={0.85}>
+              <Text style={styles.watchImportText}>{'⌚ 워치 기록 가져오기'}</Text>
+            </TouchableOpacity>
+          </FadeInView>
+
           <FadeInView delay={200}>
             <View style={styles.secondaryRow}>
               <TouchableOpacity
@@ -401,6 +410,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  watchImportBtn: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+  },
+  watchImportText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   secondaryRow: {
     flexDirection: 'row',

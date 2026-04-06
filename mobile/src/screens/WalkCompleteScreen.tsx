@@ -229,7 +229,7 @@ export default function WalkCompleteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1a0e',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     alignItems: 'center',
@@ -248,14 +248,19 @@ const styles = StyleSheet.create({
   celebrationText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 32,
   },
 
   // Stat Card
   statCard: {
     width: width - 48,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
     borderRadius: 20,
     paddingVertical: 28,
     paddingHorizontal: 24,
@@ -264,7 +269,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(168,230,207,0.5)',
+    color: colors.primary, opacity: 0.5,
     letterSpacing: 3,
     marginBottom: 8,
   },
@@ -276,13 +281,13 @@ const styles = StyleSheet.create({
   distanceBig: {
     fontSize: 56,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     letterSpacing: -2,
   },
   distanceUnit: {
     fontSize: 18,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
     marginLeft: 4,
   },
 
@@ -299,18 +304,18 @@ const styles = StyleSheet.create({
   statCellValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   statCellLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
     fontWeight: '500',
   },
   statDivider: {
     width: 1,
     height: 28,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#F2F4F6',
   },
 
   // Steps
@@ -322,17 +327,17 @@ const styles = StyleSheet.create({
   stepsValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
   },
   stepsLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
   },
 
   // Date
   dateText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.25)',
+    color: colors.textTertiary,
     marginTop: 8,
     marginBottom: 20,
   },
@@ -340,20 +345,20 @@ const styles = StyleSheet.create({
   // Card footer
   cardFooter: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopColor: '#EEEFF1',
     paddingTop: 12,
     alignItems: 'center',
   },
   cardFooterText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.2)',
+    color: colors.textTertiary,
     letterSpacing: 0.5,
   },
 
   // Splits
   splitsSection: {
     width: width - 48,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -361,7 +366,7 @@ const styles = StyleSheet.create({
   splitsTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textSecondary,
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -373,12 +378,12 @@ const styles = StyleSheet.create({
   },
   splitRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#F2F4F6',
   },
   splitKm: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textSecondary,
   },
   splitPace: {
     fontSize: 15,
@@ -394,7 +399,7 @@ const styles = StyleSheet.create({
   photosSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   photosList: {
@@ -426,7 +431,7 @@ const styles = StyleSheet.create({
   shareBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -436,12 +441,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#F2F4F6',
     alignItems: 'center',
   },
   secondaryBtnText: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
   },
 });

@@ -358,10 +358,10 @@ function TrailDetailScreenInner() {
               lng={parseFloat(String(trail.start_lng))}
               endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
               endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
-              pathCoordinates={trail.path_coordinates as [number, number][] | undefined}
+              pathCoordinates={(trail.path_data?.coordinates || trail.path_coordinates) as [number, number][] | undefined}
               region={trail.region}
               country={trail.country}
-              height={200}
+              height={260}
             />
           ) : (
             <View style={styles.mapFallback}>

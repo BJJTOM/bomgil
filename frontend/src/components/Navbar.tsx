@@ -139,10 +139,6 @@ export function Navbar() {
                       {/* Menu items */}
                       {[
                         { href: "/settings", icon: "\u2699\uFE0F", label: language === "ko" ? "\uC124\uC815" : "Settings" },
-                        { href: "/activities", icon: "\uD83D\uDCCA", label: language === "ko" ? "\uD65C\uB3D9 \uAE30\uB85D" : "Activities" },
-                        { href: "/likes", icon: "\u2764\uFE0F", label: language === "ko" ? "\uC88B\uC544\uC694\uD55C \uCF54\uC2A4" : "Liked Trails" },
-                        { href: "/saved", icon: "\uD83D\uDCE5", label: language === "ko" ? "\uC800\uC7A5\uD55C \uCF54\uC2A4" : "Saved Trails" },
-                        { href: "/profile/edit", icon: "\u270F\uFE0F", label: language === "ko" ? "\uD504\uB85C\uD544 \uC218\uC815" : "Edit Profile" },
                       ].map((item) => (
                         <Link
                           key={item.href}

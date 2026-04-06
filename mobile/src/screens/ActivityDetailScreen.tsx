@@ -55,7 +55,7 @@ export default function ActivityDetailScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -124,7 +124,7 @@ export default function ActivityDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
@@ -137,18 +137,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backText: {
     fontSize: 18,
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.textPrimary,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   titleSection: {
     paddingHorizontal: 24,
@@ -158,17 +158,17 @@ const styles = StyleSheet.create({
   actTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   actDate: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   actTime: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.3)',
+    color: colors.textTertiary,
   },
   bigStat: {
     flexDirection: 'row',
@@ -179,13 +179,13 @@ const styles = StyleSheet.create({
   bigStatValue: {
     fontSize: 56,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.textPrimary,
     letterSpacing: -2,
   },
   bigStatUnit: {
     fontSize: 18,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
     marginLeft: 6,
   },
   statsGrid: {
@@ -196,10 +196,15 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statIcon: {
     fontSize: 20,
@@ -208,20 +213,25 @@ const styles = StyleSheet.create({
   statVal: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
   },
   secondaryGrid: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   secItem: {
     flex: 1,
@@ -229,17 +239,17 @@ const styles = StyleSheet.create({
   },
   secLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
+    color: colors.textTertiary,
     marginBottom: 4,
   },
   secVal: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
+    color: colors.textPrimary,
   },
   secDivider: {
     width: 1,
     height: 28,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#F2F4F6',
   },
 });

@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
@@ -31,6 +32,7 @@ const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
 
   const { data: stats } = useQuery({
@@ -239,23 +241,44 @@ export default function ActivityScreen() {
                   <TouchableOpacity
                     style={styles.activityItem}
                     activeOpacity={0.7}
-                    onPress={() => navigation.navigate('ActivityDetail', { activity })}>
+                    onPress={() => navigation.navigate('ActivityDetail', { activity })}
+                    onLongPress={() => {
+                      Alert.alert(
+                        '활동 삭제',
+                        '이 활동을 삭제하시겠습니까?',
+                        [
+                          { text: '취소', style: 'cancel' },
+                          {
+                            text: '삭제',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await api.delete(`/activities/${activity.id}/`);
+                                queryClient.invalidateQueries({ queryKey: ['activities'] });
+                                queryClient.invalidateQueries({ queryKey: ['activity-stats'] });
+                              } catch (err) {
+                                Alert.alert('오류', '삭제에 실패했습니다.');
+                              }
+                            },
+                          },
+                        ],
+                      );
+                    }}>
                     <View style={styles.activityIconWrap}>
                       <Text style={styles.activityIcon}>
-                        {sourceInfo?.icon || '📍'}
+                        {sourceInfo?.icon || '\uD83D\uDCCD'}
                       </Text>
                     </View>
                     <View style={styles.activityInfo}>
+                      <Text style={styles.activityTitleMain} numberOfLines={1}>
+                        {activity.title || `${sourceInfo?.label || ''} 기록`}
+                      </Text>
                       <View style={styles.activityTopRow}>
                         <Text style={styles.activityDateText}>{dateStr}</Text>
-                        <Text style={styles.activityTitle}>
-                          {activity.title ||
-                            `${sourceInfo?.label || ''} 기록`}
+                        <Text style={styles.activityMeta}>
+                          {[distanceStr, durationStr].filter(Boolean).join(' · ')}
                         </Text>
                       </View>
-                      <Text style={styles.activityMeta}>
-                        {[distanceStr, durationStr].filter(Boolean).join(' · ')}
-                      </Text>
                     </View>
                   </TouchableOpacity>
                 </FadeInView>
@@ -435,6 +458,12 @@ const styles = StyleSheet.create({
   },
   activityInfo: {
     flex: 1,
+  },
+  activityTitleMain: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 3,
   },
   activityTopRow: {
     flexDirection: 'row',

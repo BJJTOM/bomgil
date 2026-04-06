@@ -36,10 +36,11 @@ const DIFFICULTY_OPTIONS = ['쉬움', '보통', '어려움'];
 const COURSE_TYPE_OPTIONS = ['편도', '왕복', '순환'];
 const SEASON_OPTIONS = ['봄', '여름', '가을', '겨울'];
 
-function formatDuration(minutes: number | null) {
-  if (!minutes) return '-';
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+function formatDuration(minutes: number | string | null | undefined) {
+  const mins = typeof minutes === 'string' ? parseInt(minutes, 10) : minutes;
+  if (mins == null || isNaN(mins) || mins <= 0) return '0분';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
   return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
@@ -330,12 +331,21 @@ export default function ActivityDetailScreen() {
               <Text style={styles.sectionTitle}>사진 ({taggedPhotos.length})</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {taggedPhotos.map((photo: any, idx: number) => (
-                  <Image
-                    key={idx}
-                    source={{ uri: photo.uri }}
-                    style={styles.photoThumb}
-                    resizeMode="cover"
-                  />
+                  <View key={idx} style={styles.photoItem}>
+                    <Image
+                      source={{ uri: photo.uri }}
+                      style={styles.photoThumb}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.photoLocation} numberOfLines={1}>
+                      {photo.title || `사진 ${idx + 1}`}
+                    </Text>
+                    {photo.lat != null && photo.lng != null && (
+                      <Text style={styles.photoCoords}>
+                        {'\uD83D\uDCCD'} {photo.lat.toFixed(4)}, {photo.lng.toFixed(4)}
+                      </Text>
+                    )}
+                  </View>
                 ))}
               </ScrollView>
             </View>
@@ -351,6 +361,11 @@ export default function ActivityDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.spotName}>{spot.name}</Text>
                     {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
+                    {spot.lat != null && spot.lng != null && (
+                      <Text style={styles.spotCoords}>
+                        {'\uD83D\uDCCD'} {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
+                      </Text>
+                    )}
                   </View>
                 </View>
               ))}
@@ -618,11 +633,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 12,
   },
+  photoItem: {
+    marginRight: 12,
+    width: SW * 0.38,
+  },
   photoThumb: {
     width: SW * 0.38,
     height: SW * 0.38,
     borderRadius: 12,
-    marginRight: 10,
+  },
+  photoLocation: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 6,
+  },
+  photoCoords: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
   },
   spotItem: {
     flexDirection: 'row',
@@ -652,6 +681,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textTertiary,
     marginTop: 2,
+  },
+  spotCoords: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 3,
   },
   // Course draft toggle
   courseToggleBtn: {

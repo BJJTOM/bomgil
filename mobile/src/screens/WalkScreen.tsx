@@ -22,8 +22,9 @@ import Geolocation from '@react-native-community/geolocation';
 
 Geolocation.setRNConfiguration({
   skipPermissionRequests: false,
-  authorizationLevel: 'whenInUse',
-  enableBackgroundLocationUpdates: false,
+  authorizationLevel: 'always',
+  enableBackgroundLocationUpdates: true,
+  locationProvider: 'auto',
 });
 
 import Mapbox from '@rnmapbox/maps';

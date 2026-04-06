@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
@@ -22,7 +22,7 @@ const TITLE_MAX = 100;
 const CONTENT_MIN = 5;
 const CONTENT_MAX = 5000;
 
-export default function PostNewPage() {
+function PostNewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -184,5 +184,13 @@ export default function PostNewPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PostNewPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20 text-sm text-gray-400">로딩 중...</div>}>
+      <PostNewContent />
+    </Suspense>
   );
 }

@@ -49,6 +49,7 @@ import GroupDetailScreen from '../screens/GroupDetailScreen';
 import GroupCreateScreen from '../screens/GroupCreateScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
+import HealthImportScreen from '../screens/HealthImportScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -202,6 +203,7 @@ export default function AppNavigator() {
         <Stack.Screen name="GroupCreate" component={GroupCreateScreen} />
         <Stack.Screen name="GroupChat" component={GroupChatScreen} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+        <Stack.Screen name="HealthImport" component={HealthImportScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

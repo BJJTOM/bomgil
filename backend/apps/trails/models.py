@@ -58,7 +58,7 @@ class Trail(models.Model):
     description = models.TextField(max_length=1000)
     description_en = models.TextField(max_length=1000, blank=True)
     description_ja = models.TextField(max_length=1000, blank=True)
-    region = models.CharField(max_length=50)
+    region = models.CharField(max_length=50, blank=True, default='')
     country = models.CharField(max_length=2, default="KR")
     distance_km = models.DecimalField(max_digits=6, decimal_places=2)
     estimated_minutes = models.PositiveIntegerField()

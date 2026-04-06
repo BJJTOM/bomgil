@@ -228,10 +228,10 @@ class ReportCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Auto-flag if reports >= threshold
+        # Auto-flag if reports from distinct reporters >= threshold
         report_count = Report.objects.filter(
             content_type=ct, object_id=object_id
-        ).count()
+        ).values("reporter").distinct().count()
 
         if report_count >= REPORT_THRESHOLD:
             try:

@@ -1,6 +1,8 @@
+import logging
 import random
 import string
 
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -15,6 +17,8 @@ from .models import CustomUser, PhoneVerification, UserBadge
 from .serializers import UserPublicSerializer, UserSerializer
 
 from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -35,7 +39,7 @@ class UserTrailsView(generics.ListAPIView):
     serializer_class = TrailListSerializer
 
     def get_queryset(self):
-        user = CustomUser.objects.get(nickname=self.kwargs["nickname"])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return (
             Trail.objects.filter(author=user, status="approved")
             .select_related("author")
@@ -62,7 +66,7 @@ class UserReviewsView(generics.ListAPIView):
     serializer_class = ReviewSerializer
 
     def get_queryset(self):
-        user = CustomUser.objects.get(nickname=self.kwargs["nickname"])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return (
             Review.objects.filter(author=user)
             .select_related("author", "trail")
@@ -72,7 +76,7 @@ class UserReviewsView(generics.ListAPIView):
 
 class UserBadgesView(APIView):
     def get(self, request, nickname):
-        user = CustomUser.objects.get(nickname=nickname)
+        user = get_object_or_404(CustomUser, nickname=nickname)
         badges = UserBadge.objects.filter(user=user)
         data = [
             {
@@ -99,10 +103,10 @@ class PhoneSendView(APIView):
             user=request.user, phone_number=phone, code=code
         )
 
-        # Dev: print to console. Prod: send SMS.
-        print(f"[SMS Verification] {phone}: {code}")
+        # TODO: integrate real SMS provider for production
+        logger.debug("SMS verification code generated for phone=%s", phone)
 
-        return Response({"message": "인증번호가 발송되었습니다.", "dev_code": code})
+        return Response({"message": "인증번호가 발송되었습니다."})
 
 
 class PhoneVerifyView(APIView):
@@ -159,7 +163,7 @@ class FollowView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, nickname):
-        target = CustomUser.objects.get(nickname=nickname)
+        target = get_object_or_404(CustomUser, nickname=nickname)
         if target == request.user:
             return Response({"error": "자신을 팔로우할 수 없습니다"}, status=400)
         if request.user.following.filter(pk=target.pk).exists():
@@ -173,7 +177,7 @@ class FollowersView(generics.ListAPIView):
     serializer_class = UserPublicSerializer
 
     def get_queryset(self):
-        user = CustomUser.objects.get(nickname=self.kwargs['nickname'])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs['nickname'])
         return user.followers.all()
 
 
@@ -181,7 +185,7 @@ class FollowingView(generics.ListAPIView):
     serializer_class = UserPublicSerializer
 
     def get_queryset(self):
-        user = CustomUser.objects.get(nickname=self.kwargs['nickname'])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs['nickname'])
         return user.following.all()
 
 

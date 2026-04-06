@@ -1,4 +1,5 @@
 from django.db.models import Sum, Count
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -113,7 +114,7 @@ class UserActivitiesView(generics.ListAPIView):
 
     def get_queryset(self):
         from apps.accounts.models import CustomUser
-        user = CustomUser.objects.get(nickname=self.kwargs["nickname"])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return ActivityTrack.objects.filter(
             user=user, is_public=True
         ).select_related("user")

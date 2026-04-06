@@ -11,7 +11,7 @@ from .settings import *  # noqa: F401,F403
 # Core
 # ---------------------------------------------------------------------------
 DEBUG = False
-SECRET_KEY = os.environ.get("SECRET_KEY", "fallback-change-me")
+SECRET_KEY = os.environ["SECRET_KEY"]  # No fallback — fail fast
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 # ---------------------------------------------------------------------------

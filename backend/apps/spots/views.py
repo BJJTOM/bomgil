@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
 
@@ -26,7 +27,7 @@ class SpotImageUploadView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        spot = Spot.objects.get(pk=self.request.data.get("spot"))
+        spot = get_object_or_404(Spot, pk=self.request.data.get("spot"))
         if spot.author != self.request.user and not self.request.user.is_staff:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("이 경유지의 이미지를 업로드할 권한이 없습니다.")

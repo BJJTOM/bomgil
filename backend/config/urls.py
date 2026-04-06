@@ -6,31 +6,7 @@ from django.urls import include, path
 from apps.trails.health import HealthCheckView
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
-@csrf_exempt
-def _tmp_wipe(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "POST only"}, status=405)
-    try:
-        from apps.spots.models import Spot
-        from apps.reviews.models import Review
-        from apps.stories.models import WalkStory
-        from apps.activities.models import ActivityTrack
-        from apps.trails.models import Trail, TrailLike
-        from apps.accounts.models import CustomUser
-        results = {}
-        results['reviews'] = Review.objects.all().delete()[0]
-        results['spots'] = Spot.objects.all().delete()[0]
-        results['likes'] = TrailLike.objects.all().delete()[0]
-        results['stories'] = WalkStory.objects.all().delete()[0]
-        results['activities'] = ActivityTrack.objects.all().delete()[0]
-        results['trails'] = Trail.objects.all().delete()[0]
-        results['users'] = CustomUser.objects.filter(is_superuser=False).delete()[0]
-        return JsonResponse({"status": "ok", **results})
-    except Exception as e:
-        import traceback
-        return JsonResponse({"error": str(e), "trace": traceback.format_exc()}, status=500)
 
 def _platform_stats(request):
     from apps.trails.models import Trail
@@ -43,7 +19,6 @@ def _platform_stats(request):
     return JsonResponse({"countries": countries, "trails": trails, "stories": stories, "users": users})
 
 urlpatterns = [
-    path("_wipe-data-tmp/", _tmp_wipe),
     path("api/v1/stats/", _platform_stats),
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),

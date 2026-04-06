@@ -1,8 +1,15 @@
+import re
+
 from django.contrib.auth import authenticate
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
 
 from .models import CustomUser, UserBadge
+
+
+def strip_html(value):
+    """Remove HTML tags from string."""
+    return re.sub(r'<[^>]+>', '', value).strip()
 
 
 class EmailLoginSerializer(serializers.Serializer):
@@ -27,6 +34,14 @@ class EmailLoginSerializer(serializers.Serializer):
 
 class CustomRegisterSerializer(RegisterSerializer):
     nickname = serializers.CharField(max_length=50, required=True)
+
+    def validate_nickname(self, value):
+        cleaned = strip_html(value)
+        if cleaned != value:
+            raise serializers.ValidationError("HTML 태그는 사용할 수 없습니다.")
+        if len(cleaned) < 1 or len(cleaned) > 50:
+            raise serializers.ValidationError("닉네임은 1~50자여야 합니다.")
+        return cleaned
 
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
@@ -66,6 +81,24 @@ class UserSerializer(serializers.ModelSerializer):
             "companion_rating", "total_walks", "companion_count",
             "is_verified", "verification_level", "created_at",
         ]
+
+    def validate_nickname(self, value):
+        cleaned = strip_html(value)
+        if cleaned != value:
+            raise serializers.ValidationError("HTML 태그는 사용할 수 없습니다.")
+        if len(cleaned) < 1 or len(cleaned) > 50:
+            raise serializers.ValidationError("닉네임은 1~50자여야 합니다.")
+        return cleaned
+
+    def validate_bio(self, value):
+        if value and strip_html(value) != value:
+            raise serializers.ValidationError("HTML 태그는 사용할 수 없습니다.")
+        return strip_html(value) if value else value
+
+    def validate_one_liner(self, value):
+        if value and strip_html(value) != value:
+            raise serializers.ValidationError("HTML 태그는 사용할 수 없습니다.")
+        return strip_html(value) if value else value
 
 
 class UserPublicSerializer(serializers.ModelSerializer):

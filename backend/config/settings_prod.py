@@ -69,6 +69,8 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
     "anon": "500/hour",
     "user": "5000/hour",
     "trail_create": "100/day",
+    "login": "5/minute",
+    "register": "3/minute",
 }
 
 # ---------------------------------------------------------------------------

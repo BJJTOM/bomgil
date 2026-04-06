@@ -9,6 +9,7 @@ from .views import (
     MeView,
     PhoneSendView,
     PhoneVerifyView,
+    ThrottledRegisterView,
     UserBadgesView,
     UserLikedTrailsView,
     UserProfileView,
@@ -18,6 +19,7 @@ from .views import (
 
 urlpatterns = [
     path("", include("dj_rest_auth.urls")),
+    path("register/", ThrottledRegisterView.as_view(), name="throttled-register"),
     path("register/", include("dj_rest_auth.registration.urls")),
     path("social/google/", include("allauth.socialaccount.providers.google.urls")),
     path("social/kakao/", include("allauth.socialaccount.providers.kakao.urls")),

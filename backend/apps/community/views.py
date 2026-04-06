@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import F, Q
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
@@ -112,8 +113,9 @@ class PostUpdateView(generics.UpdateAPIView):
 class PostLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
-        post = generics.get_object_or_404(Post, pk=pk)
+        post = generics.get_object_or_404(Post.objects.select_for_update(), pk=pk)
         like, created = PostLike.objects.get_or_create(user=request.user, post=post)
         if created:
             Post.objects.filter(pk=pk).update(like_count=F('like_count') + 1)
@@ -126,8 +128,9 @@ class PostLikeView(APIView):
 class PostBookmarkView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
-        post = generics.get_object_or_404(Post, pk=pk)
+        post = generics.get_object_or_404(Post.objects.select_for_update(), pk=pk)
         bm, created = PostBookmark.objects.get_or_create(user=request.user, post=post)
         if created:
             Post.objects.filter(pk=pk).update(bookmark_count=F('bookmark_count') + 1)
@@ -205,8 +208,9 @@ class PostCommentDeleteView(APIView):
 class CommentLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, comment_id):
-        comment = generics.get_object_or_404(PostComment, pk=comment_id)
+        comment = generics.get_object_or_404(PostComment.objects.select_for_update(), pk=comment_id)
         like, created = CommentLike.objects.get_or_create(user=request.user, comment=comment)
         if created:
             PostComment.objects.filter(pk=comment_id).update(like_count=F('like_count') + 1)
@@ -367,6 +371,7 @@ class GroupMemberListView(generics.ListAPIView):
 class GroupMessageListView(generics.ListAPIView):
     serializer_class = GroupMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Return flat list for chat
 
     def get_queryset(self):
         return GroupMessage.objects.filter(
@@ -411,8 +416,9 @@ class ChallengeDetailView(generics.RetrieveAPIView):
 class ChallengeJoinView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
-        challenge = generics.get_object_or_404(Challenge, pk=pk)
+        challenge = generics.get_object_or_404(Challenge.objects.select_for_update(), pk=pk)
         if challenge.status != 'active':
             return Response({'error': '참가할 수 없는 챌린지입니다.'}, status=status.HTTP_400_BAD_REQUEST)
         if challenge.is_full:

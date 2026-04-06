@@ -29,7 +29,7 @@ export default function ChallengeDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
-  const { challengeId } = route.params;
+  const challengeId = route.params?.challengeId;
 
   const { data: challenge } = useQuery<Challenge>({
     queryKey: ['challenge-detail', challengeId],
@@ -37,6 +37,7 @@ export default function ChallengeDetailScreen() {
       const { data } = await api.get(`/community/challenges/${challengeId}/`);
       return data;
     },
+    enabled: !!challengeId,
   });
 
   const handleJoin = async () => {

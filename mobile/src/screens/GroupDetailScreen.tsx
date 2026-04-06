@@ -22,7 +22,7 @@ export default function GroupDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
-  const { groupId } = route.params;
+  const groupId = route.params?.groupId;
 
   const { data: group } = useQuery<CommunityGroup>({
     queryKey: ['group-detail', groupId],
@@ -30,6 +30,7 @@ export default function GroupDetailScreen() {
       const { data } = await api.get(`/community/groups/${groupId}/`);
       return data;
     },
+    enabled: !!groupId,
   });
 
   const handleJoin = async () => {

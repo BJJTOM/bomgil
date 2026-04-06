@@ -13,19 +13,24 @@ def _tmp_wipe(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
     try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM reviews_review")
-            cursor.execute("DELETE FROM spots_spot")
-            cursor.execute("DELETE FROM stories_walkstory")
-            cursor.execute("DELETE FROM activities_activitytrack")
-            cursor.execute("DELETE FROM trails_trail_tags")
-            cursor.execute("DELETE FROM trails_traillike")
-            cursor.execute("DELETE FROM trails_trail")
-            cursor.execute("DELETE FROM accounts_customuser WHERE is_superuser = false")
-        return JsonResponse({"status": "ok", "msg": "all data wiped"})
+        from apps.spots.models import Spot
+        from apps.reviews.models import Review
+        from apps.stories.models import WalkStory
+        from apps.activities.models import ActivityTrack
+        from apps.trails.models import Trail, TrailLike
+        from apps.accounts.models import CustomUser
+        results = {}
+        results['reviews'] = Review.objects.all().delete()[0]
+        results['spots'] = Spot.objects.all().delete()[0]
+        results['likes'] = TrailLike.objects.all().delete()[0]
+        results['stories'] = WalkStory.objects.all().delete()[0]
+        results['activities'] = ActivityTrack.objects.all().delete()[0]
+        results['trails'] = Trail.objects.all().delete()[0]
+        results['users'] = CustomUser.objects.filter(is_superuser=False).delete()[0]
+        return JsonResponse({"status": "ok", **results})
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        import traceback
+        return JsonResponse({"error": str(e), "trace": traceback.format_exc()}, status=500)
 
 def _platform_stats(request):
     from apps.trails.models import Trail

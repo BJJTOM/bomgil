@@ -27,6 +27,7 @@ Geolocation.setRNConfiguration({
 });
 
 import Mapbox from '@rnmapbox/maps';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
@@ -254,7 +255,7 @@ export default function WalkScreen() {
     if (isAuthenticated) {
       try {
         const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-        await api.post('/activities/', {
+        const actRes = await api.post('/activities/', {
           trail: trailId || null,
           track_points: trackPoints.length > 0 ? trackPoints : [],
           source: 'phone_gps',
@@ -266,6 +267,17 @@ export default function WalkScreen() {
           duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
           elevation_gain_m: finalStats.elevationGain,
         });
+        // Save spots, photos, and route locally keyed by activity ID
+        if (actRes?.data?.id) {
+          try {
+            await AsyncStorage.setItem(
+              `activity_${actRes.data.id}_extra`,
+              JSON.stringify({ spots, taggedPhotos, routeCoords }),
+            );
+          } catch (storageErr) {
+            console.log('AsyncStorage save error:', storageErr);
+          }
+        }
       } catch (e) { console.log('Save error:', e); }
     }
     const goToComplete = () => {

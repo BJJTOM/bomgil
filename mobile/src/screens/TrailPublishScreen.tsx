@@ -116,7 +116,7 @@ export default function TrailPublishScreen() {
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotType, setNewSpotType] = useState('photo');
   const [newSpotDesc, setNewSpotDesc] = useState('');
-  const [newSpotImageUrl, setNewSpotImageUrl] = useState('');
+  const [newSpotImageUri, setNewSpotImageUri] = useState('');
   const [newSpotLocation, setNewSpotLocation] = useState('');
 
   // Manual mode fields
@@ -166,16 +166,16 @@ export default function TrailPublishScreen() {
       description: newSpotDesc.trim(),
       lat: startLat || 0,
       lng: startLng || 0,
-      imageUrl: newSpotImageUrl.trim() || undefined,
+      imageUrl: newSpotImageUri.trim() || undefined,
       location: newSpotLocation.trim() || undefined,
     }]);
     setNewSpotName('');
     setNewSpotDesc('');
     setNewSpotType('photo');
-    setNewSpotImageUrl('');
+    setNewSpotImageUri('');
     setNewSpotLocation('');
     setShowSpotModal(false);
-  }, [newSpotName, newSpotType, newSpotDesc, newSpotImageUrl, newSpotLocation, startLat, startLng]);
+  }, [newSpotName, newSpotType, newSpotDesc, newSpotImageUri, newSpotLocation, startLat, startLng]);
 
   const removeSpot = useCallback((idx: number) => {
     setSpots(prev => prev.filter((_, i) => i !== idx));
@@ -319,17 +319,15 @@ export default function TrailPublishScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
 
-        {/* 1. Map preview */}
-        {pathData && pathData.length > 1 && (
-          <SafeMapView
-            lat={startLat || 37.5665}
-            lng={startLng || 126.978}
-            endLat={endLat || undefined}
-            endLng={endLng || undefined}
-            pathCoordinates={pathData}
-            height={220}
-          />
-        )}
+        {/* 1. Map preview — always visible */}
+        <SafeMapView
+          lat={startLat || 37.5665}
+          lng={startLng || 126.978}
+          endLat={endLat || undefined}
+          endLng={endLng || undefined}
+          pathCoordinates={pathData && pathData.length > 1 ? pathData : undefined}
+          height={200}
+        />
 
         {/* 2a. Auto stats (GPS mode) */}
         {!manualMode && (
@@ -637,15 +635,26 @@ export default function TrailPublishScreen() {
               value={newSpotLocation}
               onChangeText={setNewSpotLocation}
             />
-            <TextInput
-              style={[styles.input, { marginTop: 8 }]}
-              placeholder="이미지 URL (선택)"
-              placeholderTextColor={colors.textTertiary}
-              value={newSpotImageUrl}
-              onChangeText={setNewSpotImageUrl}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
+            <Text style={[styles.fieldLabel, { marginTop: 8, marginBottom: 6 }]}>사진</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
+                launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                  if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
+                });
+              }}>
+                <Text style={styles.miniPickBtnText}>{'\uD83D\uDCF7'} 카메라</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
+                launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                  if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
+                });
+              }}>
+                <Text style={styles.miniPickBtnText}>{'\uD83D\uDDBC'} 갤러리</Text>
+              </TouchableOpacity>
+            </View>
+            {newSpotImageUri ? (
+              <Image source={{ uri: newSpotImageUri }} style={{ width: '100%', height: 120, borderRadius: 12, marginTop: 8 }} />
+            ) : null}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
                 style={[styles.spotModalBtn, { backgroundColor: '#F2F4F6' }]}
@@ -999,5 +1008,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#777',
+  },
+  miniPickBtn: {
+    flex: 1,
+    backgroundColor: '#F5F0E8',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E5DE',
+  },
+  miniPickBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
 });

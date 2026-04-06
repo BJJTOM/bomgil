@@ -285,6 +285,22 @@ export default function ActivityScreen() {
                         </Text>
                       </View>
                     </View>
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => {
+                        Alert.alert('활동 삭제', '이 활동을 삭제하시겠습니까?', [
+                          { text: '취소', style: 'cancel' },
+                          { text: '삭제', style: 'destructive', onPress: async () => {
+                            try {
+                              await api.delete(`/activities/${activity.id}/`);
+                              queryClient.invalidateQueries({ queryKey: ['activities'] });
+                              queryClient.invalidateQueries({ queryKey: ['activity-stats'] });
+                            } catch { Alert.alert('오류', '삭제에 실패했습니다.'); }
+                          }},
+                        ]);
+                      }}>
+                      <Text style={styles.deleteBtnText}>{'✕'}</Text>
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 </FadeInView>
               );
@@ -502,6 +518,20 @@ const styles = StyleSheet.create({
   activityMeta: {
     fontSize: 13,
     color: colors.textTertiary,
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  deleteBtnText: {
+    fontSize: 14,
+    color: '#EF4444',
+    fontWeight: '600',
   },
 
   // Skeleton

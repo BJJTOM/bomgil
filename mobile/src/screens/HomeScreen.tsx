@@ -115,11 +115,20 @@ export default function HomeScreen() {
   const { isAuthenticated } = useAuthStore();
   const [showLangModal, setShowLangModal] = useState(false);
 
+  const { data: platformStats } = useQuery({
+    queryKey: ['platform-stats'],
+    queryFn: async () => {
+      const { data } = await api.get('/stats/');
+      return data;
+    },
+    staleTime: 60000,
+  });
+
   const STATS = [
-    { value: '8', label: t('registeredCountries', language) },
-    { value: '120+', label: t('courses', language) },
-    { value: '850+', label: t('stories', language) },
-    { value: '2.4K', label: t('travelers', language) },
+    { value: String(platformStats?.countries || 0), label: t('registeredCountries', language) },
+    { value: String(platformStats?.trails || 0), label: t('courses', language) },
+    { value: String(platformStats?.stories || 0), label: t('stories', language) },
+    { value: String(platformStats?.users || 0), label: t('travelers', language) },
   ];
 
   const {

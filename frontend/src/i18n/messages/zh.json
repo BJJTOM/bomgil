@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Roami",
+    "appName": "Moru",
     "login": "\u767B\u5F55",
     "logout": "\u9000\u51FA",
     "register": "\u6CE8\u518C",
@@ -171,7 +171,7 @@
     "password": "\u5BC6\u7801",
     "passwordConfirm": "\u786E\u8BA4\u5BC6\u7801",
     "nickname": "\u6635\u79F0",
-    "nicknamePlaceholder": "\u60A8\u5728Roami\u4E0A\u7684\u6635\u79F0",
+    "nicknamePlaceholder": "\u60A8\u5728Moru\u4E0A\u7684\u6635\u79F0",
     "loginButton": "\u767B\u5F55",
     "registerButton": "\u6CE8\u518C",
     "googleLogin": "\u4F7F\u7528Google\u7EE7\u7EED",
@@ -346,7 +346,7 @@
     "totalLikes": "总点赞"
   },
   "register": {
-    "joinTitle": "加入Roami",
+    "joinTitle": "加入Moru",
     "joinSubtitle": "与全世界步行旅行者一起行走",
     "nicknameRequired": "请输入昵称。",
     "passwordMinLength": "密码至少8个字符。",
@@ -360,7 +360,7 @@
     "strengthStrong": "强",
     "passwordMatch": "密码一致",
     "submitting": "注册中...",
-    "termsNotice": "注册即表示您同意Roami的",
+    "termsNotice": "注册即表示您同意Moru的",
     "terms": "服务条款",
     "and": "和",
     "privacy": "隐私政策",
@@ -375,7 +375,7 @@
     "guestFailed": "游客登录失败，请重试。"
   },
   "meta": {
-    "title": "Roami — 走着走着就看见了",
-    "description": "发现步行路线，寻找隐藏美食和拍照点。与Roami一起行走。"
+    "title": "Moru — 走着走着就看见了",
+    "description": "发现步行路线，寻找隐藏美食和拍照点。与Moru一起行走。"
   }
 }

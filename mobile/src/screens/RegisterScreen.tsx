@@ -58,19 +58,26 @@ export default function RegisterScreen() {
     [form.password1],
   );
 
+  const isValidEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
+
   const handleRegister = async () => {
     setError('');
 
+    if (!isValidEmail(form.email)) {
+      setError('\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      return;
+    }
     if (!form.nickname.trim()) {
-      setError('닉네임을 입력해주세요');
+      setError('\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694');
       return;
     }
     if (form.password1.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다');
+      setError('\uBE44\uBC00\uBC88\uD638\uB294 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4');
       return;
     }
     if (form.password1 !== form.password2) {
-      setError('비밀번호가 일치하지 않습니다');
+      setError('\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4');
       return;
     }
 
@@ -118,7 +125,7 @@ export default function RegisterScreen() {
           {/* Brand header */}
           <View style={styles.brandHeader}>
             <View style={styles.brandIcon}>
-              <Text style={styles.brandLetter}>R</Text>
+              <Text style={styles.brandLetter}>M</Text>
             </View>
             <Text style={styles.title}>{'회원가입'}</Text>
             <Text style={styles.subtitle}>

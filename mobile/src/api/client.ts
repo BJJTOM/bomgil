@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
-const API_URL = 'https://bomgil-api.onrender.com/api/v1';
+const API_URL = 'https://api.moruwalk.com/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,

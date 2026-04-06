@@ -28,7 +28,7 @@ export const useLanguageStore = create<LanguageState>()(
       language: "ko",
       setLanguage: (language) => set({ language }),
     }),
-    { name: "roami-language" }
+    { name: "moru-language" }
   )
 );
 

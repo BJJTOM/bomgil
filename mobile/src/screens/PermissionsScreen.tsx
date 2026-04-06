@@ -58,7 +58,7 @@ export default function PermissionsScreen({ onComplete }: { onComplete: () => vo
     <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.appName}>Roami</Text>
+        <Text style={styles.appName}>Moru</Text>
         <Text style={styles.title}>앱 사용을 위해{'\n'}아래 권한이 필요합니다</Text>
         <Text style={styles.subtitle}>선택 권한은 동의하지 않아도 앱을 사용할 수 있습니다</Text>
       </View>

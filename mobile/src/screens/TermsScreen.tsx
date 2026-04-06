@@ -30,12 +30,12 @@ export default function TermsScreen() {
         contentContainerStyle={styles.content}>
         <Text style={styles.sectionTitle}>제1조 (목적)</Text>
         <Text style={styles.body}>
-          이 약관은 Roami(이하 "서비스")가 제공하는 모든 서비스의 이용 조건 및 절차, 이용자와 서비스 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
+          이 약관은 Moru(이하 "서비스")가 제공하는 모든 서비스의 이용 조건 및 절차, 이용자와 서비스 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
         </Text>
 
         <Text style={styles.sectionTitle}>제2조 (정의)</Text>
         <Text style={styles.body}>
-          1. "서비스"란 Roami가 제공하는 도보여행 코스 공유 플랫폼 및 관련 제반 서비스를 의미합니다.{'\n'}
+          1. "서비스"란 Moru가 제공하는 도보여행 코스 공유 플랫폼 및 관련 제반 서비스를 의미합니다.{'\n'}
           2. "이용자"란 이 약관에 따라 서비스가 제공하는 서비스를 받는 회원 및 비회원을 말합니다.{'\n'}
           3. "회원"이란 서비스에 개인정보를 제공하여 회원등록을 한 자로서, 서비스의 정보를 지속적으로 제공받으며, 서비스가 제공하는 서비스를 계속적으로 이용할 수 있는 자를 말합니다.
         </Text>

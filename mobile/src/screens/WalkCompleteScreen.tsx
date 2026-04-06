@@ -95,7 +95,7 @@ export default function WalkCompleteScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Roami - ${distNum.toFixed(2)}km 완료!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} 걸음, ${timeStr}`,
+        message: `Moru - ${distNum.toFixed(2)}km 완료!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} 걸음, ${timeStr}`,
       });
     } catch {}
   };
@@ -111,7 +111,7 @@ export default function WalkCompleteScreen() {
 
         {/* Stat Card */}
         <View style={styles.statCard}>
-          <Text style={styles.brandText}>ROAMI</Text>
+          <Text style={styles.brandText}>MORU</Text>
 
           {/* Big distance */}
           <View style={styles.distanceRow}>
@@ -150,7 +150,7 @@ export default function WalkCompleteScreen() {
 
           {/* Footer branding */}
           <View style={styles.cardFooter}>
-            <Text style={styles.cardFooterText}>roami.app</Text>
+            <Text style={styles.cardFooterText}>moruwalk.com</Text>
           </View>
         </View>
 

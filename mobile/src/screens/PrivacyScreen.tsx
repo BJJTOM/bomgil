@@ -30,7 +30,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.content}>
         <Text style={styles.sectionTitle}>1. 개인정보의 수집 및 이용 목적</Text>
         <Text style={styles.body}>
-          Roami(이하 "서비스")는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.{'\n\n'}
+          Moru(이하 "서비스")는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.{'\n\n'}
           - 회원 가입 및 관리{'\n'}
           - 서비스 제공 및 맞춤형 서비스 제공{'\n'}
           - 마케팅 및 광고에의 활용{'\n'}
@@ -69,13 +69,13 @@ export default function PrivacyScreen() {
         <Text style={styles.sectionTitle}>6. 이용자의 권리</Text>
         <Text style={styles.body}>
           이용자는 언제든지 자신의 개인정보를 조회하거나 수정할 수 있으며, 회원 탈퇴를 통해 개인정보의 수집 및 이용에 대한 동의를 철회할 수 있습니다.{'\n\n'}
-          개인정보 관련 문의: support@roami.app
+          개인정보 관련 문의: support@moruwalk.com
         </Text>
 
         <Text style={styles.sectionTitle}>7. 개인정보 보호책임자</Text>
         <Text style={styles.body}>
-          성명: Roami 개인정보보호팀{'\n'}
-          이메일: privacy@roami.app{'\n\n'}
+          성명: Moru 개인정보보호팀{'\n'}
+          이메일: privacy@moruwalk.com{'\n\n'}
           시행일: 2026년 1월 1일
         </Text>
 

@@ -23,7 +23,7 @@ export const useLanguageStore = create<LanguageState>()(
       setLanguage: (language) => set({ language }),
     }),
     {
-      name: 'roami-language',
+      name: 'moru-language',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

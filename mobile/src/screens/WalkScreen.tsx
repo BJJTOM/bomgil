@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  Modal,
   Platform,
   PermissionsAndroid,
   Animated,
   StatusBar,
   AppState,
-  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,21 +18,22 @@ import { colors } from '../theme/colors';
 
 import Geolocation from '@react-native-community/geolocation';
 
-// Configure for high accuracy
 Geolocation.setRNConfiguration({
   skipPermissionRequests: false,
   authorizationLevel: 'whenInUse',
   enableBackgroundLocationUpdates: false,
 });
 
+import Mapbox from '@rnmapbox/maps';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
 
-type WalkState = 'walking' | 'paused';
+const { width: SW, height: SH } = Dimensions.get('window');
 
-// Format pace as min'sec"
+type WalkState = 'countdown' | 'walking' | 'paused';
+
 function formatPace(pace: number): string {
   if (pace <= 0 || pace > 30) return "--'--\"";
   const min = Math.floor(pace);
@@ -40,7 +41,6 @@ function formatPace(pace: number): string {
   return `${min}'${sec.toString().padStart(2, '0')}"`;
 }
 
-// Format duration as hh:mm:ss
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -58,152 +58,111 @@ export default function WalkScreen() {
   const { isAuthenticated } = useAuthStore();
   const trailId = route.params?.trailId;
 
-  const [state, setState] = useState<WalkState>('walking');
+  const [state, setState] = useState<WalkState>('countdown');
+  const [countdown, setCountdown] = useState(3);
   const [stats, setStats] = useState<WalkStats>({
-    distance: 0,
-    duration: 0,
-    totalTime: 0,
-    pace: 0,
-    currentPace: 0,
-    speed: 0,
-    steps: 0,
-    cadence: 0,
-    calories: 0,
-    elevationGain: 0,
-    elevationLoss: 0,
-    maxElevation: 0,
-    minElevation: 0,
-    maxSpeed: 0,
-    splits: [],
-    isAutoPaused: false,
+    distance: 0, duration: 0, totalTime: 0, pace: 0, currentPace: 0,
+    speed: 0, steps: 0, cadence: 0, calories: 0,
+    elevationGain: 0, elevationLoss: 0, maxElevation: 0, minElevation: 0,
+    maxSpeed: 0, splits: [], isAutoPaused: false,
   });
   const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
   const [isBackground, setIsBackground] = useState(false);
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+  const [showStopModal, setShowStopModal] = useState(false);
 
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedRef = useRef(false);
+  const cameraRef = useRef<any>(null);
 
-  // Auto-pause pulse animation
+  const countdownScale = useRef(new Animated.Value(1)).current;
+  const countdownOpacity = useRef(new Animated.Value(1)).current;
   const autoPausePulse = useRef(new Animated.Value(1)).current;
 
-  // Auto-pause pulse effect
+  // ---- COUNTDOWN ----
+  useEffect(() => {
+    if (state !== 'countdown') return;
+    if (Platform.OS === 'android') {
+      PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      ).catch(() => {});
+    }
+    Geolocation.getCurrentPosition(
+      (pos) => setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 5000 },
+    );
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(timer); startWalk(); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [state]);
+
+  useEffect(() => {
+    if (state !== 'countdown') return;
+    countdownScale.setValue(0.3);
+    countdownOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(countdownScale, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 10 }),
+      Animated.timing(countdownOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [countdown]);
+
   useEffect(() => {
     if (stats.isAutoPaused) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(autoPausePulse, {
-            toValue: 0.5,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(autoPausePulse, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
+      const pulse = Animated.loop(Animated.sequence([
+        Animated.timing(autoPausePulse, { toValue: 0.5, duration: 800, useNativeDriver: true }),
+        Animated.timing(autoPausePulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]));
       pulse.start();
       return () => pulse.stop();
-    } else {
-      autoPausePulse.setValue(1);
-    }
+    } else { autoPausePulse.setValue(1); }
   }, [stats.isAutoPaused]);
 
-  const requestPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: '위치 권한',
-            message: '걷기 경로를 기록하려면 위치 정보가 필요합니다',
-            buttonPositive: '허용',
-            buttonNegative: '거부',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // Background/foreground tracking
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'background') {
-        setIsBackground(true);
-      } else if (nextState === 'active') {
-        setIsBackground(false);
-      }
-    });
+    const sub = AppState.addEventListener('change', (s) => setIsBackground(s === 'background'));
     return () => sub.remove();
   }, []);
 
-  // Take photo with GPS tag
   const handleTakePhoto = useCallback(async () => {
     if (!currentPos) return;
     try {
       const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
       if (photo) setTaggedPhotos(prev => [...prev, photo]);
-    } catch {
-      // Camera not available — silently ignore
-    }
+    } catch {}
   }, [currentPos]);
-
-  // Auto-start walk immediately on mount (Nike Run style)
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    startWalk();
-  }, []);
 
   const startGps = useCallback(() => {
     try {
       watchIdRef.current = Geolocation.watchPosition(
         (pos) => {
           const point = engineRef.current.addPoint(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            pos.coords.altitude,
-            pos.coords.accuracy,
+            pos.coords.latitude, pos.coords.longitude,
+            pos.coords.altitude, pos.coords.accuracy,
             pos.timestamp || Date.now(),
           );
           if (point) {
             setCurrentPos({ lat: point.lat, lng: point.lng });
+            setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
           }
           setStats(engineRef.current.getStats());
         },
-        (err) => console.log('GPS error:', err),
+        () => {},
         { enableHighAccuracy: true, distanceFilter: 5, timeout: 15000 },
       );
-    } catch (e) {
-      console.log('GPS watch failed:', e);
-    }
+    } catch {}
   }, []);
 
   const startWalk = () => {
-    // Start IMMEDIATELY — no async, no await, no permission blocking
     engineRef.current.start();
     setState('walking');
-
-    // Timer starts right away
-    timerRef.current = setInterval(() => {
-      setStats(engineRef.current.getStats());
-    }, 1000);
-
-    // GPS starts in background — if it fails, timer keeps going
+    timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
     startGps();
-
-    // Also request permission in background (for next time if not granted)
-    PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-    ).catch(() => {});
   };
 
   const pauseWalk = () => {
@@ -214,519 +173,558 @@ export default function WalkScreen() {
 
   const resumeWalk = () => {
     setState('walking');
-    timerRef.current = setInterval(() => {
-      setStats(engineRef.current.getStats());
-    }, 1000);
+    timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
     startGps();
   };
 
   const completeWalk = async () => {
-    // Stop GPS and timer
-    if (watchIdRef.current !== null) {
-      try {
-        Geolocation.clearWatch(watchIdRef.current);
-      } catch {
-        // ignore
-      }
-    }
+    if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
     if (timerRef.current) clearInterval(timerRef.current);
-
     const finalStats = engineRef.current.getStats();
     const trackPoints = engineRef.current.getTrackPoints();
-
-    // Save to API
-    if (isAuthenticated && trackPoints.length > 0) {
+    if (isAuthenticated) {
       try {
-        const dateLabel = new Date().toLocaleDateString('ko-KR', {
-          month: 'long',
-          day: 'numeric',
-        });
+        const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
         await api.post('/activities/', {
           trail: trailId || null,
-          track_points: trackPoints,
+          track_points: trackPoints.length > 0 ? trackPoints : [],
           source: 'phone_gps',
-          title: `${dateLabel} 도보`,
-          started_at: new Date(
-            Date.now() - finalStats.totalTime * 1000,
-          ).toISOString(),
+          title: `${dateLabel} \uB3C4\uBCF4`,
+          started_at: new Date(Date.now() - finalStats.totalTime * 1000).toISOString(),
           finished_at: new Date().toISOString(),
-          total_steps: finalStats.steps,
-          calories_burned: finalStats.calories,
+          total_steps: finalStats.steps, calories_burned: finalStats.calories,
           distance_km: finalStats.distance.toFixed(2),
-          duration_minutes: Math.round(finalStats.duration / 60),
+          duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
           elevation_gain_m: finalStats.elevationGain,
         });
-      } catch (e) {
-        console.log('Save error:', e);
-      }
+      } catch (e) { console.log('Save error:', e); }
     }
-
     navigation.replace('WalkComplete', {
       distance: finalStats.distance.toFixed(2),
       duration: String(Math.round(finalStats.duration)),
-      steps: String(finalStats.steps),
-      calories: String(finalStats.calories),
+      steps: String(finalStats.steps), calories: String(finalStats.calories),
       pace: formatPace(finalStats.pace),
       elevationGain: String(finalStats.elevationGain),
       elevationLoss: String(finalStats.elevationLoss),
       maxSpeed: finalStats.maxSpeed.toFixed(1),
-      splits: JSON.stringify(finalStats.splits),
-      taggedPhotos,
+      splits: JSON.stringify(finalStats.splits), taggedPhotos,
     });
   };
 
-  const handleStop = () => {
-    Alert.alert('걷기 종료', '걷기를 종료하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      { text: '종료', style: 'destructive', onPress: completeWalk },
-    ]);
-  };
+  const handleStop = () => setShowStopModal(true);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (watchIdRef.current !== null) {
-        try {
-          Geolocation.clearWatch(watchIdRef.current);
-        } catch {
-          // ignore
-        }
-      }
+      if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
     };
   }, []);
 
-  // ---- WALKING / PAUSED STATE ----
-  return (
-    <View style={styles.walkContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d1a0e" />
+  const routeGeoJSON = routeCoords.length >= 2 ? {
+    type: 'Feature' as const, properties: {},
+    geometry: { type: 'LineString' as const, coordinates: routeCoords },
+  } : null;
 
-      {/* Top status bar */}
-      <View style={[styles.statusBar, { top: insets.top + 12 }]}>
-        <View style={styles.statusPill}>
-          <View
-            style={[
-              styles.statusDot,
-              state === 'walking'
-                ? stats.isAutoPaused
-                  ? styles.statusDotAutoPaused
-                  : styles.statusDotLive
-                : styles.statusDotPaused,
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {state === 'walking'
-              ? stats.isAutoPaused
-                ? '자동 일시정지'
-                : '기록 중'
-              : '일시정지'}
-          </Text>
-          <Text style={styles.statusTimer}>{formatTime(stats.duration)}</Text>
+  // ---- COUNTDOWN ----
+  if (state === 'countdown') {
+    return (
+      <View style={styles.countdownContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+        <TouchableOpacity
+          style={[styles.backBtn, { top: insets.top + 12 }]}
+          onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>{'\u2190'}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.countdownContent}>
+          <Text style={styles.countdownLabel}>MORU</Text>
+          <Animated.View style={{ transform: [{ scale: countdownScale }], opacity: countdownOpacity }}>
+            <View style={styles.countdownCircle}>
+              <Text style={styles.countdownNumber}>{countdown}</Text>
+            </View>
+          </Animated.View>
+          <Text style={styles.countdownHint}>{'\uACBD\uB85C \uC790\uB3D9 \uAE30\uB85D'}</Text>
         </View>
-        {isBackground && (
-          <View style={styles.bgTrackingPill}>
-            <Text style={styles.bgTrackingText}>GPS 백그라운드 추적 중</Text>
+      </View>
+    );
+  }
+
+  // ---- WALKING / PAUSED ----
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* ====== MAP (large, top area) ====== */}
+      <View style={[styles.mapWrap, { paddingTop: insets.top }]}>
+        <Mapbox.MapView
+          style={{ flex: 1 }}
+          styleURL="mapbox://styles/mapbox/dark-v11"
+          attributionEnabled={false}
+          logoEnabled={false}
+          scrollEnabled={true}
+          zoomEnabled={true}
+          pitchEnabled={false}
+          rotateEnabled={false}>
+          <Mapbox.Camera
+            ref={cameraRef}
+            centerCoordinate={currentPos ? [currentPos.lng, currentPos.lat] : [126.978, 37.566]}
+            zoomLevel={16}
+            animationDuration={1000}
+          />
+          {routeGeoJSON && (
+            <Mapbox.ShapeSource id="route" shape={routeGeoJSON}>
+              <Mapbox.LineLayer id="routeLine" style={{
+                lineColor: '#4ADE80', lineWidth: 5,
+                lineCap: 'round', lineJoin: 'round',
+              }} />
+            </Mapbox.ShapeSource>
+          )}
+          {currentPos && (
+            <Mapbox.PointAnnotation id="me" coordinate={[currentPos.lng, currentPos.lat]}>
+              <View style={styles.meMarkerOuter}>
+                <View style={styles.meMarkerInner} />
+              </View>
+            </Mapbox.PointAnnotation>
+          )}
+          {taggedPhotos.map((p, i) => (
+            <Mapbox.PointAnnotation key={`ph-${i}`} id={`ph-${i}`} coordinate={[p.lng, p.lat]}>
+              <View style={styles.photoPin}>
+                <Text style={{ fontSize: 14 }}>{'\uD83D\uDCF7'}</Text>
+              </View>
+            </Mapbox.PointAnnotation>
+          ))}
+        </Mapbox.MapView>
+
+        {/* Map top-left: status pill */}
+        <View style={[styles.mapStatusPill, { top: insets.top + 12 }]}>
+          <View style={[styles.dot, state === 'walking'
+            ? (stats.isAutoPaused ? styles.dotOrange : styles.dotGreen)
+            : styles.dotYellow
+          ]} />
+          <Text style={styles.mapStatusText}>
+            {state === 'walking' ? (stats.isAutoPaused ? '\uC790\uB3D9 \uC77C\uC2DC\uC815\uC9C0' : '\uAE30\uB85D \uC911') : '\uC77C\uC2DC\uC815\uC9C0'}
+          </Text>
+        </View>
+
+        {/* Map top-right: camera button */}
+        {state === 'walking' && (
+          <TouchableOpacity
+            style={[styles.cameraBtn, { top: insets.top + 12 }]}
+            onPress={handleTakePhoto} activeOpacity={0.8}>
+            <Text style={{ fontSize: 18 }}>{'\uD83D\uDCF7'}</Text>
+            {taggedPhotos.length > 0 && (
+              <View style={styles.camBadge}>
+                <Text style={styles.camBadgeText}>{taggedPhotos.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Map bottom gradient fade */}
+        <View style={styles.mapFade} />
+      </View>
+
+      {/* ====== STATS PANEL (bottom) ====== */}
+      <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
+
+        {/* Time */}
+        <Text style={styles.timeLabel}>{'\uC2DC\uAC04'}</Text>
+        <Text style={styles.timeValue}>{formatTime(stats.duration)}</Text>
+
+        {/* Distance */}
+        <View style={styles.distRow}>
+          <Text style={styles.distValue}>{stats.distance.toFixed(2)}</Text>
+          <Text style={styles.distUnit}>km</Text>
+        </View>
+
+        {/* Pace */}
+        <View style={styles.paceRow}>
+          <Text style={styles.paceLabel}>{'\uD604\uC7AC \uD398\uC774\uC2A4'}</Text>
+          <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
+          <Text style={styles.paceUnit}>/km</Text>
+        </View>
+
+        {/* 4-stat grid */}
+        <View style={styles.grid}>
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
+            <Text style={styles.gridLabel}>{'\uAC78\uC74C'}</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.calories}</Text>
+            <Text style={styles.gridLabel}>kcal</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.speed.toFixed(1)}</Text>
+            <Text style={styles.gridLabel}>km/h</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m</Text>
+            <Text style={styles.gridLabel}>{'\uACE0\uB3C4'}</Text>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* ====== CONTROLS ====== */}
+      <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
+        {state === 'walking' ? (
+          <TouchableOpacity style={styles.pauseBtn} onPress={pauseWalk} activeOpacity={0.85}>
+            <View style={styles.pauseIconWrap}>
+              <View style={styles.pauseBar} />
+              <View style={styles.pauseBar} />
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.pausedControls}>
+            <TouchableOpacity style={styles.stopBtn} onPress={handleStop} activeOpacity={0.85}>
+              <View style={styles.stopIcon} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.resumeBtn} onPress={resumeWalk} activeOpacity={0.85}>
+              <View style={styles.playIcon} />
+            </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Camera button - top right */}
-      {state === 'walking' && (
-        <TouchableOpacity
-          style={[styles.cameraBtn, { top: insets.top + 12 }]}
-          onPress={handleTakePhoto}
-          activeOpacity={0.8}>
-          <Text style={styles.cameraBtnIcon}>📷</Text>
-        </TouchableOpacity>
-      )}
-      {taggedPhotos.length > 0 && (
-        <View style={[styles.photoBadge, { top: insets.top + 10 }]}>
-          <Text style={styles.photoBadgeText}>{taggedPhotos.length}</Text>
-        </View>
-      )}
-
-      {/* Main stats area */}
-      <ScrollView
-        style={styles.statsScroll}
-        contentContainerStyle={styles.statsScrollContent}
-        showsVerticalScrollIndicator={false}>
-        <Animated.View style={[styles.fullScreenStats, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
-          {/* Big distance */}
-          <View style={styles.distanceRow}>
-            <Text style={styles.distanceBig}>{stats.distance.toFixed(2)}</Text>
-            <Text style={styles.distanceUnit}>km</Text>
-          </View>
-
-          {/* Current pace - highlighted */}
-          <View style={styles.currentPaceContainer}>
-            <Text style={styles.currentPaceLabel}>현재 페이스</Text>
-            <Text style={styles.currentPaceValue}>{formatPace(stats.currentPace)}</Text>
-            <Text style={styles.currentPaceUnit}>/km</Text>
-          </View>
-
-          {/* 4-column stats grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.steps.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>걸음</Text>
+      {/* ====== STOP CONFIRMATION MODAL ====== */}
+      <Modal visible={showStopModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconWrap}>
+              <Text style={styles.modalIcon}>{'\uD83D\uDEB6'}</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.calories}</Text>
-              <Text style={styles.statLabel}>칼로리</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m
-              </Text>
-              <Text style={styles.statLabel}>고도</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.speed.toFixed(1)}</Text>
-              <Text style={styles.statLabel}>km/h</Text>
-            </View>
-          </View>
-
-          {/* Secondary stats row */}
-          <View style={styles.secondaryStatsRow}>
-            <View style={styles.secondaryStat}>
-              <Text style={styles.secondaryStatValue}>{formatPace(stats.pace)}</Text>
-              <Text style={styles.secondaryStatLabel}>평균 페이스</Text>
-            </View>
-            <View style={styles.secondaryStatDivider} />
-            <View style={styles.secondaryStat}>
-              <Text style={styles.secondaryStatValue}>{stats.cadence}</Text>
-              <Text style={styles.secondaryStatLabel}>케이던스</Text>
-            </View>
-            <View style={styles.secondaryStatDivider} />
-            <View style={styles.secondaryStat}>
-              <Text style={styles.secondaryStatValue}>{stats.maxSpeed.toFixed(1)}</Text>
-              <Text style={styles.secondaryStatLabel}>최고 km/h</Text>
-            </View>
-          </View>
-
-          {/* Km Splits */}
-          {stats.splits.length > 0 && (
-            <View style={styles.splitsContainer}>
-              <Text style={styles.splitsTitle}>구간 기록</Text>
-              {stats.splits.map((split: KmSplit) => (
-                <View key={split.km} style={styles.splitRow}>
-                  <Text style={styles.splitKm}>{split.km}km</Text>
-                  <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
-                  {split.elevationGain > 0 && (
-                    <Text style={styles.splitEle}>
-                      ↑{Math.round(split.elevationGain)}m
-                    </Text>
-                  )}
-                  {split.elevationLoss > 0 && (
-                    <Text style={styles.splitEleLoss}>
-                      ↓{Math.round(split.elevationLoss)}m
-                    </Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
-        </Animated.View>
-      </ScrollView>
-
-      {/* Auto-pause indicator */}
-      {stats.isAutoPaused && state === 'walking' && (
-        <View style={styles.autoPauseIndicator}>
-          <Animated.View style={[styles.autoPauseDot, { opacity: autoPausePulse }]} />
-          <Text style={styles.autoPauseText}>자동 일시정지</Text>
-        </View>
-      )}
-
-      {/* Controls at bottom */}
-      <View style={[styles.controlsArea, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={styles.controlsRow}>
-          {state === 'walking' ? (
-            <TouchableOpacity
-              style={styles.pauseBtn}
-              onPress={pauseWalk}
-              activeOpacity={0.85}>
-              <View style={styles.pauseIconContainer}>
-                <View style={styles.pauseBar} />
-                <View style={styles.pauseBar} />
+            <Text style={styles.modalTitle}>{'\uAC78\uAE30\uB97C \uC885\uB8CC\uD560\uAE4C\uC694?'}</Text>
+            <View style={styles.modalStats}>
+              <View style={styles.modalStatItem}>
+                <Text style={styles.modalStatVal}>{stats.distance.toFixed(2)}</Text>
+                <Text style={styles.modalStatLabel}>km</Text>
               </View>
+              <View style={styles.modalStatDivider} />
+              <View style={styles.modalStatItem}>
+                <Text style={styles.modalStatVal}>{formatTime(stats.duration)}</Text>
+                <Text style={styles.modalStatLabel}>{'\uC2DC\uAC04'}</Text>
+              </View>
+              <View style={styles.modalStatDivider} />
+              <View style={styles.modalStatItem}>
+                <Text style={styles.modalStatVal}>{stats.steps.toLocaleString()}</Text>
+                <Text style={styles.modalStatLabel}>{'\uAC78\uC74C'}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.modalStopBtn}
+              onPress={() => { setShowStopModal(false); completeWalk(); }}
+              activeOpacity={0.85}>
+              <Text style={styles.modalStopBtnText}>{'\uC885\uB8CC\uD558\uAE30'}</Text>
             </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={styles.stopBtn}
-                onPress={handleStop}
-                activeOpacity={0.85}>
-                <View style={styles.stopIcon} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.resumeBtn}
-                onPress={resumeWalk}
-                activeOpacity={0.85}>
-                <View style={styles.playIcon} />
-              </TouchableOpacity>
-              <View style={{ width: 60 }} />
-            </>
-          )}
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => setShowStopModal(false)}
+              activeOpacity={0.85}>
+              <Text style={styles.modalCancelBtnText}>{'\uACC4\uC18D \uAC77\uAE30'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ---- WALKING / PAUSED STATE ----
-  walkContainer: {
+  // ---- COUNTDOWN ----
+  countdownContainer: {
     flex: 1,
-    backgroundColor: '#0d1a0e',
+    backgroundColor: '#0a0a0a',
   },
-  statusBar: {
+  backBtn: {
     position: 'absolute',
+    left: 20,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnText: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  countdownContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countdownLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.15)',
+    letterSpacing: 6,
+    marginBottom: 48,
+  },
+  countdownCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  countdownNumber: {
+    fontSize: 64,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  countdownHint: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.2)',
+    marginTop: 48,
+    letterSpacing: 1,
+  },
+
+  // ---- MAIN CONTAINER ----
+  container: {
+    flex: 1,
+    backgroundColor: '#0a0a0a',
+  },
+
+  // ---- MAP ----
+  mapWrap: {
+    height: SH * 0.48,
+    overflow: 'hidden',
+  },
+  mapFade: {
+    position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
+    height: 40,
+    backgroundColor: 'transparent',
+  },
+  mapStatusPill: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 8,
     zIndex: 10,
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 24,
-    gap: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusDotLive: {
-    backgroundColor: '#4ADE80',
-  },
-  statusDotPaused: {
-    backgroundColor: '#FACC15',
-  },
-  statusDotAutoPaused: {
-    backgroundColor: '#F97316',
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  statusTimer: {
+  mapStatusText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-    fontVariant: ['tabular-nums'],
+    color: 'rgba(255,255,255,0.85)',
   },
-  statsScroll: {
-    flex: 1,
-    marginTop: 80,
-  },
-  statsScrollContent: {
-    paddingBottom: 24,
-  },
-  fullScreenStats: {
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  dotGreen: { backgroundColor: '#4ADE80' },
+  dotYellow: { backgroundColor: '#FACC15' },
+  dotOrange: { backgroundColor: '#F97316' },
+  meMarkerOuter: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(74,222,128,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 40,
+    borderWidth: 2,
+    borderColor: 'rgba(74,222,128,0.4)',
   },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  meMarkerInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4ADE80',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+  },
+  photoPin: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  cameraBtn: {
+    position: 'absolute',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  camBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  camBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ---- STATS PANEL ----
+  statsPanel: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.3)',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  timeValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    fontVariant: ['tabular-nums'],
     marginBottom: 4,
   },
-  distanceBig: {
-    fontSize: 72,
+  distRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 2,
+  },
+  distValue: {
+    fontSize: 52,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -2,
   },
-  distanceUnit: {
-    fontSize: 18,
+  distUnit: {
+    fontSize: 16,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.35)',
     marginLeft: 6,
+    marginBottom: 6,
   },
-  currentPaceContainer: {
+  paceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 32,
-    gap: 6,
-  },
-  currentPaceLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.4)',
-    marginRight: 4,
-  },
-  currentPaceValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  currentPaceUnit: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.3)',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    paddingVertical: 16,
     marginBottom: 16,
+    gap: 5,
   },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  secondaryStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  secondaryStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  secondaryStatValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 2,
-  },
-  secondaryStatLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.3)',
-  },
-  secondaryStatDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  splitsContainer: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    padding: 16,
-  },
-  splitsTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 10,
-    letterSpacing: 1,
-  },
-  splitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    gap: 12,
-  },
-  splitKm: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-    width: 40,
-  },
-  splitPace: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.accent,
-    flex: 1,
-  },
-  splitEle: {
+  paceLabel: {
     fontSize: 12,
+    color: 'rgba(255,255,255,0.35)',
+  },
+  paceValue: {
+    fontSize: 22,
+    fontWeight: '700',
     color: '#4ADE80',
   },
-  splitEleLoss: {
+  paceUnit: {
     fontSize: 12,
-    color: '#F97316',
+    color: 'rgba(255,255,255,0.25)',
   },
-  autoPauseIndicator: {
+  grid: {
     flexDirection: 'row',
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    gap: 8,
   },
-  autoPauseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F97316',
+  gridItem: {
+    flex: 1,
+    alignItems: 'center',
   },
-  autoPauseText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#F97316',
+  gridDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  controlsArea: {
+  gridVal: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 3,
+  },
+  gridLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // ---- CONTROLS ----
+  controls: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingTop: 12,
     alignItems: 'center',
-    gap: 24,
   },
   pauseBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pauseIconContainer: {
+  pauseIconWrap: {
     flexDirection: 'row',
     gap: 6,
   },
   pauseBar: {
-    width: 6,
-    height: 22,
-    borderRadius: 3,
+    width: 5,
+    height: 20,
+    borderRadius: 2.5,
     backgroundColor: '#111',
   },
+  pausedControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 28,
+  },
   stopBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stopIcon: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     borderRadius: 3,
     backgroundColor: '#fff',
   },
   resumeBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -734,54 +732,98 @@ const styles = StyleSheet.create({
   playIcon: {
     width: 0,
     height: 0,
-    borderLeftWidth: 18,
-    borderTopWidth: 12,
-    borderBottomWidth: 12,
+    borderLeftWidth: 16,
+    borderTopWidth: 11,
+    borderBottomWidth: 11,
     borderLeftColor: '#fff',
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    marginLeft: 4,
+    marginLeft: 3,
   },
-  bgTrackingPill: {
-    backgroundColor: 'rgba(74,222,128,0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginTop: 6,
+
+  // ---- STOP MODAL ----
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  bgTrackingText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#4ADE80',
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
   },
-  cameraBtn: {
-    position: 'absolute',
-    right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  modalIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    marginBottom: 16,
   },
-  cameraBtnIcon: {
-    fontSize: 20,
+  modalIcon: {
+    fontSize: 28,
   },
-  photoBadge: {
-    position: 'absolute',
-    right: 16,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 11,
-  },
-  photoBadgeText: {
-    fontSize: 11,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 20,
+  },
+  modalStats: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  modalStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  modalStatVal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  modalStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  modalStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  modalStopBtn: {
+    width: '100%',
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalStopBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalCancelBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  modalCancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
   },
 });

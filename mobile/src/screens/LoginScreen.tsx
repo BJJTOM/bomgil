@@ -28,9 +28,16 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const isValidEmail = (e: string) =>
+    /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(e);
+
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('이메일과 비밀번호를 입력해주세요');
+      setError('\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError('\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
       return;
     }
     setError('');
@@ -80,7 +87,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Branding */}
         <View style={styles.branding}>
-          <Text style={styles.logo}>Roami</Text>
+          <Text style={styles.logo}>Moru</Text>
           <Text style={styles.tagline}>걸으면 보이는 것들</Text>
         </View>
 
@@ -140,24 +147,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>또는</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Social Buttons */}
-          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.7}>
-            <Text style={styles.googleIcon}>G</Text>
-            <Text style={styles.socialBtnText}>Google로 계속하기</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.kakaoBtn} activeOpacity={0.7}>
-            <Text style={styles.kakaoIcon}>K</Text>
-            <Text style={styles.kakaoBtnText}>카카오로 계속하기</Text>
-          </TouchableOpacity>
-
-          {/* Guest divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>먼저 둘러보기</Text>
@@ -301,48 +290,6 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: 12,
     color: colors.textTertiary,
-  },
-
-  // Social buttons
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    borderRadius: 14,
-    gap: 10,
-    marginBottom: 10,
-  },
-  googleIcon: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4285F4',
-  },
-  socialBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  kakaoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    backgroundColor: '#FEE500',
-    borderRadius: 14,
-    gap: 10,
-  },
-  kakaoIcon: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#191919',
-  },
-  kakaoBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#191919',
   },
 
   // Guest

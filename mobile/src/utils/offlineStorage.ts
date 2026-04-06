@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/client';
 
-const SAVED_TRAILS_KEY = 'roami_saved_trails';
+const SAVED_TRAILS_KEY = 'moru_saved_trails';
 
 export async function saveTrailOffline(trailId: number) {
   try {

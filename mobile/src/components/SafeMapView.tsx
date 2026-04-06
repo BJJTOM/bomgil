@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 
@@ -39,12 +39,12 @@ function MapPlaceholder({
 }) {
   return (
     <View style={styles.placeholder}>
-      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}️'}</Text>
+      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}\uFE0F'}</Text>
       <Text style={styles.placeholderRegion}>
         {region || ''} {country || ''}
       </Text>
       <Text style={styles.placeholderCoords}>
-        {lat.toFixed(4)}°N, {lng.toFixed(4)}°E
+        {lat.toFixed(4)}\u00B0N, {lng.toFixed(4)}\u00B0E
       </Text>
     </View>
   );
@@ -64,58 +64,110 @@ export default function SafeMapView({
     <MapPlaceholder region={region} country={country} lat={lat} lng={lng} />
   );
 
-  let MapViewComponent: any = null;
-  let MarkerComponent: any = null;
-  let PolylineComponent: any = null;
-
+  let Mapbox: any = null;
   try {
-    const maps = require('react-native-maps');
-    MapViewComponent = maps.default;
-    MarkerComponent = maps.Marker;
-    PolylineComponent = maps.Polyline;
+    Mapbox = require('@rnmapbox/maps').default;
   } catch {
     return <View style={[styles.container, { height }]}>{fallback}</View>;
   }
 
-  if (!MapViewComponent) {
+  if (!Mapbox) {
     return <View style={[styles.container, { height }]}>{fallback}</View>;
+  }
+
+  const MapView = Mapbox.MapView;
+  const Camera = Mapbox.Camera;
+  const PointAnnotation = Mapbox.PointAnnotation;
+  const ShapeSource = Mapbox.ShapeSource;
+  const LineLayer = Mapbox.LineLayer;
+
+  // Build path GeoJSON
+  const pathGeoJSON = pathCoordinates && pathCoordinates.length > 0
+    ? {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: pathCoordinates,
+        },
+      }
+    : null;
+
+  // Calculate bounds if path exists
+  let bounds: { ne: [number, number]; sw: [number, number] } | null = null;
+  if (pathCoordinates && pathCoordinates.length > 1) {
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lo, la] of pathCoordinates) {
+      if (lo < minLng) minLng = lo;
+      if (lo > maxLng) maxLng = lo;
+      if (la < minLat) minLat = la;
+      if (la > maxLat) maxLat = la;
+    }
+    bounds = { ne: [maxLng, maxLat], sw: [minLng, minLat] };
   }
 
   return (
     <View style={[styles.container, { height }]}>
       <MapErrorBoundary fallback={fallback}>
-        <MapViewComponent
+        <MapView
           style={{ flex: 1 }}
-          initialRegion={{
-            latitude: lat,
-            longitude: lng,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
+          styleURL="mapbox://styles/mapbox/outdoors-v12"
           scrollEnabled={false}
-          zoomEnabled={false}>
-          <MarkerComponent
-            coordinate={{ latitude: lat, longitude: lng }}
-            title={'출발'}
+          zoomEnabled={false}
+          pitchEnabled={false}
+          rotateEnabled={false}
+          attributionEnabled={false}
+          logoEnabled={false}>
+          <Camera
+            {...(bounds
+              ? {
+                  bounds: {
+                    ne: bounds.ne,
+                    sw: bounds.sw,
+                    paddingTop: 30,
+                    paddingBottom: 30,
+                    paddingLeft: 30,
+                    paddingRight: 30,
+                  },
+                }
+              : {
+                  centerCoordinate: [lng, lat],
+                  zoomLevel: 14,
+                })}
+            animationDuration={0}
           />
+
+          {/* Start marker */}
+          <PointAnnotation id="start" coordinate={[lng, lat]}>
+            <View style={styles.markerStart}>
+              <View style={styles.markerDot} />
+            </View>
+          </PointAnnotation>
+
+          {/* End marker */}
           {endLat != null && endLng != null && (
-            <MarkerComponent
-              coordinate={{ latitude: endLat, longitude: endLng }}
-              title={'도착'}
-              pinColor="red"
-            />
+            <PointAnnotation id="end" coordinate={[endLng, endLat]}>
+              <View style={styles.markerEnd}>
+                <View style={styles.markerDotEnd} />
+              </View>
+            </PointAnnotation>
           )}
-          {pathCoordinates && pathCoordinates.length > 0 && (
-            <PolylineComponent
-              coordinates={pathCoordinates.map(([lo, la]: [number, number]) => ({
-                latitude: la,
-                longitude: lo,
-              }))}
-              strokeColor={colors.primary}
-              strokeWidth={4}
-            />
+
+          {/* Path line */}
+          {pathGeoJSON && (
+            <ShapeSource id="pathSource" shape={pathGeoJSON}>
+              <LineLayer
+                id="pathLine"
+                style={{
+                  lineColor: colors.primary,
+                  lineWidth: 4,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
+            </ShapeSource>
           )}
-        </MapViewComponent>
+        </MapView>
       </MapErrorBoundary>
     </View>
   );
@@ -145,5 +197,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#B0B8C1',
     marginTop: 4,
+  },
+  markerStart: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(74,222,128,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  markerEnd: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239,68,68,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerDotEnd: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });

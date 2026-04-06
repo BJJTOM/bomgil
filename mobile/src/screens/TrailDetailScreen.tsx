@@ -189,7 +189,7 @@ function TrailDetailScreenInner() {
     if (!trail) return;
     try {
       await Share.share({
-        message: `${trail?.title || ''} - ${trail?.region || ''}\nRoami에서 확인해보세요!`,
+        message: `${trail?.title || ''} - ${trail?.region || ''}\nMoru에서 확인해보세요!`,
       });
     } catch {}
   };

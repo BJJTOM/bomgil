@@ -114,7 +114,7 @@ export default function SettingsPage() {
 
         {/* Footer */}
         <div className="text-center pb-8">
-          <p className="text-[11px] text-text-tertiary">© 2026 Roami. All rights reserved.</p>
+          <p className="text-[11px] text-text-tertiary">© 2026 Moru. All rights reserved.</p>
         </div>
       </div>
     </div>

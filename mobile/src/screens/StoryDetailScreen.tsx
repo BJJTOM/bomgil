@@ -95,7 +95,7 @@ export default function StoryDetailScreen() {
   const handleShare = () => {
     if (!story) return;
     Share.share({
-      message: `${story.title || ''}\n${story.content.slice(0, 100)}...\n\nRoami에서 확인하세요!`,
+      message: `${story.title || ''}\n${story.content.slice(0, 100)}...\n\nMoru에서 확인하세요!`,
     });
   };
 

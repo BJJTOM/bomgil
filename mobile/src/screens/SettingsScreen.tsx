@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
+  ActivityIndicator,
   StatusBar,
   Modal,
   Dimensions,
@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
+import { launchImageLibrary } from 'react-native-image-picker';
+import api from '../api/client';
 
 const { width } = Dimensions.get('window');
 
@@ -34,19 +36,39 @@ interface Section {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, setUser } = useAuthStore();
+
+  const handlePickPhoto = async () => {
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 512, maxHeight: 512 });
+      if (result.didCancel || !result.assets?.[0]?.uri) return;
+      const asset = result.assets[0];
+      const formData = new FormData();
+      formData.append('profile_image', {
+        uri: asset.uri,
+        type: asset.type || 'image/jpeg',
+        name: asset.fileName || 'profile.jpg',
+      } as any);
+      const { data } = await api.patch('/auth/me/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUser(data);
+    } catch {}
+  };
   const { language, setLanguage } = useLanguageStore();
   const [showLangModal, setShowLangModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃',
-        style: 'destructive',
-        onPress: () => logout(),
-      },
-    ]);
+  const handleLogout = () => setShowLogoutModal(true);
+
+  const confirmLogout = () => {
+    setLoggingOut(true);
+    setTimeout(() => {
+      logout();
+      setShowLogoutModal(false);
+      setLoggingOut(false);
+    }, 800);
   };
 
   const sections: Section[] = [
@@ -116,26 +138,33 @@ export default function SettingsScreen() {
 
         {/* User Card */}
         {isAuthenticated && user ? (
-          <TouchableOpacity
-            style={styles.userCard}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
-            <View style={styles.avatar}>
-              {user.profile_image ? (
-                <Image
-                  source={{ uri: user.profile_image }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <Text style={styles.avatarEmoji}>👤</Text>
-              )}
-            </View>
-            <View style={styles.userInfo}>
+          <View style={styles.userCard}>
+            <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.7}>
+              <View style={styles.avatar}>
+                {user.profile_image ? (
+                  <Image
+                    source={{ uri: user.profile_image }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarEmoji}>{'\uD83D\uDC64'}</Text>
+                )}
+                <View style={styles.avatarEditBadge}>
+                  <Text style={styles.avatarEditIcon}>{'\uD83D\uDCF7'}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.userInfo}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
               <Text style={styles.userName}>{user.nickname}</Text>
               <Text style={styles.userEmail}>{user.email}</Text>
-            </View>
-            <Text style={styles.chevron}>{'›'}</Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              <Text style={styles.chevron}>{'\u203A'}</Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
 
         {/* Sections */}
@@ -175,7 +204,7 @@ export default function SettingsScreen() {
         )}
 
         {/* Version */}
-        <Text style={styles.versionText}>Roami v1.0.0</Text>
+        <Text style={styles.versionText}>Moru v1.0.0</Text>
       </ScrollView>
 
       {/* Language Selection Modal */}
@@ -203,6 +232,31 @@ export default function SettingsScreen() {
             ))}
           </View>
         </TouchableOpacity>
+      </Modal>
+      {/* Logout Confirmation Modal */}
+      <Modal visible={showLogoutModal} transparent animationType="fade">
+        <View style={styles.logoutOverlay}>
+          <View style={styles.logoutModal}>
+            {loggingOut ? (
+              <View style={styles.logoutLoading}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.logoutLoadingText}>{'\uB85C\uADF8\uC544\uC6C3 \uC911...'}</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.logoutModalIcon}>{'\uD83D\uDC4B'}</Text>
+                <Text style={styles.logoutModalTitle}>{'\uB85C\uADF8\uC544\uC6C3 \uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?'}</Text>
+                <Text style={styles.logoutModalSub}>{'\uB2E4\uC2DC \uB85C\uADF8\uC778\uD558\uBA74 \uAE30\uB85D\uC744 \uC774\uC5B4\uAC08 \uC218 \uC788\uC5B4\uC694'}</Text>
+                <TouchableOpacity style={styles.logoutConfirmBtn} onPress={confirmLogout} activeOpacity={0.85}>
+                  <Text style={styles.logoutConfirmText}>{'\uB85C\uADF8\uC544\uC6C3'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutModal(false)} activeOpacity={0.85}>
+                  <Text style={styles.logoutCancelText}>{'\uCDE8\uC18C'}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -402,5 +456,85 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.primary,
+  },
+
+  // Avatar edit badge
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  avatarEditIcon: {
+    fontSize: 10,
+  },
+
+  // Logout modal
+  logoutOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  logoutModal: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+  },
+  logoutLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    gap: 16,
+  },
+  logoutLoadingText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  logoutModalIcon: {
+    fontSize: 36,
+    marginBottom: 12,
+  },
+  logoutModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  logoutModalSub: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    marginBottom: 24,
+  },
+  logoutConfirmBtn: {
+    width: '100%',
+    backgroundColor: colors.danger,
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  logoutConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  logoutCancelBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  logoutCancelText: {
+    fontSize: 15,
+    color: colors.textSecondary,
   },
 });

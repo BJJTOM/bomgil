@@ -83,10 +83,10 @@ export default function Home() {
   };
 
   const ctaTitleTexts: Record<string, string> = {
-    ko: "나만 아는 그 길,\nRoami에 공유해주세요",
-    en: "Share your hidden paths\non Roami",
-    ja: "あなただけが知るその道を\nRoamiで共有しましょう",
-    zh: "把你知道的路线\n分享到Roami",
+    ko: "나만 아는 그 길,\nMoru에 공유해주세요",
+    en: "Share your hidden paths\non Moru",
+    ja: "あなただけが知るその道を\nMoruで共有しましょう",
+    zh: "把你知道的路线\n分享到Moru",
   };
 
   const ctaDescTexts: Record<string, string> = {
@@ -119,19 +119,19 @@ export default function Home() {
 
   const footerTexts: Record<string, { main: string; sub: string }> = {
     ko: {
-      main: "Roami는 전 세계 도보여행자들을 위한 코스 공유 & 동행 매칭 플랫폼입니다",
-      sub: "Roami — A walking travel platform for discovering trails, sharing routes, and finding companions.",
+      main: "Moru는 전 세계 도보여행자들을 위한 코스 공유 & 동행 매칭 플랫폼입니다",
+      sub: "Moru — A walking travel platform for discovering trails, sharing routes, and finding companions.",
     },
     en: {
-      main: "Roami is a trail-sharing & companion-matching platform for walking travelers worldwide",
+      main: "Moru is a trail-sharing & companion-matching platform for walking travelers worldwide",
       sub: "Discover trails, share routes, and find walking companions.",
     },
     ja: {
-      main: "Roamiは世界中の散歩旅行者のためのコース共有＆同行マッチングプラットフォームです",
+      main: "Moruは世界中の散歩旅行者のためのコース共有＆同行マッチングプラットフォームです",
       sub: "コースを発見し、ルートを共有し、散歩仲間を見つけましょう。",
     },
     zh: {
-      main: "Roami是面向全球步行旅行者的路线分享和同行匹配平台",
+      main: "Moru是面向全球步行旅行者的路线分享和同行匹配平台",
       sub: "发现路线，分享行程，寻找步行伙伴。",
     },
   };
@@ -143,8 +143,8 @@ export default function Home() {
       {/* Mobile top bar */}
       <div className="md:hidden absolute top-0 left-0 right-0 z-20 px-5 pt-12 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="/icon-192.png" alt="Roami" className="w-7 h-7 rounded-lg" />
-          <span className="text-white font-bold text-[17px]" style={{ fontFamily: "'DM Sans', sans-serif" }}>Roami</span>
+          <img src="/icon-192.png" alt="Moru" className="w-7 h-7 rounded-lg" />
+          <span className="text-white font-bold text-[17px]" style={{ fontFamily: "'DM Sans', sans-serif" }}>Moru</span>
         </div>
         <button onClick={() => setShowLangMenu(!showLangMenu)} className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
           <span className="text-[14px]">{LANGUAGES.find(l => l.code === language)?.flag}</span>

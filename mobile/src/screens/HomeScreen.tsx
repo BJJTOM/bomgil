@@ -152,7 +152,7 @@ export default function HomeScreen() {
             style={[styles.hero, { paddingTop: insets.top + 12 }]}>
             {/* Top bar */}
             <View style={styles.heroTopBar}>
-              <Text style={styles.heroLogoText}>Roami</Text>
+              <Text style={styles.heroLogoText}>Moru</Text>
               <TouchableOpacity
                 style={styles.langButton}
                 onPress={() => setShowLangModal(true)}
@@ -291,7 +291,7 @@ export default function HomeScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>&copy; 2026 Roami</Text>
+          <Text style={styles.footerText}>&copy; 2026 Moru</Text>
         </View>
 
         <View style={{ height: 80 }} />

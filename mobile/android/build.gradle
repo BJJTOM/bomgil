@@ -24,6 +24,9 @@ allprojects {
         mavenCentral()
         maven { url "https://www.jitpack.io" }
         maven { url "$rootDir/../node_modules/react-native/android" }
+        maven {
+            url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
+        }
     }
 }
 

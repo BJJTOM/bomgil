@@ -1,7 +1,7 @@
 import { AppRegistry } from 'react-native';
 import App from './App.tsx';
 
-AppRegistry.registerComponent('RoamiApp', () => App);
-AppRegistry.runApplication('RoamiApp', {
+AppRegistry.registerComponent('MoruApp', () => App);
+AppRegistry.runApplication('MoruApp', {
   rootTag: document.getElementById('root'),
 });

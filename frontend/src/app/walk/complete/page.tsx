@@ -57,7 +57,7 @@ function WalkCompleteContent() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Roami - ${distance.toFixed(2)}km ${t("walk.finish")}!`,
+          title: `Moru - ${distance.toFixed(2)}km ${t("walk.finish")}!`,
           text: `${distance.toFixed(2)}km, ${steps.toLocaleString()} ${t("activities.steps")}, ${timeStr}`,
           url: "https://frontend-sigma-nine-57.vercel.app",
         });
@@ -149,7 +149,7 @@ function WalkCompleteContent() {
 
           {/* Footer branding */}
           <div className="border-t border-white/5 px-6 py-3 flex items-center justify-between">
-            <span className="text-white/20 text-[11px]">roami.app</span>
+            <span className="text-white/20 text-[11px]">moruwalk.com</span>
             <span className="text-white/20 text-[11px]">Walk. Discover. Connect.</span>
           </div>
         </div>

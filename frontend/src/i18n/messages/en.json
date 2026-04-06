@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Roami",
+    "appName": "Moru",
     "login": "Login",
     "logout": "Logout",
     "register": "Sign Up",
@@ -171,7 +171,7 @@
     "password": "Password",
     "passwordConfirm": "Confirm Password",
     "nickname": "Nickname",
-    "nicknamePlaceholder": "Your nickname on Roami",
+    "nicknamePlaceholder": "Your nickname on Moru",
     "loginButton": "Login",
     "registerButton": "Sign Up",
     "googleLogin": "Continue with Google",
@@ -346,7 +346,7 @@
     "totalLikes": "total likes"
   },
   "register": {
-    "joinTitle": "Join Roami",
+    "joinTitle": "Join Moru",
     "joinSubtitle": "Walk together with travelers worldwide",
     "nicknameRequired": "Please enter a nickname.",
     "passwordMinLength": "Password must be at least 8 characters.",
@@ -360,7 +360,7 @@
     "strengthStrong": "Strong",
     "passwordMatch": "Passwords match",
     "submitting": "Signing up...",
-    "termsNotice": "By signing up, you agree to Roami's",
+    "termsNotice": "By signing up, you agree to Moru's",
     "terms": "Terms of Service",
     "and": "and",
     "privacy": "Privacy Policy",
@@ -375,7 +375,7 @@
     "guestFailed": "Guest login failed. Please try again."
   },
   "meta": {
-    "title": "Roami — What you see when you walk",
-    "description": "Discover walking trails, hidden restaurants, and photo spots. Walk with Roami."
+    "title": "Moru — What you see when you walk",
+    "description": "Discover walking trails, hidden restaurants, and photo spots. Walk with Moru."
   }
 }

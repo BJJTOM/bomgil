@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
@@ -34,30 +33,44 @@ export default function ActivityScreen() {
   const navigation = useNavigation<any>();
   const { isAuthenticated } = useAuthStore();
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['activity-stats'],
     queryFn: async () => {
-      const { data } = await api.get('/activities/my_stats/');
+      const { data } = await api.get('/activities/my_stats/', { timeout: 10000 });
       return data as ActivityStats;
     },
     enabled: isAuthenticated,
+    retry: 1,
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+    placeholderData: (prev: ActivityStats | undefined) => prev,
   });
 
   const {
     data: activitiesData,
-    isLoading: activitiesLoading,
     refetch,
     isRefetching,
   } = useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
-      const { data } = await api.get('/activities/');
+      const { data } = await api.get('/activities/', { timeout: 10000 });
       return data as PaginatedResponse<ActivityTrack>;
     },
     enabled: isAuthenticated,
+    retry: 1,
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+    placeholderData: (prev: PaginatedResponse<ActivityTrack> | undefined) => prev,
   });
 
   const activities = activitiesData?.results || [];
+
+  // Refetch when screen comes into focus (e.g. after completing a walk)
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const formatDuration = (minutes: number | null) => {
     if (!minutes) return '-';
@@ -140,19 +153,12 @@ export default function ActivityScreen() {
 
           {/* Big distance number */}
           <FadeInView delay={50}>
-            {statsLoading ? (
-              <ActivityIndicator
-                color={colors.primary}
-                style={{ marginVertical: 32 }}
-              />
-            ) : (
-              <View style={styles.bigDistanceWrap}>
-                <Text style={styles.bigDistanceValue}>
-                  {todayStats.distance.toFixed(1)}
-                </Text>
-                <Text style={styles.bigDistanceUnit}>km</Text>
-              </View>
-            )}
+            <View style={styles.bigDistanceWrap}>
+              <Text style={styles.bigDistanceValue}>
+                {todayStats.distance.toFixed(1)}
+              </Text>
+              <Text style={styles.bigDistanceUnit}>km</Text>
+            </View>
           </FadeInView>
 
           {/* Steps + Calories row */}
@@ -205,16 +211,7 @@ export default function ActivityScreen() {
             <Text style={styles.recentTitle}>{'최근 활동'}</Text>
           </FadeInView>
 
-          {activitiesLoading ? (
-            <>
-              {[1, 2, 3].map((i) => (
-                <View key={i} style={styles.skeletonItem}>
-                  <View style={styles.skeletonTitle} />
-                  <View style={styles.skeletonMeta} />
-                </View>
-              ))}
-            </>
-          ) : activities.length === 0 ? (
+          {activities.length === 0 ? (
             <View style={styles.noRecords}>
               <Text style={styles.noRecordsText}>
                 {'아직 활동 기록이 없어요'}
@@ -241,7 +238,8 @@ export default function ActivityScreen() {
                 <FadeInView key={activity.id} delay={300}>
                   <TouchableOpacity
                     style={styles.activityItem}
-                    activeOpacity={0.7}>
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('ActivityDetail', { activity })}>
                     <View style={styles.activityIconWrap}>
                       <Text style={styles.activityIcon}>
                         {sourceInfo?.icon || '📍'}

@@ -1,5 +1,5 @@
 /**
- * Roami Walk Engine
+ * Moru Walk Engine
  * Professional-grade walk tracking comparable to Nike Run / Garmin
  *
  * Features:
@@ -272,7 +272,7 @@ export class WalkEngine {
 
     return {
       distance: this.distance,
-      duration: this.activeTime,
+      duration: totalTime,
       totalTime,
       pace,
       currentPace,

@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: 'roami-auth',
+      name: 'moru-auth',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

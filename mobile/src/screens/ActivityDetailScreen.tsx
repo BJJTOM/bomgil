@@ -267,20 +267,18 @@ export default function ActivityDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* 1. Route map preview — only if we have GPS data */}
-          {trackPoints.length > 0 && (
-            <View style={styles.mapSection}>
-              <SafeMapView
-                lat={firstPoint.lat}
-                lng={firstPoint.lng}
-                endLat={hasPath ? lastPoint.lat : undefined}
-                endLng={hasPath ? lastPoint.lng : undefined}
-                pathCoordinates={hasPath ? pathCoords : (trackPoints.length === 1 ? [[firstPoint.lng, firstPoint.lat]] : undefined)}
-                height={220}
-                spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
-              />
-            </View>
-          )}
+          {/* 1. Route map preview */}
+          <View style={styles.mapSection}>
+            <SafeMapView
+              lat={firstPoint?.lat || 37.5665}
+              lng={firstPoint?.lng || 126.978}
+              endLat={hasPath ? lastPoint?.lat : undefined}
+              endLng={hasPath ? lastPoint?.lng : undefined}
+              pathCoordinates={hasPath ? pathCoords : undefined}
+              height={220}
+              spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
+            />
+          </View>
 
           {/* 2. Title & Date */}
           <View style={styles.titleSection}>

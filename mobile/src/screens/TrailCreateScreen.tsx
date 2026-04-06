@@ -376,31 +376,29 @@ export default function TrailCreateScreen() {
         status: 'pending',
       };
 
+      // Coordinates — round to 6 decimal places to fit DB constraint (9 digits total)
       if (startLat != null && startLng != null) {
-        payload.start_lat = startLat;
-        payload.start_lng = startLng;
+        payload.start_lat = parseFloat(startLat.toFixed(6));
+        payload.start_lng = parseFloat(startLng.toFixed(6));
       }
       if (endLat != null && endLng != null) {
-        payload.end_lat = endLat;
-        payload.end_lng = endLng;
+        payload.end_lat = parseFloat(endLat.toFixed(6));
+        payload.end_lng = parseFloat(endLng.toFixed(6));
       }
 
-      // path_data as GeoJSON LineString
+      // path_data as GeoJSON LineString — also round coordinates
       if (pathData && pathData.length > 1) {
         payload.path_data = {
           type: 'LineString',
-          coordinates: pathData,
+          coordinates: pathData.map(([lng, lat]) => [
+            parseFloat(lng.toFixed(6)),
+            parseFloat(lat.toFixed(6)),
+          ]),
         };
       }
 
-      // Tags — comma separated string -> array of tag names
-      const tagList = tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      if (tagList.length > 0) {
-        payload.tag_ids = tagList;
-      }
+      // Tags — don't send tag_ids (requires numeric IDs), just skip for now
+      // Tags will be managed via admin or future tag search endpoint
 
       // 1) Create the trail with JSON
       const trailRes = await api.post('/trails/', payload);

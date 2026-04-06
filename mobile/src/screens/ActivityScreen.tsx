@@ -104,10 +104,11 @@ export default function ActivityScreen() {
   const todayDistance = todayActivities.reduce((s, a) => s + parseFloat(a.distance_km || '0'), 0);
   const todayCalories = todayActivities.reduce((s, a) => s + (a.calories_burned || 0), 0);
 
+  // Show total stats (all activities), not just today
   const todayStats = {
-    steps: todaySteps || (stats?.weekly?.find((d: any) => d.date === today)?.total_steps || 0),
-    distance: todayDistance || parseFloat(stats?.weekly?.find((d: any) => d.date === today)?.total_distance_km || '0'),
-    calories: todayCalories || (stats?.weekly?.find((d: any) => d.date === today)?.total_calories || 0),
+    steps: allSteps,
+    distance: allDistance,
+    calories: allCalories,
   };
 
   if (!isAuthenticated) {

@@ -42,11 +42,18 @@ class ActivityTrackCreateSerializer(serializers.ModelSerializer):
         fields = [
             "trail", "story", "source", "gpx_file", "track_points",
             "title", "total_steps", "calories_burned", "is_public",
+            "distance_km", "duration_minutes", "started_at", "finished_at",
+            "elevation_gain_m",
         ]
         extra_kwargs = {
             "trail": {"required": False},
             "story": {"required": False},
             "track_points": {"required": False},
+            "distance_km": {"required": False},
+            "duration_minutes": {"required": False},
+            "started_at": {"required": False},
+            "finished_at": {"required": False},
+            "elevation_gain_m": {"required": False},
         }
 
     def validate_gpx_file(self, value):

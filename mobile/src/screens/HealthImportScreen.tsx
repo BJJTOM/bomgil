@@ -126,6 +126,8 @@ export default function HealthImportScreen() {
         finished_at: session.endTime,
         total_steps: session.steps || 0,
         calories_burned: session.calories || 0,
+        distance_km: session.distance ? session.distance.toFixed(2) : '0',
+        duration_minutes: session.duration || 0,
       };
 
       // Only include track_points if we have them

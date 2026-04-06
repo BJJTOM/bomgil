@@ -28,35 +28,35 @@ import SafeMapView from '../components/SafeMapView';
 // ---------------------------------------------------------------------------
 
 const DIFFICULTY_OPTIONS = [
-  { value: 'easy', label: '\uC26C\uC6C0' },
-  { value: 'moderate', label: '\uBCF4\uD1B5' },
-  { value: 'hard', label: '\uC5B4\uB824\uC6C0' },
+  { value: 'easy', label: '쉬움' },
+  { value: 'moderate', label: '보통' },
+  { value: 'hard', label: '어려움' },
 ];
 
 const COUNTRY_OPTIONS = [
-  { value: 'KR', label: '\uD55C\uAD6D' },
-  { value: 'JP', label: '\uC77C\uBCF8' },
-  { value: 'TW', label: '\uB300\uB9CC' },
-  { value: 'TH', label: '\uD0DC\uAD6D' },
-  { value: 'US', label: '\uBBF8\uAD6D' },
-  { value: 'GB', label: '\uC601\uAD6D' },
-  { value: 'FR', label: '\uD504\uB791\uC2A4' },
-  { value: 'ES', label: '\uC2A4\uD398\uC778' },
+  { value: 'KR', label: '한국' },
+  { value: 'JP', label: '일본' },
+  { value: 'TW', label: '대만' },
+  { value: 'TH', label: '태국' },
+  { value: 'US', label: '미국' },
+  { value: 'GB', label: '영국' },
+  { value: 'FR', label: '프랑스' },
+  { value: 'ES', label: '스페인' },
 ];
 
 const WAYPOINT_TYPES = [
-  { value: 'restaurant', label: '\uB9DB\uC9D1' },
-  { value: 'cafe', label: '\uCE74\uD398' },
-  { value: 'photo', label: '\uD3EC\uD1A0' },
-  { value: 'rest', label: '\uD734\uC2DD' },
-  { value: 'view', label: '\uC804\uB9DD' },
+  { value: 'restaurant', label: '맛집' },
+  { value: 'cafe', label: '카페' },
+  { value: 'photo', label: '포토' },
+  { value: 'rest', label: '휴식' },
+  { value: 'view', label: '전망' },
 ];
 
 const STEP_LABELS = [
-  '\uAE30\uBCF8 \uC815\uBCF4',
-  '\uACBD\uB85C \uC0C1\uC138',
-  '\uC6E8\uC774\uD3EC\uC778\uD2B8',
-  '\uC0AC\uC9C4 & \uBBF8\uB9AC\uBCF4\uAE30',
+  '기본 정보',
+  '경로 상세',
+  '웨이포인트',
+  '사진 & 미리보기',
 ];
 
 const TOTAL_STEPS = 4;
@@ -72,6 +72,8 @@ interface Waypoint {
   description: string;
   lat: number | null;
   lng: number | null;
+  imageUrl: string;
+  link: string;
 }
 
 interface Activity {
@@ -121,7 +123,8 @@ export default function TrailCreateScreen() {
   // Step 1 — Basic Info
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [region, setRegion] = useState('');
+  const [startRegion, setStartRegion] = useState('');
+  const [endRegion, setEndRegion] = useState('');
   const [country, setCountry] = useState('KR');
   const [difficulty, setDifficulty] = useState('moderate');
   const [tags, setTags] = useState('');
@@ -162,8 +165,8 @@ export default function TrailCreateScreen() {
         (pos) => onSuccess(pos.coords.latitude, pos.coords.longitude),
         () =>
           Alert.alert(
-            '\uC704\uCE58 \uC624\uB958',
-            '\uD604\uC7AC \uC704\uCE58\uB97C \uAC00\uC838\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4',
+            '위치 오류',
+            '현재 위치를 가져올 수 없습니다',
           ),
         { enableHighAccuracy: true, timeout: 10000 },
       );
@@ -176,8 +179,8 @@ export default function TrailCreateScreen() {
       setStartLat(lat);
       setStartLng(lng);
       Alert.alert(
-        '\uC644\uB8CC',
-        `\uCD9C\uBC1C\uC810 \uC88C\uD45C: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        '완료',
+        `출발점 좌표: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
       );
     });
   }, [grabCurrentGPS]);
@@ -187,8 +190,8 @@ export default function TrailCreateScreen() {
       setEndLat(lat);
       setEndLng(lng);
       Alert.alert(
-        '\uC644\uB8CC',
-        `\uB3C4\uCC29\uC810 \uC88C\uD45C: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        '완료',
+        `도착점 좌표: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
       );
     });
   }, [grabCurrentGPS]);
@@ -208,8 +211,8 @@ export default function TrailCreateScreen() {
       setActivities(list);
     } catch {
       Alert.alert(
-        '\uC624\uB958',
-        '\uD65C\uB3D9 \uAE30\uB85D\uC744 \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4',
+        '오류',
+        '활동 기록을 불러올 수 없습니다',
       );
       setActivityModalVisible(false);
     } finally {
@@ -223,8 +226,8 @@ export default function TrailCreateScreen() {
       const pts = activity.track_points;
       if (!pts || pts.length === 0) {
         Alert.alert(
-          '\uC624\uB958',
-          '\uC774 \uD65C\uB3D9\uC5D0\uB294 \uACBD\uB85C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4',
+          '오류',
+          '이 활동에는 경로 데이터가 없습니다',
         );
         return;
       }
@@ -258,8 +261,8 @@ export default function TrailCreateScreen() {
       }
 
       Alert.alert(
-        '\uAC00\uC838\uC624\uAE30 \uC644\uB8CC',
-        `${pts.length}\uAC1C \uD2B8\uB799\uD3EC\uC778\uD2B8\uAC00 \uC801\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4`,
+        '가져오기 완료',
+        `${pts.length}개 트랙포인트가 적용되었습니다`,
       );
     },
     [],
@@ -279,6 +282,8 @@ export default function TrailCreateScreen() {
         description: '',
         lat: null,
         lng: null,
+        imageUrl: '',
+        link: '',
       },
     ]);
   }, []);
@@ -303,8 +308,8 @@ export default function TrailCreateScreen() {
           prev.map((w) => (w.id === id ? { ...w, lat, lng } : w)),
         );
         Alert.alert(
-          '\uC644\uB8CC',
-          `\uC88C\uD45C: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+          '완료',
+          `좌표: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
         );
       });
     },
@@ -342,13 +347,13 @@ export default function TrailCreateScreen() {
 
   const canGoNext = useCallback(() => {
     if (step === 1) {
-      return title.trim().length > 0 && description.trim().length > 0;
+      return title.trim().length > 0 && description.trim().length > 0 && startRegion.trim().length > 0;
     }
     if (step === 2) {
       return distanceKm.trim().length > 0 && estimatedMinutes.trim().length > 0;
     }
     return true;
-  }, [step, title, description, distanceKm, estimatedMinutes]);
+  }, [step, title, description, startRegion, distanceKm, estimatedMinutes]);
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -363,7 +368,7 @@ export default function TrailCreateScreen() {
       const payload: Record<string, any> = {
         title: title.trim(),
         description: description.trim(),
-        region: region.trim() || undefined,
+        region: [startRegion.trim(), endRegion.trim()].filter(Boolean).join(' → ') || undefined,
         country,
         difficulty,
         distance_km: parseFloat(distanceKm) || 0,
@@ -440,13 +445,13 @@ export default function TrailCreateScreen() {
       }
 
       Alert.alert(
-        '\uC131\uACF5',
-        '\uCF54\uC2A4\uAC00 \uB4F1\uB85D\uB418\uC5C8\uC2B5\uB2C8\uB2E4!',
-        [{ text: '\uD655\uC778', onPress: () => navigation.goBack() }],
+        '성공',
+        '코스가 등록되었습니다!',
+        [{ text: '확인', onPress: () => navigation.goBack() }],
       );
     } catch (err: any) {
       const data = err?.response?.data;
-      let msg = '\uCF54\uC2A4 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4';
+      let msg = '코스 등록에 실패했습니다';
       if (data) {
         if (typeof data === 'string') {
           msg = data;
@@ -460,7 +465,7 @@ export default function TrailCreateScreen() {
           msg = errors || msg;
         }
       }
-      Alert.alert('\uC624\uB958', msg);
+      Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);
     }
@@ -468,7 +473,7 @@ export default function TrailCreateScreen() {
     submitting,
     title,
     description,
-    region,
+    startRegion,
     country,
     difficulty,
     distanceKm,
@@ -517,22 +522,22 @@ export default function TrailCreateScreen() {
     <View style={styles.stepContent}>
       <View style={styles.card}>
         <Text style={styles.fieldLabel}>
-          {'\uCF54\uC2A4 \uC774\uB984'} <Text style={styles.required}>*</Text>
+          {'코스 이름'} <Text style={styles.required}>*</Text>
         </Text>
         <TextInput
           style={styles.textInput}
-          placeholder="\uC608: \uBD81\uCD0C\uD55C\uC625\uB9C8\uC744 \uAC78\uAE30"
+          placeholder="예: 북촌한옥마을 걸기"
           placeholderTextColor={colors.textTertiary}
           value={title}
           onChangeText={setTitle}
         />
 
         <Text style={styles.fieldLabel}>
-          {'\uC124\uBA85'} <Text style={styles.required}>*</Text>
+          {'설명'} <Text style={styles.required}>*</Text>
         </Text>
         <TextInput
           style={[styles.textInput, styles.textArea]}
-          placeholder="\uCF54\uC2A4\uC5D0 \uB300\uD55C \uC124\uBA85\uC744 \uC791\uC131\uD574\uC8FC\uC138\uC694"
+          placeholder="코스에 대한 설명을 작성해주세요"
           placeholderTextColor={colors.textTertiary}
           value={description}
           onChangeText={setDescription}
@@ -541,19 +546,28 @@ export default function TrailCreateScreen() {
           textAlignVertical="top"
         />
 
-        <Text style={styles.fieldLabel}>{'\uC9C0\uC5ED'}</Text>
+        <Text style={styles.fieldLabel}>{'출발 지역'}</Text>
         <TextInput
           style={styles.textInput}
-          placeholder="\uC608: \uC11C\uC6B8 \uC885\uB85C\uAD6C"
+          placeholder="예: 서울 종로구"
           placeholderTextColor={colors.textTertiary}
-          value={region}
-          onChangeText={setRegion}
+          value={startRegion}
+          onChangeText={setStartRegion}
         />
 
-        <Text style={styles.fieldLabel}>{'\uD0DC\uADF8'}</Text>
+        <Text style={styles.fieldLabel}>{'도착 지역'}</Text>
         <TextInput
           style={styles.textInput}
-          placeholder="\uC608: \uB9DB\uC9D1\uD22C\uC5B4, \uC5ED\uC0AC\uD0D0\uBC29 (\uC27C\uD45C\uB85C \uAD6C\uBD84)"
+          placeholder="예: 서울 중구 (같으면 비워두세요)"
+          placeholderTextColor={colors.textTertiary}
+          value={endRegion}
+          onChangeText={setEndRegion}
+        />
+
+        <Text style={styles.fieldLabel}>{'태그'}</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="예: 맛집투어, 역사탐방 (쉼표로 구분)"
           placeholderTextColor={colors.textTertiary}
           value={tags}
           onChangeText={setTags}
@@ -561,7 +575,7 @@ export default function TrailCreateScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.fieldLabel}>{'\uAD6D\uAC00'}</Text>
+        <Text style={styles.fieldLabel}>{'국가'}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -587,7 +601,7 @@ export default function TrailCreateScreen() {
           </View>
         </ScrollView>
 
-        <Text style={styles.fieldLabel}>{'\uB09C\uC774\uB3C4'}</Text>
+        <Text style={styles.fieldLabel}>{'난이도'}</Text>
         <View style={styles.chipGroup}>
           {DIFFICULTY_OPTIONS.map((opt) => (
             <TouchableOpacity
@@ -618,19 +632,19 @@ export default function TrailCreateScreen() {
   const renderStep2 = () => (
     <View style={styles.stepContent}>
       <View style={styles.card}>
-        <Text style={styles.fieldLabel}>{'\uCD9C\uBC1C\uC9C0'}</Text>
+        <Text style={styles.fieldLabel}>{'출발지'}</Text>
         <TextInput
           style={styles.textInput}
-          placeholder="\uC608: \uACBD\uBCF5\uAD81\uC5ED 3\uBC88 \uCD9C\uAD6C"
+          placeholder="예: 경복궁역 3번 출구"
           placeholderTextColor={colors.textTertiary}
           value={startLocation}
           onChangeText={setStartLocation}
         />
 
-        <Text style={styles.fieldLabel}>{'\uB3C4\uCC29\uC9C0'}</Text>
+        <Text style={styles.fieldLabel}>{'도착지'}</Text>
         <TextInput
           style={styles.textInput}
-          placeholder="\uC608: \uC548\uAD6D\uC5ED 1\uBC88 \uCD9C\uAD6C"
+          placeholder="예: 안국역 1번 출구"
           placeholderTextColor={colors.textTertiary}
           value={endLocation}
           onChangeText={setEndLocation}
@@ -639,7 +653,7 @@ export default function TrailCreateScreen() {
         <View style={styles.rowBetween}>
           <View style={styles.halfField}>
             <Text style={styles.fieldLabel}>
-              {'\uAC70\uB9AC (km)'}{' '}
+              {'거리 (km)'}{' '}
               <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
@@ -653,7 +667,7 @@ export default function TrailCreateScreen() {
           </View>
           <View style={styles.halfField}>
             <Text style={styles.fieldLabel}>
-              {'\uC608\uC0C1 \uC2DC\uAC04 (\uBD84)'}{' '}
+              {'예상 시간 (분)'}{' '}
               <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
@@ -669,22 +683,22 @@ export default function TrailCreateScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>GPS {'\uC88C\uD45C'}</Text>
+        <Text style={styles.cardTitle}>GPS {'좌표'}</Text>
 
         <View style={styles.gpsRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.gpsLabel}>
-              {'\uCD9C\uBC1C\uC810'}:{' '}
+              {'출발점'}:{' '}
               {startLat != null
                 ? `${startLat.toFixed(5)}, ${startLng?.toFixed(5)}`
-                : '\uBBF8\uC124\uC815'}
+                : '미설정'}
             </Text>
           </View>
           <TouchableOpacity
             style={styles.gpsBtnSmall}
             onPress={useCurrentLocationForStart}>
             <Text style={styles.gpsBtnSmallText}>
-              {'\uD604\uC7AC \uC704\uCE58'}
+              {'현재 위치'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -692,30 +706,30 @@ export default function TrailCreateScreen() {
         <View style={styles.gpsRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.gpsLabel}>
-              {'\uB3C4\uCC29\uC810'}:{' '}
+              {'도착점'}:{' '}
               {endLat != null
                 ? `${endLat.toFixed(5)}, ${endLng?.toFixed(5)}`
-                : '\uBBF8\uC124\uC815'}
+                : '미설정'}
             </Text>
           </View>
           <TouchableOpacity
             style={styles.gpsBtnSmall}
             onPress={useCurrentLocationForEnd}>
             <Text style={styles.gpsBtnSmallText}>
-              {'\uD604\uC7AC \uC704\uCE58'}
+              {'현재 위치'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <TouchableOpacity style={styles.importBtn} onPress={openActivityModal}>
-        <Text style={styles.importBtnIcon}>{'\uD83D\uDCE5'}</Text>
+        <Text style={styles.importBtnIcon}>{'📥'}</Text>
         <View>
           <Text style={styles.importBtnTitle}>
-            {'\uD65C\uB3D9 \uAE30\uB85D\uC5D0\uC11C \uAC00\uC838\uC624\uAE30'}
+            {'활동 기록에서 가져오기'}
           </Text>
           <Text style={styles.importBtnSub}>
-            {'\uC800\uC7A5\uB41C \uC0B0\uCC45 \uAE30\uB85D\uC758 \uACBD\uB85C\uB97C \uC790\uB3D9 \uC785\uB825\uD569\uB2C8\uB2E4'}
+            {'저장된 산책 기록의 경로를 자동 입력합니다'}
           </Text>
         </View>
       </TouchableOpacity>
@@ -723,8 +737,8 @@ export default function TrailCreateScreen() {
       {pathData && pathData.length > 1 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {'\uACBD\uB85C \uBBF8\uB9AC\uBCF4\uAE30'} ({pathData.length}{' '}
-            {'\uD3EC\uC778\uD2B8'})
+            {'경로 미리보기'} ({pathData.length}{' '}
+            {'포인트'})
           </Text>
           <SafeMapView
             lat={pathData[0][1]}
@@ -732,7 +746,7 @@ export default function TrailCreateScreen() {
             endLat={pathData[pathData.length - 1][1]}
             endLng={pathData[pathData.length - 1][0]}
             pathCoordinates={pathData}
-            region={region}
+            region={startRegion}
             country={country}
             height={180}
           />
@@ -749,10 +763,10 @@ export default function TrailCreateScreen() {
     <View style={styles.stepContent}>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>
-          {'\uC6E8\uC774\uD3EC\uC778\uD2B8 (\uC2A4\uD31F)'}
+          {'웨이포인트 (스팟)'}
         </Text>
         <Text style={styles.cardSubtitle}>
-          {'\uACBD\uB85C \uC911 \uC8FC\uC694 \uC7A5\uC18C\uB97C \uCD94\uAC00\uD574\uBCF4\uC138\uC694'}
+          {'경로 중 주요 장소를 추가해보세요'}
         </Text>
 
         {waypoints.map((wp, idx) => (
@@ -762,13 +776,13 @@ export default function TrailCreateScreen() {
               <TouchableOpacity
                 style={styles.waypointRemoveBtn}
                 onPress={() => removeWaypoint(wp.id)}>
-                <Text style={styles.waypointRemoveText}>{'\u2715'}</Text>
+                <Text style={styles.waypointRemoveText}>{'✕'}</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
               style={styles.textInput}
-              placeholder={'\uC7A5\uC18C \uC774\uB984'}
+              placeholder={'장소 이름'}
               placeholderTextColor={colors.textTertiary}
               value={wp.name}
               onChangeText={(v) => updateWaypoint(wp.id, 'name', v)}
@@ -801,7 +815,7 @@ export default function TrailCreateScreen() {
 
             <TextInput
               style={[styles.textInput, { marginTop: 8 }]}
-              placeholder={'\uC124\uBA85 (\uC120\uD0DD)'}
+              placeholder={'설명 (선택)'}
               placeholderTextColor={colors.textTertiary}
               value={wp.description}
               onChangeText={(v) => updateWaypoint(wp.id, 'description', v)}
@@ -811,7 +825,7 @@ export default function TrailCreateScreen() {
               <Text style={styles.gpsLabel}>
                 {wp.lat != null
                   ? `${wp.lat.toFixed(5)}, ${wp.lng?.toFixed(5)}`
-                  : '\uC88C\uD45C \uBBF8\uC124\uC815'}
+                  : '좌표 미설정'}
               </Text>
               <TouchableOpacity
                 style={styles.gpsBtnTiny}
@@ -819,12 +833,31 @@ export default function TrailCreateScreen() {
                 <Text style={styles.gpsBtnTinyText}>GPS</Text>
               </TouchableOpacity>
             </View>
+
+            <TextInput
+              style={[styles.textInput, { marginTop: 8 }]}
+              placeholder={'이미지 URL (선택)'}
+              placeholderTextColor={colors.textTertiary}
+              value={wp.imageUrl}
+              onChangeText={(v) => updateWaypoint(wp.id, 'imageUrl', v)}
+              autoCapitalize="none"
+            />
+
+            <TextInput
+              style={[styles.textInput, { marginTop: 8 }]}
+              placeholder={'관련 링크 (선택)'}
+              placeholderTextColor={colors.textTertiary}
+              value={wp.link}
+              onChangeText={(v) => updateWaypoint(wp.id, 'link', v)}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
           </View>
         ))}
 
         <TouchableOpacity style={styles.addWaypointBtn} onPress={addWaypoint}>
           <Text style={styles.addWaypointText}>
-            + {'\uC6E8\uC774\uD3EC\uC778\uD2B8 \uCD94\uAC00'}
+            + {'웨이포인트 추가'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -838,7 +871,7 @@ export default function TrailCreateScreen() {
   const renderStep4 = () => (
     <View style={styles.stepContent}>
       <View style={styles.card}>
-        <Text style={styles.fieldLabel}>{'\uCEE4\uBC84 \uC0AC\uC9C4'}</Text>
+        <Text style={styles.fieldLabel}>{'커버 사진'}</Text>
         {coverImage ? (
           <View style={styles.previewWrap}>
             <Image
@@ -849,7 +882,7 @@ export default function TrailCreateScreen() {
             <TouchableOpacity
               style={styles.removeImageBtn}
               onPress={() => setCoverImage(null)}>
-              <Text style={styles.removeImageText}>{'\u2715'}</Text>
+              <Text style={styles.removeImageText}>{'✕'}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -857,14 +890,14 @@ export default function TrailCreateScreen() {
             <TouchableOpacity
               style={styles.imagePickBtn}
               onPress={() => pickImage('camera')}>
-              <Text style={styles.imagePickIcon}>{'\uD83D\uDCF7'}</Text>
-              <Text style={styles.imagePickLabel}>{'\uCE74\uBA54\uB77C'}</Text>
+              <Text style={styles.imagePickIcon}>{'📷'}</Text>
+              <Text style={styles.imagePickLabel}>{'카메라'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.imagePickBtn}
               onPress={() => pickImage('gallery')}>
-              <Text style={styles.imagePickIcon}>{'\uD83D\uDDBC'}</Text>
-              <Text style={styles.imagePickLabel}>{'\uAC24\uB7EC\uB9AC'}</Text>
+              <Text style={styles.imagePickIcon}>{'🖼'}</Text>
+              <Text style={styles.imagePickLabel}>{'갤러리'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -874,7 +907,7 @@ export default function TrailCreateScreen() {
       {startLat != null && startLng != null && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {'\uACBD\uB85C \uBBF8\uB9AC\uBCF4\uAE30'}
+            {'경로 미리보기'}
           </Text>
           <SafeMapView
             lat={startLat}
@@ -882,7 +915,7 @@ export default function TrailCreateScreen() {
             endLat={endLat ?? undefined}
             endLng={endLng ?? undefined}
             pathCoordinates={pathData ?? undefined}
-            region={region}
+            region={startRegion}
             country={country}
             height={200}
           />
@@ -892,54 +925,54 @@ export default function TrailCreateScreen() {
       {/* Summary */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>
-          {'\uCF54\uC2A4 \uC694\uC57D'}
+          {'코스 요약'}
         </Text>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{'\uC81C\uBAA9'}</Text>
+          <Text style={styles.summaryLabel}>{'제목'}</Text>
           <Text style={styles.summaryValue}>{title || '-'}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{'\uC9C0\uC5ED'}</Text>
+          <Text style={styles.summaryLabel}>{'지역'}</Text>
           <Text style={styles.summaryValue}>
-            {region || '-'}
-            {' \u00B7 '}
+            {startRegion || '-'}{endRegion ? ` → ${endRegion}` : ''}
+            {' · '}
             {COUNTRY_OPTIONS.find((c) => c.value === country)?.label || country}
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{'\uB09C\uC774\uB3C4'}</Text>
+          <Text style={styles.summaryLabel}>{'난이도'}</Text>
           <Text style={styles.summaryValue}>
             {DIFFICULTY_OPTIONS.find((d) => d.value === difficulty)?.label ||
               difficulty}
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{'\uAC70\uB9AC / \uC2DC\uAC04'}</Text>
+          <Text style={styles.summaryLabel}>{'거리 / 시간'}</Text>
           <Text style={styles.summaryValue}>
-            {distanceKm || '-'} km {' \u00B7 '} {estimatedMinutes || '-'}{' '}
-            {'\uBD84'}
+            {distanceKm || '-'} km {' · '} {estimatedMinutes || '-'}{' '}
+            {'분'}
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{'\uACBD\uB85C'}</Text>
+          <Text style={styles.summaryLabel}>{'경로'}</Text>
           <Text style={styles.summaryValue}>
             {pathData
-              ? `${pathData.length}\uAC1C \uD3EC\uC778\uD2B8`
-              : '\uBBF8\uC124\uC815'}
+              ? `${pathData.length}개 포인트`
+              : '미설정'}
           </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>
-            {'\uC6E8\uC774\uD3EC\uC778\uD2B8'}
+            {'웨이포인트'}
           </Text>
           <Text style={styles.summaryValue}>
             {waypoints.filter((w) => w.name.trim()).length}
-            {'\uAC1C'}
+            {'개'}
           </Text>
         </View>
         {tags.trim() ? (
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>{'\uD0DC\uADF8'}</Text>
+            <Text style={styles.summaryLabel}>{'태그'}</Text>
             <Text style={styles.summaryValue}>{tags}</Text>
           </View>
         ) : null}
@@ -965,10 +998,10 @@ export default function TrailCreateScreen() {
           ]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {'\uD65C\uB3D9 \uAE30\uB85D \uC120\uD0DD'}
+              {'활동 기록 선택'}
             </Text>
             <TouchableOpacity onPress={() => setActivityModalVisible(false)}>
-              <Text style={styles.modalClose}>{'\u2715'}</Text>
+              <Text style={styles.modalClose}>{'✕'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -979,7 +1012,7 @@ export default function TrailCreateScreen() {
           ) : activities.length === 0 ? (
             <View style={styles.modalLoading}>
               <Text style={styles.modalEmptyText}>
-                {'\uD65C\uB3D9 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}
+                {'활동 기록이 없습니다'}
               </Text>
             </View>
           ) : (
@@ -992,21 +1025,21 @@ export default function TrailCreateScreen() {
                   onPress={() => importActivity(item)}>
                   <View>
                     <Text style={styles.activityTitle}>
-                      {item.title || `\uD65C\uB3D9 #${item.id}`}
+                      {item.title || `활동 #${item.id}`}
                     </Text>
                     <Text style={styles.activityMeta}>
                       {item.started_at
                         ? new Date(item.started_at).toLocaleDateString()
                         : ''}
                       {item.distance_km
-                        ? ` \u00B7 ${item.distance_km.toFixed(1)}km`
+                        ? ` · ${item.distance_km.toFixed(1)}km`
                         : ''}
                       {item.track_points
-                        ? ` \u00B7 ${item.track_points.length}\uD3EC\uC778\uD2B8`
+                        ? ` · ${item.track_points.length}포인트`
                         : ''}
                     </Text>
                   </View>
-                  <Text style={styles.activityArrow}>{'\u203A'}</Text>
+                  <Text style={styles.activityArrow}>{'›'}</Text>
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -1033,9 +1066,9 @@ export default function TrailCreateScreen() {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{'\uCF54\uC2A4 \uB4F1\uB85D'}</Text>
+        <Text style={styles.headerTitle}>{'코스 등록'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -1062,7 +1095,7 @@ export default function TrailCreateScreen() {
           <TouchableOpacity
             style={styles.prevBtn}
             onPress={() => setStep(step - 1)}>
-            <Text style={styles.prevBtnText}>{'\uC774\uC804'}</Text>
+            <Text style={styles.prevBtnText}>{'이전'}</Text>
           </TouchableOpacity>
         )}
         {step < TOTAL_STEPS ? (
@@ -1072,7 +1105,7 @@ export default function TrailCreateScreen() {
               if (canGoNext()) setStep(step + 1);
             }}
             disabled={!canGoNext()}>
-            <Text style={styles.nextBtnText}>{'\uB2E4\uC74C'}</Text>
+            <Text style={styles.nextBtnText}>{'다음'}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -1083,7 +1116,7 @@ export default function TrailCreateScreen() {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.submitBtnText}>
-                {'\uB4F1\uB85D\uD558\uAE30'}
+                {'등록하기'}
               </Text>
             )}
           </TouchableOpacity>

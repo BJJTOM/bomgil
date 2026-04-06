@@ -223,7 +223,7 @@ export default function WalkScreen() {
           setStats(engineRef.current.getStats());
         },
         () => {},
-        { enableHighAccuracy: true, distanceFilter: 5, timeout: 15000 },
+        { enableHighAccuracy: true, distanceFilter: 3, timeout: 15000 },
       );
     } catch {}
   }, []);

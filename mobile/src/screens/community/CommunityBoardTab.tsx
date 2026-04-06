@@ -118,7 +118,7 @@ export default function CommunityBoardTab() {
               <Text style={[styles.statText, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
             </TouchableOpacity>
             <View style={styles.statBtn}>
-              <Text style={styles.statIcon}>◻</Text>
+              <Text style={styles.statIcon}>○</Text>
               <Text style={styles.statText}>{item.comment_count}</Text>
             </View>
             <View style={styles.statBtn}>

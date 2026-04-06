@@ -181,28 +181,39 @@ export default function PostCreateScreen() {
           ))}
         </ScrollView>
 
-        {/* Title */}
-        <TextInput
-          style={styles.titleInput}
-          placeholder="제목을 입력하세요"
-          placeholderTextColor={colors.textTertiary}
-          value={title}
-          onChangeText={setTitle}
-          maxLength={100}
-        />
+        {/* Title + 글자수 */}
+        <View style={styles.inputSection}>
+          <TextInput
+            style={styles.titleInput}
+            placeholder="제목을 입력하세요 (2~100자)"
+            placeholderTextColor={colors.textTertiary}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={100}
+          />
+          <Text style={[styles.charCount, title.length < 2 && title.length > 0 && { color: '#FF4B4B' }]}>
+            {title.length}/100
+          </Text>
+        </View>
 
         <View style={styles.divider} />
 
-        {/* Content */}
-        <TextInput
-          style={styles.contentInput}
-          placeholder={'내용을 입력하세요...\n\n걷기 경험, 질문, 추천 등 자유롭게 작성해주세요.'}
-          placeholderTextColor={colors.textTertiary}
-          value={content}
-          onChangeText={setContent}
-          multiline
-          textAlignVertical="top"
-        />
+        {/* Content + 글자수 */}
+        <View style={styles.inputSection}>
+          <TextInput
+            style={styles.contentInput}
+            placeholder={'내용을 입력하세요 (5~5000자)\n\n걷기 경험, 질문, 추천 등 자유롭게 작성해주세요.'}
+            placeholderTextColor={colors.textTertiary}
+            value={content}
+            onChangeText={setContent}
+            multiline
+            textAlignVertical="top"
+            maxLength={5000}
+          />
+          <Text style={[styles.charCount, content.length < 5 && content.length > 0 && { color: '#FF4B4B' }]}>
+            {content.length}/5000
+          </Text>
+        </View>
 
         {/* Images preview */}
         {(existingImages.length > 0 || images.length > 0) && (
@@ -269,14 +280,19 @@ const styles = StyleSheet.create({
   categoryChipLabelActive: { color: '#FFFFFF' },
   categoryChipDesc: { fontSize: 10, color: colors.textTertiary },
 
+  inputSection: { position: 'relative' },
   titleInput: {
     fontSize: 18, fontWeight: '600', color: colors.textPrimary,
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingHorizontal: 20, paddingVertical: 12, paddingRight: 60,
   },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#F2F4F6', marginHorizontal: 20 },
   contentInput: {
     fontSize: 15, color: colors.textPrimary, lineHeight: 24,
     paddingHorizontal: 20, paddingVertical: 16, minHeight: 200,
+  },
+  charCount: {
+    position: 'absolute', right: 20, bottom: 8,
+    fontSize: 11, color: colors.textTertiary,
   },
 
   // Image preview

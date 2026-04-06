@@ -387,14 +387,19 @@ export default function PostDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={[s.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={insets.top}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
 
-      {/* Header */}
+      {/* Header — 즐겨찾기 + 더보기 */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Text style={s.backIcon}>←</Text></TouchableOpacity>
         <Text style={s.headerTitle}>게시글</Text>
-        <TouchableOpacity style={s.moreBtn} onPress={() => setShowPostSheet(true)}><Text style={s.moreIcon}>···</Text></TouchableOpacity>
+        <View style={s.headerRight}>
+          <TouchableOpacity onPress={handleBookmark} activeOpacity={0.6} style={s.headerIconBtn}>
+            <Text style={[s.headerIconText, post?.is_bookmarked && { color: '#F59E0B' }]}>{post?.is_bookmarked ? '★' : '☆'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.moreBtn} onPress={() => setShowPostSheet(true)}><Text style={s.moreIcon}>···</Text></TouchableOpacity>
+        </View>
       </View>
 
       {/* Content + Comments in FlatList for keyboard handling */}
@@ -439,18 +444,15 @@ export default function PostDetailScreen() {
                     ))}
                   </View>
                 )}
-                {/* Action bar — 심플 텍스트 아이콘 */}
+                {/* Action bar */}
                 <View style={s.actionBar}>
                   <TouchableOpacity style={s.actionItem} onPress={handleLike} activeOpacity={0.6}>
                     <Text style={[s.actionIcon, post.is_liked && { color: '#FF4B4B' }]}>{post.is_liked ? '♥' : '♡'}</Text>
                     <Text style={[s.actionCount, post.is_liked && { color: '#FF4B4B' }]}>{post.like_count}</Text>
                   </TouchableOpacity>
-                  <View style={s.actionItem}>
-                    <Text style={s.actionIcon}>◻</Text>
+                  <TouchableOpacity style={s.actionItem} onPress={() => inputRef.current?.focus()} activeOpacity={0.6}>
+                    <Text style={s.actionIcon}>○</Text>
                     <Text style={s.actionCount}>{post.comment_count}</Text>
-                  </View>
-                  <TouchableOpacity style={s.actionItem} onPress={handleBookmark} activeOpacity={0.6}>
-                    <Text style={[s.actionIcon, post.is_bookmarked && { color: '#F59E0B' }]}>{post.is_bookmarked ? '★' : '☆'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionItem} onPress={handleShare} activeOpacity={0.6}>
                     <Text style={s.actionIcon}>↗</Text>
@@ -527,6 +529,9 @@ const s = StyleSheet.create({
   backBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 18, color: colors.textPrimary },
   headerTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerIconBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  headerIconText: { fontSize: 20, color: colors.textSecondary },
   moreBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
   moreIcon: { fontSize: 16, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1 },
   categoryRow: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },

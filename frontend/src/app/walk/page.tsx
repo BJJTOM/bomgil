@@ -303,23 +303,12 @@ export default function WalkPage() {
     <div className="fixed inset-0 bg-[#111] flex flex-col z-50">
       <div className="flex-1 relative">
         <MapView
+          key="walk-map"
           center={currentPos || undefined}
           zoom={16}
           theme="dark"
           pathCoordinates={pathCoords}
-          markers={
-            currentPos
-              ? [
-                  {
-                    id: 999,
-                    lat: currentPos.lat,
-                    lng: currentPos.lng,
-                    title: t("walk.currentLocation"),
-                    emoji: "📍",
-                  },
-                ]
-              : []
-          }
+          markers={[]}
           className="w-full h-full"
         />
 

@@ -7,6 +7,10 @@ class Tag(models.Model):
     name_en = models.CharField(max_length=30, blank=True)
     name_ja = models.CharField(max_length=30, blank=True)
 
+    class Meta:
+        verbose_name = "태그"
+        verbose_name_plural = "태그"
+
     def __str__(self):
         return self.name
 
@@ -85,6 +89,8 @@ class Trail(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "코스"
+        verbose_name_plural = "코스"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["region"]),
@@ -108,3 +114,5 @@ class TrailLike(models.Model):
 
     class Meta:
         unique_together = ["user", "trail"]
+        verbose_name = "코스 좋아요"
+        verbose_name_plural = "코스 좋아요"

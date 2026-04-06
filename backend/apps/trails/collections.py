@@ -20,6 +20,8 @@ class Collection(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "컬렉션"
+        verbose_name_plural = "컬렉션"
 
     def __str__(self):
         return self.title

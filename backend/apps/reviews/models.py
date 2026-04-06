@@ -27,6 +27,8 @@ class Review(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "리뷰"
+        verbose_name_plural = "리뷰"
 
     def __str__(self):
         return f"{self.trail.title} - {self.author.nickname} ({self.rating})"
@@ -39,6 +41,8 @@ class ReviewImage(models.Model):
 
     class Meta:
         ordering = ["order"]
+        verbose_name = "리뷰 이미지"
+        verbose_name_plural = "리뷰 이미지"
 
 
 class ReviewHelpful(models.Model):
@@ -50,3 +54,5 @@ class ReviewHelpful(models.Model):
 
     class Meta:
         unique_together = ["user", "review"]
+        verbose_name = "리뷰 도움됨"
+        verbose_name_plural = "리뷰 도움됨"

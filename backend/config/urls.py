@@ -6,7 +6,7 @@ from django.urls import include, path
 from apps.trails.health import HealthCheckView
 
 urlpatterns = [
-    path("moru-manage-x9k2/", admin.site.urls),
+    path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/trails/", include("apps.trails.urls")),
     path("api/v1/spots/", include("apps.spots.urls")),

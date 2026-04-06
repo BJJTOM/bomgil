@@ -202,8 +202,12 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: {
       Animated.timing(scaleAnim, { toValue: 1.3, duration: 80, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start();
-    await api.post(`/community/posts/comments/${comment.id}/like/`);
-    queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+    try {
+      await api.post(`/community/posts/comments/${comment.id}/like/`);
+      queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+    } catch {
+      queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+    }
   };
 
   const handleDelete = () => {
@@ -346,7 +350,7 @@ export default function PostDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuthStore();
-  const { postId } = route.params;
+  const postId = route.params?.postId;
 
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; nickname: string } | null>(null);
@@ -362,6 +366,7 @@ export default function PostDetailScreen() {
       const { data } = await api.get(`/community/posts/${postId}/`);
       return data;
     },
+    enabled: !!postId,
   });
 
   const isMine = post && user?.id === post.author;
@@ -606,7 +611,7 @@ export default function PostDetailScreen() {
             multiline
             maxLength={1000}
             editable={isAuthenticated}
-            onFocus={() => { if (!isAuthenticated) navigation.navigate('Login'); }}
+            onPressIn={() => { if (!isAuthenticated) navigation.navigate('Login'); }}
           />
           <TouchableOpacity
             style={[styles.sendBtn, !commentText.trim() && styles.sendBtnDisabled]}

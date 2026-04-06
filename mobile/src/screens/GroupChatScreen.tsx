@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,7 +33,8 @@ export default function GroupChatScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const { groupId, groupName } = route.params;
+  const groupId = route.params?.groupId;
+  const groupName = route.params?.groupName ?? '채팅';
 
   const [text, setText] = useState('');
   const flatListRef = useRef<FlatList>(null);
@@ -41,10 +43,11 @@ export default function GroupChatScreen() {
     queryKey: ['group-messages', groupId],
     queryFn: async () => {
       const { data } = await api.get(`/community/groups/${groupId}/messages/`);
-      const msgs = data.results ?? data;
+      const msgs = Array.isArray(data) ? data : (data.results ?? []);
       return [...msgs].reverse();
     },
     refetchInterval: 5000,
+    enabled: !!groupId,
   });
 
   const handleSend = async () => {
@@ -55,7 +58,10 @@ export default function GroupChatScreen() {
     try {
       await api.post(`/community/groups/${groupId}/messages/create/`, { content: msg });
       refetch();
-    } catch {}
+    } catch {
+      Alert.alert('오류', '메시지 전송에 실패했습니다.');
+      setText(msg);
+    }
   };
 
   useEffect(() => {

@@ -21,7 +21,7 @@ from .serializers import (
 class TrailViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     filterset_fields = ["region", "country", "difficulty", "best_season", "status", "tags"]
-    search_fields = ["title", "description", "region"]
+    search_fields = ["title", "description", "region", "tags__name", "tags__name_en"]
     ordering_fields = ["created_at", "like_count", "distance_km"]
     ordering = ["-created_at"]
 

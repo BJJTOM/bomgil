@@ -51,8 +51,8 @@ const TAB_CONFIG: {
 }[] = [
   { name: 'Home', label: '홈', icon: '⌂', component: HomeScreen },
   { name: 'Explore', label: '탐색', icon: '⊕', component: ExploreScreen },
-  { name: 'Community', label: '커뮤니티', icon: '⊞', component: CommunityScreen },
   { name: 'Activity', label: '활동', icon: '◈', component: ActivityScreen },
+  { name: 'Community', label: '커뮤니티', icon: '⊞', component: CommunityScreen },
   { name: 'Settings', label: 'MY', icon: '⊙', component: SettingsScreen },
 ];
 

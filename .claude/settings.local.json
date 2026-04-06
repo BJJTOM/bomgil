@@ -69,7 +69,9 @@
       "Read(//Users/tom/**)",
       "Bash(grep \"4168\\\\|$\\(adb shell pidof com.roamiapp\\)\")",
       "Bash(vercel ls:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(curl -s \"https://api.moruwalk.com/api/v1/trails/\")",
+      "Bash(curl -s \"https://api.moruwalk.com/api/v1/spots/?trail=251\")"
     ]
   }
 }

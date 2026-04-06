@@ -33,6 +33,7 @@ export default function WalkPage() {
   const [elapsed, setElapsed] = useState(0);
   const [gpsReady, setGpsReady] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [showStopModal, setShowStopModal] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(true);
 
   const watchIdRef = useRef<number | null>(null);
@@ -425,7 +426,7 @@ export default function WalkPage() {
           ) : (
             <>
               <button
-                onClick={completeWalk}
+                onClick={() => setShowStopModal(true)}
                 className="w-[60px] h-[60px] rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition-transform"
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -447,6 +448,46 @@ export default function WalkPage() {
           )}
         </div>
       </div>
+
+      {/* Stop Confirmation Modal */}
+      {showStopModal && (
+        <div className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center px-8">
+          <div className="bg-[#1a1a1a] rounded-[24px] p-7 w-full max-w-[340px] text-center">
+            <div className="w-14 h-14 rounded-full bg-white/6 flex items-center justify-center mx-auto mb-4">
+              <span className="text-[28px]">🚶</span>
+            </div>
+            <h3 className="text-[18px] font-bold text-white mb-5">걷기를 종료할까요?</h3>
+            <div className="flex bg-white/4 rounded-2xl py-4 mb-6">
+              <div className="flex-1 text-center">
+                <div className="text-[18px] font-bold text-white">{distance.toFixed(2)}</div>
+                <div className="text-[11px] text-white/40">km</div>
+              </div>
+              <div className="w-px h-7 bg-white/8 self-center" />
+              <div className="flex-1 text-center">
+                <div className="text-[18px] font-bold text-white">{formatTime(elapsed)}</div>
+                <div className="text-[11px] text-white/40">시간</div>
+              </div>
+              <div className="w-px h-7 bg-white/8 self-center" />
+              <div className="flex-1 text-center">
+                <div className="text-[18px] font-bold text-white">{Math.round(distance * 1300).toLocaleString()}</div>
+                <div className="text-[11px] text-white/40">걸음</div>
+              </div>
+            </div>
+            <button
+              onClick={() => { setShowStopModal(false); completeWalk(); }}
+              className="w-full py-4 bg-red-500 text-white rounded-[14px] text-[16px] font-bold mb-2.5"
+            >
+              종료하기
+            </button>
+            <button
+              onClick={() => setShowStopModal(false)}
+              className="w-full py-3.5 text-white/50 text-[15px] font-medium"
+            >
+              계속 걷기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

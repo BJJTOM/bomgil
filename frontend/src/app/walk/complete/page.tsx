@@ -98,7 +98,7 @@ function WalkCompleteContent() {
           {/* Brand */}
           <div className="px-6 pt-6 pb-2">
             <span className="text-[#A8E6CF]/60 text-[12px] font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              ROAMI
+              MORU
             </span>
           </div>
 

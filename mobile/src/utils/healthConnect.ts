@@ -157,22 +157,39 @@ export async function getWalkSessions(days: number = 30): Promise<HealthWalkSess
         }
       } catch {}
 
-      // Read exercise route (GPS)
+      // Read exercise route (GPS) — try multiple field names
       let trackPoints: { lat: number; lng: number; time: string; ele?: number }[] = [];
       try {
-        if ((session as any).exerciseRoute?.route) {
-          trackPoints = (session as any).exerciseRoute.route.map((p: any) => ({
-            lat: p.latitude,
-            lng: p.longitude,
-            time: p.time,
-            ele: p.altitude || null,
-          }));
+        const route = (session as any).exerciseRoute?.route
+          || (session as any).route
+          || (session as any).exerciseRoute?.locations
+          || (session as any).locations;
+        if (route && Array.isArray(route)) {
+          trackPoints = route.map((p: any) => ({
+            lat: p.latitude || p.lat || 0,
+            lng: p.longitude || p.lng || 0,
+            time: p.time || p.timestamp || sessionStart,
+            ele: p.altitude || p.elevation || p.ele || null,
+          })).filter((p: any) => p.lat !== 0 && p.lng !== 0);
         }
       } catch {}
 
       const dateLabel = new Date(sessionStart).toLocaleDateString('ko-KR', {
         month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
       });
+
+      // Fallback: estimate steps from distance if steps not available
+      if (totalSteps === 0 && totalDistance > 0) {
+        totalSteps = Math.round(totalDistance * 1500); // ~1500 steps per km
+      }
+      // Fallback: estimate calories from distance
+      if (totalCalories === 0 && totalDistance > 0) {
+        totalCalories = Math.round(totalDistance * 75);
+      }
+      // Fallback: estimate distance from duration if not available
+      if (totalDistance === 0 && durationMs > 0) {
+        totalDistance = (durationMs / 3600000) * 4.5; // ~4.5 km/h walking speed
+      }
 
       results.push({
         id: (session as any).metadata?.id || `hc_${Date.now()}_${results.length}`,

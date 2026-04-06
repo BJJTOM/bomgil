@@ -19,6 +19,7 @@ interface Props {
   country?: string;
   height?: number;
   spots?: SpotMarker[];
+  theme?: 'light' | 'dark';
 }
 
 class MapErrorBoundary extends React.Component<
@@ -99,6 +100,7 @@ export default function SafeMapView({
   country,
   height = 220,
   spots = [],
+  theme = 'light',
 }: Props) {
   const fallback = (
     <MapPlaceholder region={region} country={country} lat={lat} lng={lng} />
@@ -161,7 +163,7 @@ export default function SafeMapView({
       <MapErrorBoundary fallback={fallback}>
         <MapView
           style={{ flex: 1 }}
-          styleURL="mapbox://styles/mapbox/outdoors-v12"
+          styleURL={theme === 'dark' ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/outdoors-v12"}
           scrollEnabled={true}
           zoomEnabled={true}
           pitchEnabled={false}
@@ -190,23 +192,23 @@ export default function SafeMapView({
           {/* Path lines — triple-line premium effect */}
           {pathGeoJSON && (
             <ShapeSource id="pathSource" shape={pathGeoJSON}>
-              {/* Outer glow (subtle shadow) */}
+              {/* Outer glow */}
               <LineLayer
                 id="pathLineGlow"
                 style={{
-                  lineColor: '#2D4A2E',
+                  lineColor: theme === 'dark' ? '#4ADE80' : '#2D4A2E',
                   lineWidth: 14,
-                  lineOpacity: 0.1,
+                  lineOpacity: theme === 'dark' ? 0.15 : 0.1,
                   lineCap: 'round',
                   lineJoin: 'round',
                   lineBlur: 4,
                 }}
               />
-              {/* White border */}
+              {/* White/dark border */}
               <LineLayer
                 id="pathLineBorder"
                 style={{
-                  lineColor: '#FFFFFF',
+                  lineColor: theme === 'dark' ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
                   lineWidth: 8,
                   lineOpacity: 0.9,
                   lineCap: 'round',
@@ -214,11 +216,11 @@ export default function SafeMapView({
                 }}
                 aboveLayerID="pathLineGlow"
               />
-              {/* Main route line (brand green) */}
+              {/* Main route line */}
               <LineLayer
                 id="pathLine"
                 style={{
-                  lineColor: '#2D4A2E',
+                  lineColor: theme === 'dark' ? '#4ADE80' : '#2D4A2E',
                   lineWidth: 4.5,
                   lineCap: 'round',
                   lineJoin: 'round',

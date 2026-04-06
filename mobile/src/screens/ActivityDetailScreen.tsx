@@ -72,9 +72,7 @@ export default function ActivityDetailScreen() {
 
   // Load extra data from AsyncStorage
   useEffect(() => {
-    if (taggedPhotos.length === 0 && walkSpots.length === 0) {
-      loadExtraData();
-    }
+    loadExtraData();
   }, []);
 
   const loadExtraData = async () => {
@@ -82,9 +80,19 @@ export default function ActivityDetailScreen() {
       // Try exact ID match first
       let raw = activity?.id ? await AsyncStorage.getItem(`activity_${activity.id}_extra`) : null;
 
-      // Fallback: try latest (useful for just-completed walk flow)
-      if (!raw && route.params?.fromWalkComplete) {
+      // Fallback: always try latest if ID match fails
+      if (!raw) {
         raw = await AsyncStorage.getItem('activity_latest_extra');
+      }
+
+      // Fallback: scan all activity keys
+      if (!raw) {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const actKeys = allKeys.filter(k => k.startsWith('activity_') && k.endsWith('_extra') && k !== 'activity_latest_extra');
+        if (actKeys.length > 0) {
+          const sorted = actKeys.sort().reverse();
+          raw = await AsyncStorage.getItem(sorted[0]);
+        }
       }
 
       if (raw) {
@@ -297,7 +305,8 @@ export default function ActivityDetailScreen() {
               endLat={hasPath ? lastPoint?.lat : undefined}
               endLng={hasPath ? lastPoint?.lng : undefined}
               pathCoordinates={hasPath ? pathCoords : undefined}
-              height={220}
+              height={240}
+              theme="dark"
               spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
             />
           </View>

@@ -53,7 +53,8 @@
       "Bash(JAVA_HOME=\"/opt/homebrew/opt/openjdk@17\" ./gradlew assembleRelease)",
       "Bash(adb install:*)",
       "Bash(adb shell:*)",
-      "Bash(curl -s \"https://api.moruwalk.com/api/v1/activities/\")"
+      "Bash(curl -s \"https://api.moruwalk.com/api/v1/activities/\")",
+      "Bash(git commit:*)"
     ]
   }
 }

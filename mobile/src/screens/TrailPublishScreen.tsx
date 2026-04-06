@@ -79,14 +79,15 @@ export default function TrailPublishScreen() {
 
   const {
     pathData = [],
-    distance = 0,
-    duration = 0,
-    elevationGain = 0,
+    distance: autoDistance = 0,
+    duration: autoDuration = 0,
+    elevationGain: autoElevation = 0,
     spots: initialSpots = [],
     startLat = 0,
     startLng = 0,
     endLat = 0,
     endLng = 0,
+    manualMode = false,
   } = route.params || {};
 
   // Form state
@@ -100,6 +101,17 @@ export default function TrailPublishScreen() {
   const [coverImage, setCoverImage] = useState<any>(null);
   const [spots, setSpots] = useState<Spot[]>(initialSpots);
   const [submitting, setSubmitting] = useState(false);
+
+  // Manual mode fields
+  const [manualDistance, setManualDistance] = useState('');
+  const [manualDuration, setManualDuration] = useState('');
+  const [manualRegion, setManualRegion] = useState('');
+  const [startLocation, setStartLocation] = useState('');
+  const [endLocation, setEndLocation] = useState('');
+
+  const distance = manualMode ? (parseFloat(manualDistance) || 0) : autoDistance;
+  const duration = manualMode ? (parseInt(manualDuration, 10) || 0) : autoDuration;
+  const elevationGain = manualMode ? 0 : autoElevation;
 
   const toggleSeason = useCallback((val: string) => {
     setSeasons(prev =>
@@ -142,44 +154,45 @@ export default function TrailPublishScreen() {
       Alert.alert('필수 입력', '설명을 입력해주세요.');
       return;
     }
-    if (pathData.length < 2) {
+    if (!manualMode && pathData.length < 2) {
       Alert.alert('오류', '경로 데이터가 부족합니다.');
+      return;
+    }
+    if (manualMode && !manualDistance.trim()) {
+      Alert.alert('필수 입력', '거리를 입력해주세요.');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Round coordinates to 6 decimal places
-      const roundedPath = pathData.map((c: [number, number]) => [
-        parseFloat(c[0].toFixed(6)),
-        parseFloat(c[1].toFixed(6)),
-      ]);
-
       const payload: any = {
-        name: name.trim(),
+        title: name.trim(),
         description: description.trim(),
         difficulty,
         country,
         status: 'approved',
         distance_km: parseFloat(distance.toFixed(2)),
-        estimated_time_minutes: Math.max(1, Math.round(duration)),
-        elevation_gain_m: Math.round(elevationGain),
-        start_lat: parseFloat(startLat.toFixed(6)),
-        start_lng: parseFloat(startLng.toFixed(6)),
-        end_lat: parseFloat(endLat.toFixed(6)),
-        end_lng: parseFloat(endLng.toFixed(6)),
-        path_coordinates: roundedPath,
-        recommended_seasons: seasons,
-        transport_info: transport.trim() || undefined,
-        waypoints: spots.map((s, idx) => ({
-          name: s.name,
-          type: s.type,
-          description: s.description || '',
-          lat: parseFloat(s.lat.toFixed(6)),
-          lng: parseFloat(s.lng.toFixed(6)),
-          order: idx,
-        })),
+        estimated_minutes: Math.max(1, Math.round(duration)),
       };
+
+      if (manualMode) {
+        // Manual mode — text region, no path data
+        payload.region = manualRegion.trim() || undefined;
+      } else {
+        // GPS/draw mode — full path data
+        const roundedPath = pathData.map((c: [number, number]) => [
+          parseFloat(c[0].toFixed(6)),
+          parseFloat(c[1].toFixed(6)),
+        ]);
+        payload.path_data = { type: 'LineString', coordinates: roundedPath };
+        payload.start_lat = parseFloat(startLat.toFixed(6));
+        payload.start_lng = parseFloat(startLng.toFixed(6));
+        payload.end_lat = parseFloat(endLat.toFixed(6));
+        payload.end_lng = parseFloat(endLng.toFixed(6));
+        payload.elevation_gain = Math.round(elevationGain);
+      }
+
+      if (seasons.length > 0) payload.best_season = seasons[0];
 
       const { data } = await api.post('/trails/', payload);
       const trailId = data.id;
@@ -248,33 +261,93 @@ export default function TrailPublishScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
 
-        {/* 1. Map preview */}
-        <SafeMapView
-          lat={startLat}
-          lng={startLng}
-          endLat={endLat}
-          endLng={endLng}
-          pathCoordinates={pathData}
-          height={200}
-        />
+        {/* 1. Map preview (only if route data exists) */}
+        {!manualMode && pathData && pathData.length > 1 && (
+          <SafeMapView
+            lat={startLat}
+            lng={startLng}
+            endLat={endLat}
+            endLng={endLng}
+            pathCoordinates={pathData}
+            height={200}
+          />
+        )}
 
-        {/* 2. Auto stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>km</Text>
+        {/* 2. Stats — auto or manual */}
+        {manualMode ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>코스 상세</Text>
+
+            <Text style={styles.fieldLabel}>출발 지역 *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="예: 서울 종로구"
+              placeholderTextColor={colors.textTertiary}
+              value={manualRegion}
+              onChangeText={setManualRegion}
+            />
+
+            <Text style={styles.fieldLabel}>출발점</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="예: 경복궁역 3번 출구"
+              placeholderTextColor={colors.textTertiary}
+              value={startLocation}
+              onChangeText={setStartLocation}
+            />
+
+            <Text style={styles.fieldLabel}>도착점</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="예: 안국역 1번 출구"
+              placeholderTextColor={colors.textTertiary}
+              value={endLocation}
+              onChangeText={setEndLocation}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>거리 (km) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="3.5"
+                  placeholderTextColor={colors.textTertiary}
+                  value={manualDistance}
+                  onChangeText={setManualDistance}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>소요시간 (분) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="90"
+                  placeholderTextColor={colors.textTertiary}
+                  value={manualDuration}
+                  onChangeText={setManualDuration}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{durationLabel}</Text>
-            <Text style={styles.statLabel}>소요시간</Text>
+        ) : (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>km</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{durationLabel}</Text>
+              <Text style={styles.statLabel}>소요시간</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0'}m</Text>
+              <Text style={styles.statLabel}>고도</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0'}m</Text>
-            <Text style={styles.statLabel}>고도</Text>
-          </View>
-        </View>
+        )}
 
         {/* 3. Name */}
         <Text style={styles.fieldLabel}>코스 이름 *</Text>
@@ -450,6 +523,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',

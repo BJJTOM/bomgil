@@ -82,6 +82,7 @@ export default function SettingsScreen() {
               label: '내 활동 기록',
               onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
+            { icon: '🗺', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
             { icon: '❤️', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
             { icon: '📥', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
           ]

@@ -1,8 +1,9 @@
 import io
 import textwrap
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils.html import strip_tags
 from PIL import Image, ImageDraw, ImageFont
 from rest_framework import generics, permissions, status
@@ -38,17 +39,22 @@ class StoryCreateView(generics.CreateAPIView):
 
 
 class StoryDetailView(generics.RetrieveAPIView):
-    queryset = WalkStory.objects.select_related(
-        "author", "walk_plan__trail"
-    ).prefetch_related("photos", "companions_tagged")
     serializer_class = WalkStorySerializer
+
+    def get_queryset(self):
+        qs = WalkStory.objects.select_related(
+            "author", "walk_plan__trail"
+        ).prefetch_related("photos", "companions_tagged")
+        if self.request.user.is_authenticated:
+            return qs.filter(Q(is_public=True) | Q(author=self.request.user))
+        return qs.filter(is_public=True)
 
 
 class StoryLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        story = WalkStory.objects.get(pk=pk)
+        story = get_object_or_404(WalkStory, pk=pk)
         like, created = StoryLike.objects.get_or_create(user=request.user, story=story)
         if not created:
             like.delete()
@@ -78,7 +84,7 @@ class UserStoriesView(generics.ListAPIView):
 
     def get_queryset(self):
         from apps.accounts.models import CustomUser
-        user = CustomUser.objects.get(nickname=self.kwargs["nickname"])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return WalkStory.objects.filter(author=user, is_public=True).select_related(
             "author", "walk_plan__trail"
         ).prefetch_related("photos")
@@ -167,7 +173,7 @@ class StoryCommentCreateView(APIView):
             except StoryComment.DoesNotExist:
                 pass
 
-        story = WalkStory.objects.get(pk=pk)
+        story = get_object_or_404(WalkStory, pk=pk)
         comment = StoryComment.objects.create(
             story=story,
             author=request.user,
@@ -198,7 +204,7 @@ class CommentLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, comment_id):
-        comment = StoryComment.objects.get(pk=comment_id)
+        comment = get_object_or_404(StoryComment, pk=comment_id)
         like, created = CommentLike.objects.get_or_create(user=request.user, comment=comment)
         if not created:
             like.delete()
@@ -217,7 +223,7 @@ class CommentReplyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, comment_id):
-        parent = StoryComment.objects.get(pk=comment_id)
+        parent = get_object_or_404(StoryComment, pk=comment_id)
         content = strip_tags(request.data.get("content", "")).strip()
         if not content:
             return Response({"error": "내용을 입력해주세요."}, status=400)

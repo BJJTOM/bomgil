@@ -1,4 +1,5 @@
 from django.db.models import F
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,7 +29,7 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
         return ReviewSerializer
 
     def perform_create(self, serializer):
-        trail = Trail.objects.get(pk=self.kwargs["trail_id"])
+        trail = get_object_or_404(Trail, pk=self.kwargs["trail_id"])
         serializer.save(author=self.request.user, trail=trail)
 
     def create(self, request, *args, **kwargs):
@@ -53,7 +54,7 @@ class ReviewHelpfulView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        review = Review.objects.get(pk=pk)
+        review = get_object_or_404(Review, pk=pk)
         helpful, created = ReviewHelpful.objects.get_or_create(
             user=request.user, review=review
         )

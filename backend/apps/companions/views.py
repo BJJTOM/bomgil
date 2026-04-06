@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db.models import Avg, Count, Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -271,7 +272,7 @@ class UserCompanionReviewsView(generics.ListAPIView):
 
     def get_queryset(self):
         from apps.accounts.models import CustomUser
-        user = CustomUser.objects.get(nickname=self.kwargs["nickname"])
+        user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return CompanionReview.objects.filter(reviewed_user=user).select_related(
             "reviewer", "reviewed_user"
         )
@@ -340,7 +341,7 @@ class ChatMessageListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        room = ChatRoom.objects.get(pk=self.kwargs["room_id"])
+        room = get_object_or_404(ChatRoom, pk=self.kwargs["room_id"])
         if self.request.user not in room.participants.all():
             return ChatMessage.objects.none()
         return room.messages.select_related("sender")

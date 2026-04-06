@@ -54,7 +54,11 @@
       "Bash(adb install:*)",
       "Bash(adb shell:*)",
       "Bash(curl -s \"https://api.moruwalk.com/api/v1/activities/\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cat /Users/tom/Desktop/map_ai/mobile/src/api/*.ts)",
+      "Bash(mkdir -p /Users/tom/Desktop/map_ai/backend/apps/community)",
+      "Bash(touch /Users/tom/Desktop/map_ai/backend/apps/community/__init__.py)",
+      "Bash(adb logcat:*)"
     ]
   }
 }

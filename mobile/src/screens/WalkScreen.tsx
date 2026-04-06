@@ -266,6 +266,7 @@ export default function WalkScreen() {
     const trackPoints = engineRef.current.getTrackPoints();
 
     // Always save locally first (before API call), including trackPoints
+    console.log(`[Moru] Saving extra: spots=${spots.length}, photos=${taggedPhotos.length}, route=${routeCoords.length}, trackPts=${trackPoints.length}`);
     const extraData = JSON.stringify({
       spots,
       taggedPhotos,
@@ -273,8 +274,9 @@ export default function WalkScreen() {
       trackPoints,
     });
     const localKey = `activity_${Date.now()}_extra`;
-    await AsyncStorage.setItem(localKey, extraData).catch(() => {});
-    await AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {});
+    await AsyncStorage.setItem(localKey, extraData).catch((e) => console.log('[Moru] Save error:', e));
+    await AsyncStorage.setItem('activity_latest_extra', extraData).catch((e) => console.log('[Moru] Save latest error:', e));
+    console.log(`[Moru] Saved to ${localKey} and activity_latest_extra`);
 
     let activityId: string | number | null = null;
     if (isAuthenticated) {

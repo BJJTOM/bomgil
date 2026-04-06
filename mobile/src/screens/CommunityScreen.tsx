@@ -21,38 +21,6 @@ import { WalkStory } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { FadeInView } from '../components/FadeInView';
 
-function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => void }) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.3, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-
-  return (
-    <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        {isLiked ? (
-          <View style={styles.heartFilled} />
-        ) : (
-          <View style={styles.heartOutline} />
-        )}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
-
-function CommentIcon() {
-  return <View style={styles.commentIcon} />;
-}
-
-function ShareIcon() {
-  return <View style={styles.shareIcon} />;
-}
-
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
   happy: { emoji: '\u{1F60A}', label: '행복해요', bg: '#FFFBEB', text: '#B45309' },
   peaceful: { emoji: '☮️', label: '평화로워요', bg: '#EFF6FF', text: '#1D4ED8' },
@@ -125,6 +93,24 @@ export default function CommunityScreen() {
           </TouchableOpacity>
         )}
       </View>
+    );
+  };
+
+  const LikeLabel = ({ isLiked, onPress }: { isLiked: boolean; onPress: () => void }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const handlePress = () => {
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 1.3, duration: 100, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start();
+      onPress();
+    };
+    return (
+      <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
+        <Animated.Text style={[styles.actionLabel, { transform: [{ scale: scaleAnim }] }, isLiked && { color: '#ED4956' }]}>
+          {isLiked ? '♥' : '♡'} {'좋아요'}
+        </Animated.Text>
+      </TouchableOpacity>
     );
   };
 
@@ -235,21 +221,21 @@ export default function CommunityScreen() {
             </View>
           )}
 
-          {/* Action Bar — icons only, Instagram-style */}
+          {/* Action Bar — text labels */}
           <View style={styles.actionsRow}>
             <View style={styles.actionsLeft}>
-              <LikeButton isLiked={item.is_liked} onPress={() => handleLike(item.id)} />
+              <LikeLabel isLiked={item.is_liked} onPress={() => handleLike(item.id)} />
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => navigation.navigate('StoryDetail', { id: item.id })}
                 activeOpacity={0.7}>
-                <CommentIcon />
+                <Text style={styles.actionLabel}>{'\uD83D\uDCAC 댓글'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => handleShare(item)}
                 activeOpacity={0.7}>
-                <ShareIcon />
+                <Text style={styles.actionLabel}>{'⤴ 공유'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -555,7 +541,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // Actions — icons only, no text, no dividers
+  // Actions — text labels
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -565,50 +551,16 @@ const styles = StyleSheet.create({
   actionsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 12,
   },
   actionBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
-  actionIcon: {
-    fontSize: 20,
-  },
-  heartOutline: {
-    width: 22,
-    height: 20,
-    borderWidth: 2,
-    borderColor: '#262626',
-    borderRadius: 11,
-    transform: [{ rotate: '-45deg' }],
-  },
-  heartFilled: {
-    width: 22,
-    height: 20,
-    backgroundColor: '#ED4956',
-    borderRadius: 11,
-    transform: [{ rotate: '-45deg' }],
-  },
-  commentIcon: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: '#262626',
-    borderRadius: 10,
-    borderBottomLeftRadius: 2,
-  },
-  shareIcon: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 18,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#262626',
-    transform: [{ rotate: '45deg' }],
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E8E',
   },
 
   // Engagement — single line, small gray

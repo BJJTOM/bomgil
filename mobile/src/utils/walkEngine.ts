@@ -70,7 +70,7 @@ class KalmanFilter {
   private lat: number = 0;
   private lng: number = 0;
   private variance: number = -1; // Negative means uninitialized
-  private readonly minAccuracy = 3; // meters
+  private readonly minAccuracy = 2; // meters — trust GPS more
 
   update(
     lat: number,
@@ -118,9 +118,9 @@ export class WalkEngine {
   private lastSpeedSamples: number[] = [];
 
   // Constants
-  private readonly STEPS_PER_KM = 1350; // average walking
-  private readonly CALORIES_PER_KM = 65; // average walking
-  private readonly MIN_DISTANCE_FILTER = 0.003; // 3 meters — ignore GPS jitter
+  private readonly STEPS_PER_KM = 1500; // average walking (more realistic)
+  private readonly CALORIES_PER_KM = 75; // average walking (more realistic)
+  private readonly MIN_DISTANCE_FILTER = 0.002; // 2 meters — less aggressive filtering
 
   start() {
     this.startTime = Date.now();
@@ -246,7 +246,7 @@ export class WalkEngine {
     // Current pace (rolling average from recent points)
     let currentPace = 0;
     if (this.trackPoints.length >= 2) {
-      const recent = this.trackPoints.slice(-5);
+      const recent = this.trackPoints.slice(-10); // use more points for stability
       let recentDist = 0;
       let recentTime = 0;
       for (let i = 1; i < recent.length; i++) {
@@ -264,6 +264,10 @@ export class WalkEngine {
       if (recentDist > 0.001 && recentTime > 0) {
         currentPace = recentTime / 60 / recentDist;
       }
+    }
+    // Fallback to average pace if currentPace is 0 but we have distance
+    if (currentPace <= 0 && this.distance > 0.01 && this.activeTime > 0) {
+      currentPace = this.activeTime / 60 / this.distance;
     }
 
     const steps = Math.round(this.distance * this.STEPS_PER_KM);

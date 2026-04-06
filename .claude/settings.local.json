@@ -44,7 +44,15 @@
       "Read(//Users/tom/Desktop/**)",
       "Bash(git stash:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(adb devices:*)",
+      "Bash(scrcpy --max-size 1024 --window-title \"Moru - Galaxy\")",
+      "Bash(python3 -c \"import sys; [print\\(l[:100]\\) for l in sys.stdin]\")",
+      "Bash(python3:*)",
+      "Bash(npx react-native:*)",
+      "Bash(JAVA_HOME=\"/opt/homebrew/opt/openjdk@17\" ./gradlew assembleRelease)",
+      "Bash(adb install:*)",
+      "Bash(adb shell:*)"
     ]
   }
 }

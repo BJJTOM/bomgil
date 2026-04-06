@@ -160,7 +160,13 @@ export default function WalkScreen() {
   }, [stats.isAutoPaused]);
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => setIsBackground(s === 'background'));
+    const sub = AppState.addEventListener('change', (s) => {
+      setIsBackground(s === 'background');
+      // When returning to foreground, force stats and route update
+      if (s === 'active') {
+        setStats(engineRef.current.getStats());
+      }
+    });
     return () => sub.remove();
   }, []);
 
@@ -229,7 +235,7 @@ export default function WalkScreen() {
           setStats(engineRef.current.getStats());
         },
         () => {},
-        { enableHighAccuracy: true, distanceFilter: 3, timeout: 15000 },
+        { enableHighAccuracy: true, distanceFilter: 2, timeout: 15000 },
       );
     } catch {}
   }, []);
@@ -258,6 +264,19 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     const finalStats = engineRef.current.getStats();
     const trackPoints = engineRef.current.getTrackPoints();
+
+    // Always save locally first (before API call), including trackPoints
+    const extraData = JSON.stringify({
+      spots,
+      taggedPhotos,
+      routeCoords,
+      trackPoints,
+    });
+    const localKey = `activity_${Date.now()}_extra`;
+    await AsyncStorage.setItem(localKey, extraData).catch(() => {});
+    await AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {});
+
+    let activityId: string | number | null = null;
     if (isAuthenticated) {
       try {
         const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
@@ -273,20 +292,13 @@ export default function WalkScreen() {
           duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
           elevation_gain_m: finalStats.elevationGain,
         });
-        // Save spots, photos, and route locally
-        const extraData = JSON.stringify({ spots, taggedPhotos, routeCoords });
-        if (actRes?.data?.id) {
-          await AsyncStorage.setItem(`activity_${actRes.data.id}_extra`, extraData).catch(() => {});
+        activityId = actRes?.data?.id;
+        // Also save with actual ID for later retrieval
+        if (activityId) {
+          await AsyncStorage.setItem(`activity_${activityId}_extra`, extraData).catch(() => {});
         }
-        // Always save as latest too
-        await AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {});
       } catch (e) { console.log('Save error:', e); }
     }
-    // Also save even if not authenticated
-    try {
-      const extraData = JSON.stringify({ spots, taggedPhotos, routeCoords });
-      await AsyncStorage.setItem('activity_latest_extra', extraData);
-    } catch {}
     const goToComplete = () => {
       navigation.replace('WalkComplete', {
         distance: finalStats.distance.toFixed(2),
@@ -300,6 +312,7 @@ export default function WalkScreen() {
         spots,
         routeCoords,
         trackPoints: engineRef.current.getTrackPoints(),
+        activityId,
       });
     };
 

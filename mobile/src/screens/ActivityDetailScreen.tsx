@@ -59,22 +59,34 @@ export default function ActivityDetailScreen() {
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
 
-  // Load extra data from AsyncStorage — only exact ID match
+  // Load extra data from AsyncStorage — try ID match, then latest as fallback
   useEffect(() => {
-    if (activity?.id && (taggedPhotos.length === 0 && walkSpots.length === 0)) {
+    // Only load from storage if no data was passed via params
+    if (taggedPhotos.length === 0 && walkSpots.length === 0) {
       loadExtraData();
     }
   }, []);
 
   const loadExtraData = async () => {
     try {
-      const raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
+      // Try exact ID match first
+      let raw = activity?.id ? await AsyncStorage.getItem(`activity_${activity.id}_extra`) : null;
+
+      // Fallback: try latest (useful for just-completed walk flow)
+      if (!raw && route.params?.fromWalkComplete) {
+        raw = await AsyncStorage.getItem('activity_latest_extra');
+      }
+
       if (raw) {
         const extra = JSON.parse(raw);
         if (extra.taggedPhotos?.length) setTaggedPhotos(extra.taggedPhotos);
         if (extra.spots?.length) setWalkSpots(extra.spots);
         if (extra.routeCoords?.length && (!activity.track_points || activity.track_points.length === 0)) {
           activity.track_points = extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }));
+        }
+        // Also restore trackPoints if available
+        if (extra.trackPoints?.length && (!activity.track_points || activity.track_points.length === 0)) {
+          activity.track_points = extra.trackPoints;
         }
       }
     } catch (e) {

@@ -12,9 +12,4 @@ python manage.py collectstatic --no-input
 echo "=== Running migrations ==="
 python manage.py migrate --run-syncdb
 
-echo "=== Seeding data (fresh) ==="
-python manage.py seed_data --flush || echo "seed_data skipped"
-python manage.py seed_community || echo "seed_community skipped"
-python manage.py seed_activities || echo "seed_activities skipped"
-
 echo "=== Build complete ==="

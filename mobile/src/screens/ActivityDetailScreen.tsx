@@ -6,17 +6,22 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { ActivityTrack } from '../types';
+import SafeMapView from '../components/SafeMapView';
+
+const { width: SW } = Dimensions.get('window');
 
 function formatDuration(minutes: number | null) {
   if (!minutes) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h > 0 ? `${h}\uC2DC\uAC04 ${m}\uBD84` : `${m}\uBD84`;
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
 export default function ActivityDetailScreen() {
@@ -24,8 +29,16 @@ export default function ActivityDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const activity: ActivityTrack = route.params?.activity;
+  const taggedPhotos: any[] = route.params?.taggedPhotos || [];
 
   if (!activity) return null;
+
+  // Extract track points for map
+  const trackPoints = activity.track_points || [];
+  const pathCoords: [number, number][] = trackPoints.map((p: any) => [p.lng, p.lat]);
+  const hasPath = pathCoords.length >= 2;
+  const firstPoint = trackPoints[0];
+  const lastPoint = trackPoints[trackPoints.length - 1];
 
   const dateStr = activity.started_at
     ? new Date(activity.started_at).toLocaleDateString('ko-KR', {
@@ -60,18 +73,18 @@ export default function ActivityDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'\u2190'}</Text>
+          <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{'\uD65C\uB3D9 \uC0C1\uC138'}</Text>
+        <Text style={styles.headerTitle}>{'활동 상세'}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Title & Date */}
         <View style={styles.titleSection}>
-          <Text style={styles.actTitle}>{activity.title || '\uAC78\uAE30 \uAE30\uB85D'}</Text>
+          <Text style={styles.actTitle}>{activity.title || '걸기 기록'}</Text>
           <Text style={styles.actDate}>{dateStr}</Text>
-          {timeStr ? <Text style={styles.actTime}>{timeStr} {'\uC2DC\uC791'}</Text> : null}
+          {timeStr ? <Text style={styles.actTime}>{timeStr} {'시작'}</Text> : null}
         </View>
 
         {/* Big distance */}
@@ -83,14 +96,14 @@ export default function ActivityDetailScreen() {
         {/* Main stats grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>{'\u23F1'}</Text>
+            <Text style={styles.statIcon}>{'⏱'}</Text>
             <Text style={styles.statVal}>{formatDuration(duration)}</Text>
-            <Text style={styles.statLabel}>{'\uC2DC\uAC04'}</Text>
+            <Text style={styles.statLabel}>{'시간'}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>{'\uD83D\uDC63'}</Text>
             <Text style={styles.statVal}>{steps.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>{'\uAC78\uC74C'}</Text>
+            <Text style={styles.statLabel}>{'걸음'}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>{'\uD83D\uDD25'}</Text>
@@ -102,20 +115,52 @@ export default function ActivityDetailScreen() {
         {/* Secondary stats */}
         <View style={styles.secondaryGrid}>
           <View style={styles.secItem}>
-            <Text style={styles.secLabel}>{'\uD3C9\uADE0 \uD398\uC774\uC2A4'}</Text>
+            <Text style={styles.secLabel}>{'평균 페이스'}</Text>
             <Text style={styles.secVal}>{formatPace(pace)}</Text>
           </View>
           <View style={styles.secDivider} />
           <View style={styles.secItem}>
-            <Text style={styles.secLabel}>{'\uACE0\uB3C4 \uC0C1\uC2B9'}</Text>
+            <Text style={styles.secLabel}>{'고도 상승'}</Text>
             <Text style={styles.secVal}>{elevation > 0 ? `+${Math.round(elevation)}m` : '-'}</Text>
           </View>
           <View style={styles.secDivider} />
           <View style={styles.secItem}>
-            <Text style={styles.secLabel}>{'\uC18C\uC2A4'}</Text>
+            <Text style={styles.secLabel}>{'소스'}</Text>
             <Text style={styles.secVal}>{activity.source === 'phone_gps' ? 'GPS' : activity.source}</Text>
           </View>
         </View>
+
+        {/* Route map */}
+        {hasPath && (
+          <View style={styles.mapSection}>
+            <Text style={styles.mapSectionTitle}>경로</Text>
+            <SafeMapView
+              lat={firstPoint?.lat || 37.5665}
+              lng={firstPoint?.lng || 126.978}
+              endLat={lastPoint?.lat}
+              endLng={lastPoint?.lng}
+              pathCoordinates={pathCoords}
+              height={200}
+            />
+          </View>
+        )}
+
+        {/* Tagged photos */}
+        {taggedPhotos.length > 0 && (
+          <View style={styles.photosSection}>
+            <Text style={styles.mapSectionTitle}>사진 ({taggedPhotos.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {taggedPhotos.map((photo: any, idx: number) => (
+                <Image
+                  key={idx}
+                  source={{ uri: photo.uri }}
+                  style={styles.photoThumb}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -251,5 +296,25 @@ const styles = StyleSheet.create({
     width: 1,
     height: 28,
     backgroundColor: '#F2F4F6',
+  },
+  mapSection: {
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  mapSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 10,
+  },
+  photosSection: {
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  photoThumb: {
+    width: SW * 0.4,
+    height: SW * 0.4,
+    borderRadius: 12,
+    marginRight: 10,
   },
 });

@@ -66,6 +66,8 @@ interface Spot {
   description: string;
   lat: number;
   lng: number;
+  imageUrl?: string;
+  location?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,8 @@ export default function TrailPublishScreen() {
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotType, setNewSpotType] = useState('photo');
   const [newSpotDesc, setNewSpotDesc] = useState('');
+  const [newSpotImageUrl, setNewSpotImageUrl] = useState('');
+  const [newSpotLocation, setNewSpotLocation] = useState('');
 
   // Manual mode fields
   const [manualDistance, setManualDistance] = useState('');
@@ -153,12 +157,16 @@ export default function TrailPublishScreen() {
       description: newSpotDesc.trim(),
       lat: startLat || 0,
       lng: startLng || 0,
+      imageUrl: newSpotImageUrl.trim() || undefined,
+      location: newSpotLocation.trim() || undefined,
     }]);
     setNewSpotName('');
     setNewSpotDesc('');
     setNewSpotType('photo');
+    setNewSpotImageUrl('');
+    setNewSpotLocation('');
     setShowSpotModal(false);
-  }, [newSpotName, newSpotType, newSpotDesc, startLat, startLng]);
+  }, [newSpotName, newSpotType, newSpotDesc, newSpotImageUrl, newSpotLocation, startLat, startLng]);
 
   const removeSpot = useCallback((idx: number) => {
     setSpots(prev => prev.filter((_, i) => i !== idx));
@@ -198,7 +206,11 @@ export default function TrailPublishScreen() {
       if (manualRegion.trim()) payload.region = manualRegion.trim();
 
       if (manualMode) {
-        // Manual mode — no path data
+        // Manual mode — send default coords (Seoul) if none provided
+        payload.start_lat = '37.5665';
+        payload.start_lng = '126.9780';
+        payload.end_lat = '37.5665';
+        payload.end_lng = '126.9780';
       } else {
         // GPS/draw mode — full path data
         const roundedPath = pathData.map((c: [number, number]) => [
@@ -510,8 +522,14 @@ export default function TrailPublishScreen() {
             </View>
             <View style={styles.spotInfo}>
               <Text style={styles.spotName}>{spot.name}</Text>
+              {spot.location ? (
+                <Text style={styles.spotDesc}>{'📍 '}{spot.location}</Text>
+              ) : null}
               {spot.description ? (
                 <Text style={styles.spotDesc}>{spot.description}</Text>
+              ) : null}
+              {spot.imageUrl ? (
+                <Text style={[styles.spotDesc, { color: '#378ADD' }]}>{'🖼 이미지 첨부'}</Text>
               ) : null}
             </View>
             <TouchableOpacity
@@ -566,6 +584,22 @@ export default function TrailPublishScreen() {
               placeholderTextColor={colors.textTertiary}
               value={newSpotDesc}
               onChangeText={setNewSpotDesc}
+            />
+            <TextInput
+              style={[styles.input, { marginTop: 8 }]}
+              placeholder="위치 (선택) 예: 안국역 2번 출구 앞"
+              placeholderTextColor={colors.textTertiary}
+              value={newSpotLocation}
+              onChangeText={setNewSpotLocation}
+            />
+            <TextInput
+              style={[styles.input, { marginTop: 8 }]}
+              placeholder="이미지 URL (선택)"
+              placeholderTextColor={colors.textTertiary}
+              value={newSpotImageUrl}
+              onChangeText={setNewSpotImageUrl}
+              autoCapitalize="none"
+              keyboardType="url"
             />
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity

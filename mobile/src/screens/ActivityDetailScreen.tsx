@@ -111,14 +111,17 @@ export default function ActivityDetailScreen() {
     } catch {}
   };
 
-  // Fetch full activity detail (with track_points) from API
+  // Fetch full activity detail (with track_points, steps, etc) from API
   useEffect(() => {
     if (activity?.id) {
       api.get(`/activities/${activity.id}/`).then(res => {
         if (res.data) {
-          setActivity((prev: any) => ({ ...prev, ...res.data }));
+          setActivity(res.data);
+          setDetailLoaded(true);
         }
-      }).catch(() => {});
+      }).catch(() => setDetailLoaded(true));
+    } else {
+      setDetailLoaded(true);
     }
   }, []);
 
@@ -185,6 +188,7 @@ export default function ActivityDetailScreen() {
   const [tags, setTags] = useState('');
   const [transport, setTransport] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [detailLoaded, setDetailLoaded] = useState(false);
 
   if (!activity) return null;
 

@@ -205,6 +205,11 @@ export default function ActivityDetailScreen() {
   };
 
   const shareCourse = async () => {
+    const token = require('../stores/auth').useAuthStore.getState().accessToken;
+    if (!token) {
+      Alert.alert('로그인 필요', '코스를 등록하려면 로그인해주세요.');
+      return;
+    }
     if (!hasPath) {
       Alert.alert('오류', '경로 데이터가 필요합니다.');
       return;

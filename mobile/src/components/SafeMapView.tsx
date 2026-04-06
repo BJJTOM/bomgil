@@ -2,6 +2,13 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 
+interface SpotMarker {
+  lat: number;
+  lng: number;
+  name: string;
+  type?: string;
+}
+
 interface Props {
   lat: number;
   lng: number;
@@ -11,6 +18,7 @@ interface Props {
   region?: string;
   country?: string;
   height?: number;
+  spots?: SpotMarker[];
 }
 
 class MapErrorBoundary extends React.Component<
@@ -90,6 +98,7 @@ export default function SafeMapView({
   region,
   country,
   height = 220,
+  spots = [],
 }: Props) {
   const fallback = (
     <MapPlaceholder region={region} country={country} lat={lat} lng={lng} />
@@ -250,6 +259,28 @@ export default function SafeMapView({
               </View>
             </PointAnnotation>
           )}
+
+          {/* Spot markers */}
+          {spots.map((spot, i) => (
+            <PointAnnotation
+              key={`spot-${i}`}
+              id={`spot-${i}`}
+              coordinate={[spot.lng, spot.lat]}>
+              <View style={[styles.spotPin, {
+                backgroundColor: spot.type === 'restaurant' ? '#D85A30' :
+                  spot.type === 'cafe' ? '#378ADD' :
+                  spot.type === 'photo' ? '#7F77DD' :
+                  spot.type === 'view' ? '#EF9F27' : '#888780'
+              }]}>
+                <Text style={styles.spotPinText}>
+                  {spot.type === 'restaurant' ? '🍴' :
+                   spot.type === 'cafe' ? '☕' :
+                   spot.type === 'photo' ? '📸' :
+                   spot.type === 'view' ? '👀' : '📍'}
+                </Text>
+              </View>
+            </PointAnnotation>
+          ))}
         </MapView>
       </MapErrorBoundary>
     </View>
@@ -339,6 +370,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#fff',
+  },
+
+  spotPin: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  spotPinText: {
+    fontSize: 13,
   },
 
   // Legacy end marker (keep for compat)

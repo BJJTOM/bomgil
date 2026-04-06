@@ -201,6 +201,13 @@ export default function TrailPublishScreen() {
       return;
     }
 
+    // Check auth
+    const token = require('../stores/auth').useAuthStore.getState().accessToken;
+    if (!token) {
+      Alert.alert('로그인 필요', '코스를 등록하려면 로그인해주세요.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const tagList = tags.split('#').map((t: string) => t.trim()).filter(Boolean);

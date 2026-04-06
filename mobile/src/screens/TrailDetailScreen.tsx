@@ -433,6 +433,7 @@ function TrailDetailScreenInner() {
               region={trail.region}
               country={trail.country}
               height={260}
+              spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
           ) : (
             <View style={styles.mapFallback}>

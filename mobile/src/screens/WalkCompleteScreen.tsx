@@ -52,6 +52,7 @@ export default function WalkCompleteScreen() {
     spots = [],
     routeCoords = [],
     trackPoints = [],
+    activityId = null,
   } = route.params || {};
 
   const totalSeconds =
@@ -214,6 +215,7 @@ export default function WalkCompleteScreen() {
               style={styles.secondaryBtn}
               onPress={() => navigation.navigate('ActivityDetail', {
                 activity: {
+                  id: activityId,
                   title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 도보`,
                   distance_km: distance,
                   duration_minutes: Math.round(totalSeconds / 60),
@@ -227,6 +229,7 @@ export default function WalkCompleteScreen() {
                 },
                 taggedPhotos,
                 spots,
+                fromWalkComplete: true,
               })}
               activeOpacity={0.85}>
               <Text style={styles.secondaryBtnText}>활동 상세</Text>

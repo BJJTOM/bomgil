@@ -40,9 +40,15 @@ export default function RegisterPage() {
   const updateField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(e);
+
   const handleSubmit = async () => {
     setError("");
 
+    if (!isValidEmail(form.email)) {
+      setError("올바른 이메일 주소를 입력해주세요");
+      return;
+    }
     if (!form.nickname.trim()) {
       setError(t("register.nicknameRequired"));
       return;

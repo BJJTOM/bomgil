@@ -126,9 +126,7 @@ export default function TrailCreateScreen() {
         } as any);
       }
 
-      await api.post('/trails/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      await api.post('/trails/', formData);
 
       Alert.alert('성공', '코스가 등록되었습니다!', [
         { text: '확인', onPress: () => navigation.goBack() },

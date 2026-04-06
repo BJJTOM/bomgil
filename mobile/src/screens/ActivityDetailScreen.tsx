@@ -33,6 +33,14 @@ const SPOT_COLORS: Record<string, string> = {
   view: '#EF9F27',
 };
 
+const SPOT_LABELS: Record<string, string> = {
+  restaurant: '맛집',
+  cafe: '카페',
+  photo: '포토',
+  rest: '휴식',
+  view: '전망',
+};
+
 const DIFFICULTY_OPTIONS = ['쉬움', '보통', '어려움'];
 const COURSE_TYPE_OPTIONS = ['편도', '왕복', '순환'];
 const SEASON_OPTIONS = ['봄', '여름', '가을', '겨울'];
@@ -105,9 +113,9 @@ export default function ActivityDetailScreen() {
 
   // Fetch full activity detail (with track_points) from API
   useEffect(() => {
-    if (activity?.id && (!activity.track_points || activity.track_points.length === 0)) {
+    if (activity?.id) {
       api.get(`/activities/${activity.id}/`).then(res => {
-        if (res.data?.track_points?.length) {
+        if (res.data) {
           setActivity((prev: any) => ({ ...prev, ...res.data }));
         }
       }).catch(() => {});
@@ -469,7 +477,7 @@ export default function ActivityDetailScreen() {
               <View key={idx} style={styles.spotItem}>
                 <View style={[styles.spotDot, { backgroundColor: SPOT_COLORS[spot.type] || '#888780' }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.spotName}>{spot.name}</Text>
+                  <Text style={styles.spotName}>{spot.name} <Text style={styles.spotTypeLabel}>{SPOT_LABELS[spot.type] || spot.type}</Text></Text>
                   {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
                   {spot.lat != null && spot.lng != null && (
                     <Text style={styles.spotCoords}>
@@ -678,7 +686,7 @@ export default function ActivityDetailScreen() {
                   style={[styles.chip, newSpotType === t && styles.chipSelected]}
                   onPress={() => setNewSpotType(t)}
                 >
-                  <Text style={[styles.chipText, newSpotType === t && styles.chipTextSelected]}>{t}</Text>
+                  <Text style={[styles.chipText, newSpotType === t && styles.chipTextSelected]}>{SPOT_LABELS[t] || t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -868,6 +876,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  spotTypeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textTertiary,
   },
   spotDesc: {
     fontSize: 12,

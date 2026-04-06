@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 
@@ -50,6 +50,37 @@ function MapPlaceholder({
   );
 }
 
+/**
+ * Calculate points at every 1km along a path using haversine distance.
+ * Returns array of { coordinate, km } objects.
+ */
+function getKmPoints(
+  coords: [number, number][],
+): { coordinate: [number, number]; km: number }[] {
+  const points: { coordinate: [number, number]; km: number }[] = [];
+  let totalDist = 0;
+  let nextKm = 1;
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1];
+    const [lng2, lat2] = coords[i];
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    totalDist += d;
+    if (totalDist >= nextKm) {
+      points.push({ coordinate: coords[i], km: nextKm });
+      nextKm++;
+    }
+  }
+  return points;
+}
+
 export default function SafeMapView({
   lat,
   lng,
@@ -82,21 +113,31 @@ export default function SafeMapView({
   const LineLayer = Mapbox.LineLayer;
 
   // Build path GeoJSON
-  const pathGeoJSON = pathCoordinates && pathCoordinates.length > 0
-    ? {
-        type: 'Feature' as const,
-        properties: {},
-        geometry: {
-          type: 'LineString' as const,
-          coordinates: pathCoordinates,
-        },
-      }
-    : null;
+  const pathGeoJSON =
+    pathCoordinates && pathCoordinates.length > 0
+      ? {
+          type: 'Feature' as const,
+          properties: {},
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: pathCoordinates,
+          },
+        }
+      : null;
+
+  // Calculate km marker points along the route
+  const kmPoints = useMemo(() => {
+    if (!pathCoordinates || pathCoordinates.length < 2) return [];
+    return getKmPoints(pathCoordinates);
+  }, [pathCoordinates]);
 
   // Calculate bounds if path exists
   let bounds: { ne: [number, number]; sw: [number, number] } | null = null;
   if (pathCoordinates && pathCoordinates.length > 1) {
-    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    let minLng = Infinity,
+      maxLng = -Infinity,
+      minLat = Infinity,
+      maxLat = -Infinity;
     for (const [lo, la] of pathCoordinates) {
       if (lo < minLng) minLng = lo;
       if (lo > maxLng) maxLng = lo;
@@ -124,10 +165,10 @@ export default function SafeMapView({
                   bounds: {
                     ne: bounds.ne,
                     sw: bounds.sw,
-                    paddingTop: 30,
-                    paddingBottom: 30,
-                    paddingLeft: 30,
-                    paddingRight: 30,
+                    paddingTop: 50,
+                    paddingBottom: 50,
+                    paddingLeft: 50,
+                    paddingRight: 50,
                   },
                 }
               : {
@@ -137,35 +178,64 @@ export default function SafeMapView({
             animationDuration={0}
           />
 
-          {/* Start marker */}
-          <PointAnnotation id="start" coordinate={[lng, lat]}>
-            <View style={styles.markerStart}>
-              <View style={styles.markerDot} />
-            </View>
-          </PointAnnotation>
-
-          {/* End marker */}
-          {endLat != null && endLng != null && (
-            <PointAnnotation id="end" coordinate={[endLng, endLat]}>
-              <View style={styles.markerEnd}>
-                <View style={styles.markerDotEnd} />
-              </View>
-            </PointAnnotation>
-          )}
-
-          {/* Path line */}
+          {/* Path lines — double-line effect for premium look */}
           {pathGeoJSON && (
             <ShapeSource id="pathSource" shape={pathGeoJSON}>
+              {/* Background border line (white, wider) */}
               <LineLayer
-                id="pathLine"
+                id="pathLineBorder"
                 style={{
-                  lineColor: colors.primary,
-                  lineWidth: 4,
+                  lineColor: '#FFFFFF',
+                  lineWidth: 8,
+                  lineOpacity: 0.8,
                   lineCap: 'round',
                   lineJoin: 'round',
                 }}
               />
+              {/* Main route line (brand green, narrower) */}
+              <LineLayer
+                id="pathLine"
+                style={{
+                  lineColor: '#2D4A2E',
+                  lineWidth: 5,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+                aboveLayerID="pathLineBorder"
+              />
             </ShapeSource>
+          )}
+
+          {/* Km markers along the route */}
+          {kmPoints.map((point) => (
+            <PointAnnotation
+              key={`km-${point.km}`}
+              id={`km-${point.km}`}
+              coordinate={point.coordinate}
+              anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={styles.kmPill}>
+                <Text style={styles.kmText}>{point.km}km</Text>
+              </View>
+            </PointAnnotation>
+          ))}
+
+          {/* Start marker — green with pulsing outer ring */}
+          <PointAnnotation id="start" coordinate={[lng, lat]}>
+            <View style={styles.startMarkerOuter}>
+              <View style={styles.startMarkerPulse} />
+              <View style={styles.startMarkerInner} />
+            </View>
+          </PointAnnotation>
+
+          {/* End marker — red with checkmark */}
+          {endLat != null && endLng != null && (
+            <PointAnnotation id="end" coordinate={[endLng, endLat]}>
+              <View style={styles.endMarkerOuter}>
+                <View style={styles.endMarkerInner}>
+                  <Text style={styles.endMarkerIcon}>{'\u2713'}</Text>
+                </View>
+              </View>
+            </PointAnnotation>
           )}
         </MapView>
       </MapErrorBoundary>
@@ -198,36 +268,82 @@ const styles = StyleSheet.create({
     color: '#B0B8C1',
     marginTop: 4,
   },
-  markerStart: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(74,222,128,0.3)',
+
+  // Start marker — green circle with white border + pulsing outer ring
+  startMarkerOuter: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  markerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
+  startMarkerPulse: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(45, 74, 46, 0.2)',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: 'rgba(45, 74, 46, 0.3)',
   },
-  markerEnd: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(239,68,68,0.3)',
+  startMarkerInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#2D4A2E',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+
+  // End marker — red circle with white border + checkmark
+  endMarkerOuter: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  markerDotEnd: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  endMarkerInner: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#EF4444',
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  endMarkerIcon: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginTop: -1,
+  },
+
+  // Km marker pills
+  kmPill: {
+    backgroundColor: '#1B3A1C',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  kmText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

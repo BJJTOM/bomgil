@@ -27,6 +27,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const isValidEmail = (e: string) =>
     /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(e);
@@ -76,7 +77,8 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       <ScrollView
         contentContainerStyle={[
@@ -120,17 +122,24 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>비밀번호</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="비밀번호 입력"
-              placeholderTextColor={colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={true}
-              autoCapitalize="none"
-              autoComplete="off"
-            />
+            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder={'\uBE44\uBC00\uBC88\uD638 \uC785\uB825'}
+                placeholderTextColor={colors.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="off"
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.eyeIcon}>{showPassword ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Login Button */}
@@ -238,6 +247,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     backgroundColor: '#FFFFFF',
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    height: 48,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  eyeBtn: {
+    paddingHorizontal: 14,
+    height: 48,
+    justifyContent: 'center',
+  },
+  eyeIcon: {
+    fontSize: 18,
   },
 
   // Login button

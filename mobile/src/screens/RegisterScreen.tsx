@@ -49,6 +49,8 @@ export default function RegisterScreen() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPw1, setShowPw1] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
 
   const updateField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -84,11 +86,13 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const username = form.email.split('@')[0] + '_' + Date.now().toString(36);
-      const { data } = await api.post('/auth/register/', { ...form, username });
-      const { data: user } = await api.get('/auth/me/', {
-        headers: { Authorization: `Bearer ${data.access}` },
+      await api.post('/auth/register/', { ...form, username });
+      // Login with the just-registered credentials to get full user data
+      const { data: loginData } = await api.post('/auth/email-login/', {
+        email: form.email,
+        password: form.password1,
       });
-      login(user, data.access, data.refresh);
+      login(loginData.user, loginData.access, loginData.refresh);
       navigation.popToTop();
     } catch (err: any) {
       const errors = err.response?.data;
@@ -109,7 +113,8 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -174,16 +179,21 @@ export default function RegisterScreen() {
             </Text>
 
             {/* Password */}
-            <Text style={styles.label}>{'비밀번호'}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={'8자 이상 입력'}
-              placeholderTextColor={colors.textTertiary}
-              value={form.password1}
-              onChangeText={(v) => updateField('password1', v)}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder={'8\uC790 \uC774\uC0C1 \uC785\uB825'}
+                placeholderTextColor={colors.textTertiary}
+                value={form.password1}
+                onChangeText={(v) => updateField('password1', v)}
+                secureTextEntry={!showPw1}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw1(!showPw1)}>
+                <Text style={styles.eyeIcon}>{showPw1 ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Password strength indicator */}
             {form.password1.length > 0 && (
@@ -215,16 +225,21 @@ export default function RegisterScreen() {
             )}
 
             {/* Password Confirm */}
-            <Text style={styles.label}>{'비밀번호 확인'}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={'비밀번호 다시 입력'}
-              placeholderTextColor={colors.textTertiary}
-              value={form.password2}
-              onChangeText={(v) => updateField('password2', v)}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638 \uD655\uC778'}</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder={'\uBE44\uBC00\uBC88\uD638 \uB2E4\uC2DC \uC785\uB825'}
+                placeholderTextColor={colors.textTertiary}
+                value={form.password2}
+                onChangeText={(v) => updateField('password2', v)}
+                secureTextEntry={!showPw2}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw2(!showPw2)}>
+                <Text style={styles.eyeIcon}>{showPw2 ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+              </TouchableOpacity>
+            </View>
             {form.password2.length > 0 && form.password1 !== form.password2 && (
               <Text style={styles.mismatchText}>
                 {'비밀번호가 일치하지 않습니다'}
@@ -369,6 +384,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     backgroundColor: '#fff',
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    height: 48,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  eyeBtn: {
+    paddingHorizontal: 14,
+    height: 48,
+    justifyContent: 'center',
+  },
+  eyeIcon: {
+    fontSize: 18,
   },
   hint: {
     fontSize: 11,

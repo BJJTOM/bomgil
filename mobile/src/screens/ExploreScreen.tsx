@@ -133,7 +133,8 @@ export default function ExploreScreen() {
         t.title.toLowerCase().includes(q) ||
         t.region?.toLowerCase().includes(q) ||
         t.description?.toLowerCase().includes(q) ||
-        t.country?.toLowerCase().includes(q),
+        t.country?.toLowerCase().includes(q) ||
+        t.tags?.some(tag => tag.name.toLowerCase().includes(q) || tag.name_en?.toLowerCase().includes(q)),
     );
   }, [data, search]);
 

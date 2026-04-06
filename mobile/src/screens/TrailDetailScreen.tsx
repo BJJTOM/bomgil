@@ -350,6 +350,77 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
+        {/* ===== 4b. Course Details ===== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>코스 정보</Text>
+          <View style={styles.detailGrid}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>거리</Text>
+              <Text style={styles.detailValue}>{formatDistance(trail.distance_km)}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>소요시간</Text>
+              <Text style={styles.detailValue}>{formatDuration(trail.estimated_minutes)}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>난이도</Text>
+              <View style={[styles.detailBadge, { backgroundColor: diff.bg }]}>
+                <Text style={[styles.detailBadgeText, { color: diff.text }]}>{diff.label}</Text>
+              </View>
+            </View>
+            {trail.elevation_gain != null && trail.elevation_gain > 0 && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>고도 상승</Text>
+                <Text style={styles.detailValue}>+{Math.round(trail.elevation_gain)}m</Text>
+              </View>
+            )}
+            {trail.best_season && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>추천 계절</Text>
+                <Text style={styles.detailValue}>{SEASON_LABELS[trail.best_season] || trail.best_season}</Text>
+              </View>
+            )}
+            {(trail as any).trail_type && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>코스 유형</Text>
+                <Text style={styles.detailValue}>
+                  {(trail as any).trail_type === 'one_way' ? '편도' : (trail as any).trail_type === 'round_trip' ? '왕복' : '순환'}
+                </Text>
+              </View>
+            )}
+          </View>
+          {(trail as any).transport_access && (
+            <View style={styles.transportBox}>
+              <Text style={styles.transportLabel}>교통편 안내</Text>
+              <Text style={styles.transportText}>{(trail as any).transport_access}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ===== 4c. Author ===== */}
+        {trail.author && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>작성자</Text>
+            <TouchableOpacity
+              style={styles.authorCard}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
+              <View style={styles.authorAvatar}>
+                {trail.author.profile_image ? (
+                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                ) : (
+                  <Text style={{ fontSize: 20 }}>{'👤'}</Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.authorName}>{trail.author.nickname}</Text>
+                {trail.author.bio ? <Text style={styles.authorBio} numberOfLines={1}>{trail.author.bio}</Text> : null}
+              </View>
+              <Text style={{ color: colors.textTertiary, fontSize: 18 }}>{'›'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ===== 5. Map ===== */}
         <View style={styles.mapSection}>
           {trail?.start_lat ? (
@@ -1023,5 +1094,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#2D4A2E',
+  },
+  detailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  detailItem: {
+    width: '45%',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  detailBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 2,
+  },
+  detailBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  transportBox: {
+    marginTop: 12,
+    backgroundColor: '#F0F7F0',
+    borderRadius: 12,
+    padding: 14,
+  },
+  transportLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  transportText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  authorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+  },
+  authorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  authorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  authorBio: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 2,
   },
 });

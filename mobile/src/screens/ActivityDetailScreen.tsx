@@ -111,12 +111,26 @@ export default function ActivityDetailScreen() {
     } catch {}
   };
 
-  // Fetch full activity detail (with track_points, steps, etc) from API
+  // Fetch full activity detail from API — merge, don't replace
   useEffect(() => {
     if (activity?.id) {
       api.get(`/activities/${activity.id}/`).then(res => {
         if (res.data) {
-          setActivity(res.data);
+          setActivity((prev: any) => {
+            const merged = { ...prev };
+            // Only override with API data if API has non-empty values
+            for (const [key, val] of Object.entries(res.data)) {
+              if (key === 'track_points') {
+                // Keep existing track_points if API returns empty
+                if (Array.isArray(val) && (val as any[]).length > 0) {
+                  merged[key] = val;
+                }
+              } else if (val != null && val !== '' && val !== 0) {
+                merged[key] = val;
+              }
+            }
+            return merged;
+          });
           setDetailLoaded(true);
         }
       }).catch(() => setDetailLoaded(true));

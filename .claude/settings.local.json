@@ -62,7 +62,11 @@
       "Bash(python manage.py makemigrations community)",
       "Bash(npx tsc:*)",
       "Bash(git status:*)",
-      "Bash(git ls-files:*)"
+      "Bash(git ls-files:*)",
+      "Bash(render --version)",
+      "Bash(ssh render:*)",
+      "Bash(env)",
+      "Read(//Users/tom/**)"
     ]
   }
 }

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { FadeInView } from '../components/FadeInView';
 import api from '../api/client';
+import { Linking } from 'react-native';
 import {
   initHealthConnect,
   requestHealthPermissions,
@@ -71,12 +72,55 @@ export default function HealthImportScreen() {
       if (granted) {
         const data = await getWalkSessions(30);
         setSessions(data);
+      } else {
+        // Fallback: open Health Connect settings manually
+        Alert.alert(
+          '권한 설정',
+          'Health Connect 앱에서 Moru의 권한을 직접 허용해주세요.',
+          [
+            { text: '취소', style: 'cancel' },
+            {
+              text: '설정 열기',
+              onPress: () => {
+                Linking.openURL('content://com.google.android.healthconnect.controller/onboarding').catch(() => {
+                  Linking.openSettings();
+                });
+              },
+            },
+          ],
+        );
       }
     } catch (e) {
-      Alert.alert('오류', '권한 요청에 실패했습니다.');
+      // Direct fallback to Health Connect app
+      Alert.alert(
+        '권한 필요',
+        'Health Connect 설정에서 직접 권한을 허용해주세요.\n\n설정 → 앱 → Health Connect → 앱 권한',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '설정 열기',
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      );
     }
     setLoading(false);
   };
+
+  // Re-check permissions when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      const has = await hasHealthPermissions();
+      if (has && !permissionGranted) {
+        setPermissionGranted(true);
+        setLoading(true);
+        const data = await getWalkSessions(30);
+        setSessions(data);
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, permissionGranted]);
 
   const handleImport = async (session: HealthWalkSession) => {
     if (importing) return;

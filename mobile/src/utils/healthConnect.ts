@@ -17,8 +17,9 @@ const PERMISSIONS: Permission[] = [
 export async function initHealthConnect(): Promise<boolean> {
   try {
     const available = await initialize();
-    return available;
-  } catch {
+    return !!available;
+  } catch (e) {
+    console.log('[Moru] Health Connect init error:', e);
     return false;
   }
 }
@@ -26,8 +27,10 @@ export async function initHealthConnect(): Promise<boolean> {
 export async function requestHealthPermissions(): Promise<boolean> {
   try {
     const granted = await requestPermission(PERMISSIONS);
-    return granted.length > 0;
-  } catch {
+    console.log('[Moru] Health permissions granted:', granted?.length || 0);
+    return (granted?.length || 0) > 0;
+  } catch (e) {
+    console.log('[Moru] Health permission error:', e);
     return false;
   }
 }

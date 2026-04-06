@@ -26,8 +26,9 @@ export default function MyTrailsScreen() {
   const { data: trails = [], isLoading, refetch } = useQuery<Trail[]>({
     queryKey: ['my-trails'],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/?author=${user?.id}`);
-      return data.results ?? data;
+      const { data } = await api.get('/trails/');
+      const results = data.results ?? data;
+      return results.filter((t: any) => t.author?.id === user?.id);
     },
     enabled: !!user,
   });

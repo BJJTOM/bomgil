@@ -29,6 +29,7 @@ urlpatterns = [
     path("api/v1/", include("apps.companions.urls")),
     path("api/v1/stories/", include("apps.stories.urls")),
     path("api/v1/activities/", include("apps.activities.urls")),
+    path("api/v1/community/", include("apps.community.urls")),
     path("api/v1/health/", HealthCheckView.as_view(), name="health-check"),
 ]
 

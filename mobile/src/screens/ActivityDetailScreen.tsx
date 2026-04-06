@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -59,6 +60,49 @@ export default function ActivityDetailScreen() {
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
 
+  // Title editing state
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState(activity?.title || '');
+
+  // Spot add modal state
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [newSpotName, setNewSpotName] = useState('');
+  const [newSpotType, setNewSpotType] = useState('rest');
+  const [newSpotDesc, setNewSpotDesc] = useState('');
+
+  const saveTitle = async () => {
+    setEditingTitle(false);
+    if (editTitle.trim() && activity?.id) {
+      try {
+        await api.patch(`/activities/${activity.id}/`, { title: editTitle.trim() });
+        setActivity((prev: any) => ({ ...prev, title: editTitle.trim() }));
+      } catch {}
+    }
+  };
+
+  const addSpot = async () => {
+    if (!newSpotName.trim()) return;
+    const spot = {
+      name: newSpotName.trim(),
+      type: newSpotType,
+      description: newSpotDesc.trim(),
+    };
+    const updated = [...walkSpots, spot];
+    setWalkSpots(updated);
+    setShowSpotModal(false);
+    setNewSpotName('');
+    setNewSpotType('rest');
+    setNewSpotDesc('');
+    // Persist to AsyncStorage
+    try {
+      const key = activity?.id ? `activity_${activity.id}_extra` : 'activity_latest_extra';
+      const rawStr = await AsyncStorage.getItem(key);
+      const extra = rawStr ? JSON.parse(rawStr) : {};
+      extra.spots = updated;
+      await AsyncStorage.setItem(key, JSON.stringify(extra));
+    } catch {}
+  };
+
   // Fetch full activity detail (with track_points) from API
   useEffect(() => {
     if (activity?.id && (!activity.track_points || activity.track_points.length === 0)) {
@@ -77,28 +121,37 @@ export default function ActivityDetailScreen() {
 
   const loadExtraData = async () => {
     try {
-      // Try exact ID match first
-      let raw = activity?.id ? await AsyncStorage.getItem(`activity_${activity.id}_extra`) : null;
+      let raw: string | null = null;
 
-      // Fallback: always try latest if ID match fails
-      if (!raw) {
-        raw = await AsyncStorage.getItem('activity_latest_extra');
+      // 1. Try exact ID match
+      if (activity?.id) {
+        raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
       }
 
-      // Fallback: scan all activity keys
+      // 2. Try latest — only if activity is very recent (within 5 minutes)
+      if (!raw) {
+        const actCreated = new Date(activity?.created_at || activity?.started_at || 0).getTime();
+        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+        if (actCreated > fiveMinAgo) {
+          raw = await AsyncStorage.getItem('activity_latest_extra');
+        }
+      }
+
+      // 3. Scan all keys, pick most recent
       if (!raw) {
         const allKeys = await AsyncStorage.getAllKeys();
         const actKeys = allKeys.filter(k => k.startsWith('activity_') && k.endsWith('_extra') && k !== 'activity_latest_extra');
         if (actKeys.length > 0) {
-          const sorted = actKeys.sort().reverse();
-          raw = await AsyncStorage.getItem(sorted[0]);
+          raw = await AsyncStorage.getItem(actKeys.sort().reverse()[0]);
         }
       }
 
+      console.log(`[Moru] ActivityDetail loadExtra: raw=${raw ? 'found' : 'null'}, actId=${activity?.id}`);
       if (raw) {
         const extra = JSON.parse(raw);
-        if (extra.taggedPhotos?.length) setTaggedPhotos(extra.taggedPhotos);
-        if (extra.spots?.length) setWalkSpots(extra.spots);
+        console.log(`[Moru] Extra data: spots=${extra.spots?.length || 0}, photos=${extra.taggedPhotos?.length || 0}, route=${extra.routeCoords?.length || 0}`);
+        if (extra.taggedPhotos?.length && taggedPhotos.length === 0) setTaggedPhotos(extra.taggedPhotos);
+        if (extra.spots?.length && walkSpots.length === 0) setWalkSpots(extra.spots);
         if (extra.routeCoords?.length && (!activity.track_points || activity.track_points.length === 0)) {
           activity.track_points = extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }));
         }
@@ -329,7 +382,20 @@ export default function ActivityDetailScreen() {
 
           {/* 2. Title & Date */}
           <View style={styles.titleSection}>
-            <Text style={styles.actTitle}>{activity.title || '걷기 기록'}</Text>
+            {editingTitle ? (
+              <TextInput
+                style={styles.titleInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                onBlur={saveTitle}
+                onSubmitEditing={saveTitle}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditingTitle(true)}>
+                <Text style={styles.actTitle}>{editTitle || activity.title || '걷기 기록'} {'✏️'}</Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.actDate}>{dateStr}</Text>
             {timeStr ? <Text style={styles.actTime}>{timeStr} 시작</Text> : null}
           </View>
@@ -397,25 +463,30 @@ export default function ActivityDetailScreen() {
           )}
 
           {/* 4. Spots section */}
-          {walkSpots.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>스팟 ({walkSpots.length})</Text>
-              {walkSpots.map((spot: any, idx: number) => (
-                <View key={idx} style={styles.spotItem}>
-                  <View style={[styles.spotDot, { backgroundColor: SPOT_COLORS[spot.type] || '#888780' }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.spotName}>{spot.name}</Text>
-                    {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
-                    {spot.lat != null && spot.lng != null && (
-                      <Text style={styles.spotCoords}>
-                        {'\uD83D\uDCCD'} {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
-                      </Text>
-                    )}
-                  </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>스팟 ({walkSpots.length})</Text>
+            {walkSpots.map((spot: any, idx: number) => (
+              <View key={idx} style={styles.spotItem}>
+                <View style={[styles.spotDot, { backgroundColor: SPOT_COLORS[spot.type] || '#888780' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.spotName}>{spot.name}</Text>
+                  {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
+                  {spot.lat != null && spot.lng != null && (
+                    <Text style={styles.spotCoords}>
+                      {'\uD83D\uDCCD'} {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
+                    </Text>
+                  )}
                 </View>
-              ))}
-            </View>
-          )}
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.addSpotBtn}
+              onPress={() => setShowSpotModal(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addSpotBtnText}>+ 스팟 추가</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* 5. Course draft section — always visible */}
           <View style={styles.section}>
@@ -579,6 +650,66 @@ export default function ActivityDetailScreen() {
             </View>
         </ScrollView>
       </View>
+
+      {/* Spot Add Modal */}
+      <Modal visible={showSpotModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.spotModalOverlay}
+          onPress={() => setShowSpotModal(false)}
+          activeOpacity={1}
+        >
+          <View style={styles.spotModal}>
+            <Text style={styles.spotModalTitle}>스팟 추가</Text>
+
+            <Text style={styles.fieldLabel}>이름</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newSpotName}
+              onChangeText={setNewSpotName}
+              placeholder="스팟 이름"
+              placeholderTextColor={colors.textTertiary}
+            />
+
+            <Text style={styles.fieldLabel}>유형</Text>
+            <View style={styles.chipRow}>
+              {Object.keys(SPOT_COLORS).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.chip, newSpotType === t && styles.chipSelected]}
+                  onPress={() => setNewSpotType(t)}
+                >
+                  <Text style={[styles.chipText, newSpotType === t && styles.chipTextSelected]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>설명</Text>
+            <TextInput
+              style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
+              value={newSpotDesc}
+              onChangeText={setNewSpotDesc}
+              placeholder="설명 (선택)"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+            />
+
+            <View style={styles.spotModalActions}>
+              <TouchableOpacity
+                style={styles.spotModalCancel}
+                onPress={() => setShowSpotModal(false)}
+              >
+                <Text style={styles.spotModalCancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.spotModalConfirm}
+                onPress={addSpot}
+              >
+                <Text style={styles.spotModalConfirmText}>추가</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -894,5 +1025,77 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  titleInput: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary,
+    paddingVertical: 4,
+  },
+  addSpotBtn: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  addSpotBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  spotModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spotModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: SW - 48,
+    maxWidth: 360,
+  },
+  spotModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  spotModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  spotModalCancel: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  spotModalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  spotModalConfirm: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  spotModalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

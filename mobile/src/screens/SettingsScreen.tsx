@@ -10,6 +10,7 @@ import {
   StatusBar,
   Modal,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -55,6 +56,20 @@ export default function SettingsScreen() {
       setUser(data);
     } catch {}
   };
+
+  const handleAvatarPress = () => {
+    Alert.alert('프로필 사진', '', [
+      { text: '사진 변경', onPress: handlePickPhoto },
+      { text: '사진 삭제', style: 'destructive', onPress: async () => {
+        try {
+          await api.patch('/auth/me/', { profile_image: null });
+          setUser({ ...user, profile_image: null });
+        } catch {}
+      }},
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
+
   const { language, setLanguage } = useLanguageStore();
   const [showLangModal, setShowLangModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -140,7 +155,7 @@ export default function SettingsScreen() {
         {/* User Card */}
         {isAuthenticated && user ? (
           <View style={styles.userCard}>
-            <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.7}>
+            <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
               <View style={styles.avatar}>
                 {user.profile_image ? (
                   <Image
@@ -150,9 +165,6 @@ export default function SettingsScreen() {
                 ) : (
                   <Text style={styles.avatarEmoji}>{'\uD83D\uDC64'}</Text>
                 )}
-                <View style={styles.avatarEditBadge}>
-                  <Text style={styles.avatarEditIcon}>{'\uD83D\uDCF7'}</Text>
-                </View>
               </View>
             </TouchableOpacity>
             <TouchableOpacity
@@ -163,7 +175,7 @@ export default function SettingsScreen() {
               <Text style={styles.userEmail}>{user.email}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
-              <Text style={styles.chevron}>{'\u203A'}</Text>
+              <Text style={styles.chevron}>{'›'}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -241,18 +253,18 @@ export default function SettingsScreen() {
             {loggingOut ? (
               <View style={styles.logoutLoading}>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.logoutLoadingText}>{'\uB85C\uADF8\uC544\uC6C3 \uC911...'}</Text>
+                <Text style={styles.logoutLoadingText}>{'로그아웃 중...'}</Text>
               </View>
             ) : (
               <>
                 <Text style={styles.logoutModalIcon}>{'\uD83D\uDC4B'}</Text>
-                <Text style={styles.logoutModalTitle}>{'\uB85C\uADF8\uC544\uC6C3 \uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?'}</Text>
-                <Text style={styles.logoutModalSub}>{'\uB2E4\uC2DC \uB85C\uADF8\uC778\uD558\uBA74 \uAE30\uB85D\uC744 \uC774\uC5B4\uAC08 \uC218 \uC788\uC5B4\uC694'}</Text>
+                <Text style={styles.logoutModalTitle}>{'로그아웃 하시겠습니까?'}</Text>
+                <Text style={styles.logoutModalSub}>{'다시 로그인하면 기록을 이어갈 수 있어요'}</Text>
                 <TouchableOpacity style={styles.logoutConfirmBtn} onPress={confirmLogout} activeOpacity={0.85}>
-                  <Text style={styles.logoutConfirmText}>{'\uB85C\uADF8\uC544\uC6C3'}</Text>
+                  <Text style={styles.logoutConfirmText}>{'로그아웃'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutModal(false)} activeOpacity={0.85}>
-                  <Text style={styles.logoutCancelText}>{'\uCDE8\uC18C'}</Text>
+                  <Text style={styles.logoutCancelText}>{'취소'}</Text>
                 </TouchableOpacity>
               </>
             )}

@@ -230,3 +230,116 @@ export interface PaginatedResponse<T> {
   previous: string | null;
   results: T[];
 }
+
+// ──────────────────────────────────────
+// Community
+// ──────────────────────────────────────
+
+export interface CommunityPost {
+  id: number;
+  author: number;
+  author_nickname: string;
+  author_image: string | null;
+  category: PostCategory;
+  category_display: string;
+  title: string;
+  content?: string;
+  thumbnail: string | null;
+  images?: { id: number; image: string; order: number }[];
+  trail?: number | null;
+  like_count: number;
+  comment_count: number;
+  view_count: number;
+  is_liked: boolean;
+  is_pinned: boolean;
+  comments?: PostComment[];
+  created_at: string;
+  updated_at?: string;
+}
+
+export type PostCategory = 'free' | 'qna' | 'recommend' | 'review' | 'meetup' | 'tip';
+
+export interface PostComment {
+  id: number;
+  author: number;
+  author_nickname: string;
+  author_image: string | null;
+  parent: number | null;
+  content: string;
+  like_count: number;
+  replies: PostComment[];
+  is_liked: boolean;
+  created_at: string;
+}
+
+export interface CommunityGroup {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  category_display: string;
+  emoji: string;
+  cover_image: string | null;
+  owner: number;
+  owner_nickname: string;
+  region: string;
+  member_count: number;
+  max_members: number;
+  is_public: boolean;
+  is_member: boolean;
+  members?: GroupMember[];
+  recent_messages?: GroupMessage[];
+  created_at: string;
+}
+
+export interface GroupMember {
+  id: number;
+  user: number;
+  nickname: string;
+  profile_image: string | null;
+  role: 'owner' | 'admin' | 'member';
+  joined_at: string;
+}
+
+export interface GroupMessage {
+  id: number;
+  sender: number;
+  sender_nickname: string;
+  sender_image: string | null;
+  content: string;
+  image: string | null;
+  created_at: string;
+}
+
+export interface Challenge {
+  id: number;
+  title: string;
+  description: string;
+  emoji: string;
+  cover_image: string | null;
+  challenge_type: 'distance' | 'steps' | 'streak' | 'trails' | 'elevation';
+  type_display: string;
+  goal_value: number;
+  goal_unit: string;
+  status: 'upcoming' | 'active' | 'ended';
+  status_display: string;
+  start_date: string;
+  end_date: string;
+  participant_count: number;
+  max_participants: number;
+  is_joined: boolean;
+  my_progress: number;
+  leaderboard?: ChallengeParticipant[];
+}
+
+export interface ChallengeParticipant {
+  id: number;
+  user: number;
+  nickname: string;
+  profile_image: string | null;
+  current_value: number;
+  progress: number;
+  completed: boolean;
+  completed_at: string | null;
+  joined_at: string;
+}

@@ -295,7 +295,11 @@ export default function ActivityScreen() {
                               await api.delete(`/activities/${activity.id}/`);
                               queryClient.invalidateQueries({ queryKey: ['activities'] });
                               queryClient.invalidateQueries({ queryKey: ['activity-stats'] });
-                            } catch { Alert.alert('오류', '삭제에 실패했습니다.'); }
+                              Alert.alert('완료', '활동이 삭제되었습니다.');
+                            } catch (err: any) {
+                              const msg = err?.response?.data?.detail || err?.response?.status || '삭제에 실패했습니다.';
+                              Alert.alert('오류', String(msg));
+                            }
                           }},
                         ]);
                       }}>

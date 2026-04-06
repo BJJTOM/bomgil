@@ -67,7 +67,9 @@
       "Bash(ssh render:*)",
       "Bash(env)",
       "Read(//Users/tom/**)",
-      "Bash(grep \"4168\\\\|$\\(adb shell pidof com.roamiapp\\)\")"
+      "Bash(grep \"4168\\\\|$\\(adb shell pidof com.roamiapp\\)\")",
+      "Bash(vercel ls:*)",
+      "Bash(vercel:*)"
     ]
   }
 }

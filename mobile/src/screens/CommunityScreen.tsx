@@ -34,11 +34,23 @@ function LikeButton({ isLiked, onPress }: { isLiked: boolean; onPress: () => voi
 
   return (
     <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.7}>
-      <Animated.Text style={[styles.actionIcon, { transform: [{ scale: scaleAnim }] }]}>
-        {isLiked ? '❤️' : '\u{1F90D}'}
-      </Animated.Text>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        {isLiked ? (
+          <View style={styles.heartFilled} />
+        ) : (
+          <View style={styles.heartOutline} />
+        )}
+      </Animated.View>
     </TouchableOpacity>
   );
+}
+
+function CommentIcon() {
+  return <View style={styles.commentIcon} />;
+}
+
+function ShareIcon() {
+  return <View style={styles.shareIcon} />;
 }
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
@@ -231,13 +243,13 @@ export default function CommunityScreen() {
                 style={styles.actionBtn}
                 onPress={() => navigation.navigate('StoryDetail', { id: item.id })}
                 activeOpacity={0.7}>
-                <Text style={styles.actionIcon}>{'\u{1F4AC}'}</Text>
+                <CommentIcon />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => handleShare(item)}
                 activeOpacity={0.7}>
-                <Text style={styles.actionIcon}>{'⬆️'}</Text>
+                <ShareIcon />
               </TouchableOpacity>
             </View>
           </View>
@@ -563,6 +575,40 @@ const styles = StyleSheet.create({
   },
   actionIcon: {
     fontSize: 20,
+  },
+  heartOutline: {
+    width: 22,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#262626',
+    borderRadius: 11,
+    transform: [{ rotate: '-45deg' }],
+  },
+  heartFilled: {
+    width: 22,
+    height: 20,
+    backgroundColor: '#ED4956',
+    borderRadius: 11,
+    transform: [{ rotate: '-45deg' }],
+  },
+  commentIcon: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#262626',
+    borderRadius: 10,
+    borderBottomLeftRadius: 2,
+  },
+  shareIcon: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 18,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#262626',
+    transform: [{ rotate: '45deg' }],
   },
 
   // Engagement — single line, small gray

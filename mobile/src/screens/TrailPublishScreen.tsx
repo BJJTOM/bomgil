@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
@@ -46,6 +47,12 @@ const COUNTRY_OPTIONS = [
   { value: 'GB', label: '영국' },
   { value: 'FR', label: '프랑스' },
   { value: 'ES', label: '스페인' },
+];
+
+const TRAIL_TYPE_OPTIONS = [
+  { value: 'one_way', label: '편도' },
+  { value: 'round_trip', label: '왕복' },
+  { value: 'loop', label: '순환' },
 ];
 
 const SPOT_TYPE_COLORS: Record<string, string> = {
@@ -100,6 +107,8 @@ export default function TrailPublishScreen() {
   const [country, setCountry] = useState('KR');
   const [tags, setTags] = useState('');
   const [transport, setTransport] = useState('');
+  const [trailType, setTrailType] = useState('one_way');
+  const [recommendedTime, setRecommendedTime] = useState('');
   const [coverImage, setCoverImage] = useState<any>(null);
   const [spots, setSpots] = useState<Spot[]>(initialSpots);
   const [submitting, setSubmitting] = useState(false);
@@ -172,45 +181,54 @@ export default function TrailPublishScreen() {
     setSpots(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
+  const saveDraft = useCallback(async () => {
+    const draft = {
+      name, description, difficulty, trailType, seasons, country,
+      tags, transport, recommendedTime, coverImage,
+    };
+    await AsyncStorage.setItem('trail_draft', JSON.stringify(draft));
+    Alert.alert('저장 완료', '임시 저장되었습니다.');
+  }, [name, description, difficulty, trailType, seasons, country, tags, transport, recommendedTime, coverImage]);
+
   const handleSubmit = useCallback(async () => {
-    if (!name.trim()) {
-      Alert.alert('필수 입력', '코스 이름을 입력해주세요.');
-      return;
-    }
-    if (!description.trim()) {
-      Alert.alert('필수 입력', '설명을 입력해주세요.');
-      return;
-    }
+    // Auto-generate name from date if empty
+    const now = new Date();
+    const autoName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} 코스`;
+    const finalName = name.trim() || autoName;
+
     if (!manualMode && pathData.length < 2) {
       Alert.alert('오류', '경로 데이터가 부족합니다.');
-      return;
-    }
-    if (manualMode && !manualDistance.trim()) {
-      Alert.alert('필수 입력', '거리를 입력해주세요.');
       return;
     }
 
     setSubmitting(true);
     try {
+      const tagList = tags.split('#').map((t: string) => t.trim()).filter(Boolean);
+
       const payload: any = {
-        title: name.trim(),
-        description: description.trim(),
+        title: finalName,
         difficulty,
         country,
+        trail_type: trailType,
         status: 'approved',
         distance_km: parseFloat(distance.toFixed(2)),
         estimated_minutes: Math.max(1, Math.round(duration)),
       };
+
+      if (description.trim()) payload.description = description.trim();
+      if (tagList.length > 0) payload.tags = tagList;
+      if (recommendedTime.trim()) payload.recommended_time = recommendedTime.trim();
+      if (transport.trim()) payload.transport = transport.trim();
 
       // Always include region if provided
       if (manualRegion.trim()) payload.region = manualRegion.trim();
 
       if (manualMode) {
         // Manual mode — send default coords (Seoul) if none provided
-        payload.start_lat = '37.5665';
-        payload.start_lng = '126.9780';
-        payload.end_lat = '37.5665';
-        payload.end_lng = '126.9780';
+        payload.start_lat = '37.566500';
+        payload.start_lng = '126.978000';
+        payload.end_lat = '37.566500';
+        payload.end_lng = '126.978000';
       } else {
         // GPS/draw mode — full path data
         const roundedPath = pathData.map((c: [number, number]) => [
@@ -267,7 +285,7 @@ export default function TrailPublishScreen() {
       setSubmitting(false);
     }
   }, [
-    name, description, difficulty, country, seasons, transport,
+    name, description, difficulty, country, seasons, transport, trailType, recommendedTime, tags,
     pathData, distance, duration, elevationGain,
     startLat, startLng, endLat, endLng,
     spots, coverImage, navigation, manualMode, manualRegion, manualDistance,
@@ -337,7 +355,7 @@ export default function TrailPublishScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>코스 위치</Text>
 
-          <Text style={styles.fieldLabel}>지역 *</Text>
+          <Text style={styles.fieldLabel}>지역</Text>
           <TextInput
             style={styles.input}
             placeholder="예: 서울 종로구"
@@ -367,7 +385,7 @@ export default function TrailPublishScreen() {
           {manualMode && (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>거리 (km) *</Text>
+                <Text style={styles.fieldLabel}>거리 (km)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="3.5"
@@ -378,7 +396,7 @@ export default function TrailPublishScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>소요시간 (분) *</Text>
+                <Text style={styles.fieldLabel}>소요시간 (분)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="90"
@@ -393,7 +411,7 @@ export default function TrailPublishScreen() {
         </View>
 
         {/* 3. Name */}
-        <Text style={styles.fieldLabel}>코스 이름 *</Text>
+        <Text style={styles.fieldLabel}>코스 이름</Text>
         <TextInput
           style={styles.input}
           placeholder="예: 북한산 둘레길"
@@ -404,7 +422,7 @@ export default function TrailPublishScreen() {
         />
 
         {/* 4. Description */}
-        <Text style={styles.fieldLabel}>설명 *</Text>
+        <Text style={styles.fieldLabel}>설명</Text>
         <TextInput
           style={[styles.input, styles.multilineInput]}
           placeholder="코스에 대한 설명을 적어주세요"
@@ -490,7 +508,7 @@ export default function TrailPublishScreen() {
         <Text style={styles.fieldLabel}>태그</Text>
         <TextInput
           style={styles.input}
-          placeholder="쉼표로 구분 (예: 숲길, 야경, 데이트)"
+          placeholder="#맛집투어 #역사탐방"
           placeholderTextColor={colors.textTertiary}
           value={tags}
           onChangeText={setTags}
@@ -507,6 +525,33 @@ export default function TrailPublishScreen() {
           multiline
           numberOfLines={3}
           textAlignVertical="top"
+        />
+
+        {/* 10a. Trail type */}
+        <Text style={styles.fieldLabel}>코스 유형</Text>
+        <View style={styles.chipRow}>
+          {TRAIL_TYPE_OPTIONS.map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.chip, trailType === opt.value && styles.chipActive]}
+              onPress={() => setTrailType(opt.value)}
+              activeOpacity={0.7}>
+              <Text
+                style={[styles.chipText, trailType === opt.value && styles.chipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* 10b. Recommended time */}
+        <Text style={styles.fieldLabel}>추천 시간대</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="예: 오전 9시~12시"
+          placeholderTextColor={colors.textTertiary}
+          value={recommendedTime}
+          onChangeText={setRecommendedTime}
         />
 
         {/* 11. Spots list + add */}
@@ -617,19 +662,27 @@ export default function TrailPublishScreen() {
         </View>
       )}
 
-      {/* 12. Submit button */}
+      {/* 12. Submit buttons */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity
-          style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-          activeOpacity={0.85}>
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitBtnText}>등록하기</Text>
-          )}
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity
+            style={[styles.draftBtn]}
+            onPress={saveDraft}
+            activeOpacity={0.85}>
+            <Text style={styles.draftBtnText}>임시 저장</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.submitBtn, { flex: 1 }, submitting && styles.submitBtnDisabled]}
+            onPress={handleSubmit}
+            disabled={submitting}
+            activeOpacity={0.85}>
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitBtnText}>코스 공유하기</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -869,8 +922,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
+  draftBtn: {
+    backgroundColor: '#E8E8E8',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  draftBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#666',
+  },
   submitBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#2E7D32',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',

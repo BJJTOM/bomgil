@@ -14,7 +14,7 @@ export default function PrivacyPage() {
           <h2 className="text-[16px] font-bold text-text-primary">4. 개인정보의 제3자 제공</h2>
           <p>서비스는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다.</p>
           <h2 className="text-[16px] font-bold text-text-primary">5. 문의</h2>
-          <p>개인정보 관련 문의: support@roami.app</p>
+          <p>개인정보 관련 문의: support@moruwalk.com</p>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "Roami — 걸으면 보이는 것들",
+  title: "Moru — 걸으면 보이는 것들",
   description:
     "Discover walking trails worldwide. Record your journey, share hidden gems. 전 세계 도보여행 코스를 발견하고, 나만의 길을 공유하세요.",
   manifest: "/manifest.json",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Roami",
+    title: "Moru",
   },
 };
 

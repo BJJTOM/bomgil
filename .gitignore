@@ -51,4 +51,4 @@ secrets.json
 
 # Vercel
 .vercel
-mobile/
+mobile/android/app/src/main/assets/index.android.bundle

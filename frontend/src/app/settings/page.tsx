@@ -49,18 +49,18 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="md:pt-[60px] min-h-screen pb-24" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="md:pt-[60px] min-h-screen bg-warm pb-24">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="px-5 pt-14 md:pt-6 pb-3">
-          <h1 className="text-[22px] font-bold text-[#191F28]">{language === "ko" ? "설정" : "Settings"}</h1>
+        <div className="px-5 pt-14 md:pt-6 pb-4">
+          <h1 className="text-[22px] font-bold">{language === "ko" ? "설정" : "Settings"}</h1>
         </div>
 
-        {/* User card */}
+        {/* User card (if logged in) */}
         {isAuthenticated && user && (
-          <div className="mx-5 mb-5">
-            <Link href={`/profile/${user.nickname}`} className="bg-white rounded-[16px] border border-[#E5E8EB] p-4 flex items-center gap-3.5 block hover:bg-[#F7F8FA] transition-colors">
-              <div className="w-14 h-14 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden">
+          <div className="mx-5 mb-4">
+            <Link href={`/profile/${user.nickname}`} className="card-hover p-4 flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
                 {user.profile_image ? (
                   <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -68,45 +68,33 @@ export default function SettingsPage() {
                 )}
               </div>
               <div className="flex-1">
-                <p className="font-bold text-[16px] text-[#191F28]">{user.nickname}</p>
-                <p className="text-[12px] text-[#B0B8C1]">{user.email}</p>
+                <p className="font-bold text-[16px]">{user.nickname}</p>
+                <p className="text-[12px] text-text-tertiary">{user.email}</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </Link>
           </div>
         )}
 
-        {/* Grouped sections — Apple Settings style */}
+        {/* Sections */}
         {sections.map((section) => (
-          <div key={section.title} className="mb-5">
-            <p className="px-5 text-[12px] font-medium text-[#B0B8C1] uppercase tracking-wider mb-1.5">{section.title}</p>
-            <div className="mx-5 bg-white rounded-[16px] overflow-hidden">
-              {section.items.map((item: any, idx: number) => {
+          <div key={section.title} className="mb-4">
+            <p className="px-5 text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">{section.title}</p>
+            <div className="mx-5 bg-white rounded-card shadow-soft overflow-hidden divide-y divide-border-light">
+              {section.items.map((item: any) => {
                 const content = (
-                  <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex items-center gap-3 px-4 py-3.5">
                     <span className="text-[18px] w-7 text-center">{item.icon}</span>
-                    <span className="flex-1 text-[14px] font-medium text-[#191F28]">{item.label}</span>
-                    {item.value && <span className="text-[13px] text-[#B0B8C1]">{item.value}</span>}
+                    <span className="flex-1 text-[14px] font-medium">{item.label}</span>
+                    {item.value && <span className="text-[13px] text-text-tertiary">{item.value}</span>}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
                   </div>
                 );
 
-                const isLast = idx === section.items.length - 1;
-
                 if (item.href) {
-                  return (
-                    <div key={item.label}>
-                      <Link href={item.href} className="block hover:bg-[#F7F8FA] transition-colors">{content}</Link>
-                      {!isLast && <div className="h-px bg-[#F2F4F6] ml-[52px]" />}
-                    </div>
-                  );
+                  return <Link key={item.label} href={item.href} className="block hover:bg-bg-secondary transition-colors">{content}</Link>;
                 }
-                return (
-                  <div key={item.label}>
-                    <div className="hover:bg-[#F7F8FA] transition-colors cursor-pointer">{content}</div>
-                    {!isLast && <div className="h-px bg-[#F2F4F6] ml-[52px]" />}
-                  </div>
-                );
+                return <div key={item.label} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
               })}
             </div>
           </div>
@@ -114,10 +102,10 @@ export default function SettingsPage() {
 
         {/* Logout */}
         {isAuthenticated && (
-          <div className="mx-5 mb-6">
+          <div className="mx-5 mb-8">
             <button
               onClick={handleLogout}
-              className="w-full py-3 bg-white rounded-[16px] text-danger text-[14px] font-medium hover:bg-red-50 transition-colors"
+              className="w-full py-3.5 bg-white rounded-card shadow-soft text-danger text-[14px] font-medium hover:bg-red-50 transition-colors"
             >
               {language === "ko" ? "로그아웃" : "Logout"}
             </button>
@@ -126,7 +114,7 @@ export default function SettingsPage() {
 
         {/* Footer */}
         <div className="text-center pb-8">
-          <p className="text-[11px] text-[#B0B8C1]">&copy; 2026 Roami. All rights reserved.</p>
+          <p className="text-[11px] text-text-tertiary">© 2026 Moru. All rights reserved.</p>
         </div>
       </div>
     </div>

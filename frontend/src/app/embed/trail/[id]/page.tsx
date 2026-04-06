@@ -58,10 +58,10 @@ export default function EmbedTrailPage() {
           </div>
           <div className="mt-3 pt-3 border-t flex items-center justify-between">
             <span className="text-xs text-primary font-medium">
-              Roami에서 보기 →
+              Moru에서 보기 →
             </span>
             <span className="text-[10px] text-text-secondary">
-              Powered by Roami
+              Powered by Moru
             </span>
           </div>
         </div>

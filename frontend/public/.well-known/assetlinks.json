@@ -13,7 +13,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.roami.twa",
+      "package_name": "com.moruwalk.twa",
       "sha256_cert_fingerprints": [
         "57:D2:12:80:90:CD:6B:EB:96:32:AC:19:2D:0F:1D:3E:2F:71:68:01:D8:F3:50:CC:BE:45:1C:6A:6F:19:57:F7"
       ]

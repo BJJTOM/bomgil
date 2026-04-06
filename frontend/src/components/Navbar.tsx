@@ -26,7 +26,7 @@ export function Navbar() {
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-1.5 group">
             <span className="text-[20px]">🌿</span>
-            <span className="text-[22px] font-bold text-primary tracking-tight" style={{ fontFamily: "'DM Sans', sans-serif", letterSpacing: "-0.02em" }}>Roami</span>
+            <span className="text-[22px] font-bold text-primary tracking-tight" style={{ fontFamily: "'DM Sans', sans-serif", letterSpacing: "-0.02em" }}>Moru</span>
           </Link>
 
           <div className="flex items-center gap-0.5 lg:gap-1">

@@ -7,7 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useT } from "@/stores/language";
 import { useCreateActivityJSON } from "@/hooks/useActivities";
 
-type WalkState = "ready" | "walking" | "paused" | "completed";
+type WalkState = "ready" | "countdown" | "walking" | "paused" | "completed";
 
 interface TrackPoint {
   lat: number;
@@ -23,6 +23,7 @@ export default function WalkPage() {
   const createActivity = useCreateActivityJSON();
 
   const [state, setState] = useState<WalkState>("ready");
+  const [countdown, setCountdown] = useState(3);
   const [trackPoints, setTrackPoints] = useState<TrackPoint[]>([]);
   const [currentPos, setCurrentPos] = useState<{
     lat: number;
@@ -83,7 +84,22 @@ export default function WalkPage() {
     });
   };
 
-  const startWalk = () => {
+  const beginCountdown = () => {
+    setState("countdown");
+    setCountdown(3);
+    let count = 3;
+    const timer = setInterval(() => {
+      count--;
+      if (count <= 0) {
+        clearInterval(timer);
+        actuallyStartWalk();
+      } else {
+        setCountdown(count);
+      }
+    }, 1000);
+  };
+
+  const actuallyStartWalk = () => {
     setState("walking");
     startTimeRef.current = Date.now();
 
@@ -132,7 +148,7 @@ export default function WalkPage() {
     if (watchIdRef.current !== null)
       navigator.geolocation.clearWatch(watchIdRef.current);
 
-    if (isAuthenticated && trackPoints.length > 0) {
+    if (isAuthenticated) {
       try {
         const dateLabel = new Date().toLocaleDateString(language, { month: "long", day: "numeric" });
         await createActivity.mutateAsync({
@@ -237,11 +253,11 @@ export default function WalkPage() {
           </div>
 
           {/* Brand */}
-          <p className="text-white/20 text-[13px] font-medium tracking-[0.3em] uppercase mb-16" style={{ fontFamily: "'DM Sans', sans-serif" }}>ROAMI WALK</p>
+          <p className="text-white/20 text-[13px] font-medium tracking-[0.3em] uppercase mb-16" style={{ fontFamily: "'DM Sans', sans-serif" }}>MORU</p>
 
           {/* Start button */}
           <button
-            onClick={startWalk}
+            onClick={beginCountdown}
             className="relative w-[140px] h-[140px] rounded-full bg-[#2D4A2E] text-white text-[18px] font-bold active:scale-95 transition-transform"
           >
             {/* Pulse rings */}
@@ -264,6 +280,19 @@ export default function WalkPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           {language === "ko" ? "돌아가기" : "Back"}
         </button>
+      </div>
+    );
+  }
+
+  // Countdown state
+  if (state === "countdown") {
+    return (
+      <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50">
+        <p className="text-white/15 text-[14px] font-semibold tracking-[0.4em] mb-12">MORU</p>
+        <div className="w-[160px] h-[160px] rounded-full bg-[#2D4A2E] flex items-center justify-center shadow-[0_0_60px_rgba(45,74,46,0.4)] animate-pulse">
+          <span className="text-white text-[64px] font-extrabold">{countdown}</span>
+        </div>
+        <p className="text-white/20 text-[14px] mt-12 tracking-wide">경로 자동 기록</p>
       </div>
     );
   }

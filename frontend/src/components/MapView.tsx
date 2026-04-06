@@ -50,30 +50,31 @@ export function MapView({
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const leafletRef = useRef<any>(null);
+  const pathLayerRef = useRef<any>(null);
+  const markerLayersRef = useRef<any[]>([]);
+  const posMarkerRef = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const initializedRef = useRef(false);
 
   const isDark = theme === "dark";
 
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-    }
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     const initMap = async () => {
       try {
         const L = (await import("leaflet")).default;
+        leafletRef.current = L;
 
-        // Fix default marker icons
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-          iconUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          shadowUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
 
         const defaultCenter = center || { lat: 37.5665, lng: 126.978 };
@@ -86,161 +87,18 @@ export function MapView({
           attributionControl: false,
         });
 
-        // Add zoom control to bottom-right for cleaner look
         L.control.zoom({ position: "bottomright" }).addTo(map);
+        L.control.attribution({ position: "bottomright", prefix: false })
+          .addAttribution(tile.attribution).addTo(map);
 
-        // Minimal attribution
-        L.control
-          .attribution({ position: "bottomright", prefix: false })
-          .addAttribution(tile.attribution)
-          .addTo(map);
-
-        // Tile layer
-        L.tileLayer(tile.url, {
-          maxZoom: 19,
-        }).addTo(map);
-
-        // --- Draw route with glow effect ---
-        if (pathCoordinates && pathCoordinates.length > 0) {
-          // pathCoordinates are [lng, lat] (GeoJSON format), Leaflet needs [lat, lng]
-          const latLngs = pathCoordinates.map(
-            ([lng, lat]) => [lat, lng] as [number, number]
-          );
-
-          // Outer glow layer
-          L.polyline(latLngs, {
-            color: isDark ? "#A8E6CF" : "#2D4A2E",
-            weight: 10,
-            opacity: isDark ? 0.2 : 0.12,
-            lineCap: "round",
-            lineJoin: "round",
-          }).addTo(map);
-
-          // Mid glow layer (only on dark theme for extra neon feel)
-          if (isDark) {
-            L.polyline(latLngs, {
-              color: "#56D89B",
-              weight: 6,
-              opacity: 0.3,
-              lineCap: "round",
-              lineJoin: "round",
-            }).addTo(map);
-          }
-
-          // Main route line
-          L.polyline(latLngs, {
-            color: isDark ? "#A8E6CF" : "#2D4A2E",
-            weight: isDark ? 3.5 : 4,
-            opacity: 0.9,
-            lineCap: "round",
-            lineJoin: "round",
-          }).addTo(map);
-
-          // --- Start marker (pulsing green) ---
-          const startLatLng = latLngs[0];
-          const startIcon = L.divIcon({
-            html: `<div style="position:relative;display:flex;align-items:center;justify-content:center">
-              <div style="width:14px;height:14px;background:#34C759;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(52,199,89,0.5);position:relative;z-index:2"></div>
-              <div class="leaflet-ping" style="position:absolute;top:-5px;left:-5px;width:24px;height:24px;border-radius:50%;border:2px solid #34C759;opacity:0.6"></div>
-            </div>`,
-            className: "",
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
-          });
-          L.marker(startLatLng, { icon: startIcon, interactive: false }).addTo(
-            map
-          );
-
-          // --- End marker (red) ---
-          const endLatLng = latLngs[latLngs.length - 1];
-          const endIcon = L.divIcon({
-            html: `<div style="position:relative;display:flex;align-items:center;justify-content:center">
-              <div style="width:14px;height:14px;background:#FF3B30;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(255,59,48,0.5);position:relative;z-index:2"></div>
-            </div>`,
-            className: "",
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
-          });
-          L.marker(endLatLng, { icon: endIcon, interactive: false }).addTo(map);
-
-          // Fit bounds to route
-          const polylineBounds = L.polyline(latLngs);
-          map.fitBounds(polylineBounds.getBounds(), { padding: [40, 40] });
-        } else if (markers.length > 1) {
-          const group = L.featureGroup(
-            markers.map((m) => L.marker([m.lat, m.lng]))
-          );
-          map.fitBounds(group.getBounds(), { padding: [30, 30] });
-        }
-
-        // --- Add spot markers ---
-        markers.forEach((m) => {
-          if (m.emoji) {
-            // Premium emoji marker: white circle + emoji + shadow
-            const icon = L.divIcon({
-              html: `<div style="
-                width:36px;height:36px;
-                background:${isDark ? "rgba(30,30,30,0.9)" : "white"};
-                border-radius:50%;
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 2px 12px ${isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.15)"};
-                border:2px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)"};
-                font-size:18px;
-                backdrop-filter:blur(8px);
-              "><span>${m.emoji}</span></div>`,
-              className: "",
-              iconSize: [36, 36],
-              iconAnchor: [18, 18],
-            });
-            const marker = L.marker([m.lat, m.lng], { icon });
-            marker.addTo(map);
-            if (onMarkerClick) {
-              marker.on("click", () => onMarkerClick(m.id));
-            }
-            // Clean minimal popup
-            marker.bindPopup(
-              `<div style="
-                font-family:'Pretendard Variable',sans-serif;
-                font-size:13px;font-weight:600;
-                padding:2px 0;
-                color:${isDark ? "#fff" : "#191F28"};
-              ">${m.title}</div>`,
-              {
-                className: isDark
-                  ? "leaflet-popup-dark"
-                  : "leaflet-popup-clean",
-                closeButton: false,
-                offset: [0, -4],
-              }
-            );
-          } else {
-            // Default styled marker
-            const icon = L.divIcon({
-              html: `<div style="
-                width:12px;height:12px;
-                background:${isDark ? "#A8E6CF" : "#2D4A2E"};
-                border-radius:50%;
-                border:2px solid white;
-                box-shadow:0 1px 6px rgba(0,0,0,0.2);
-              "></div>`,
-              className: "",
-              iconSize: [12, 12],
-              iconAnchor: [6, 6],
-            });
-            const marker = L.marker([m.lat, m.lng], { icon });
-            marker.addTo(map).bindPopup(m.title);
-            if (onMarkerClick) {
-              marker.on("click", () => onMarkerClick(m.id));
-            }
-          }
-        });
+        L.tileLayer(tile.url, { maxZoom: 19 }).addTo(map);
 
         mapInstanceRef.current = map;
         setLoaded(true);
 
         setTimeout(() => {
-          try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
-        }, 100);
+          try { map.invalidateSize(); } catch {}
+        }, 200);
       } catch (err) {
         console.error("Map load error:", err);
         if (mapRef.current) {
@@ -262,44 +120,138 @@ export function MapView({
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+        initializedRef.current = false;
       }
     };
-  }, [
-    center?.lat,
-    center?.lng,
-    markers.length,
-    pathCoordinates?.length,
-    zoom,
-    theme,
-  ]);
+  }, [theme]);
+
+  // Update center
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !center) return;
+    map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
+  }, [center?.lat, center?.lng]);
+
+  // Update path + markers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const L = leafletRef.current;
+    if (!map || !L) return;
+
+    // Clear old path
+    if (pathLayerRef.current) {
+      pathLayerRef.current.forEach((l: any) => map.removeLayer(l));
+      pathLayerRef.current = null;
+    }
+
+    // Clear old markers
+    markerLayersRef.current.forEach((l: any) => map.removeLayer(l));
+    markerLayersRef.current = [];
+
+    // Clear position marker
+    if (posMarkerRef.current) {
+      map.removeLayer(posMarkerRef.current);
+      posMarkerRef.current = null;
+    }
+
+    // Draw route
+    if (pathCoordinates && pathCoordinates.length > 0) {
+      const latLngs = pathCoordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
+      const layers: any[] = [];
+
+      // Glow
+      layers.push(L.polyline(latLngs, {
+        color: isDark ? "#A8E6CF" : "#2D4A2E", weight: 10,
+        opacity: isDark ? 0.2 : 0.12, lineCap: "round", lineJoin: "round",
+      }).addTo(map));
+
+      if (isDark) {
+        layers.push(L.polyline(latLngs, {
+          color: "#56D89B", weight: 6, opacity: 0.3, lineCap: "round", lineJoin: "round",
+        }).addTo(map));
+      }
+
+      // Main line
+      layers.push(L.polyline(latLngs, {
+        color: isDark ? "#A8E6CF" : "#2D4A2E", weight: isDark ? 3.5 : 4,
+        opacity: 0.9, lineCap: "round", lineJoin: "round",
+      }).addTo(map));
+
+      // Start marker
+      if (latLngs.length > 1) {
+        const startIcon = L.divIcon({
+          html: `<div style="width:14px;height:14px;background:#34C759;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(52,199,89,0.5)"></div>`,
+          className: "", iconSize: [14, 14], iconAnchor: [7, 7],
+        });
+        layers.push(L.marker(latLngs[0], { icon: startIcon, interactive: false }).addTo(map));
+      }
+
+      pathLayerRef.current = layers;
+
+      // Fit bounds only if no live tracking (static view)
+      if (!center) {
+        map.fitBounds(L.polyline(latLngs).getBounds(), { padding: [40, 40] });
+      }
+    }
+
+    // Current position marker (pulsing green dot)
+    if (center) {
+      const posIcon = L.divIcon({
+        html: `<div style="position:relative;display:flex;align-items:center;justify-content:center">
+          <div style="width:16px;height:16px;background:#4ADE80;border-radius:50%;border:3px solid white;box-shadow:0 0 12px rgba(74,222,128,0.6);z-index:2"></div>
+          <div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(74,222,128,0.2);animation:pulse 2s infinite"></div>
+        </div>`,
+        className: "", iconSize: [28, 28], iconAnchor: [14, 14],
+      });
+      posMarkerRef.current = L.marker([center.lat, center.lng], { icon: posIcon, interactive: false }).addTo(map);
+    }
+
+    // Spot markers
+    markers.forEach((m) => {
+      const icon = m.emoji
+        ? L.divIcon({
+            html: `<div style="width:36px;height:36px;background:${isDark ? "rgba(30,30,30,0.9)" : "white"};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px ${isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.15)"};border:2px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)"};font-size:18px;backdrop-filter:blur(8px)"><span>${m.emoji}</span></div>`,
+            className: "", iconSize: [36, 36], iconAnchor: [18, 18],
+          })
+        : L.divIcon({
+            html: `<div style="width:12px;height:12px;background:${isDark ? "#A8E6CF" : "#2D4A2E"};border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2)"></div>`,
+            className: "", iconSize: [12, 12], iconAnchor: [6, 6],
+          });
+
+      const marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
+      marker.bindPopup(
+        `<div style="font-family:'Pretendard Variable',sans-serif;font-size:13px;font-weight:600;padding:2px 0;color:${isDark ? "#fff" : "#191F28"}">${m.title}</div>`,
+        { className: isDark ? "leaflet-popup-dark" : "leaflet-popup-clean", closeButton: false, offset: [0, -4] }
+      );
+      if (onMarkerClick) marker.on("click", () => onMarkerClick(m.id));
+      markerLayersRef.current.push(marker);
+    });
+  }, [pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
 
   return (
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full" />
+      <style jsx global>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.4; }
+          50% { transform: scale(1.5); opacity: 0; }
+        }
+      `}</style>
 
-      {/* Stats overlay — Strava / Nike Run style */}
       {showStats && (distance || duration) && (
         <div className="absolute bottom-4 left-4 z-[1000] flex items-end gap-3">
           {distance && (
             <div className="bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 text-white border border-white/10">
-              <div className="text-[24px] font-bold font-en leading-none tracking-tight">
-                {parseFloat(distance).toFixed(1)}
-              </div>
-              <div className="text-[11px] text-white/50 mt-0.5 uppercase tracking-wider">
-                km
-              </div>
+              <div className="text-[24px] font-bold font-en leading-none tracking-tight">{parseFloat(distance).toFixed(1)}</div>
+              <div className="text-[11px] text-white/50 mt-0.5 uppercase tracking-wider">km</div>
             </div>
           )}
           {duration && (
             <div className="bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 text-white border border-white/10">
               <div className="text-[24px] font-bold font-en leading-none tracking-tight">
-                {Number(duration) >= 60
-                  ? `${Math.floor(Number(duration) / 60)}:${String(Number(duration) % 60).padStart(2, "0")}`
-                  : duration}
+                {Number(duration) >= 60 ? `${Math.floor(Number(duration) / 60)}:${String(Number(duration) % 60).padStart(2, "0")}` : duration}
               </div>
-              <div className="text-[11px] text-white/50 mt-0.5 uppercase tracking-wider">
-                {Number(duration) >= 60 ? "hr" : "min"}
-              </div>
+              <div className="text-[11px] text-white/50 mt-0.5 uppercase tracking-wider">{Number(duration) >= 60 ? "hr" : "min"}</div>
             </div>
           )}
         </div>

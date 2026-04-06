@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth";
@@ -10,10 +11,19 @@ export default function SettingsPage() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { t } = useT();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
+  const handleLogout = () => setShowLogoutModal(true);
+
+  const confirmLogout = () => {
+    setLoggingOut(true);
+    setTimeout(() => {
+      logout();
+      setShowLogoutModal(false);
+      setLoggingOut(false);
+      router.push("/");
+    }, 800);
   };
 
   const sections = [
@@ -117,6 +127,42 @@ export default function SettingsPage() {
           <p className="text-[11px] text-text-tertiary">© 2026 Moru. All rights reserved.</p>
         </div>
       </div>
+
+      {/* Logout Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center px-10">
+          <div className="bg-white rounded-[20px] p-7 w-full max-w-[320px] text-center">
+            {loggingOut ? (
+              <div className="py-6">
+                <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-[15px] text-text-secondary">{language === "ko" ? "로그아웃 중..." : "Logging out..."}</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-[36px] mb-3">👋</div>
+                <h3 className="text-[18px] font-bold text-text-primary mb-1.5">
+                  {language === "ko" ? "로그아웃 하시겠습니까?" : "Log out?"}
+                </h3>
+                <p className="text-[13px] text-text-tertiary mb-6">
+                  {language === "ko" ? "다시 로그인하면 기록을 이어갈 수 있어요" : "You can continue your records after logging in again"}
+                </p>
+                <button
+                  onClick={confirmLogout}
+                  className="w-full py-3.5 bg-danger text-white rounded-[14px] text-[15px] font-semibold mb-2.5"
+                >
+                  {language === "ko" ? "로그아웃" : "Log out"}
+                </button>
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="w-full py-3 text-text-secondary text-[15px]"
+                >
+                  {language === "ko" ? "취소" : "Cancel"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

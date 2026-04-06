@@ -92,7 +92,7 @@ export default function RegisterPage() {
         {/* Brand header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-[20px] mb-4">
-            <span className="text-2xl text-white font-bold font-en">R</span>
+            <span className="text-2xl text-white font-bold font-en">M</span>
           </div>
           <h1 className="text-[28px] font-bold text-text-primary tracking-tight">{t("register.joinTitle")}</h1>
           <p className="text-text-secondary text-[15px] mt-1.5">{t("register.joinSubtitle")}</p>
@@ -144,13 +144,13 @@ export default function RegisterPage() {
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.password")}</label>
               <input
-                type="text"
+                type="password"
                 value={form.password1}
                 onChange={(e) => updateField("password1", e.target.value)}
                 placeholder={t("register.passwordPlaceholder")}
                 required
                 autoComplete="off"
-                className="input-field password-mask"
+                className="input-field"
               />
               {/* Password strength indicator */}
               {form.password1 && (
@@ -180,13 +180,13 @@ export default function RegisterPage() {
             <div>
               <label className="text-[13px] font-medium text-text-secondary block mb-2">{t("auth.passwordConfirm")}</label>
               <input
-                type="text"
+                type="password"
                 value={form.password2}
                 onChange={(e) => updateField("password2", e.target.value)}
                 placeholder={t("register.passwordConfirmPlaceholder")}
                 required
                 autoComplete="off"
-                className="input-field password-mask"
+                className="input-field"
               />
               {form.password2 && form.password1 !== form.password2 && (
                 <p className="text-[11px] text-danger mt-1.5">{t("auth.passwordMismatch")}</p>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -55,8 +55,28 @@ export default function ActivityDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const activity = route.params?.activity;
-  const taggedPhotos: any[] = route.params?.taggedPhotos || [];
-  const walkSpots: any[] = route.params?.spots || [];
+  const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
+  const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
+
+  // Load extra data from AsyncStorage if not passed via params
+  useEffect(() => {
+    if (taggedPhotos.length === 0 && walkSpots.length === 0 && activity?.id) {
+      loadExtraData();
+    }
+  }, []);
+
+  const loadExtraData = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
+      if (raw) {
+        const extra = JSON.parse(raw);
+        if (extra.taggedPhotos?.length) setTaggedPhotos(extra.taggedPhotos);
+        if (extra.spots?.length) setWalkSpots(extra.spots);
+      }
+    } catch (e) {
+      console.log('Failed to load activity extra data:', e);
+    }
+  };
 
   // Course draft state
   const [courseExpanded, setCourseExpanded] = useState(false);
@@ -239,26 +259,24 @@ export default function ActivityDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Title & Date */}
+          {/* 1. Route map preview — always visible */}
+          <View style={styles.mapSection}>
+            <SafeMapView
+              lat={firstPoint?.lat || 37.5665}
+              lng={firstPoint?.lng || 126.978}
+              endLat={hasPath ? lastPoint?.lat : undefined}
+              endLng={hasPath ? lastPoint?.lng : undefined}
+              pathCoordinates={hasPath ? pathCoords : undefined}
+              height={220}
+            />
+          </View>
+
+          {/* 2. Title & Date */}
           <View style={styles.titleSection}>
             <Text style={styles.actTitle}>{activity.title || '걷기 기록'}</Text>
             <Text style={styles.actDate}>{dateStr}</Text>
             {timeStr ? <Text style={styles.actTime}>{timeStr} 시작</Text> : null}
           </View>
-
-          {/* 1. Route map preview */}
-          {hasPath && (
-            <View style={styles.mapSection}>
-              <SafeMapView
-                lat={firstPoint?.lat || 37.5665}
-                lng={firstPoint?.lng || 126.978}
-                endLat={lastPoint?.lat}
-                endLng={lastPoint?.lng}
-                pathCoordinates={pathCoords}
-                height={220}
-              />
-            </View>
-          )}
 
           {/* 2. Stats cards — Row 1 */}
           <View style={styles.statsRow}>

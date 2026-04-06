@@ -60,7 +60,7 @@ class Trail(models.Model):
     description_ja = models.TextField(max_length=1000, blank=True)
     region = models.CharField(max_length=50)
     country = models.CharField(max_length=2, default="KR")
-    distance_km = models.DecimalField(max_digits=5, decimal_places=1)
+    distance_km = models.DecimalField(max_digits=6, decimal_places=2)
     estimated_minutes = models.PositiveIntegerField()
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
     elevation_gain = models.PositiveIntegerField(null=True, blank=True)

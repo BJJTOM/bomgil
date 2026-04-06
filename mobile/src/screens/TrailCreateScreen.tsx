@@ -11,6 +11,7 @@ import {
   Platform,
   StatusBar,
   Image,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -324,7 +325,10 @@ export default function TrailCreateScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       {/* Header */}
       <View style={styles.header}>
@@ -374,7 +378,7 @@ export default function TrailCreateScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

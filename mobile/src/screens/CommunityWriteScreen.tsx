@@ -60,7 +60,7 @@ export default function CommunityWriteScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Header */}

@@ -146,23 +146,6 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>먼저 둘러보기</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Guest Login */}
-          <TouchableOpacity
-            style={styles.guestBtn}
-            onPress={handleGuestLogin}
-            disabled={loading}
-            activeOpacity={0.7}>
-            <Text style={styles.guestIcon}>👤</Text>
-            <Text style={styles.guestBtnText}>게스트로 시작하기</Text>
-          </TouchableOpacity>
-
           {/* Register link */}
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>계정이 없으신가요? </Text>

@@ -109,24 +109,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="my-7 flex items-center gap-4">
-            <div className="flex-1 h-px bg-border-light" />
-            <span className="text-[12px] text-text-tertiary">{t("loginPage.tryIt")}</span>
-            <div className="flex-1 h-px bg-border-light" />
-          </div>
-
-          <button
-            onClick={handleGuestLogin}
-            disabled={loading}
-            className="w-full py-3.5 border border-dashed border-primary/30 text-primary rounded-button text-[14px] font-medium hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            {t("loginPage.guestLogin")}
-          </button>
-
           <p className="text-center text-[13px] text-text-secondary mt-7">
             {t("auth.noAccount")}{" "}
             <Link href="/auth/register" className="text-primary font-semibold">

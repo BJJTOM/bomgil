@@ -387,8 +387,8 @@ export default function PostDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={[s.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 56 : 0}>
 
       {/* Header — 즐겨찾기 + 더보기 */}
       <View style={s.header}>

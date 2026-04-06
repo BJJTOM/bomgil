@@ -116,13 +116,15 @@ export default function StoryDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['story-comments', storyId] });
       queryClient.invalidateQueries({ queryKey: ['story', storyId] });
       Keyboard.dismiss();
-      // Update comment count in feed
+      // Optimistic update for comment count in feed
       queryClient.setQueryData(['community-feed'], (old: any) => {
         if (!Array.isArray(old)) return old;
         return old.map((s: any) =>
           s.id === storyId ? { ...s, comment_count: s.comment_count + 1 } : s,
         );
       });
+      // Also invalidate feed to ensure server-side consistency
+      queryClient.invalidateQueries({ queryKey: ['community-feed'] });
     } catch (err: any) {
       Alert.alert('오류', '댓글 작성에 실패했습니다');
     } finally {

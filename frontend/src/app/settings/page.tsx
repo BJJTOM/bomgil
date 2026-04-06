@@ -1,14 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth";
 import { useLanguageStore, LANGUAGES, useT } from "@/stores/language";
+import api from "@/lib/api";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, setUser } = useAuthStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("profile_image", file);
+    try {
+      const { data } = await api.patch("/auth/me/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setUser(data);
+    } catch {}
+  };
   const { language, setLanguage } = useLanguageStore();
   const { t } = useT();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -68,19 +83,23 @@ export default function SettingsPage() {
 
         {/* User card (if logged in) */}
         {isAuthenticated && user && (
-          <div className="mx-5 mb-4">
-            <Link href={`/profile/${user.nickname}`} className="card-hover p-4 flex items-center gap-3.5">
-              <div className="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
-                {user.profile_image ? (
-                  <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-2xl">👤</span>
-                )}
+          <div className="mx-5 mb-4 card-hover p-4 flex items-center gap-3.5">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            <button onClick={() => fileInputRef.current?.click()} className="relative w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {user.profile_image ? (
+                <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl">👤</span>
+              )}
+              <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-white">
+                <span className="text-[8px]">📷</span>
               </div>
-              <div className="flex-1">
-                <p className="font-bold text-[16px]">{user.nickname}</p>
-                <p className="text-[12px] text-text-tertiary">{user.email}</p>
-              </div>
+            </button>
+            <Link href={`/profile/${user.nickname}`} className="flex-1">
+              <p className="font-bold text-[16px]">{user.nickname}</p>
+              <p className="text-[12px] text-text-tertiary">{user.email}</p>
+            </Link>
+            <Link href={`/profile/${user.nickname}`}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </Link>
           </div>

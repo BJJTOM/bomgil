@@ -6,6 +6,7 @@ from django.urls import include, path
 from apps.trails.health import HealthCheckView
 
 urlpatterns = [
+    path("moru-manage-x9k2/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/trails/", include("apps.trails.urls")),
     path("api/v1/spots/", include("apps.spots.urls")),
@@ -18,5 +19,4 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns.insert(0, path("admin/", admin.site.urls))
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

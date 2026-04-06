@@ -108,6 +108,7 @@ export default function ExploreScreen() {
     return params;
   }, [filters, search, sortBy]);
 
+  // Filtered query (with search param for API)
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['trails', queryParams],
     queryFn: async () => {
@@ -123,12 +124,41 @@ export default function ExploreScreen() {
     staleTime: 30000,
   });
 
+  // Also load all trails for client-side tag search
+  const { data: allData } = useQuery({
+    queryKey: ['trails-all'],
+    queryFn: async () => {
+      try {
+        const { data: res } = await api.get('/trails/', { params: { page_size: 200 } });
+        return res;
+      } catch { return { results: [] }; }
+    },
+    staleTime: 60000,
+  });
+
   const trails = useMemo(() => {
-    const raw = data?.results ?? (Array.isArray(data) ? data : []);
-    const allTrails = raw as Trail[];
-    if (!search.trim()) return allTrails;
+    const apiResults = data?.results ?? (Array.isArray(data) ? data : []);
+    if (!search.trim()) return apiResults as Trail[];
+
     const q = search.toLowerCase();
-    return allTrails.filter(
+
+    // Also search through all trails for tag matches
+    const allTrails = allData?.results ?? (Array.isArray(allData) ? allData : []);
+    const tagMatches = (allTrails as Trail[]).filter(
+      (t) => t.tags?.some(tag =>
+        tag.name.toLowerCase().includes(q) ||
+        tag.name_en?.toLowerCase().includes(q)
+      ),
+    );
+
+    // Merge API results + tag matches, deduplicate by id
+    const merged = new Map<number, Trail>();
+    for (const t of apiResults as Trail[]) merged.set(t.id, t);
+    for (const t of tagMatches) merged.set(t.id, t);
+
+    // Also client-side filter on title/region/description
+    const allMerged = Array.from(merged.values());
+    return allMerged.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         t.region?.toLowerCase().includes(q) ||
@@ -136,7 +166,7 @@ export default function ExploreScreen() {
         t.country?.toLowerCase().includes(q) ||
         t.tags?.some(tag => tag.name.toLowerCase().includes(q) || tag.name_en?.toLowerCase().includes(q)),
     );
-  }, [data, search]);
+  }, [data, allData, search]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 

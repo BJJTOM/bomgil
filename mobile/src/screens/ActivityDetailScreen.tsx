@@ -297,8 +297,21 @@ export default function ActivityDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* 1. Route map preview */}
-          <View style={styles.mapSection}>
+          {/* 1. Route map preview — tap to expand */}
+          <TouchableOpacity
+            style={styles.mapSection}
+            activeOpacity={0.95}
+            onPress={() => navigation.navigate('MapDetail', {
+              pathCoordinates: hasPath ? pathCoords : [],
+              startLat: firstPoint?.lat,
+              startLng: firstPoint?.lng,
+              endLat: hasPath ? lastPoint?.lat : undefined,
+              endLng: hasPath ? lastPoint?.lng : undefined,
+              spots: walkSpots.filter((s: any) => s.lat && s.lng),
+              title: activity.title || '활동 경로',
+              distance: activity.distance_km ? parseFloat(activity.distance_km) : distance,
+              duration: activity.duration_minutes || duration,
+            })}>
             <SafeMapView
               lat={firstPoint?.lat || 37.5665}
               lng={firstPoint?.lng || 126.978}
@@ -309,7 +322,10 @@ export default function ActivityDetailScreen() {
               theme="dark"
               spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
             />
-          </View>
+            <View style={styles.mapExpandBtn}>
+              <Text style={styles.mapExpandIcon}>{'⤢'}</Text>
+            </View>
+          </TouchableOpacity>
 
           {/* 2. Title & Date */}
           <View style={styles.titleSection}>
@@ -620,8 +636,24 @@ const styles = StyleSheet.create({
   mapSection: {
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  mapExpandBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapExpandIcon: {
+    fontSize: 18,
+    color: '#fff',
   },
   statsRow: {
     flexDirection: 'row',

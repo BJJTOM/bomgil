@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,13 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { CommunityPost, PostCategory } from '../types';
 
-const CATEGORIES = [
-  { key: 'free', label: '자유', icon: '💭', desc: '자유롭게 이야기' },
-  { key: 'qna', label: '질문', icon: '❓', desc: '궁금한 것 질문' },
-  { key: 'recommend', label: '추천', icon: '👍', desc: '코스/장소 추천' },
-  { key: 'review', label: '후기', icon: '⭐', desc: '걷기 후기 공유' },
-  { key: 'meetup', label: '번개', icon: '⚡', desc: '같이 걸을 사람' },
-  { key: 'tip', label: '꿀팁', icon: '🍯', desc: '유용한 팁 공유' },
+const CATEGORIES: { key: PostCategory; label: string; desc: string }[] = [
+  { key: 'free', label: '자유', desc: '자유롭게 이야기' },
+  { key: 'qna', label: '질문', desc: '궁금한 것 질문' },
+  { key: 'recommend', label: '추천', desc: '코스/장소 추천' },
+  { key: 'review', label: '후기', desc: '걷기 후기 공유' },
+  { key: 'meetup', label: '번개', desc: '같이 걸을 사람' },
+  { key: 'tip', label: '꿀팁', desc: '유용한 팁 공유' },
 ];
 
 interface SelectedImage {
@@ -111,14 +111,14 @@ export default function PostCreateScreen() {
         postId = data.id;
       }
 
-      // Upload new images
+      // Upload new images — 게시글 생성 후 별도 요청
       if (images.length > 0) {
         const formData = new FormData();
-        images.forEach((img) => {
+        images.forEach((img, i) => {
           formData.append('images', {
             uri: img.uri,
             type: img.type || 'image/jpeg',
-            name: img.fileName || `image_${Date.now()}.jpg`,
+            name: img.fileName || `photo_${i}_${Date.now()}.jpg`,
           } as any);
         });
         await api.post(`/community/posts/${postId}/images/`, formData, {
@@ -129,8 +129,9 @@ export default function PostCreateScreen() {
       queryClient.invalidateQueries({ queryKey: ['community-posts'] });
       queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
       navigation.goBack();
-    } catch {
-      Alert.alert('오류', '게시글 저장에 실패했습니다.');
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.response?.data?.title?.[0] || '게시글 저장에 실패했습니다.';
+      Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);
     }
@@ -158,25 +159,27 @@ export default function PostCreateScreen() {
       </View>
 
       <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Category — 토스 스타일 2열 그리드 */}
+        {/* Category — horizontal scroll */}
         <Text style={styles.sectionLabel}>카테고리</Text>
-        <View style={styles.categoryGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryScroll}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.key}
-              style={[styles.categoryCard, category === cat.key && styles.categoryCardActive]}
-              onPress={() => setCategory(cat.key as PostCategory)}
+              style={[styles.categoryChip, category === cat.key && styles.categoryChipActive]}
+              onPress={() => setCategory(cat.key)}
               activeOpacity={0.7}>
-              <Text style={styles.categoryCardIcon}>{cat.icon}</Text>
-              <Text style={[styles.categoryCardLabel, category === cat.key && styles.categoryCardLabelActive]}>
+              <Text style={[styles.categoryChipLabel, category === cat.key && styles.categoryChipLabelActive]}>
                 {cat.label}
               </Text>
-              <Text style={[styles.categoryCardDesc, category === cat.key && { color: colors.primary }]}>
+              <Text style={[styles.categoryChipDesc, category === cat.key && { color: 'rgba(255,255,255,0.8)' }]}>
                 {cat.desc}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* Title */}
         <TextInput
@@ -193,7 +196,7 @@ export default function PostCreateScreen() {
         {/* Content */}
         <TextInput
           style={styles.contentInput}
-          placeholder="내용을 입력하세요...&#10;&#10;걷기 경험, 질문, 추천 등 자유롭게 작성해주세요."
+          placeholder={'내용을 입력하세요...\n\n걷기 경험, 질문, 추천 등 자유롭게 작성해주세요.'}
           placeholderTextColor={colors.textTertiary}
           value={content}
           onChangeText={setContent}
@@ -203,39 +206,31 @@ export default function PostCreateScreen() {
 
         {/* Images preview */}
         {(existingImages.length > 0 || images.length > 0) && (
-          <View style={styles.imagePreviewSection}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imagePreviewRow}>
-              {existingImages.map((img) => (
-                <View key={img.id} style={styles.imagePreviewItem}>
-                  <Image source={{ uri: img.image }} style={styles.imagePreviewImg} resizeMode="cover" />
-                  <TouchableOpacity
-                    style={styles.imageRemoveBtn}
-                    onPress={() => removeExistingImage(img.id)}>
-                    <Text style={styles.imageRemoveText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {images.map((img, i) => (
-                <View key={`new-${i}`} style={styles.imagePreviewItem}>
-                  <Image source={{ uri: img.uri }} style={styles.imagePreviewImg} resizeMode="cover" />
-                  <TouchableOpacity
-                    style={styles.imageRemoveBtn}
-                    onPress={() => removeImage(i)}>
-                    <Text style={styles.imageRemoveText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imagePreviewRow}>
+            {existingImages.map((img) => (
+              <View key={img.id} style={styles.imagePreviewItem}>
+                <Image source={{ uri: img.image }} style={styles.imagePreviewImg} resizeMode="cover" />
+                <TouchableOpacity style={styles.imageRemoveBtn} onPress={() => removeExistingImage(img.id)}>
+                  <Text style={styles.imageRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            {images.map((img, i) => (
+              <View key={`new-${i}`} style={styles.imagePreviewItem}>
+                <Image source={{ uri: img.uri }} style={styles.imagePreviewImg} resizeMode="cover" />
+                <TouchableOpacity style={styles.imageRemoveBtn} onPress={() => removeImage(i)}>
+                  <Text style={styles.imageRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
         )}
 
         {/* Bottom toolbar */}
-        <View style={styles.toolbar}>
-          <TouchableOpacity style={styles.toolbarItem} onPress={handlePickImages}>
-            <Text style={styles.toolbarIcon}>📷</Text>
-            <Text style={styles.toolbarLabel}>사진 {totalImages > 0 ? `${totalImages}/10` : ''}</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.toolbar} onPress={handlePickImages} activeOpacity={0.6}>
+          <Text style={styles.toolbarIcon}>+</Text>
+          <Text style={styles.toolbarLabel}>사진 추가 {totalImages > 0 ? `(${totalImages}/10)` : ''}</Text>
+        </TouchableOpacity>
 
         <View style={{ height: 60 }} />
       </ScrollView>
@@ -262,26 +257,17 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
 
-  // Category grid — 2열
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, marginBottom: 12 },
-  categoryCard: {
-    width: '31%',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: '#F7F8FA',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+  // Category — horizontal scroll pills
+  categoryScroll: { paddingHorizontal: 20, gap: 8, paddingBottom: 16 },
+  categoryChip: {
+    paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
+    backgroundColor: '#F7F8FA', borderWidth: 1.5, borderColor: 'transparent',
+    minWidth: 80, alignItems: 'center',
   },
-  categoryCardActive: {
-    backgroundColor: '#F0F7F0',
-    borderColor: colors.primary,
-  },
-  categoryCardIcon: { fontSize: 20, marginBottom: 4 },
-  categoryCardLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
-  categoryCardLabelActive: { color: colors.primary },
-  categoryCardDesc: { fontSize: 10, color: colors.textTertiary, textAlign: 'center' },
+  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryChipLabel: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
+  categoryChipLabelActive: { color: '#FFFFFF' },
+  categoryChipDesc: { fontSize: 10, color: colors.textTertiary },
 
   titleInput: {
     fontSize: 18, fontWeight: '600', color: colors.textPrimary,
@@ -294,8 +280,7 @@ const styles = StyleSheet.create({
   },
 
   // Image preview
-  imagePreviewSection: { paddingVertical: 8 },
-  imagePreviewRow: { paddingHorizontal: 20, gap: 8 },
+  imagePreviewRow: { paddingHorizontal: 20, gap: 8, paddingVertical: 8 },
   imagePreviewItem: { position: 'relative' },
   imagePreviewImg: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#F7F8FA' },
   imageRemoveBtn: {
@@ -307,11 +292,10 @@ const styles = StyleSheet.create({
 
   // Toolbar
   toolbar: {
-    flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F2F4F6',
-    gap: 16,
+    flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginTop: 8,
+    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12,
+    backgroundColor: '#F7F8FA', gap: 8,
   },
-  toolbarItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  toolbarIcon: { fontSize: 18 },
-  toolbarLabel: { fontSize: 13, color: colors.textSecondary },
+  toolbarIcon: { fontSize: 18, fontWeight: '300', color: colors.textSecondary },
+  toolbarLabel: { fontSize: 14, color: colors.textSecondary },
 });

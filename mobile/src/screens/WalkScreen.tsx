@@ -94,6 +94,10 @@ export default function WalkScreen() {
   const [spotName, setSpotName] = useState('');
   const [spotType, setSpotType] = useState('맛집');
   const [spotDesc, setSpotDesc] = useState('');
+  const [pendingPhoto, setPendingPhoto] = useState<any>(null);
+  const [photoTitle, setPhotoTitle] = useState('');
+  const [photoDesc, setPhotoDesc] = useState('');
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const fromTrailCreate = route.params?.fromTrailCreate;
 
   const engineRef = useRef(new WalkEngine());
@@ -157,9 +161,28 @@ export default function WalkScreen() {
     if (!currentPos) return;
     try {
       const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
-      if (photo) setTaggedPhotos(prev => [...prev, photo]);
+      if (photo) {
+        setPendingPhoto(photo);
+        setPhotoTitle('');
+        setPhotoDesc('');
+        setShowPhotoModal(true);
+      }
     } catch {}
   }, [currentPos]);
+
+  const confirmPhoto = useCallback(() => {
+    if (pendingPhoto) {
+      setTaggedPhotos(prev => [...prev, {
+        ...pendingPhoto,
+        title: photoTitle.trim(),
+        description: photoDesc.trim(),
+      }]);
+    }
+    setPendingPhoto(null);
+    setPhotoTitle('');
+    setPhotoDesc('');
+    setShowPhotoModal(false);
+  }, [pendingPhoto, photoTitle, photoDesc]);
 
   const handleAddSpot = useCallback(() => {
     if (!spotName.trim()) {
@@ -612,6 +635,52 @@ export default function WalkScreen() {
               }}
               activeOpacity={0.85}>
               <Text style={styles.spotCancelBtnText}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ====== PHOTO TITLE/DESC MODAL ====== */}
+      <Modal visible={showPhotoModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{'사진 정보'}</Text>
+            <TextInput
+              style={styles.photoModalInput}
+              placeholder="사진 제목 (선택)"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={photoTitle}
+              onChangeText={setPhotoTitle}
+              maxLength={40}
+              autoFocus
+            />
+            <TextInput
+              style={[styles.photoModalInput, { marginTop: 10 }]}
+              placeholder="사진 설명 (선택)"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={photoDesc}
+              onChangeText={setPhotoDesc}
+              maxLength={100}
+              multiline
+            />
+            <TouchableOpacity
+              style={styles.modalStopBtn}
+              onPress={confirmPhoto}
+              activeOpacity={0.85}>
+              <Text style={styles.modalStopBtnText}>{'추가'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => {
+                // Skip title/desc, add photo without them
+                if (pendingPhoto) {
+                  setTaggedPhotos(prev => [...prev, pendingPhoto]);
+                }
+                setPendingPhoto(null);
+                setShowPhotoModal(false);
+              }}
+              activeOpacity={0.85}>
+              <Text style={styles.modalCancelBtnText}>{'건너뛰기'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1152,5 +1221,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.5)',
+  },
+
+  // ---- PHOTO MODAL ----
+  photoModalInput: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#fff',
+    marginTop: 16,
   },
 });

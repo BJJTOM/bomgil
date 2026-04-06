@@ -6,6 +6,16 @@ from django.urls import include, path
 from apps.trails.health import HealthCheckView
 
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+def _tmp_clean_seeds(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+    from apps.spots.models import Spot
+    deleted = Spot.objects.filter(trail_id__in=[244, 245, 246, 247]).delete()
+    return JsonResponse({"deleted_spots": deleted[0]})
 
 
 def _platform_stats(request):
@@ -19,8 +29,9 @@ def _platform_stats(request):
     return JsonResponse({"countries": countries, "trails": trails, "stories": stories, "users": users})
 
 urlpatterns = [
+    path("_tmp-clean-seeds/", _tmp_clean_seeds),
     path("api/v1/stats/", _platform_stats),
-    path("admin/", admin.site.urls),
+    path("moru-admin-panel/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/trails/", include("apps.trails.urls")),
     path("api/v1/spots/", include("apps.spots.urls")),

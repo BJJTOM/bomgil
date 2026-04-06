@@ -1,407 +1,348 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
-import { useChatRooms } from "@/hooks/useCompanions";
-import { useT } from "@/stores/language";
-import type { WalkStory } from "@/types";
+import type { CommunityPost, CommunityGroup, Challenge } from "@/types";
 
-function NotificationBadge() {
-  const { isAuthenticated } = useAuthStore();
-  const { data } = useQuery({
-    queryKey: ["notification-count"],
-    queryFn: async () => {
-      const { data } = await api.get("/stories/notifications/");
-      return data.unread_count as number;
-    },
-    enabled: isAuthenticated,
-    refetchInterval: 30000,
-  });
-  if (!data || data === 0) return null;
-  return (
-    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-      {data > 99 ? "99+" : data}
-    </span>
-  );
+const TABS = ["피드", "모임", "챌린지"];
+
+const CATEGORIES = [
+  { key: "", label: "전체" },
+  { key: "free", label: "자유" },
+  { key: "qna", label: "질문" },
+  { key: "recommend", label: "추천" },
+  { key: "review", label: "후기" },
+  { key: "meetup", label: "번개" },
+  { key: "tip", label: "꿀팁" },
+];
+
+const GROUP_CATS = [
+  { key: "", label: "전체" },
+  { key: "hiking", label: "등산" },
+  { key: "walking", label: "산책" },
+  { key: "running", label: "러닝" },
+  { key: "trail", label: "트레일" },
+  { key: "photo", label: "사진" },
+  { key: "social", label: "친목" },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  upcoming: "bg-blue-50 text-blue-700",
+  active: "bg-green-50 text-green-700",
+  ended: "bg-gray-100 text-gray-500",
+};
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "방금 전";
+  if (mins < 60) return `${mins}분 전`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  return new Date(dateStr).toLocaleDateString("ko-KR");
 }
 
-export default function CommunityPage() {
-  const { isAuthenticated } = useAuthStore();
-  const { data: chatRooms } = useChatRooms();
-  const { t } = useT();
+// ── 피드 (게시판) ──
+function FeedTab() {
+  const router = useRouter();
   const qc = useQueryClient();
+  const { isAuthenticated } = useAuthStore();
+  const [category, setCategory] = useState("");
+  const [search, setSearch] = useState("");
 
-  const { data: stories = [], isLoading } = useQuery<WalkStory[]>({
-    queryKey: ["community-feed"],
+  const { data: posts = [], isLoading } = useQuery<CommunityPost[]>({
+    queryKey: ["community-posts", category, search],
     queryFn: async () => {
-      const { data } = await api.get("/stories/");
+      let params = "?";
+      if (category) params += `category=${category}&`;
+      if (search) params += `q=${encodeURIComponent(search)}&`;
+      const { data } = await api.get(`/community/posts/${params}`);
       return data.results ?? data;
     },
   });
 
-  const likeMutation = useMutation({
-    mutationFn: async (id: number) => (await api.post(`/stories/${id}/like/`)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["community-feed"] }),
-  });
-
-  const unreadChats = Array.isArray(chatRooms) ? chatRooms.filter((r: any) => r.unread_count > 0).length : 0;
+  const handleLike = useCallback(async (postId: number) => {
+    if (!isAuthenticated) { router.push("/auth/login"); return; }
+    qc.setQueryData(["community-posts", category, search], (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((p: any) =>
+        p.id === postId ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 } : p
+      );
+    });
+    api.post(`/community/posts/${postId}/like/`).catch(() => qc.invalidateQueries({ queryKey: ["community-posts"] }));
+  }, [isAuthenticated, category, search]);
 
   return (
-    <div className="md:pt-[60px] min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
-      {/* Sticky Header */}
-      <header className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-        <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
-          <h1 className="text-[22px] font-bold tracking-tight text-[#191F28]">{t("community.title")}</h1>
-          <div className="flex items-center gap-2">
-            <Link
-              href={isAuthenticated ? "/community/write" : "/auth/login"}
-              className="px-3 py-1.5 bg-[#2D4A2E] text-white rounded-[20px] text-[12px] font-semibold hover:bg-[#243d25] transition-colors"
-            >
-              {t("community.write")}
-            </Link>
-            <Link
-              href="/notifications"
-              className="relative p-2.5 rounded-[12px] hover:bg-[#F7F8FA] transition-colors"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 01-3.46 0" />
-              </svg>
-              <NotificationBadge />
-            </Link>
-            <Link
-              href="/chat"
-              className="relative p-2.5 rounded-[12px] hover:bg-[#F7F8FA] transition-colors"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-              {unreadChats > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                  {unreadChats}
-                </span>
-              )}
-            </Link>
-          </div>
+    <div>
+      {/* Search */}
+      <div className="px-5 pt-3 pb-1">
+        <div className="flex items-center bg-[#F7F8FA] rounded-xl px-3 h-10">
+          <span className="text-xs font-bold text-[#B0B8C1] mr-2">Q</span>
+          <input
+            className="flex-1 bg-transparent text-sm outline-none text-[#191F28] placeholder-[#B0B8C1]"
+            placeholder="게시글 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="text-[#B0B8C1] text-sm p-1">✕</button>
+          )}
         </div>
-      </header>
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex justify-center py-3">
-          <div className="flex items-center gap-2 text-[#2D4A2E] text-[13px] font-medium animate-slide-up">
-            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M7.76 7.76L4.93 4.93" />
-            </svg>
-            {t("community.loadingStories")}
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-2xl mx-auto">
-        {/* Feed */}
-        {isLoading ? (
-          <div className="py-20 text-center text-[#B0B8C1]">
-            <div className="flex gap-1.5 justify-center mb-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-[#2D4A2E]/40 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-              ))}
-            </div>
-            {t("common.loading")}
-          </div>
-        ) : stories.length === 0 ? (
-          <div className="py-20 px-6 text-center">
-            <div className="max-w-sm mx-auto">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f0f7f0] flex items-center justify-center">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-              </div>
-              <p className="text-[17px] font-bold text-[#191F28] mb-1">{t("community.noStories")}</p>
-              <p className="text-[14px] text-[#B0B8C1] mb-5 leading-relaxed whitespace-pre-line">
-                {t("community.noStoriesDesc")}
-              </p>
-              <Link
-                href="/trails"
-                className="inline-flex items-center gap-2 bg-[#2D4A2E] text-white text-[14px] font-semibold px-5 py-2.5 rounded-[14px] hover:bg-[#243d25] transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                {t("community.browseTrails")}
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white">
-            {stories.map((story, index) => (
-              <div key={story.id}>
-                <FeedPost
-                  story={story}
-                  onLike={() => likeMutation.mutate(story.id)}
-                />
-                {index < stories.length - 1 && (
-                  <div className="h-px bg-[#F2F4F6]" />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* FAB */}
-      <Link
-        href={isAuthenticated ? "/community/write" : "/auth/login"}
-        className="fixed bottom-24 md:bottom-8 right-5 z-40 w-14 h-14 bg-[#2D4A2E] text-white rounded-full shadow-float flex items-center justify-center active:scale-90 transition-transform"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-      </Link>
+      {/* Categories */}
+      <div className="flex gap-2 px-5 py-2 overflow-x-auto scrollbar-hide">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.key}
+            onClick={() => setCategory(c.key)}
+            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              category === c.key
+                ? "bg-[#2D4A2E] text-white"
+                : "bg-[#F7F8FA] text-[#8B95A1] hover:bg-[#F0F0F0]"
+            }`}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Posts */}
+      {isLoading ? (
+        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+      ) : posts.length === 0 ? (
+        <div className="flex flex-col items-center py-20 text-center">
+          <p className="text-base font-semibold text-[#191F28] mb-1">{search ? `'${search}' 검색 결과가 없어요` : "아직 게시글이 없어요"}</p>
+          <p className="text-sm text-[#B0B8C1]">{search ? "다른 키워드로 검색해보세요" : "첫 번째 글을 작성해보세요"}</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#F2F4F6]">
+          {posts.map((post) => (
+            <div key={post.id} className="flex px-5 py-4 gap-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer"
+              onClick={() => router.push(`/community/post/${post.id}`)}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[11px] font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-2 py-0.5 rounded">{post.category_display}</span>
+                  {post.is_pinned && <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">고정</span>}
+                </div>
+                <p className="text-[15px] font-semibold text-[#191F28] leading-snug line-clamp-2 mb-2">{post.title}</p>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-4 h-4 rounded-full bg-[#F7F8FA] overflow-hidden shrink-0">
+                    {post.author_image && <Image src={post.author_image} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" />}
+                  </div>
+                  <span className="text-xs text-[#8B95A1]">{post.author_nickname}</span>
+                  <span className="text-xs text-[#B0B8C1]">{timeAgo(post.created_at)}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={(e) => { e.stopPropagation(); handleLike(post.id); }}
+                    className={`flex items-center gap-1 text-xs ${post.is_liked ? "text-red-500" : "text-[#B0B8C1]"}`}>
+                    <span className="text-[15px]">{post.is_liked ? "♥" : "♡"}</span> {post.like_count}
+                  </button>
+                  <span className="flex items-center gap-1 text-xs text-[#B0B8C1]">
+                    <span className="text-[15px]">○</span> {post.comment_count}
+                  </span>
+                  <span className="text-xs text-[#B0B8C1]">조회 {post.view_count}</span>
+                </div>
+              </div>
+              {post.thumbnail && (
+                <div className="w-[72px] h-[72px] rounded-lg bg-[#F7F8FA] overflow-hidden shrink-0">
+                  <Image src={post.thumbnail} alt="" width={72} height={72} className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function FeedPost({ story, onLike }: { story: WalkStory; onLike: () => void }) {
-  const { t, language } = useT();
+// ── 모임 ──
+function GroupsTab() {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(false);
-  const [translatedText, setTranslatedText] = useState("");
-  const { isAuthenticated } = useAuthStore();
+  const [category, setCategory] = useState("");
 
-  const MOOD_MAP: Record<string, { emoji: string; labelKey: string; bg: string }> = {
-    happy: { emoji: "😊", labelKey: "community.moodHappy", bg: "bg-yellow-50 text-yellow-700" },
-    peaceful: { emoji: "☮️", labelKey: "community.moodPeaceful", bg: "bg-blue-50 text-blue-700" },
-    exciting: { emoji: "🤩", labelKey: "community.moodExciting", bg: "bg-orange-50 text-orange-700" },
-    touching: { emoji: "🥹", labelKey: "community.moodTouching", bg: "bg-pink-50 text-pink-700" },
-    funny: { emoji: "😄", labelKey: "community.moodFunny", bg: "bg-green-50 text-green-700" },
-  };
-
-  const mood = MOOD_MAP[story.mood];
-  const isLong = story.content.length > 150;
-
-  const handleTranslate = async () => {
-    if (translatedText) {
-      setShowTranslation(!showTranslation);
-      return;
-    }
-    try {
-      const targetLang = language === "ko" ? "en" : language;
-      const { data } = await api.post("/stories/translate/", {
-        text: story.content,
-        target: targetLang,
-      });
-      setTranslatedText(data.translated);
-      setShowTranslation(true);
-    } catch {
-      setTranslatedText("Translation unavailable");
-      setShowTranslation(true);
-    }
-  };
-
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return t("community.minutesAgo").replace("{n}", String(mins));
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return t("community.hoursAgo").replace("{n}", String(hours));
-    const days = Math.floor(hours / 24);
-    if (days < 7) return t("community.daysAgo").replace("{n}", String(days));
-    return new Date(dateStr).toLocaleDateString(language);
-  };
-
-  const photos = story.photos || [];
-
-  const PhotoGrid = () => {
-    if (photos.length === 0) return null;
-    if (photos.length === 1) {
-      return (
-        <div className="relative w-full aspect-[4/3]">
-          <Image src={photos[0].image} alt={photos[0].caption || ""} fill className="object-cover" />
-        </div>
-      );
-    }
-    if (photos.length === 2) {
-      return (
-        <div className="grid grid-cols-2 gap-0.5">
-          {photos.slice(0, 2).map((p) => (
-            <div key={p.id} className="relative aspect-square">
-              <Image src={p.image} alt={p.caption || ""} fill className="object-cover" />
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return (
-      <div className="grid grid-cols-2 gap-0.5">
-        <div className="relative aspect-square row-span-2">
-          <Image src={photos[0].image} alt={photos[0].caption || ""} fill className="object-cover" />
-        </div>
-        <div className="relative aspect-square">
-          <Image src={photos[1].image} alt={photos[1].caption || ""} fill className="object-cover" />
-        </div>
-        <div className="relative aspect-square">
-          {photos.length > 3 ? (
-            <>
-              <Image src={photos[2].image} alt={photos[2].caption || ""} fill className="object-cover" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <span className="text-white text-[18px] font-bold">+{photos.length - 3}</span>
-              </div>
-            </>
-          ) : (
-            <Image src={photos[2].image} alt={photos[2].caption || ""} fill className="object-cover" />
-          )}
-        </div>
-      </div>
-    );
-  };
+  const { data: groups = [], isLoading } = useQuery<CommunityGroup[]>({
+    queryKey: ["community-groups", category],
+    queryFn: async () => {
+      const params = category ? `?category=${category}` : "";
+      const { data } = await api.get(`/community/groups/${params}`);
+      return data.results ?? data;
+    },
+  });
 
   return (
-    <article className="pb-1">
-      {/* Author row */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-2.5">
-        <Link href={`/profile/${story.author.nickname}`}>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#A8E6CF] to-[#2D4A2E] p-[2px]">
-            <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-              {story.author.profile_image ? (
-                <Image src={story.author.profile_image} alt="" width={36} height={36} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-lg">👤</span>
-              )}
-            </div>
-          </div>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <Link href={`/profile/${story.author.nickname}`} className="text-[14px] font-bold text-[#191F28] hover:underline">
-              {story.author.nickname}
-            </Link>
-            {(story.author as any).is_verified && (
-              <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-[#2D4A2E]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </span>
-            )}
-          </div>
-          <p className="text-[12px] text-[#B0B8C1]">
-            {story.trail_id && (
-              <Link href={`/trails/${story.trail_id}`} className="hover:text-[#2D4A2E] transition-colors">
-                {story.trail_region} · {story.trail_title} ·{" "}
-              </Link>
-            )}
-            {timeAgo(story.created_at)}
-          </p>
-        </div>
+    <div>
+      <div className="flex gap-2 px-5 py-3 overflow-x-auto scrollbar-hide">
+        {GROUP_CATS.map((c) => (
+          <button
+            key={c.key}
+            onClick={() => setCategory(c.key)}
+            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              category === c.key ? "bg-[#2D4A2E] text-white" : "bg-[#F7F8FA] text-[#8B95A1]"
+            }`}>
+            {c.label}
+          </button>
+        ))}
       </div>
 
-      {/* Photo grid */}
-      <PhotoGrid />
+      {isLoading ? (
+        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+      ) : groups.length === 0 ? (
+        <div className="flex flex-col items-center py-20">
+          <p className="text-base font-semibold text-[#191F28] mb-1">아직 모임이 없어요</p>
+          <p className="text-sm text-[#B0B8C1]">첫 번째 모임을 만들어보세요</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#F2F4F6]">
+          {groups.map((g) => (
+            <Link key={g.id} href={`/community/groups/${g.id}`}
+              className="flex items-center px-5 py-4 gap-3.5 hover:bg-[#FAFAFA] transition-colors">
+              <div className="w-[52px] h-[52px] rounded-2xl bg-[#F7F8FA] flex items-center justify-center text-2xl shrink-0">{g.emoji}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[15px] font-semibold text-[#191F28] truncate">{g.name}</span>
+                  {!g.is_public && <span className="text-xs">🔒</span>}
+                </div>
+                <p className="text-[13px] text-[#8B95A1] line-clamp-1 mb-1">{g.description}</p>
+                <div className="flex items-center gap-2 text-[11px] text-[#B0B8C1]">
+                  <span>{g.member_count}{g.max_members > 0 ? `/${g.max_members}` : ""}명</span>
+                  {g.region && <span>{g.region}</span>}
+                  <span>{g.category_display}</span>
+                </div>
+              </div>
+              {g.is_member ? (
+                <span className="text-xs font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-3 py-1.5 rounded-lg shrink-0">참여중</span>
+              ) : (
+                <span className="text-xs font-semibold text-white bg-[#2D4A2E] px-3 py-1.5 rounded-lg shrink-0">참여</span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-      {/* Action bar — icon only */}
-      <div className="flex items-center gap-4 px-4 pt-3 pb-1">
+// ── 챌린지 ──
+function ChallengesTab() {
+  const router = useRouter();
+
+  const { data: challenges = [], isLoading } = useQuery<Challenge[]>({
+    queryKey: ["community-challenges"],
+    queryFn: async () => {
+      const { data } = await api.get("/community/challenges/");
+      return data.results ?? data;
+    },
+  });
+
+  return (
+    <div className="p-5 space-y-3">
+      {isLoading ? (
+        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+      ) : challenges.length === 0 ? (
+        <div className="flex flex-col items-center py-20">
+          <p className="text-base font-semibold text-[#191F28] mb-1">아직 챌린지가 없어요</p>
+          <p className="text-sm text-[#B0B8C1]">곧 새로운 챌린지가 시작됩니다</p>
+        </div>
+      ) : (
+        challenges.map((ch) => {
+          const daysLeft = Math.ceil((new Date(ch.end_date).getTime() - Date.now()) / 86400000);
+          return (
+            <Link key={ch.id} href={`/community/challenges/${ch.id}`}
+              className="block bg-white rounded-2xl p-5 border border-[#F2F4F6] hover:border-[#E5E8EB] transition-colors">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-[14px] bg-[#F7F8FA] flex items-center justify-center text-[22px]">{ch.emoji}</div>
+                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[ch.status] || ""}`}>{ch.status_display}</span>
+              </div>
+              <h3 className="text-[17px] font-bold text-[#191F28] mb-1 tracking-tight">{ch.title}</h3>
+              <p className="text-[13px] text-[#8B95A1] line-clamp-2 mb-4">{ch.description}</p>
+              <div className="mb-3">
+                <div className="h-2 bg-[#F2F4F6] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#2D4A2E] rounded-full transition-all" style={{ width: `${Math.min(ch.my_progress, 100)}%` }} />
+                </div>
+                <div className="flex justify-between mt-1.5 text-xs text-[#B0B8C1]">
+                  <span>목표 {ch.goal_value}{ch.goal_unit}</span>
+                  {ch.is_joined && <span className="text-[#2D4A2E] font-semibold">{ch.my_progress}%</span>}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex gap-3 text-xs text-[#B0B8C1]">
+                  <span>{ch.participant_count}명 참여</span>
+                  {ch.status === "active" && daysLeft > 0 && <span>{daysLeft}일 남음</span>}
+                </div>
+                {ch.is_joined ? (
+                  <span className="text-xs font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-3 py-1 rounded-lg">참여중 ✓</span>
+                ) : ch.status === "active" ? (
+                  <span className="text-xs font-semibold text-white bg-[#2D4A2E] px-3 py-1 rounded-lg">참여하기</span>
+                ) : null}
+              </div>
+            </Link>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ──
+export default function CommunityPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const [activeTab, setActiveTab] = useState(0);
+
+  const fabHref = activeTab === 0 ? "/community/post/new" : activeTab === 1 ? "/community/groups/new" : null;
+
+  return (
+    <div className="md:pt-[60px] min-h-screen bg-white">
+      {/* Header */}
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
+        <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
+          <h1 className="text-[22px] font-bold tracking-tight text-[#191F28]">커뮤니티</h1>
+          <Link href="/notifications" className="w-8 h-8 rounded-full bg-[#F7F8FA] flex items-center justify-center text-xs font-bold text-[#8B95A1]">N</Link>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-2xl mx-auto px-5 flex gap-6">
+          {TABS.map((tab, i) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(i)}
+              className={`pb-3 text-[15px] font-medium relative transition-colors ${
+                activeTab === i ? "text-[#191F28] font-bold" : "text-[#B0B8C1]"
+              }`}>
+              {tab}
+              {activeTab === i && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#191F28] rounded-full" />}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-2xl mx-auto">
+        {activeTab === 0 && <FeedTab />}
+        {activeTab === 1 && <GroupsTab />}
+        {activeTab === 2 && <ChallengesTab />}
+      </main>
+
+      {/* FAB */}
+      {fabHref && (
         <button
           onClick={() => {
             if (!isAuthenticated) { router.push("/auth/login"); return; }
-            onLike();
+            router.push(fabHref);
           }}
-          className="active:scale-90 transition-transform"
-        >
-          {story.is_liked ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF4B4B" stroke="none">
-              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-            </svg>
-          )}
-        </button>
-        <button
-          onClick={() => router.push(`/community/${story.id}`)}
-          className="active:scale-90 transition-transform"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-          </svg>
-        </button>
-        <button className="active:scale-90 transition-transform">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* Like count */}
-      {story.like_count > 0 && (
-        <p className="px-4 text-[13px] font-semibold text-[#191F28]">
-          {t("community.likesCount").replace("{count}", String(story.like_count))}
-        </p>
-      )}
-
-      {/* Content */}
-      <div className="px-4 pt-1 pb-2">
-        {mood && (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[20px] text-[11px] font-medium mb-1.5 ${mood.bg}`}>
-            {mood.emoji} {t(mood.labelKey)}
-          </span>
-        )}
-
-        {story.title && (
-          <h3 className="text-[14px] font-bold text-[#191F28] leading-snug mb-0.5">{story.title}</h3>
-        )}
-
-        <p className="text-[14px] leading-[1.65] text-[#191F28] whitespace-pre-line">
-          {isLong && !expanded ? (
-            <>
-              {story.content.slice(0, 150)}
-              <button onClick={() => setExpanded(true)} className="text-[#B0B8C1] font-medium">
-                ... {t("community.showMore")}
-              </button>
-            </>
-          ) : (
-            story.content
-          )}
-        </p>
-
-        {/* Translate */}
-        <button
-          onClick={handleTranslate}
-          className="text-[12px] text-[#B0B8C1] hover:text-[#2D4A2E] font-medium transition-colors mt-1 flex items-center gap-1"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
-            <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
-          </svg>
-          {showTranslation ? t("community.showOriginal") : t("community.translate")}
-        </button>
-        {showTranslation && translatedText && (
-          <div className="mt-1.5 p-2.5 bg-blue-50/50 rounded-[12px] text-[13px] text-[#8B95A1] leading-relaxed">
-            <p className="text-[10px] text-blue-400 font-medium mb-0.5">🌐 {t("community.aiTranslation")}</p>
-            {translatedText}
-          </div>
-        )}
-      </div>
-
-      {/* Comment count */}
-      {story.comment_count > 0 && (
-        <button
-          onClick={() => router.push(`/community/${story.id}`)}
-          className="px-4 pb-2 text-[13px] text-[#B0B8C1] hover:underline"
-        >
-          {t("community.commentsCount").replace("{count}", String(story.comment_count))}
+          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 w-13 h-13 rounded-full bg-[#2D4A2E] text-white text-2xl font-light flex items-center justify-center shadow-lg hover:bg-[#1a3a1b] transition-colors z-40"
+          style={{ width: 52, height: 52 }}>
+          +
         </button>
       )}
-    </article>
+    </div>
   );
 }

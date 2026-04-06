@@ -90,29 +90,25 @@ export default function ActivityScreen() {
     weekday: 'long',
   });
 
-  // Today's stats
+  // Today's stats — calculate from activities list (most reliable)
   const today = now.toISOString().split('T')[0];
-  const todayWeekly = stats?.weekly?.find((d) => d.date === today);
   const todayActivities = activities.filter(
     (a) => a.started_at && a.started_at.startsWith(today),
   );
-  const todayStats = todayWeekly
-    ? {
-        steps: todayWeekly.total_steps,
-        distance: parseFloat(todayWeekly.total_distance_km),
-        calories: todayWeekly.total_calories,
-      }
-    : {
-        steps: todayActivities.reduce((s, a) => s + (a.total_steps || 0), 0),
-        distance: todayActivities.reduce(
-          (s, a) => s + parseFloat(a.distance_km || '0'),
-          0,
-        ),
-        calories: todayActivities.reduce(
-          (s, a) => s + (a.calories_burned || 0),
-          0,
-        ),
-      };
+  // Use stats API if available, otherwise calculate from activity list
+  const allSteps = activities.reduce((s, a) => s + (a.total_steps || 0), 0);
+  const allDistance = activities.reduce((s, a) => s + parseFloat(a.distance_km || '0'), 0);
+  const allCalories = activities.reduce((s, a) => s + (a.calories_burned || 0), 0);
+
+  const todaySteps = todayActivities.reduce((s, a) => s + (a.total_steps || 0), 0);
+  const todayDistance = todayActivities.reduce((s, a) => s + parseFloat(a.distance_km || '0'), 0);
+  const todayCalories = todayActivities.reduce((s, a) => s + (a.calories_burned || 0), 0);
+
+  const todayStats = {
+    steps: todaySteps || (stats?.weekly?.find((d: any) => d.date === today)?.total_steps || 0),
+    distance: todayDistance || parseFloat(stats?.weekly?.find((d: any) => d.date === today)?.total_distance_km || '0'),
+    calories: todayCalories || (stats?.weekly?.find((d: any) => d.date === today)?.total_calories || 0),
+  };
 
   if (!isAuthenticated) {
     return (

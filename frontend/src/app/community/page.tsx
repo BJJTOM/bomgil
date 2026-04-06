@@ -9,7 +9,11 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type { CommunityPost, CommunityGroup, Challenge } from "@/types";
 
-const TABS = ["피드", "모임", "챌린지"];
+const TABS = [
+  { key: "feed", label: "피드" },
+  { key: "group", label: "모임" },
+  { key: "challenge", label: "챌린지" },
+];
 
 const CATEGORIES = [
   { key: "", label: "전체" },
@@ -31,10 +35,10 @@ const GROUP_CATS = [
   { key: "social", label: "친목" },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  upcoming: "bg-blue-50 text-blue-700",
-  active: "bg-green-50 text-green-700",
-  ended: "bg-gray-100 text-gray-500",
+const STATUS_MAP: Record<string, { bg: string; text: string }> = {
+  upcoming: { bg: "bg-blue-50", text: "text-blue-600" },
+  active: { bg: "bg-emerald-50", text: "text-emerald-600" },
+  ended: { bg: "bg-gray-50", text: "text-gray-400" },
 };
 
 function timeAgo(dateStr: string) {
@@ -49,7 +53,13 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("ko-KR");
 }
 
-// ── 피드 (게시판) ──
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-gray-100 rounded-lg ${className || ""}`} />;
+}
+
+/* ────────────────────────────────────── */
+/* 피드 탭                                */
+/* ────────────────────────────────────── */
 function FeedTab() {
   const router = useRouter();
   const qc = useQueryClient();
@@ -60,110 +70,157 @@ function FeedTab() {
   const { data: posts = [], isLoading } = useQuery<CommunityPost[]>({
     queryKey: ["community-posts", category, search],
     queryFn: async () => {
-      let params = "?";
-      if (category) params += `category=${category}&`;
-      if (search) params += `q=${encodeURIComponent(search)}&`;
-      const { data } = await api.get(`/community/posts/${params}`);
+      let p = "?";
+      if (category) p += `category=${category}&`;
+      if (search) p += `q=${encodeURIComponent(search)}&`;
+      const { data } = await api.get(`/community/posts/${p}`);
       return data.results ?? data;
     },
   });
 
-  const handleLike = useCallback(async (postId: number) => {
-    if (!isAuthenticated) { router.push("/auth/login"); return; }
-    qc.setQueryData(["community-posts", category, search], (old: any) => {
-      if (!Array.isArray(old)) return old;
-      return old.map((p: any) =>
-        p.id === postId ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 } : p
+  const handleLike = useCallback(
+    async (e: React.MouseEvent, postId: number) => {
+      e.stopPropagation();
+      if (!isAuthenticated) { router.push("/auth/login"); return; }
+      qc.setQueryData(["community-posts", category, search], (old: any) =>
+        Array.isArray(old)
+          ? old.map((p: any) =>
+              p.id === postId ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 } : p,
+            )
+          : old,
       );
-    });
-    api.post(`/community/posts/${postId}/like/`).catch(() => qc.invalidateQueries({ queryKey: ["community-posts"] }));
-  }, [isAuthenticated, category, search]);
+      api.post(`/community/posts/${postId}/like/`).catch(() => qc.invalidateQueries({ queryKey: ["community-posts"] }));
+    },
+    [isAuthenticated, category, search],
+  );
 
   return (
-    <div>
+    <>
       {/* Search */}
-      <div className="px-5 pt-3 pb-1">
-        <div className="flex items-center bg-[#F7F8FA] rounded-xl px-3 h-10">
-          <span className="text-xs font-bold text-[#B0B8C1] mr-2">Q</span>
+      <div className="px-4 sm:px-5 pt-3">
+        <div className="flex items-center bg-gray-50 rounded-xl px-3.5 h-11 transition-colors focus-within:bg-gray-100 focus-within:ring-1 focus-within:ring-gray-200">
+          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
-            className="flex-1 bg-transparent text-sm outline-none text-[#191F28] placeholder-[#B0B8C1]"
+            className="flex-1 bg-transparent text-sm outline-none text-gray-900 placeholder-gray-400 ml-2.5"
             placeholder="게시글 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button onClick={() => setSearch("")} className="text-[#B0B8C1] text-sm p-1">✕</button>
+            <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600 p-1 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           )}
         </div>
       </div>
 
       {/* Categories */}
-      <div className="flex gap-2 px-5 py-2 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 px-4 sm:px-5 py-3 overflow-x-auto scrollbar-hide">
         {CATEGORIES.map((c) => (
           <button
             key={c.key}
             onClick={() => setCategory(c.key)}
-            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`shrink-0 px-4 py-[7px] rounded-full text-[13px] font-medium border transition-all ${
               category === c.key
-                ? "bg-[#2D4A2E] text-white"
-                : "bg-[#F7F8FA] text-[#8B95A1] hover:bg-[#F0F0F0]"
-            }`}>
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700"
+            }`}
+          >
             {c.label}
           </button>
         ))}
       </div>
 
-      {/* Posts */}
+      {/* Loading skeleton */}
       {isLoading ? (
-        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+        <div className="px-4 sm:px-5 space-y-4 py-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex gap-3">
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="w-[72px] h-[72px] rounded-xl shrink-0" />
+            </div>
+          ))}
+        </div>
       ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center py-20 text-center">
-          <p className="text-base font-semibold text-[#191F28] mb-1">{search ? `'${search}' 검색 결과가 없어요` : "아직 게시글이 없어요"}</p>
-          <p className="text-sm text-[#B0B8C1]">{search ? "다른 키워드로 검색해보세요" : "첫 번째 글을 작성해보세요"}</p>
+        <div className="flex flex-col items-center py-24 px-6">
+          <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+            <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+          </div>
+          <p className="text-[15px] font-semibold text-gray-900 mb-1">{search ? `'${search}' 검색 결과가 없어요` : "아직 게시글이 없어요"}</p>
+          <p className="text-[13px] text-gray-400">{search ? "다른 키워드로 검색해보세요" : "첫 번째 글을 작성해보세요"}</p>
         </div>
       ) : (
-        <div className="divide-y divide-[#F2F4F6]">
-          {posts.map((post) => (
-            <div key={post.id} className="flex px-5 py-4 gap-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer"
-              onClick={() => router.push(`/community/post/${post.id}`)}>
+        <div>
+          {posts.map((post, i) => (
+            <div
+              key={post.id}
+              onClick={() => router.push(`/community/post/${post.id}`)}
+              className="flex px-4 sm:px-5 py-4 gap-3.5 cursor-pointer hover:bg-gray-50/60 transition-colors border-b border-gray-100 last:border-b-0"
+            >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="text-[11px] font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-2 py-0.5 rounded">{post.category_display}</span>
-                  {post.is_pinned && <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">고정</span>}
-                </div>
-                <p className="text-[15px] font-semibold text-[#191F28] leading-snug line-clamp-2 mb-2">{post.title}</p>
+                {/* Badge row */}
                 <div className="flex items-center gap-1.5 mb-2">
-                  <div className="w-4 h-4 rounded-full bg-[#F7F8FA] overflow-hidden shrink-0">
-                    {post.author_image && <Image src={post.author_image} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" />}
-                  </div>
-                  <span className="text-xs text-[#8B95A1]">{post.author_nickname}</span>
-                  <span className="text-xs text-[#B0B8C1]">{timeAgo(post.created_at)}</span>
+                  <span className="inline-flex text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-[2px] rounded-md">{post.category_display}</span>
+                  {post.is_pinned && <span className="inline-flex text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-[2px] rounded-md">PIN</span>}
                 </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={(e) => { e.stopPropagation(); handleLike(post.id); }}
-                    className={`flex items-center gap-1 text-xs ${post.is_liked ? "text-red-500" : "text-[#B0B8C1]"}`}>
-                    <span className="text-[15px]">{post.is_liked ? "♥" : "♡"}</span> {post.like_count}
+
+                {/* Title */}
+                <h3 className="text-[15px] font-semibold text-gray-900 leading-snug line-clamp-2 mb-2.5">{post.title}</h3>
+
+                {/* Author + time */}
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden shrink-0 ring-1 ring-gray-100">
+                    {post.author_image ? (
+                      <Image src={post.author_image} alt="" width={20} height={20} className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-5 h-5 flex items-center justify-center text-[9px] text-gray-400 font-medium">U</span>
+                    )}
+                  </div>
+                  <span className="text-[12px] text-gray-500">{post.author_nickname}</span>
+                  <span className="text-[11px] text-gray-300">·</span>
+                  <span className="text-[12px] text-gray-400">{timeAgo(post.created_at)}</span>
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center gap-3.5">
+                  <button
+                    onClick={(e) => handleLike(e, post.id)}
+                    className={`flex items-center gap-1 text-[12px] transition-colors ${post.is_liked ? "text-red-500" : "text-gray-400 hover:text-red-400"}`}
+                  >
+                    <span className="text-[14px] leading-none">{post.is_liked ? "♥" : "♡"}</span>
+                    <span>{post.like_count}</span>
                   </button>
-                  <span className="flex items-center gap-1 text-xs text-[#B0B8C1]">
-                    <span className="text-[15px]">○</span> {post.comment_count}
+                  <span className="flex items-center gap-1 text-[12px] text-gray-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    {post.comment_count}
                   </span>
-                  <span className="text-xs text-[#B0B8C1]">조회 {post.view_count}</span>
+                  <span className="text-[12px] text-gray-300">조회 {post.view_count}</span>
                 </div>
               </div>
+
+              {/* Thumbnail */}
               {post.thumbnail && (
-                <div className="w-[72px] h-[72px] rounded-lg bg-[#F7F8FA] overflow-hidden shrink-0">
-                  <Image src={post.thumbnail} alt="" width={72} height={72} className="w-full h-full object-cover" />
+                <div className="w-[74px] h-[74px] rounded-xl bg-gray-100 overflow-hidden shrink-0 ring-1 ring-black/5">
+                  <Image src={post.thumbnail} alt="" width={74} height={74} className="w-full h-full object-cover" />
                 </div>
               )}
             </div>
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-// ── 모임 ──
+/* ────────────────────────────────────── */
+/* 모임 탭                                */
+/* ────────────────────────────────────── */
 function GroupsTab() {
   const router = useRouter();
   const [category, setCategory] = useState("");
@@ -171,69 +228,89 @@ function GroupsTab() {
   const { data: groups = [], isLoading } = useQuery<CommunityGroup[]>({
     queryKey: ["community-groups", category],
     queryFn: async () => {
-      const params = category ? `?category=${category}` : "";
-      const { data } = await api.get(`/community/groups/${params}`);
+      const p = category ? `?category=${category}` : "";
+      const { data } = await api.get(`/community/groups/${p}`);
       return data.results ?? data;
     },
   });
 
   return (
-    <div>
-      <div className="flex gap-2 px-5 py-3 overflow-x-auto scrollbar-hide">
+    <>
+      {/* Category filter */}
+      <div className="flex gap-2 px-4 sm:px-5 py-3 overflow-x-auto scrollbar-hide">
         {GROUP_CATS.map((c) => (
           <button
             key={c.key}
             onClick={() => setCategory(c.key)}
-            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              category === c.key ? "bg-[#2D4A2E] text-white" : "bg-[#F7F8FA] text-[#8B95A1]"
-            }`}>
+            className={`shrink-0 px-4 py-[7px] rounded-full text-[13px] font-medium border transition-all ${
+              category === c.key
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+            }`}
+          >
             {c.label}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+        <div className="px-4 sm:px-5 space-y-3 py-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3.5">
+              <Skeleton className="w-[52px] h-[52px] rounded-2xl shrink-0" />
+              <div className="flex-1 space-y-2"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-1/3" /></div>
+            </div>
+          ))}
+        </div>
       ) : groups.length === 0 ? (
-        <div className="flex flex-col items-center py-20">
-          <p className="text-base font-semibold text-[#191F28] mb-1">아직 모임이 없어요</p>
-          <p className="text-sm text-[#B0B8C1]">첫 번째 모임을 만들어보세요</p>
+        <div className="flex flex-col items-center py-24">
+          <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4 text-2xl">👥</div>
+          <p className="text-[15px] font-semibold text-gray-900 mb-1">아직 모임이 없어요</p>
+          <p className="text-[13px] text-gray-400">첫 번째 모임을 만들어보세요</p>
         </div>
       ) : (
-        <div className="divide-y divide-[#F2F4F6]">
+        <div>
           {groups.map((g) => (
-            <Link key={g.id} href={`/community/groups/${g.id}`}
-              className="flex items-center px-5 py-4 gap-3.5 hover:bg-[#FAFAFA] transition-colors">
-              <div className="w-[52px] h-[52px] rounded-2xl bg-[#F7F8FA] flex items-center justify-center text-2xl shrink-0">{g.emoji}</div>
+            <Link
+              key={g.id}
+              href={`/community/groups/${g.id}`}
+              className="flex items-center px-4 sm:px-5 py-4 gap-3.5 hover:bg-gray-50/60 transition-colors border-b border-gray-100"
+            >
+              <div className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-[24px] shrink-0 ring-1 ring-black/5">
+                {g.emoji}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[15px] font-semibold text-[#191F28] truncate">{g.name}</span>
-                  {!g.is_public && <span className="text-xs">🔒</span>}
+                  <span className="text-[15px] font-semibold text-gray-900 truncate">{g.name}</span>
+                  {!g.is_public && <span className="text-[11px]">🔒</span>}
                 </div>
-                <p className="text-[13px] text-[#8B95A1] line-clamp-1 mb-1">{g.description}</p>
-                <div className="flex items-center gap-2 text-[11px] text-[#B0B8C1]">
+                <p className="text-[13px] text-gray-500 line-clamp-1 mb-1.5">{g.description}</p>
+                <div className="flex items-center gap-2 text-[11px] text-gray-400">
                   <span>{g.member_count}{g.max_members > 0 ? `/${g.max_members}` : ""}명</span>
-                  {g.region && <span>{g.region}</span>}
+                  {g.region && <><span>·</span><span>{g.region}</span></>}
+                  <span>·</span>
                   <span>{g.category_display}</span>
                 </div>
               </div>
-              {g.is_member ? (
-                <span className="text-xs font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-3 py-1.5 rounded-lg shrink-0">참여중</span>
-              ) : (
-                <span className="text-xs font-semibold text-white bg-[#2D4A2E] px-3 py-1.5 rounded-lg shrink-0">참여</span>
-              )}
+              <span
+                className={`text-[12px] font-semibold px-3.5 py-[6px] rounded-lg shrink-0 transition-colors ${
+                  g.is_member ? "text-emerald-700 bg-emerald-50" : "text-white bg-gray-900 hover:bg-gray-800"
+                }`}
+              >
+                {g.is_member ? "참여중" : "참여"}
+              </span>
             </Link>
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-// ── 챌린지 ──
+/* ────────────────────────────────────── */
+/* 챌린지 탭                              */
+/* ────────────────────────────────────── */
 function ChallengesTab() {
-  const router = useRouter();
-
   const { data: challenges = [], isLoading } = useQuery<Challenge[]>({
     queryKey: ["community-challenges"],
     queryFn: async () => {
@@ -242,56 +319,88 @@ function ChallengesTab() {
     },
   });
 
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-5 space-y-3">
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+            <div className="flex justify-between"><Skeleton className="w-11 h-11 rounded-[14px]" /><Skeleton className="w-16 h-6 rounded-full" /></div>
+            <Skeleton className="h-5 w-2/3" /><Skeleton className="h-3 w-full" /><Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (challenges.length === 0) {
+    return (
+      <div className="flex flex-col items-center py-24">
+        <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4 text-2xl">🏆</div>
+        <p className="text-[15px] font-semibold text-gray-900 mb-1">아직 챌린지가 없어요</p>
+        <p className="text-[13px] text-gray-400">곧 새로운 챌린지가 시작됩니다</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-5 space-y-3">
-      {isLoading ? (
-        <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
-      ) : challenges.length === 0 ? (
-        <div className="flex flex-col items-center py-20">
-          <p className="text-base font-semibold text-[#191F28] mb-1">아직 챌린지가 없어요</p>
-          <p className="text-sm text-[#B0B8C1]">곧 새로운 챌린지가 시작됩니다</p>
-        </div>
-      ) : (
-        challenges.map((ch) => {
-          const daysLeft = Math.ceil((new Date(ch.end_date).getTime() - Date.now()) / 86400000);
-          return (
-            <Link key={ch.id} href={`/community/challenges/${ch.id}`}
-              className="block bg-white rounded-2xl p-5 border border-[#F2F4F6] hover:border-[#E5E8EB] transition-colors">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-11 h-11 rounded-[14px] bg-[#F7F8FA] flex items-center justify-center text-[22px]">{ch.emoji}</div>
-                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[ch.status] || ""}`}>{ch.status_display}</span>
+    <div className="p-4 sm:p-5 space-y-3">
+      {challenges.map((ch) => {
+        const daysLeft = Math.ceil((new Date(ch.end_date).getTime() - Date.now()) / 86400000);
+        const st = STATUS_MAP[ch.status] || STATUS_MAP.active;
+        return (
+          <Link
+            key={ch.id}
+            href={`/community/challenges/${ch.id}`}
+            className="block bg-white rounded-2xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+          >
+            {/* Top */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-[24px] ring-1 ring-black/5">
+                {ch.emoji}
               </div>
-              <h3 className="text-[17px] font-bold text-[#191F28] mb-1 tracking-tight">{ch.title}</h3>
-              <p className="text-[13px] text-[#8B95A1] line-clamp-2 mb-4">{ch.description}</p>
-              <div className="mb-3">
-                <div className="h-2 bg-[#F2F4F6] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#2D4A2E] rounded-full transition-all" style={{ width: `${Math.min(ch.my_progress, 100)}%` }} />
-                </div>
-                <div className="flex justify-between mt-1.5 text-xs text-[#B0B8C1]">
-                  <span>목표 {ch.goal_value}{ch.goal_unit}</span>
-                  {ch.is_joined && <span className="text-[#2D4A2E] font-semibold">{ch.my_progress}%</span>}
-                </div>
+              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>{ch.status_display}</span>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[16px] font-bold text-gray-900 tracking-tight mb-1">{ch.title}</h3>
+            <p className="text-[13px] text-gray-500 line-clamp-2 mb-4 leading-relaxed">{ch.description}</p>
+
+            {/* Progress bar */}
+            <div className="mb-4">
+              <div className="h-[6px] bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(ch.my_progress, 100)}%` }}
+                />
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex gap-3 text-xs text-[#B0B8C1]">
-                  <span>{ch.participant_count}명 참여</span>
-                  {ch.status === "active" && daysLeft > 0 && <span>{daysLeft}일 남음</span>}
-                </div>
-                {ch.is_joined ? (
-                  <span className="text-xs font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-3 py-1 rounded-lg">참여중 ✓</span>
-                ) : ch.status === "active" ? (
-                  <span className="text-xs font-semibold text-white bg-[#2D4A2E] px-3 py-1 rounded-lg">참여하기</span>
-                ) : null}
+              <div className="flex justify-between mt-2 text-[12px]">
+                <span className="text-gray-400">목표 {ch.goal_value}{ch.goal_unit}</span>
+                {ch.is_joined && <span className="text-emerald-600 font-semibold">{ch.my_progress}%</span>}
               </div>
-            </Link>
-          );
-        })
-      )}
+            </div>
+
+            {/* Bottom */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-3 text-[12px] text-gray-400">
+                <span>{ch.participant_count}명 참여</span>
+                {ch.status === "active" && daysLeft > 0 && <span className="text-amber-500 font-medium">{daysLeft}일 남음</span>}
+              </div>
+              {ch.is_joined ? (
+                <span className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">참여중 ✓</span>
+              ) : ch.status === "active" ? (
+                <span className="text-[12px] font-semibold text-white bg-gray-900 px-3.5 py-1 rounded-lg">참여하기</span>
+              ) : null}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-// ── Main Page ──
+/* ────────────────────────────────────── */
+/* Main Page                              */
+/* ────────────────────────────────────── */
 export default function CommunityPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
@@ -302,30 +411,43 @@ export default function CommunityPage() {
   return (
     <div className="md:pt-[60px] min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-        <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
-          <h1 className="text-[22px] font-bold tracking-tight text-[#191F28]">커뮤니티</h1>
-          <Link href="/notifications" className="w-8 h-8 rounded-full bg-[#F7F8FA] flex items-center justify-center text-xs font-bold text-[#8B95A1]">N</Link>
-        </div>
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white/80 backdrop-blur-xl">
+        <div className="max-w-2xl mx-auto">
+          {/* Title row */}
+          <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center justify-between">
+            <h1 className="text-[22px] font-bold tracking-tight text-gray-900">커뮤니티</h1>
+            <Link
+              href="/notifications"
+              className="w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors"
+            >
+              <svg className="w-[18px] h-[18px] text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </Link>
+          </div>
 
-        {/* Tabs */}
-        <div className="max-w-2xl mx-auto px-5 flex gap-6">
-          {TABS.map((tab, i) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(i)}
-              className={`pb-3 text-[15px] font-medium relative transition-colors ${
-                activeTab === i ? "text-[#191F28] font-bold" : "text-[#B0B8C1]"
-              }`}>
-              {tab}
-              {activeTab === i && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#191F28] rounded-full" />}
-            </button>
-          ))}
+          {/* Tabs */}
+          <div className="px-4 sm:px-5 flex border-b border-gray-100">
+            {TABS.map((tab, i) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(i)}
+                className={`relative pb-3 mr-6 text-[15px] transition-colors ${
+                  activeTab === i ? "text-gray-900 font-bold" : "text-gray-400 font-medium hover:text-gray-600"
+                }`}
+              >
+                {tab.label}
+                {activeTab === i && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-2xl mx-auto">
+      <main className="max-w-2xl mx-auto pb-24">
         {activeTab === 0 && <FeedTab />}
         {activeTab === 1 && <GroupsTab />}
         {activeTab === 2 && <ChallengesTab />}
@@ -338,9 +460,11 @@ export default function CommunityPage() {
             if (!isAuthenticated) { router.push("/auth/login"); return; }
             router.push(fabHref);
           }}
-          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 w-13 h-13 rounded-full bg-[#2D4A2E] text-white text-2xl font-light flex items-center justify-center shadow-lg hover:bg-[#1a3a1b] transition-colors z-40"
-          style={{ width: 52, height: 52 }}>
-          +
+          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 w-[52px] h-[52px] rounded-full bg-gray-900 hover:bg-gray-800 text-white shadow-xl shadow-gray-900/20 flex items-center justify-center transition-all hover:scale-105 z-40"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
         </button>
       )}
     </div>

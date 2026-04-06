@@ -55,12 +55,12 @@ export default function GroupNewPage() {
 
   return (
     <div className="md:pt-[60px] min-h-screen bg-white">
-      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-[#F2F4F6]">
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
-          <button onClick={() => router.back()} className="text-[15px] text-[#8B95A1]">취소</button>
-          <span className="text-[16px] font-semibold text-[#191F28]">모임 만들기</span>
+          <button onClick={() => router.back()} className="text-[15px] text-gray-500">취소</button>
+          <span className="text-[16px] font-semibold text-gray-900">모임 만들기</span>
           <button onClick={handleSubmit} disabled={!canSubmit || submitting}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold ${canSubmit ? "bg-[#2D4A2E] text-white" : "bg-[#F2F4F6] text-[#B0B8C1]"}`}>
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold ${canSubmit ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-400"}`}>
             {submitting ? "..." : "만들기"}
           </button>
         </div>
@@ -69,12 +69,12 @@ export default function GroupNewPage() {
       <main className="max-w-2xl mx-auto px-5 py-5 space-y-6">
         {/* Emoji */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">모임 아이콘</label>
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">모임 아이콘</label>
           <div className="flex flex-wrap gap-2">
             {EMOJIS.map((e) => (
               <button key={e} onClick={() => setEmoji(e)}
                 className={`w-12 h-12 rounded-[14px] text-[22px] flex items-center justify-center ${
-                  emoji === e ? "bg-[#F0F7F0] ring-2 ring-[#2D4A2E]" : "bg-[#F7F8FA]"
+                  emoji === e ? "bg-emerald-50 ring-2 ring-emerald-600" : "bg-gray-50"
                 }`}>{e}</button>
             ))}
           </div>
@@ -82,26 +82,26 @@ export default function GroupNewPage() {
 
         {/* Name */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">모임 이름</label>
-          <input className="w-full bg-[#F7F8FA] rounded-xl px-4 py-3 text-[15px] outline-none text-[#191F28] placeholder-[#B0B8C1]"
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">모임 이름</label>
+          <input className="w-full bg-gray-50 rounded-xl px-4 py-3 text-[15px] outline-none text-gray-900 placeholder-[#B0B8C1]"
             placeholder="모임 이름을 입력하세요" value={name} onChange={(e) => setName(e.target.value)} maxLength={50} />
         </div>
 
         {/* Description */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">소개</label>
-          <textarea className="w-full bg-[#F7F8FA] rounded-xl px-4 py-3 text-[15px] outline-none text-[#191F28] placeholder-[#B0B8C1] min-h-[80px] resize-none"
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">소개</label>
+          <textarea className="w-full bg-gray-50 rounded-xl px-4 py-3 text-[15px] outline-none text-gray-900 placeholder-[#B0B8C1] min-h-[80px] resize-none"
             placeholder="모임에 대해 소개해주세요" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
         </div>
 
         {/* Category */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">카테고리</label>
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">카테고리</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((c) => (
               <button key={c.key} onClick={() => setCategory(c.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium ${
-                  category === c.key ? "bg-[#2D4A2E] text-white" : "bg-[#F7F8FA] text-[#8B95A1]"
+                  category === c.key ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-500"
                 }`}>{c.label}</button>
             ))}
           </div>
@@ -109,15 +109,15 @@ export default function GroupNewPage() {
 
         {/* Region */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">지역 (선택)</label>
-          <input className="w-full bg-[#F7F8FA] rounded-xl px-4 py-3 text-[15px] outline-none text-[#191F28] placeholder-[#B0B8C1]"
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">지역 (선택)</label>
+          <input className="w-full bg-gray-50 rounded-xl px-4 py-3 text-[15px] outline-none text-gray-900 placeholder-[#B0B8C1]"
             placeholder="예: 서울, 부산" value={region} onChange={(e) => setRegion(e.target.value)} maxLength={50} />
         </div>
 
         {/* Max members */}
         <div>
-          <label className="text-[13px] font-semibold text-[#8B95A1] block mb-2">정원 (선택)</label>
-          <input className="w-full bg-[#F7F8FA] rounded-xl px-4 py-3 text-[15px] outline-none text-[#191F28] placeholder-[#B0B8C1]"
+          <label className="text-[13px] font-semibold text-gray-500 block mb-2">정원 (선택)</label>
+          <input className="w-full bg-gray-50 rounded-xl px-4 py-3 text-[15px] outline-none text-gray-900 placeholder-[#B0B8C1]"
             placeholder="최대 인원 (기본 50명)" value={maxMembers} onChange={(e) => setMaxMembers(e.target.value)} type="number" />
         </div>
       </main>

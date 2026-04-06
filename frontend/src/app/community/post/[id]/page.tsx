@@ -49,52 +49,52 @@ function CommentItem({ comment, postId, onReply }: { comment: PostComment; postI
     qc.invalidateQueries({ queryKey: ["post-detail", postId] });
   };
 
-  if (comment.is_deleted) return <p className="text-sm text-[#B0B8C1] italic py-3 px-5">삭제된 댓글입니다.</p>;
+  if (comment.is_deleted) return <p className="text-sm text-gray-400 italic py-3 px-5">삭제된 댓글입니다.</p>;
 
   return (
     <div>
       <div className="flex gap-2.5 px-5 py-3">
-        <Link href={`/profile/${comment.author_nickname}`} className="w-8 h-8 rounded-full bg-[#F7F8FA] overflow-hidden shrink-0">
+        <Link href={`/profile/${comment.author_nickname}`} className="w-8 h-8 rounded-full bg-gray-50 overflow-hidden shrink-0">
           {comment.author_image ? <Image src={comment.author_image} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover" /> :
-            <span className="w-8 h-8 flex items-center justify-center text-xs text-[#B0B8C1]">U</span>}
+            <span className="w-8 h-8 flex items-center justify-center text-xs text-gray-400">U</span>}
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[13px] font-semibold text-[#191F28]">{comment.author_nickname}</span>
-            <span className="text-[11px] text-[#B0B8C1]">{timeAgo(comment.created_at)}</span>
+            <span className="text-[13px] font-semibold text-gray-900">{comment.author_nickname}</span>
+            <span className="text-[11px] text-gray-400">{timeAgo(comment.created_at)}</span>
             <div className="ml-auto relative">
-              <button onClick={() => setShowMenu(!showMenu)} className="text-xs text-[#B0B8C1] px-1">···</button>
+              <button onClick={() => setShowMenu(!showMenu)} className="text-xs text-gray-400 px-1">···</button>
               {showMenu && (
-                <div className="absolute right-0 top-6 bg-white rounded-xl shadow-lg border border-[#F2F4F6] py-1 z-20 min-w-[120px]">
-                  {isMine && <button onClick={handleDelete} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-[#FAFAFA]">삭제</button>}
-                  {!isMine && <button onClick={() => { setShowMenu(false); alert("신고가 접수되었습니다."); }} className="w-full text-left px-4 py-2 text-sm text-[#191F28] hover:bg-[#FAFAFA]">신고</button>}
+                <div className="absolute right-0 top-6 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 min-w-[120px]">
+                  {isMine && <button onClick={handleDelete} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50">삭제</button>}
+                  {!isMine && <button onClick={() => { setShowMenu(false); alert("신고가 접수되었습니다."); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 hover:bg-gray-50">신고</button>}
                 </div>
               )}
             </div>
           </div>
-          <p className="text-[14px] text-[#191F28] leading-relaxed mb-1.5">{comment.content}</p>
+          <p className="text-[14px] text-gray-900 leading-relaxed mb-1.5">{comment.content}</p>
           <div className="flex items-center gap-3">
-            <button onClick={handleLike} className={`text-xs ${comment.is_liked ? "text-red-500" : "text-[#B0B8C1]"}`}>
+            <button onClick={handleLike} className={`text-xs ${comment.is_liked ? "text-red-500" : "text-gray-400"}`}>
               {comment.is_liked ? "♥" : "♡"} {comment.like_count > 0 ? comment.like_count : ""}
             </button>
-            <button onClick={() => onReply(comment.id, comment.author_nickname)} className="text-xs text-[#8B95A1]">답글</button>
+            <button onClick={() => onReply(comment.id, comment.author_nickname)} className="text-xs text-gray-500">답글</button>
           </div>
         </div>
       </div>
       {/* Replies */}
       {comment.replies?.map((reply) => (
         <div key={reply.id} className="flex gap-2 px-5 pl-14 py-2">
-          <span className="text-[#B0B8C1] text-xs mt-1">┗</span>
-          <Link href={`/profile/${reply.author_nickname}`} className="w-6 h-6 rounded-full bg-[#F7F8FA] overflow-hidden shrink-0">
+          <span className="text-gray-400 text-xs mt-1">┗</span>
+          <Link href={`/profile/${reply.author_nickname}`} className="w-6 h-6 rounded-full bg-gray-50 overflow-hidden shrink-0">
             {reply.author_image ? <Image src={reply.author_image} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" /> :
-              <span className="w-6 h-6 flex items-center justify-center text-[10px] text-[#B0B8C1]">U</span>}
+              <span className="w-6 h-6 flex items-center justify-center text-[10px] text-gray-400">U</span>}
           </Link>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[12px] font-semibold text-[#191F28]">{reply.author_nickname}</span>
-              <span className="text-[10px] text-[#B0B8C1]">{timeAgo(reply.created_at)}</span>
+              <span className="text-[12px] font-semibold text-gray-900">{reply.author_nickname}</span>
+              <span className="text-[10px] text-gray-400">{timeAgo(reply.created_at)}</span>
             </div>
-            <p className="text-[13px] text-[#191F28] leading-relaxed">{reply.content}</p>
+            <p className="text-[13px] text-gray-900 leading-relaxed">{reply.content}</p>
           </div>
         </div>
       ))}
@@ -174,8 +174,8 @@ export default function PostDetailPage() {
     return (
       <div className="md:pt-[60px] min-h-screen bg-white">
         <div className="max-w-2xl mx-auto px-5 py-4">
-          <button onClick={() => router.back()} className="text-lg text-[#191F28]">←</button>
-          <div className="flex justify-center py-20"><span className="text-sm text-[#B0B8C1]">로딩 중...</span></div>
+          <button onClick={() => router.back()} className="text-lg text-gray-900">←</button>
+          <div className="flex justify-center py-20"><span className="text-sm text-gray-400">로딩 중...</span></div>
         </div>
       </div>
     );
@@ -184,19 +184,19 @@ export default function PostDetailPage() {
   return (
     <div className="md:pt-[60px] min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-[#F2F4F6]">
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
-          <button onClick={() => router.back()} className="w-8 h-8 rounded-full bg-[#F7F8FA] flex items-center justify-center text-lg">←</button>
-          <span className="text-[16px] font-semibold text-[#191F28]">게시글</span>
+          <button onClick={() => router.back()} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-lg">←</button>
+          <span className="text-[16px] font-semibold text-gray-900">게시글</span>
           <div className="flex items-center gap-1.5">
-            <button onClick={handleBookmark} className="text-xl">{post.is_bookmarked ? <span className="text-yellow-500">★</span> : <span className="text-[#B0B8C1]">☆</span>}</button>
+            <button onClick={handleBookmark} className="text-xl">{post.is_bookmarked ? <span className="text-yellow-500">★</span> : <span className="text-gray-400">☆</span>}</button>
             <div className="relative">
-              <button onClick={() => setShowMenu(!showMenu)} className="w-8 h-8 rounded-full bg-[#F7F8FA] flex items-center justify-center text-sm font-bold text-[#8B95A1]">···</button>
+              <button onClick={() => setShowMenu(!showMenu)} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-sm font-bold text-gray-500">···</button>
               {showMenu && (
-                <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg border border-[#F2F4F6] py-1 z-20 min-w-[140px]">
-                  {isMine && <button onClick={() => { setShowMenu(false); router.push(`/community/post/new?edit=${postId}`); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FAFAFA]">수정하기</button>}
-                  {isMine && <button onClick={() => { setShowMenu(false); handleDelete(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-[#FAFAFA]">삭제하기</button>}
-                  {!isMine && <button onClick={() => { setShowMenu(false); setShowReport(true); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FAFAFA]">신고하기</button>}
+                <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 min-w-[140px]">
+                  {isMine && <button onClick={() => { setShowMenu(false); router.push(`/community/post/new?edit=${postId}`); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50">수정하기</button>}
+                  {isMine && <button onClick={() => { setShowMenu(false); handleDelete(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50">삭제하기</button>}
+                  {!isMine && <button onClick={() => { setShowMenu(false); setShowReport(true); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50">신고하기</button>}
                 </div>
               )}
             </div>
@@ -207,32 +207,32 @@ export default function PostDetailPage() {
       <main className="max-w-2xl mx-auto pb-24">
         {/* Category + Title */}
         <div className="px-5 pt-4 pb-2">
-          <span className="text-[12px] font-semibold text-[#2D4A2E] bg-[#F0F7F0] px-2.5 py-1 rounded">{post.category_display}</span>
+          <span className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded">{post.category_display}</span>
         </div>
-        <h1 className="px-5 text-xl font-bold text-[#191F28] leading-snug">{post.title}</h1>
+        <h1 className="px-5 text-xl font-bold text-gray-900 leading-snug">{post.title}</h1>
 
         {/* Author */}
         <Link href={`/profile/${post.author_nickname}`} className="flex items-center gap-2.5 px-5 py-3">
-          <div className="w-9 h-9 rounded-full bg-[#F7F8FA] overflow-hidden">
+          <div className="w-9 h-9 rounded-full bg-gray-50 overflow-hidden">
             {post.author_image ? <Image src={post.author_image} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover" /> :
-              <span className="w-9 h-9 flex items-center justify-center text-sm text-[#B0B8C1]">U</span>}
+              <span className="w-9 h-9 flex items-center justify-center text-sm text-gray-400">U</span>}
           </div>
           <div>
-            <p className="text-[14px] font-semibold text-[#191F28]">{post.author_nickname}</p>
-            <p className="text-[12px] text-[#B0B8C1]">{timeAgo(post.created_at)} · 조회 {post.view_count}</p>
+            <p className="text-[14px] font-semibold text-gray-900">{post.author_nickname}</p>
+            <p className="text-[12px] text-gray-400">{timeAgo(post.created_at)} · 조회 {post.view_count}</p>
           </div>
         </Link>
 
-        <hr className="border-[#F2F4F6] mx-5" />
+        <hr className="border-gray-100 mx-5" />
 
         {/* Content */}
-        <p className="px-5 py-4 text-[15px] text-[#191F28] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <p className="px-5 py-4 text-[15px] text-gray-900 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
         {/* Images */}
         {post.images && post.images.length > 0 && (
           <div className="px-5 space-y-2 pb-3">
             {post.images.map((img) => (
-              <div key={img.id} className="rounded-xl overflow-hidden bg-[#F7F8FA]">
+              <div key={img.id} className="rounded-xl overflow-hidden bg-gray-50">
                 <Image src={img.image} alt="" width={600} height={400} className="w-full object-cover" />
               </div>
             ))}
@@ -240,42 +240,42 @@ export default function PostDetailPage() {
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-5 px-5 py-3 border-t border-b border-[#F2F4F6]">
-          <button onClick={handleLike} className={`flex items-center gap-1.5 text-sm ${post.is_liked ? "text-red-500" : "text-[#8B95A1]"}`}>
+        <div className="flex items-center gap-5 px-5 py-3 border-t border-b border-gray-100">
+          <button onClick={handleLike} className={`flex items-center gap-1.5 text-sm ${post.is_liked ? "text-red-500" : "text-gray-500"}`}>
             <span className="text-[22px]">{post.is_liked ? "♥" : "♡"}</span> {post.like_count}
           </button>
-          <button onClick={() => inputRef.current?.focus()} className="flex items-center gap-1.5 text-sm text-[#8B95A1]">
+          <button onClick={() => inputRef.current?.focus()} className="flex items-center gap-1.5 text-sm text-gray-500">
             <span className="text-[22px]">○</span> {post.comment_count}
           </button>
         </div>
 
         {/* Section divider */}
-        <div className="h-2 bg-[#F7F8FA]" />
+        <div className="h-2 bg-gray-50" />
 
         {/* Comments */}
         <div className="pt-3 pb-2 px-5">
-          <h2 className="text-[15px] font-bold text-[#191F28]">댓글 {post.comment_count}</h2>
+          <h2 className="text-[15px] font-bold text-gray-900">댓글 {post.comment_count}</h2>
         </div>
         {post.comments && post.comments.length > 0 ? (
           post.comments.map((c) => <CommentItem key={c.id} comment={c} postId={postId} onReply={(id, name) => { setReplyTo({ id, name }); inputRef.current?.focus(); }} />)
         ) : (
-          <p className="text-center text-sm text-[#B0B8C1] py-8">아직 댓글이 없어요</p>
+          <p className="text-center text-sm text-gray-400 py-8">아직 댓글이 없어요</p>
         )}
       </main>
 
       {/* Comment input */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F2F4F6] z-30 md:pb-0 pb-safe">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 md:pb-0 pb-safe">
         <div className="max-w-2xl mx-auto px-4 py-2.5">
           {replyTo && (
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-[#2D4A2E] font-medium">{replyTo.name}에게 답글</span>
-              <button onClick={() => setReplyTo(null)} className="text-xs text-[#B0B8C1]">✕</button>
+              <span className="text-xs text-emerald-700 font-medium">{replyTo.name}에게 답글</span>
+              <button onClick={() => setReplyTo(null)} className="text-xs text-gray-400">✕</button>
             </div>
           )}
           <div className="flex items-end gap-2">
             <input
               ref={inputRef}
-              className="flex-1 bg-[#F7F8FA] rounded-full px-4 py-2.5 text-sm outline-none text-[#191F28] placeholder-[#B0B8C1]"
+              className="flex-1 bg-gray-50 rounded-full px-4 py-2.5 text-sm outline-none text-gray-900 placeholder-[#B0B8C1]"
               placeholder={isAuthenticated ? "댓글을 입력하세요..." : "로그인 후 댓글을 작성할 수 있어요"}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -287,7 +287,7 @@ export default function PostDetailPage() {
               onClick={handleSubmitComment}
               disabled={!comment.trim() || submitting}
               className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-lg font-bold shrink-0 ${
-                comment.trim() ? "bg-[#2D4A2E]" : "bg-[#E5E8EB]"
+                comment.trim() ? "bg-gray-900" : "bg-gray-200"
               }`}>↑</button>
           </div>
         </div>
@@ -298,20 +298,20 @@ export default function PostDetailPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center" onClick={() => setShowReport(false)}>
           <div className="bg-white rounded-t-2xl w-full max-w-lg p-6 pb-10" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#191F28]">신고하기</h3>
-              <button onClick={() => setShowReport(false)} className="text-[#B0B8C1]">✕</button>
+              <h3 className="text-lg font-bold text-gray-900">신고하기</h3>
+              <button onClick={() => setShowReport(false)} className="text-gray-400">✕</button>
             </div>
-            <p className="text-sm text-[#8B95A1] mb-3">신고 사유를 선택해주세요</p>
+            <p className="text-sm text-gray-500 mb-3">신고 사유를 선택해주세요</p>
             {REPORT_REASONS.map((r) => (
               <label key={r.key} className="flex items-center gap-3 py-3 cursor-pointer">
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${reportReason === r.key ? "border-[#2D4A2E]" : "border-[#E5E8EB]"}`}>
-                  {reportReason === r.key && <div className="w-2.5 h-2.5 rounded-full bg-[#2D4A2E]" />}
+                  {reportReason === r.key && <div className="w-2.5 h-2.5 rounded-full bg-gray-900" />}
                 </div>
-                <button onClick={() => setReportReason(r.key)} className="text-[15px] text-[#191F28]">{r.label}</button>
+                <button onClick={() => setReportReason(r.key)} className="text-[15px] text-gray-900">{r.label}</button>
               </label>
             ))}
             <button onClick={handleReport} disabled={!reportReason}
-              className={`w-full mt-4 py-3.5 rounded-xl text-white font-semibold ${reportReason ? "bg-red-500" : "bg-[#E5E8EB]"}`}>
+              className={`w-full mt-4 py-3.5 rounded-xl text-white font-semibold ${reportReason ? "bg-red-500" : "bg-gray-200"}`}>
               신고하기
             </button>
           </div>

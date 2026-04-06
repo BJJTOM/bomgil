@@ -105,15 +105,15 @@ export default function PostNewPage() {
   return (
     <div className="md:pt-[60px] min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-[#F2F4F6]">
+      <header className="sticky top-0 md:top-[60px] z-30 bg-white border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
-          <button onClick={() => router.back()} className="text-[15px] text-[#8B95A1]">취소</button>
-          <span className="text-[16px] font-semibold text-[#191F28]">{editId ? "수정하기" : "글쓰기"}</span>
+          <button onClick={() => router.back()} className="text-[15px] text-gray-500">취소</button>
+          <span className="text-[16px] font-semibold text-gray-900">{editId ? "수정하기" : "글쓰기"}</span>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
             className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
-              canSubmit ? "bg-[#2D4A2E] text-white" : "bg-[#F2F4F6] text-[#B0B8C1]"
+              canSubmit ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-400"
             }`}>
             {submitting ? "..." : editId ? "수정" : "완료"}
           </button>
@@ -128,7 +128,7 @@ export default function PostNewPage() {
               key={c.key}
               onClick={() => setCategory(c.key)}
               className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-medium transition-colors ${
-                category === c.key ? "bg-[#2D4A2E] text-white" : "bg-[#F7F8FA] text-[#8B95A1]"
+                category === c.key ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-500"
               }`}>
               {c.label}
             </button>
@@ -138,29 +138,29 @@ export default function PostNewPage() {
         {/* Title */}
         <div className="relative px-5">
           <input
-            className="w-full text-lg font-semibold text-[#191F28] placeholder-[#B0B8C1] outline-none py-3 pr-16"
+            className="w-full text-lg font-semibold text-gray-900 placeholder-[#B0B8C1] outline-none py-3 pr-16"
             placeholder={`제목 (${TITLE_MIN}~${TITLE_MAX}자)`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={TITLE_MAX}
           />
-          <span className={`absolute right-5 top-4 text-[11px] ${title.length > 0 && title.length < TITLE_MIN ? "text-red-500" : "text-[#B0B8C1]"}`}>
+          <span className={`absolute right-5 top-4 text-[11px] ${title.length > 0 && title.length < TITLE_MIN ? "text-red-500" : "text-gray-400"}`}>
             {title.length}/{TITLE_MAX}
           </span>
         </div>
 
-        <hr className="border-[#F2F4F6] mx-5" />
+        <hr className="border-gray-100 mx-5" />
 
         {/* Content */}
         <div className="relative px-5">
           <textarea
-            className="w-full min-h-[240px] text-[15px] text-[#191F28] placeholder-[#B0B8C1] outline-none py-4 leading-relaxed resize-none"
+            className="w-full min-h-[240px] text-[15px] text-gray-900 placeholder-[#B0B8C1] outline-none py-4 leading-relaxed resize-none"
             placeholder={`내용을 입력하세요 (${CONTENT_MIN}~${CONTENT_MAX}자)`}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             maxLength={CONTENT_MAX}
           />
-          <span className={`absolute right-5 bottom-4 text-[11px] ${content.length > 0 && content.length < CONTENT_MIN ? "text-red-500" : "text-[#B0B8C1]"}`}>
+          <span className={`absolute right-5 bottom-4 text-[11px] ${content.length > 0 && content.length < CONTENT_MIN ? "text-red-500" : "text-gray-400"}`}>
             {content.length}/{CONTENT_MAX}
           </span>
         </div>
@@ -169,9 +169,9 @@ export default function PostNewPage() {
         <div className="flex flex-wrap gap-2 px-5 py-3">
           <button
             onClick={() => fileRef.current?.click()}
-            className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-[#E5E8EB] flex flex-col items-center justify-center">
-            <span className="text-xl font-light text-[#B0B8C1]">+</span>
-            <span className="text-[10px] text-[#B0B8C1]">{images.length}/10</span>
+            className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
+            <span className="text-xl font-light text-gray-400">+</span>
+            <span className="text-[10px] text-gray-400">{images.length}/10</span>
           </button>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
           {previews.map((url, i) => (

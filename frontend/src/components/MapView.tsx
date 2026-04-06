@@ -55,19 +55,25 @@ export function MapView({
   const markerLayersRef = useRef<any[]>([]);
   const posMarkerRef = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
-  const initializedRef = useRef(false);
 
   const isDark = theme === "dark";
 
   // Initialize map once
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+
+    // Clean up any existing map
+    if (mapInstanceRef.current) {
+      try { mapInstanceRef.current.remove(); } catch {}
+      mapInstanceRef.current = null;
+    }
+
+    let cancelled = false;
 
     const initMap = async () => {
       try {
         const L = (await import("leaflet")).default;
+        if (cancelled) return;
         leafletRef.current = L;
 
         delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -77,10 +83,12 @@ export function MapView({
           shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
 
+        if (!mapRef.current || cancelled) return;
+
         const defaultCenter = center || { lat: 37.5665, lng: 126.978 };
         const tile = TILE_LAYERS[theme];
 
-        const map = L.map(mapRef.current!, {
+        const map = L.map(mapRef.current, {
           center: [defaultCenter.lat, defaultCenter.lng],
           zoom,
           zoomControl: false,
@@ -97,11 +105,11 @@ export function MapView({
         setLoaded(true);
 
         setTimeout(() => {
-          try { map.invalidateSize(); } catch {}
-        }, 200);
+          try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
+        }, 300);
       } catch (err) {
         console.error("Map load error:", err);
-        if (mapRef.current) {
+        if (mapRef.current && !cancelled) {
           mapRef.current.innerHTML = `
             <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${isDark ? "#1a1a2e" : "#f0f9f4"};border-radius:16px;">
               <div style="text-align:center;color:${isDark ? "#555" : "#777"};">
@@ -114,13 +122,15 @@ export function MapView({
       }
     };
 
-    initMap();
+    // Small delay to ensure DOM is ready after conditional render
+    const timer = setTimeout(initMap, 50);
 
     return () => {
+      cancelled = true;
+      clearTimeout(timer);
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try { mapInstanceRef.current.remove(); } catch {}
         mapInstanceRef.current = null;
-        initializedRef.current = false;
       }
     };
   }, [theme]);

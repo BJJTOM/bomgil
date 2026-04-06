@@ -54,6 +54,10 @@ class CustomUser(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta(AbstractUser.Meta):
+        verbose_name = "회원"
+        verbose_name_plural = "회원"
+
     def __str__(self):
         return self.nickname or self.username
 
@@ -79,6 +83,8 @@ class UserBadge(models.Model):
 
     class Meta:
         unique_together = ["user", "badge_type"]
+        verbose_name = "배지"
+        verbose_name_plural = "배지"
 
     def __str__(self):
         return f"{self.user.nickname} - {self.get_badge_type_display()}"
@@ -93,3 +99,5 @@ class PhoneVerification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "휴대폰 인증"
+        verbose_name_plural = "휴대폰 인증"

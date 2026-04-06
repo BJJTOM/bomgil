@@ -59,6 +59,8 @@ class Spot(models.Model):
 
     class Meta:
         ordering = ["day_number", "order"]
+        verbose_name = "스팟"
+        verbose_name_plural = "스팟"
 
     def __str__(self):
         return f"{self.trail.title} - {self.name}"
@@ -71,3 +73,5 @@ class SpotImage(models.Model):
 
     class Meta:
         ordering = ["order"]
+        verbose_name = "스팟 이미지"
+        verbose_name_plural = "스팟 이미지"

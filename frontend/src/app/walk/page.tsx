@@ -162,11 +162,13 @@ export default function WalkPage() {
     };
   }, []);
 
-  // Invalidate map size when state changes (countdown → walking reveals the map)
+  // Invalidate map size when walking starts (map becomes visible)
   useEffect(() => {
     if (state !== "countdown" && mapObjRef.current) {
-      setTimeout(() => { try { mapObjRef.current.invalidateSize(); } catch {} }, 100);
-      setTimeout(() => { try { mapObjRef.current.invalidateSize(); } catch {} }, 500);
+      // Multiple invalidations to catch layout reflow
+      [50, 150, 300, 600, 1000].forEach(ms =>
+        setTimeout(() => { try { mapObjRef.current?.invalidateSize(); } catch {} }, ms)
+      );
     }
   }, [state]);
 
@@ -397,7 +399,7 @@ export default function WalkPage() {
   const isWalking = state === "walking" || state === "paused";
 
   return (
-    <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col z-50">
+    <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#0a0a0a" }}>
       {/* Pulse animation */}
       <style jsx global>{`
         @keyframes mapPulse {
@@ -406,89 +408,105 @@ export default function WalkPage() {
         }
       `}</style>
 
-      {/* === COUNTDOWN OVERLAY (hidden once walking) === */}
+      {/* === COUNTDOWN (full screen overlay) === */}
       {state === "countdown" && (
-        <div className="absolute inset-0 z-[60] bg-[#0a0a0a] flex flex-col items-center justify-center">
-          <button onClick={() => router.back()} className="absolute top-14 left-5 w-9 h-9 rounded-full bg-white/[0.08] flex items-center justify-center">
-            <span className="text-white/50 text-lg">&larr;</span>
+        <div style={{ position: "absolute", inset: 0, zIndex: 60, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => router.back()} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>&larr;</span>
           </button>
-          <p className="text-white/15 text-[14px] font-semibold tracking-[0.4em] mb-12">MORU</p>
-          <div className="w-[160px] h-[160px] rounded-full bg-[#2D4A2E] flex items-center justify-center shadow-[0_0_60px_rgba(45,74,46,0.4)] animate-pulse">
-            <span className="text-white text-[64px] font-extrabold">{countdown}</span>
+          <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 14, fontWeight: 600, letterSpacing: "0.4em", marginBottom: 48 }}>MORU</p>
+          <div style={{ width: 160, height: 160, borderRadius: 80, background: "#2D4A2E", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(45,74,46,0.4)" }} className="animate-pulse">
+            <span style={{ color: "#fff", fontSize: 64, fontWeight: 800 }}>{countdown}</span>
           </div>
-          <p className="text-white/20 text-[14px] mt-12 tracking-wide">{ko ? "경로 자동 기록" : "Route auto-recording"}</p>
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 14, marginTop: 48 }}>{ko ? "경로 ��동 기록" : "Route auto-recording"}</p>
         </div>
       )}
 
-      {/* === MAP (always mounted, visible when walking) === */}
-      <div className="relative" style={{ height: "50vh", display: isWalking ? "block" : "none" }}>
-        <div ref={mapDivRef} style={{ width: "100%", height: "100%" }} />
+      {/* ============================================ */}
+      {/* WALKING LAYOUT: map (top) | stats | controls */}
+      {/* ============================================ */}
 
-        {/* Status pill */}
-        <div className="absolute top-4 left-4 z-[1000] flex items-center gap-2 bg-black/65 backdrop-blur-sm rounded-full px-3.5 py-1.5">
-          <div className={`w-2 h-2 rounded-full ${state === "walking" ? (isAutoPaused ? "bg-orange-400" : "bg-green-400 animate-pulse") : "bg-yellow-400"}`} />
-          <span className="text-white/85 text-[13px] font-semibold">
-            {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시정지" : "Auto-paused") : (ko ? "기록 중" : "Recording")) : (ko ? "일시정지" : "Paused")}
-          </span>
-          <span className="text-white/50 text-[13px] font-mono">{formatTime(elapsed)}</span>
-        </div>
+      {/* MAP SECTION — fixed height, no overlap */}
+      <div style={{
+        height: "48%",
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        visibility: isWalking ? "visible" : "hidden",
+      }}>
+        <div ref={mapDivRef} style={{ position: "absolute", inset: 0 }} />
+
+        {/* Status pill — inside map bounds */}
+        {isWalking && (
+          <div style={{
+            position: "absolute", top: 12, left: 12, zIndex: 10,
+            display: "flex", alignItems: "center", gap: 8,
+            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
+            borderRadius: 20, padding: "6px 14px",
+          }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: 4,
+              background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15",
+            }} />
+            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 600 }}>
+              {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시���지" : "Auto-paused") : (ko ? "기록 중" : "REC")) : (ko ? "일시정지" : "Paused")}
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontFamily: "monospace" }}>{formatTime(elapsed)}</span>
+          </div>
+        )}
       </div>
 
-      {/* === STATS (visible when walking) === */}
+      {/* STATS SECTION — below map, scrollable */}
       {isWalking && (
-        <div className="flex-1 flex flex-col items-center justify-center px-7 overflow-y-auto">
+        <div style={{
+          height: "38%",
+          width: "100%",
+          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "8px 24px",
+        }}>
           {/* Distance */}
-          <div className="flex items-baseline mb-1">
-            <span className="text-[48px] font-extrabold text-white tracking-tight leading-none">{distance.toFixed(2)}</span>
-            <span className="text-[15px] font-medium text-white/35 ml-1.5">km</span>
+          <div style={{ display: "flex", alignItems: "baseline", marginBottom: 2 }}>
+            <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", letterSpacing: -2, lineHeight: 1 }}>{distance.toFixed(2)}</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: "rgba(255,255,255,0.35)", marginLeft: 6 }}>km</span>
           </div>
 
           {/* Pace */}
-          <div className="flex items-baseline gap-1.5 mb-4">
-            <span className="text-[11px] text-white/35">{ko ? "페이스" : "Pace"}</span>
-            <span className="text-[20px] font-bold text-[#4ADE80]">{formatPace(currentPace)}</span>
-            <span className="text-[11px] text-white/25">/km</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{ko ? "페이스" : "Pace"}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: "#4ADE80" }}>{formatPace(currentPace)}</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>/km</span>
           </div>
 
-          {/* 3-stat row */}
-          <div className="w-full flex bg-white/[0.04] rounded-2xl py-3 mb-3">
-            <div className="flex-1 text-center">
-              <div className="text-[15px] font-bold text-white">{steps.toLocaleString()}</div>
-              <div className="text-[10px] text-white/35 uppercase">{ko ? "걸음" : "Steps"}</div>
-            </div>
-            <div className="w-px h-6 bg-white/[0.06] self-center" />
-            <div className="flex-1 text-center">
-              <div className="text-[15px] font-bold text-white">{calories}</div>
-              <div className="text-[10px] text-white/35 uppercase">kcal</div>
-            </div>
-            <div className="w-px h-6 bg-white/[0.06] self-center" />
-            <div className="flex-1 text-center">
-              <div className="text-[15px] font-bold text-white">{speed.toFixed(1)}</div>
-              <div className="text-[10px] text-white/35 uppercase">km/h</div>
-            </div>
-          </div>
-
-          {/* 2-stat row */}
-          <div className="w-full flex bg-white/[0.04] rounded-2xl py-3 mb-3">
-            <div className="flex-1 text-center">
-              <div className="text-[15px] font-bold text-white">{elevGain > 0 ? `+${elevGain}m` : "0m"}</div>
-              <div className="text-[10px] text-white/35 uppercase">{ko ? "고도" : "Elev"}</div>
-            </div>
-            <div className="w-px h-6 bg-white/[0.06] self-center" />
-            <div className="flex-1 text-center">
-              <div className="text-[15px] font-bold text-white">{formatPace(avgPace)}</div>
-              <div className="text-[10px] text-white/35 uppercase">{ko ? "평균 페이스" : "Avg Pace"}</div>
-            </div>
+          {/* 4-stat grid */}
+          <div style={{
+            width: "100%", display: "flex", background: "rgba(255,255,255,0.04)",
+            borderRadius: 16, padding: "12px 0", marginBottom: 8,
+          }}>
+            {[
+              { val: steps.toLocaleString(), label: ko ? "걸음" : "Steps" },
+              { val: String(calories), label: "kcal" },
+              { val: speed.toFixed(1), label: "km/h" },
+              { val: elevGain > 0 ? `+${elevGain}m` : "0m", label: ko ? "고도" : "Elev" },
+            ].map((s, i) => (
+              <div key={i} style={{ flex: 1, textAlign: "center", borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{s.val}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>{s.label}</div>
+              </div>
+            ))}
           </div>
 
           {/* Live splits */}
           {splits.length > 0 && (
-            <div className="w-full bg-white/[0.04] rounded-2xl p-3 mb-2">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">{ko ? "구간 기록" : "Splits"}</p>
+            <div style={{ width: "100%", background: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 12 }}>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{ko ? "구간 기록" : "Splits"}</p>
               {splits.map((s) => (
-                <div key={s.km} className="flex items-center py-1 gap-3">
-                  <span className="text-[12px] font-semibold text-white/50 w-8">{s.km}km</span>
-                  <span className="text-[14px] font-bold text-[#4ADE80]">{s.pace}</span>
+                <div key={s.km} style={{ display: "flex", alignItems: "center", padding: "3px 0", gap: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", width: 32 }}>{s.km}km</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#4ADE80" }}>{s.pace}</span>
                 </div>
               ))}
             </div>
@@ -496,11 +514,18 @@ export default function WalkPage() {
         </div>
       )}
 
-      {/* === CONTROLS === */}
+      {/* CONTROLS — fixed at bottom */}
       {isWalking && (
-        <div className="pb-8 pt-3 flex items-center justify-center gap-7">
+        <div style={{
+          height: "14%",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
+        }}>
           {state === "walking" ? (
-            <button onClick={pauseWalk} className="w-[68px] h-[68px] rounded-full bg-white flex items-center justify-center active:scale-90 transition-transform">
+            <button onClick={pauseWalk} style={{ width: 68, height: 68, borderRadius: 34, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="#111">
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
@@ -508,10 +533,10 @@ export default function WalkPage() {
             </button>
           ) : (
             <>
-              <button onClick={() => setShowStopModal(true)} className="w-[56px] h-[56px] rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition-transform">
+              <button onClick={() => setShowStopModal(true)} style={{ width: 56, height: 56, borderRadius: 28, background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
               </button>
-              <button onClick={resumeWalk} className="w-[68px] h-[68px] rounded-full bg-[#2D4A2E] flex items-center justify-center active:scale-90 transition-transform">
+              <button onClick={resumeWalk} style={{ width: 68, height: 68, borderRadius: 34, background: "#2D4A2E", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21" /></svg>
               </button>
             </>

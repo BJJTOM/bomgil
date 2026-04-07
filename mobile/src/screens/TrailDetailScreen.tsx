@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   TextInput,
   Share,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 class TrailDetailErrorBoundary extends React.Component<
@@ -85,6 +87,15 @@ function formatDuration(minutes: number | null | undefined): string {
   return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
+const API_BASE = 'https://api.moruwalk.com';
+
+function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // Relative path like /media/trails/covers/foo.jpg
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export default function TrailDetailScreen() {
   return (
     <TrailDetailErrorBoundary>
@@ -98,6 +109,7 @@ function TrailDetailScreenInner() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
+  const scrollRef = useRef<ScrollView>(null);
   const trailId = route.params?.id ?? route.params?.trailId;
 
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -244,14 +256,22 @@ function TrailDetailScreenInner() {
   ].filter(Boolean);
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        keyboardShouldPersistTaps="handled"
+      >
 
         {/* ===== 1. Cover Image ===== */}
         <View style={styles.coverContainer}>
-          {trail.cover_image || trail.thumbnail_url ? (
+          {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
             <Image
-              source={{ uri: trail.cover_image || trail.thumbnail_url }}
+              source={{ uri: (resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url))! }}
               style={styles.coverImage}
               resizeMode="cover"
             />
@@ -446,6 +466,7 @@ function TrailDetailScreenInner() {
               region={trail.region}
               country={trail.country}
               height={260}
+              theme="dark"
               spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
           ) : (
@@ -567,6 +588,9 @@ function TrailDetailScreenInner() {
                 value={reviewForm.content}
                 onChangeText={(text) => setReviewForm((p) => ({ ...p, content: text }))}
                 textAlignVertical="top"
+                onFocus={() => {
+                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+                }}
               />
               <TouchableOpacity
                 style={[
@@ -643,7 +667,7 @@ function TrailDetailScreenInner() {
         {/* Bottom spacing for tab bar */}
         <View style={{ height: 120 }} />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -45,6 +45,13 @@ STORAGES = {
 }
 
 # ---------------------------------------------------------------------------
+# Media files — local disk (ephemeral on Render free tier)
+# Files survive until next redeploy. For persistence, configure S3.
+# ---------------------------------------------------------------------------
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "mediafiles"
+
+# ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [

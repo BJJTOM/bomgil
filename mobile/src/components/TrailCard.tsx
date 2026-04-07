@@ -12,6 +12,14 @@ import { Trail } from '../types';
 
 const { width } = Dimensions.get('window');
 
+const API_BASE = 'https://api.moruwalk.com';
+
+function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 interface TrailCardProps {
   trail: Trail;
   onPress: () => void;
@@ -66,9 +74,9 @@ export default function TrailCard({
         onPress={onPress}
         activeOpacity={0.85}>
         <View style={styles.horizontalImage}>
-          {trail.cover_image || trail.thumbnail_url ? (
+          {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
             <Image
-              source={{ uri: trail.cover_image || trail.thumbnail_url }}
+              source={{ uri: (resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url))! }}
               style={styles.horizontalImg}
               resizeMode="cover"
             />
@@ -102,9 +110,9 @@ export default function TrailCard({
       activeOpacity={0.85}>
       {/* Image */}
       <View style={[styles.imageContainer, { height: imageHeight }]}>
-        {trail.cover_image || trail.thumbnail_url ? (
+        {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
           <Image
-            source={{ uri: trail.cover_image || trail.thumbnail_url }}
+            source={{ uri: (resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url))! }}
             style={styles.image}
             resizeMode="cover"
           />

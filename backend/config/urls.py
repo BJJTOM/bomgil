@@ -35,5 +35,7 @@ urlpatterns = [
     path("api/v1/health/", HealthCheckView.as_view(), name="health-check"),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files in both debug and production
+# In production (Render free tier without S3), files are on local disk
+# and will be lost on redeploy, but at least served while the instance is alive
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

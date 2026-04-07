@@ -17,6 +17,14 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail, PaginatedResponse } from '../types';
 
+const API_BASE = 'https://api.moruwalk.com';
+
+function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 const TABS = [
   { key: 'weekly', label: '주간', endpoint: '/trails/rankings/weekly/' },
   { key: 'monthly', label: '월간', endpoint: '/trails/rankings/monthly/' },
@@ -56,9 +64,9 @@ export default function RankingsScreen() {
           </Text>
         </View>
         <View style={styles.rankImage}>
-          {item.cover_image || item.thumbnail_url ? (
+          {resolveImageUrl(item.cover_image) || resolveImageUrl(item.thumbnail_url) ? (
             <Image
-              source={{ uri: item.cover_image || item.thumbnail_url }}
+              source={{ uri: (resolveImageUrl(item.cover_image) || resolveImageUrl(item.thumbnail_url))! }}
               style={styles.rankImg}
               resizeMode="cover"
             />

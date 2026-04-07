@@ -53,6 +53,9 @@ class TrailCreateSerializer(serializers.ModelSerializer):
     tag_ids = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True, required=False, write_only=True
     )
+    tags = serializers.ListField(
+        child=serializers.CharField(), required=False, write_only=True
+    )
 
     class Meta:
         model = Trail
@@ -62,13 +65,19 @@ class TrailCreateSerializer(serializers.ModelSerializer):
             "region", "country", "distance_km", "estimated_minutes",
             "difficulty", "elevation_gain",
             "start_lat", "start_lng", "end_lat", "end_lng",
-            "path_data", "cover_image", "tag_ids", "best_season", "status",
+            "path_data", "cover_image", "tag_ids", "tags", "best_season", "status",
         ]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        tags = validated_data.pop("tag_ids", [])
+        tag_ids = validated_data.pop("tag_ids", [])
+        tag_names = validated_data.pop("tags", [])
         trail = Trail.objects.create(**validated_data)
-        if tags:
-            trail.tags.set(tags)
+        # Resolve tags: accept both IDs and names
+        all_tags = list(tag_ids)
+        for name in tag_names:
+            tag, _ = Tag.objects.get_or_create(name=name)
+            all_tags.append(tag)
+        if all_tags:
+            trail.tags.set(all_tags)
         return trail

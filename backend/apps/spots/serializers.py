@@ -30,8 +30,9 @@ class SpotCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Spot
         fields = [
-            "trail", "name", "name_en", "name_ja", "spot_type",
+            "id", "trail", "name", "name_en", "name_ja", "spot_type",
             "lat", "lng", "order", "distance_from_start_km",
             "description", "description_en", "description_ja",
             "menu_highlight", "price_range", "tip",
         ]
+        read_only_fields = ["id"]

@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
+import { FirebaseInit } from "@/components/FirebaseInit";
 
 export const metadata: Metadata = {
   title: "Moru — 걸으면 보이는 것들",
@@ -32,6 +33,7 @@ export default function RootLayout({
       </head>
       <body className="bg-warm text-text-primary min-h-screen antialiased" style={{ backgroundColor: "#FAFAFA" }}>
         <Providers>
+          <FirebaseInit />
           <Navbar />
           <main className="pb-24 md:pb-0">{children}</main>
           <BottomNav />

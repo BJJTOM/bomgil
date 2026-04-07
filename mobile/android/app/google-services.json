@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "819189761074",
+    "project_id": "moru-media",
+    "storage_bucket": "moru-media.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:819189761074:android:07dd4ec3ce439714fda82b",
+        "android_client_info": {
+          "package_name": "com.roamiapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5BhFSSMRxf0_iFfWZez-ilAiCQbxfmaQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

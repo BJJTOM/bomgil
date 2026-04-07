@@ -16,16 +16,8 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [showPermissions, setShowPermissions] = useState<boolean | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('permissions_shown').then((val) => {
-      setShowPermissions(val !== 'true');
-    });
-  }, []);
-
-  useEffect(() => {
-    // Initialize Firebase services on first launch
     crashlytics().setCrashlyticsCollectionEnabled(true);
     analytics().logEvent('app_open');
     requestNotificationPermission();
@@ -33,18 +25,6 @@ export default function App() {
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
-  if (showPermissions === null) return null; // Loading
-
-  if (showPermissions) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <PermissionsScreen onComplete={() => setShowPermissions(false)} />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    );
   }
 
   return (

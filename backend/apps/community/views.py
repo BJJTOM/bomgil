@@ -3,6 +3,7 @@ from django.db.models import F, Q
 from rest_framework import generics, status, permissions, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from apps.accounts.notifications import create_notification
 from .models import (
     Post, PostComment, PostLike, CommentLike, PostImage, PostBookmark,
     Report, UserBlock,
@@ -125,6 +126,16 @@ class PostLikeView(APIView):
         like, created = PostLike.objects.get_or_create(user=request.user, post=post)
         if created:
             Post.objects.filter(pk=pk).update(like_count=F('like_count') + 1)
+            # Notify post author
+            create_notification(
+                user=post.author,
+                actor=request.user,
+                title='좋아요',
+                body=f'{request.user.nickname}님이 회원님의 게시글을 좋아합니다.',
+                notification_type='like',
+                target_type='post',
+                target_id=post.pk,
+            )
             return Response({'liked': True}, status=status.HTTP_201_CREATED)
         like.delete()
         Post.objects.filter(pk=pk).update(like_count=F('like_count') - 1)
@@ -176,8 +187,18 @@ class PostCommentCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         post = generics.get_object_or_404(Post, pk=self.kwargs['pk'])
-        serializer.save(author=self.request.user, post=post)
+        comment = serializer.save(author=self.request.user, post=post)
         Post.objects.filter(pk=post.pk).update(comment_count=F('comment_count') + 1)
+        # Notify post author about new comment
+        create_notification(
+            user=post.author,
+            actor=self.request.user,
+            title='새 댓글',
+            body=f'{self.request.user.nickname}님이 회원님의 게시글에 댓글을 달았습니다.',
+            notification_type='comment',
+            target_type='post',
+            target_id=post.pk,
+        )
 
 
 class PostCommentUpdateView(APIView):
@@ -232,8 +253,18 @@ class CommentReplyView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         parent = generics.get_object_or_404(PostComment, pk=self.kwargs['comment_id'])
-        serializer.save(author=self.request.user, post=parent.post, parent=parent)
+        reply = serializer.save(author=self.request.user, post=parent.post, parent=parent)
         Post.objects.filter(pk=parent.post_id).update(comment_count=F('comment_count') + 1)
+        # Notify the parent comment author about the reply
+        create_notification(
+            user=parent.author,
+            actor=self.request.user,
+            title='답글',
+            body=f'{self.request.user.nickname}님이 회원님의 댓글에 답글을 달았습니다.',
+            notification_type='reply',
+            target_type='post',
+            target_id=parent.post_id,
+        )
 
 
 class PostImageUploadView(APIView):

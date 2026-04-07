@@ -10,25 +10,29 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 
 interface Notification {
   id: number;
-  type: 'like' | 'comment' | 'follow' | 'companion' | string;
-  message: string;
+  title: string;
+  body: string;
+  notification_type: 'like' | 'comment' | 'reply' | 'follow' | 'system';
+  target_type?: 'post' | 'trail' | 'activity' | null;
+  target_id?: number | null;
   is_read: boolean;
-  actor_nickname?: string;
-  target_id?: number;
-  target_type?: string;
+  actor_nickname?: string | null;
+  actor_profile_image?: string | null;
   created_at: string;
 }
 
-const NOTIF_ICONS: Record<string, string> = {
-  like: '❤️',
-  comment: '💬',
-  follow: '👤',
-  companion: '🤝',
+const NOTIF_ICON_MAP: Record<string, { name: string; color: string; bg: string }> = {
+  like: { name: 'heart', color: '#E74C3C', bg: '#FDECEC' },
+  comment: { name: 'message-circle', color: '#3498DB', bg: '#EBF5FB' },
+  reply: { name: 'corner-down-right', color: '#8E44AD', bg: '#F4ECF7' },
+  follow: { name: 'user-plus', color: '#27AE60', bg: '#EAFAF1' },
+  system: { name: 'bell', color: '#F39C12', bg: '#FEF9E7' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -36,12 +40,12 @@ function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffMin < 1) return '\uBC29\uAE08 \uC804';
+  if (diffMin < 60) return `${diffMin}\uBD84 \uC804`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffHour < 24) return `${diffHour}\uC2DC\uAC04 \uC804`;
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}일 전`;
+  if (diffDay < 7) return `${diffDay}\uC77C \uC804`;
   return date.toLocaleDateString('ko-KR');
 }
 
@@ -53,35 +57,71 @@ export default function NotificationsScreen() {
   const { data: notifications, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const { data } = await api.get('/stories/notifications/');
+      const { data } = await api.get('/auth/notifications/');
       return (data.results || data) as Notification[];
     },
   });
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      await api.post('/stories/notifications/mark-all-read/');
+      await api.post('/auth/notifications/read-all/');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
     },
   });
 
   const hasUnread = notifications?.some((n) => !n.is_read);
+
+  const handleNotifPress = (item: Notification) => {
+    if (item.target_type === 'post' && item.target_id) {
+      navigation.navigate('PostDetail', { id: item.target_id });
+    } else if (item.target_type === 'trail' && item.target_id) {
+      navigation.navigate('TrailDetail', { id: item.target_id });
+    } else if (item.notification_type === 'follow' && item.actor_nickname) {
+      navigation.navigate('UserProfile', { nickname: item.actor_nickname });
+    }
+  };
+
+  const renderItem = ({ item }: { item: Notification }) => {
+    const iconInfo = NOTIF_ICON_MAP[item.notification_type] || NOTIF_ICON_MAP.system;
+
+    return (
+      <TouchableOpacity
+        style={[styles.notifItem, !item.is_read && styles.notifUnread]}
+        activeOpacity={0.7}
+        onPress={() => handleNotifPress(item)}>
+        <View style={[styles.notifIcon, { backgroundColor: iconInfo.bg }]}>
+          <Feather name={iconInfo.name} size={20} color={iconInfo.color} />
+        </View>
+        <View style={styles.notifContent}>
+          <Text style={styles.notifTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.notifBody} numberOfLines={2}>
+            {item.body}
+          </Text>
+          <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
+        </View>
+        {!item.is_read && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>{'←'}</Text>
+          <Feather name="arrow-left" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>알림</Text>
+        <Text style={styles.headerTitle}>{'\uC54C\uB9BC'}</Text>
         {hasUnread ? (
           <TouchableOpacity
             style={styles.markAllBtn}
             onPress={() => markAllRead.mutate()}>
-            <Text style={styles.markAllText}>모두 읽음</Text>
+            <Text style={styles.markAllText}>{'\uBAA8\uB450 \uC77D\uC74C'}</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -94,9 +134,9 @@ export default function NotificationsScreen() {
         </View>
       ) : !notifications || notifications.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>{'🔔'}</Text>
-          <Text style={styles.emptyTitle}>알림이 없습니다</Text>
-          <Text style={styles.emptyDesc}>새로운 소식이 있으면 알려드릴게요</Text>
+          <Feather name="bell-off" size={48} color={colors.textTertiary} style={{ marginBottom: 16 }} />
+          <Text style={styles.emptyTitle}>{'\uC54C\uB9BC\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+          <Text style={styles.emptyDesc}>{'\uC0C8\uB85C\uC6B4 \uC18C\uC2DD\uC774 \uC788\uC73C\uBA74 \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694'}</Text>
         </View>
       ) : (
         <FlatList
@@ -106,24 +146,7 @@ export default function NotificationsScreen() {
           showsVerticalScrollIndicator={false}
           refreshing={isRefetching}
           onRefresh={refetch}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.notifItem, !item.is_read && styles.notifUnread]}
-              activeOpacity={0.7}>
-              <View style={styles.notifIcon}>
-                <Text style={styles.notifIconText}>
-                  {NOTIF_ICONS[item.type] || '📌'}
-                </Text>
-              </View>
-              <View style={styles.notifContent}>
-                <Text style={styles.notifMessage} numberOfLines={2}>
-                  {item.message}
-                </Text>
-                <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
-              </View>
-              {!item.is_read && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-          )}
+          renderItem={renderItem}
         />
       )}
     </View>
@@ -157,10 +180,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
-  },
-  backIcon: {
-    fontSize: 18,
-    color: colors.textPrimary,
   },
   headerTitle: {
     fontSize: 17,
@@ -200,21 +219,23 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
-  notifIconText: {
-    fontSize: 20,
-  },
   notifContent: {
     flex: 1,
   },
-  notifMessage: {
+  notifTitle: {
     fontSize: 14,
+    fontWeight: '600',
     color: colors.textPrimary,
-    lineHeight: 20,
+    marginBottom: 2,
+  },
+  notifBody: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 19,
     marginBottom: 4,
   },
   notifTime: {
@@ -227,10 +248,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.primary,
     marginLeft: 8,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,

@@ -175,6 +175,28 @@ function TrailDetailScreenInner() {
     retry: 1,
   });
 
+  const { data: trailWalkers = [] } = useQuery({
+    queryKey: ['trail-walkers', trailId],
+    queryFn: async () => {
+      const { data } = await api.get('/activities/', {
+        params: { trail: trailId, page_size: 10 },
+      });
+      const activities = (data?.results ?? data) || [];
+      // Deduplicate by user id
+      const seen = new Set<number>();
+      return activities
+        .filter((a: any) => {
+          if (!a.user || seen.has(a.user.id)) return false;
+          seen.add(a.user.id);
+          return true;
+        })
+        .map((a: any) => a.user);
+    },
+    enabled: !!trailId,
+    retry: 1,
+    staleTime: 60000,
+  });
+
   const likeMutation = useMutation({
     mutationFn: async () => (await api.post(`/trails/${trailId}/like/`)).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trail', trailId] }),
@@ -652,6 +674,51 @@ function TrailDetailScreenInner() {
                 <Text style={styles.guideBadgeText}>{'인증 가이드'}</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* ===== 9. Users who walked this trail ===== */}
+        {trailWalkers.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {'이 코스를 걸은 사람'}{' '}
+              <Text style={styles.sectionCount}>{trailWalkers.length}</Text>
+            </Text>
+            <View style={styles.walkersRow}>
+              {trailWalkers.slice(0, 5).map((walker: any, index: number) => (
+                <TouchableOpacity
+                  key={walker.id}
+                  style={[styles.walkerItem, index > 0 && { marginLeft: -8 }]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
+                  <View style={styles.walkerAvatar}>
+                    {walker.profile_image ? (
+                      <Image source={{ uri: walker.profile_image }} style={styles.walkerAvatarImg} />
+                    ) : (
+                      <Text style={styles.walkerAvatarFallback}>
+                        {(walker.nickname || '?')[0]}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {trailWalkers.length > 5 && (
+                <View style={[styles.walkerItem, { marginLeft: -8 }]}>
+                  <View style={styles.walkerMoreBadge}>
+                    <Text style={styles.walkerMoreText}>+{trailWalkers.length - 5}명</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            <View style={styles.walkerNamesRow}>
+              {trailWalkers.slice(0, 5).map((walker: any) => (
+                <TouchableOpacity
+                  key={walker.id}
+                  onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
+                  <Text style={styles.walkerName}>{walker.nickname}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         )}
 
@@ -1247,5 +1314,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     fontWeight: '600',
+  },
+
+  // ── Trail Walkers ─────────────────────────────────────
+  walkersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  walkerItem: {
+    zIndex: 1,
+  },
+  walkerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F2F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FAFAFA',
+    overflow: 'hidden',
+  },
+  walkerAvatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  walkerAvatarFallback: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B95A1',
+  },
+  walkerMoreBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E5E8EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FAFAFA',
+  },
+  walkerMoreText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8B95A1',
+  },
+  walkerNamesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  walkerName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#2D4A2E',
+    backgroundColor: 'rgba(45,74,46,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
 });

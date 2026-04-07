@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,8 +9,10 @@ import {
   StyleSheet,
   Platform,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
@@ -52,6 +54,8 @@ import GroupCreateScreen from '../screens/GroupCreateScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import HealthImportScreen from '../screens/HealthImportScreen';
+import PasswordChangeScreen from '../screens/PasswordChangeScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -159,10 +163,29 @@ function MainTabs() {
   );
 }
 
+const ONBOARDING_KEY = '@moru_onboarding_complete';
+
 export default function AppNavigator() {
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_KEY).then((value) => {
+      setOnboardingDone(value === 'true');
+    }).catch(() => setOnboardingDone(true));
+  }, []);
+
+  if (onboardingDone === null) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName={onboardingDone ? 'Main' : 'Onboarding'}>
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
@@ -205,6 +228,7 @@ export default function AppNavigator() {
         <Stack.Screen name="GroupChat" component={GroupChatScreen} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
         <Stack.Screen name="HealthImport" component={HealthImportScreen} />
+        <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

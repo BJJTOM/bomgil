@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
 
-from .models import CustomUser, UserBadge
+from .models import CustomUser, LEVEL_NAMES, Notification, UserBadge, XPLog, xp_for_next_level
 
 
 def strip_html(value):
@@ -63,6 +63,7 @@ class UserBadgeSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     badges = UserBadgeSerializer(many=True, read_only=True)
+    level_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -72,6 +73,8 @@ class UserSerializer(serializers.ModelSerializer):
             # Phase 8 companion fields
             "age_range", "walking_style", "companion_rating",
             "total_walks", "companion_count", "one_liner",
+            # XP / Level
+            "xp", "level", "level_name",
             # Phase 11
             "is_verified", "verification_level", "badges",
             "created_at",
@@ -79,8 +82,12 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "username", "email", "is_guide",
             "companion_rating", "total_walks", "companion_count",
+            "xp", "level",
             "is_verified", "verification_level", "created_at",
         ]
+
+    def get_level_name(self, obj):
+        return LEVEL_NAMES.get(obj.level, LEVEL_NAMES[1])
 
     def validate_nickname(self, value):
         cleaned = strip_html(value)
@@ -103,6 +110,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserPublicSerializer(serializers.ModelSerializer):
     badges = UserBadgeSerializer(many=True, read_only=True)
+    level_name = serializers.SerializerMethodField()
     trail_count = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
     follower_count = serializers.SerializerMethodField()
@@ -115,10 +123,14 @@ class UserPublicSerializer(serializers.ModelSerializer):
             "id", "nickname", "profile_image", "bio", "is_guide",
             "age_range", "walking_style", "companion_rating",
             "total_walks", "companion_count", "one_liner",
+            "xp", "level", "level_name",
             "is_verified", "verification_level", "badges",
             "trail_count", "review_count",
             "follower_count", "following_count", "is_following",
         ]
+
+    def get_level_name(self, obj):
+        return LEVEL_NAMES.get(obj.level, LEVEL_NAMES[1])
 
     def get_trail_count(self, obj):
         return obj.trails.filter(status="approved").count()
@@ -137,3 +149,45 @@ class UserPublicSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return request.user.following.filter(pk=obj.pk).exists()
         return False
+
+
+class XPLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = XPLog
+        fields = ["id", "amount", "reason", "created_at"]
+        read_only_fields = fields
+
+
+class UserXPDetailSerializer(serializers.ModelSerializer):
+    level_name = serializers.SerializerMethodField()
+    next_level_xp = serializers.SerializerMethodField()
+    xp_logs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ["xp", "level", "level_name", "next_level_xp", "xp_logs"]
+
+    def get_level_name(self, obj):
+        return LEVEL_NAMES.get(obj.level, LEVEL_NAMES[1])
+
+    def get_next_level_xp(self, obj):
+        return xp_for_next_level(obj.level)
+
+    def get_xp_logs(self, obj):
+        logs = obj.xp_logs.all()[:20]
+        return XPLogSerializer(logs, many=True).data
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    actor_nickname = serializers.CharField(source='actor.nickname', read_only=True, default=None)
+    actor_profile_image = serializers.ImageField(source='actor.profile_image', read_only=True, default=None)
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'title', 'body', 'notification_type',
+            'target_type', 'target_id', 'is_read',
+            'actor_nickname', 'actor_profile_image',
+            'created_at',
+        ]
+        read_only_fields = fields

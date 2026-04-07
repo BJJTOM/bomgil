@@ -1,5 +1,59 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
+
+
+# ── Level / XP System ──────────────────────────────
+LEVEL_THRESHOLDS = [
+    (1, 0),
+    (2, 100),
+    (3, 300),
+    (4, 700),
+    (5, 1500),
+    (6, 3000),
+    (7, 5000),
+    (8, 8000),
+    (9, 12000),
+    (10, 20000),
+]
+
+LEVEL_NAMES = {
+    1: "\uc0c8\uc2f9",       # 새싹
+    2: "\uc0b0\ucc45\ub7ec",  # 산책러
+    3: "\ud0d0\ud5d8\uac00",  # 탐험가
+    4: "\ud2b8\ub808\uc77c\ub7ec",  # 트레일러
+    5: "\ub9c8\uc2a4\ud130",  # 마스터
+    6: "\ucc4c\ub9b0\uc800",  # 챌린저
+    7: "\ub808\uc778\uc800",  # 레인저
+    8: "\uac00\uc774\ub4dc",  # 가이드
+    9: "\uc804\ubb38\uac00",  # 전문가
+    10: "\ub808\uc804\ub4dc", # 레전드
+}
+
+
+def level_for_xp(xp: int) -> int:
+    """Return the level corresponding to the given XP total."""
+    current_level = 1
+    for lvl, threshold in LEVEL_THRESHOLDS:
+        if xp >= threshold:
+            current_level = lvl
+    return current_level
+
+
+def xp_for_next_level(current_level: int) -> int:
+    """Return the XP required to reach the next level (0 if max)."""
+    for lvl, threshold in LEVEL_THRESHOLDS:
+        if lvl == current_level + 1:
+            return threshold
+    return 0  # already max level
+
+
+def add_xp(user, amount: int, reason: str):
+    """Add XP to a user, update their level, and create an XPLog entry."""
+    user.xp += amount
+    user.level = level_for_xp(user.xp)
+    user.save(update_fields=["xp", "level"])
+    XPLog.objects.create(user=user, amount=amount, reason=reason)
 
 
 class CustomUser(AbstractUser):
@@ -45,6 +99,13 @@ class CustomUser(AbstractUser):
     total_walks = models.PositiveIntegerField(default=0)
     companion_count = models.PositiveIntegerField(default=0)
     one_liner = models.CharField(max_length=100, blank=True)
+
+    # Push notifications
+    fcm_token = models.CharField(max_length=500, blank=True, default='')
+
+    # XP / Level
+    xp = models.PositiveIntegerField(default=0)
+    level = models.PositiveIntegerField(default=1)
 
     # Phase 11: 인증
     is_verified = models.BooleanField(default=False)
@@ -101,3 +162,53 @@ class PhoneVerification(models.Model):
         ordering = ["-created_at"]
         verbose_name = "휴대폰 인증"
         verbose_name_plural = "휴대폰 인증"
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPE_CHOICES = [
+        ('like', '좋아요'),
+        ('comment', '댓글'),
+        ('reply', '답글'),
+        ('follow', '팔로우'),
+        ('system', '시스템'),
+    ]
+    TARGET_TYPE_CHOICES = [
+        ('post', '게시글'),
+        ('trail', '코스'),
+        ('activity', '활동'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    actor = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications_sent'
+    )
+    title = models.CharField(max_length=100)
+    body = models.CharField(max_length=300)
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES, default='system')
+    target_type = models.CharField(max_length=20, choices=TARGET_TYPE_CHOICES, null=True, blank=True)
+    target_id = models.PositiveIntegerField(null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "알림"
+        verbose_name_plural = "알림"
+
+    def __str__(self):
+        return f"[{self.notification_type}] {self.user.nickname}: {self.title}"
+
+
+class XPLog(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="xp_logs")
+    amount = models.IntegerField()
+    reason = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "XP \ub85c\uadf8"       # XP 로그
+        verbose_name_plural = "XP \ub85c\uadf8"
+
+    def __str__(self):
+        return f"{self.user.nickname} +{self.amount} ({self.reason})"

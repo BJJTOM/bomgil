@@ -15,6 +15,9 @@ export interface User {
   total_walks?: number;
   companion_count?: number;
   one_liner?: string;
+  xp?: number;
+  level?: number;
+  level_name?: string;
   trail_count?: number;
   review_count?: number;
   follower_count?: number;
@@ -240,6 +243,7 @@ export interface CommunityPost {
   author: number;
   author_nickname: string;
   author_image: string | null;
+  author_level?: number;
   category: PostCategory;
   category_display: string;
   title: string;

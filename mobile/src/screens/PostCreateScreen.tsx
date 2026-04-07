@@ -19,6 +19,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { colors } from '../theme/colors';
+import { useThemeStore } from '../stores/theme';
 import { CommunityPost, PostCategory } from '../types';
 
 const API_URL = 'https://api.moruwalk.com/api/v1';
@@ -48,8 +49,17 @@ export default function PostCreateScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
+  const { isDark } = useThemeStore();
   const editPost = route.params?.editPost as CommunityPost | undefined;
   const isEdit = !!editPost;
+
+  const bg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+  const inputBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const chipBg = isDark ? '#1e1e1e' : '#F7F8FA';
 
   const [category, setCategory] = useState<PostCategory>(editPost?.category || 'free');
   const [title, setTitle] = useState(editPost?.title || '');
@@ -165,31 +175,31 @@ export default function PostCreateScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>취소</Text>
+          <Text style={[styles.cancelText, { color: textSecColor }]}>{'\uCDE8\uC18C'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEdit ? '수정하기' : '글쓰기'}</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>{isEdit ? '\uC218\uC815\uD558\uAE30' : '\uAE00\uC4F0\uAE30'}</Text>
         <TouchableOpacity
-          style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, !canSubmit && [styles.submitBtnDisabled, isDark && { backgroundColor: '#2a2a2a' }]]}
           onPress={handleSubmit}
           disabled={!canSubmit || submitting}>
           {submitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
-              {isEdit ? '수정' : '완료'}
+            <Text style={[styles.submitText, !canSubmit && [styles.submitTextDisabled, isDark && { color: 'rgba(255,255,255,0.3)' }]]}>
+              {isEdit ? '\uC218\uC815' : '\uC644\uB8CC'}
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Category — 단일 행 가로 스크롤 칩 */}
+        {/* Category chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -197,10 +207,10 @@ export default function PostCreateScreen() {
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.key}
-              style={[styles.categoryChip, category === cat.key && styles.categoryChipActive]}
+              style={[styles.categoryChip, { backgroundColor: chipBg }, category === cat.key && styles.categoryChipActive]}
               onPress={() => setCategory(cat.key)}
               activeOpacity={0.7}>
-              <Text style={[styles.categoryChipText, category === cat.key && styles.categoryChipTextActive]}>
+              <Text style={[styles.categoryChipText, { color: textSecColor }, category === cat.key && styles.categoryChipTextActive]}>
                 {cat.label}
               </Text>
             </TouchableOpacity>
@@ -210,29 +220,30 @@ export default function PostCreateScreen() {
         {/* Title */}
         <View style={styles.fieldWrap}>
           <TextInput
-            style={styles.titleInput}
-            placeholder={`제목 (${TITLE_MIN}~${TITLE_MAX}자)`}
-            placeholderTextColor={colors.textTertiary}
+            style={[styles.titleInput, { color: textColor }]}
+            placeholder={`\uC81C\uBAA9 (${TITLE_MIN}~${TITLE_MAX}\uC790)`}
+            placeholderTextColor={textTertColor}
             value={title}
             onChangeText={setTitle}
             maxLength={TITLE_MAX}
           />
           <Text style={[
             styles.charCount,
+            { color: textTertColor },
             title.length > 0 && title.length < TITLE_MIN && styles.charCountWarn,
           ]}>
             {title.length}/{TITLE_MAX}
           </Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
         {/* Content */}
         <View style={styles.fieldWrap}>
           <TextInput
-            style={styles.contentInput}
-            placeholder={`내용을 입력하세요 (${CONTENT_MIN}~${CONTENT_MAX}자)`}
-            placeholderTextColor={colors.textTertiary}
+            style={[styles.contentInput, { color: textColor }]}
+            placeholder={`\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694 (${CONTENT_MIN}~${CONTENT_MAX}\uC790)`}
+            placeholderTextColor={textTertColor}
             value={content}
             onChangeText={setContent}
             multiline
@@ -241,6 +252,7 @@ export default function PostCreateScreen() {
           />
           <Text style={[
             styles.charCountBottom,
+            { color: textTertColor },
             content.length > 0 && content.length < CONTENT_MIN && styles.charCountWarn,
           ]}>
             {content.length}/{CONTENT_MAX}
@@ -249,9 +261,9 @@ export default function PostCreateScreen() {
 
         {/* Image upload area */}
         <View style={styles.imageArea}>
-          <TouchableOpacity style={styles.addImageBtn} onPress={handlePickImages} activeOpacity={0.6}>
-            <Text style={styles.addImageIcon}>+</Text>
-            <Text style={styles.addImageLabel}>{totalImages}/10</Text>
+          <TouchableOpacity style={[styles.addImageBtn, isDark && { borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handlePickImages} activeOpacity={0.6}>
+            <Text style={[styles.addImageIcon, { color: textTertColor }]}>+</Text>
+            <Text style={[styles.addImageLabel, { color: textTertColor }]}>{totalImages}/10</Text>
           </TouchableOpacity>
 
           {existingImages.map((img) => (

@@ -10,11 +10,13 @@ import {
   Dimensions,
   StatusBar,
   Modal,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail } from '../types';
@@ -88,6 +90,30 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'コミュニティを見る',
     zh: '浏览社区',
   },
+  recommendedTitle: {
+    ko: '오늘의 추천 코스',
+    en: "Today's Picks",
+    ja: '今日のおすすめコース',
+    zh: '今日推荐路线',
+  },
+  recommendedSub: {
+    ko: '지금 가장 인기 있는 코스를 걸어보세요',
+    en: 'Walk the most popular trails right now',
+    ja: '今一番人気のコースを歩いてみましょう',
+    zh: '走走现在最受欢迎的路线',
+  },
+  communityTitle: {
+    ko: '최근 커뮤니티',
+    en: 'Recent Community',
+    ja: '最近のコミュニティ',
+    zh: '最新社区',
+  },
+  communitySub: {
+    ko: '여행자들의 최신 이야기',
+    en: 'Latest stories from travelers',
+    ja: '旅行者の最新の話',
+    zh: '旅行者的最新故事',
+  },
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
   stories: { ko: '걸은 이야기', en: 'Stories', ja: '歩いた話', zh: '步行故事' },
@@ -151,6 +177,28 @@ export default function HomeScreen() {
     },
   });
 
+  const { data: recommendedTrails } = useQuery({
+    queryKey: ['trails', 'recommended'],
+    queryFn: async () => {
+      const { data } = await api.get('/trails/', {
+        params: { ordering: '-like_count', page_size: 3 },
+      });
+      return (data?.results ?? data) as Trail[];
+    },
+    staleTime: 60000,
+  });
+
+  const { data: recentPosts } = useQuery({
+    queryKey: ['community', 'recent'],
+    queryFn: async () => {
+      const { data } = await api.get('/community/posts/', {
+        params: { page_size: 3 },
+      });
+      return (data?.results ?? data) as any[];
+    },
+    staleTime: 60000,
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar barStyle="light-content" translucent={true} />
@@ -173,7 +221,7 @@ export default function HomeScreen() {
                 style={styles.langButton}
                 onPress={() => setShowLangModal(true)}
                 activeOpacity={0.7}>
-                <Text style={styles.langButtonText}>🌐</Text>
+                <Feather name="globe" size={16} color="rgba(255,255,255,0.8)" />
               </TouchableOpacity>
             </View>
 
@@ -187,12 +235,14 @@ export default function HomeScreen() {
                 style={styles.heroCTAPrimary}
                 onPress={() => navigation.navigate('Explore')}
                 activeOpacity={0.85}>
+                <Feather name="compass" size={15} color="#2D4A2E" style={{ marginRight: 6 }} />
                 <Text style={styles.heroCTAPrimaryText}>{t('exploreCTA', language)}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.heroCTASecondary}
                 onPress={() => navigation.navigate('TrailCreate')}
                 activeOpacity={0.85}>
+                <Feather name="plus-circle" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.heroCTASecondaryText}>{t('shareCTA', language)}</Text>
               </TouchableOpacity>
             </View>
@@ -294,9 +344,133 @@ export default function HomeScreen() {
           </View>
         </FadeInView>
 
+        {/* Recommended Trails */}
+        {recommendedTrails && recommendedTrails.length > 0 && (
+          <FadeInView delay={300}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Feather name="star" size={18} color={isDark ? '#4ADE80' : '#2D4A2E'} />
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+                    {t('recommendedTitle', language)}
+                  </Text>
+                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                    {t('recommendedSub', language)}
+                  </Text>
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingTop: 16 }}>
+                {recommendedTrails.slice(0, 3).map((trail) => (
+                  <TouchableOpacity
+                    key={trail.id}
+                    style={[styles.recCard, { backgroundColor: cardBg }]}
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('TrailDetail', { id: trail.id })}>
+                    {trail.cover_image || trail.thumbnail_url ? (
+                      <Image
+                        source={{ uri: trail.cover_image || trail.thumbnail_url }}
+                        style={styles.recCardImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.recCardImagePlaceholder}>
+                        <Feather name="map-pin" size={24} color="#B0B8C1" />
+                      </View>
+                    )}
+                    <View style={styles.recCardBody}>
+                      <Text style={[styles.recCardTitle, { color: textColor }]} numberOfLines={1}>
+                        {trail.title}
+                      </Text>
+                      <View style={styles.recCardMeta}>
+                        <Feather name="map" size={11} color={textTertColor} />
+                        <Text style={[styles.recCardMetaText, { color: textTertColor }]}>
+                          {trail.distance_km ? `${parseFloat(trail.distance_km).toFixed(1)}km` : ''}
+                          {trail.region ? ` · ${trail.region}` : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.recCardMeta}>
+                        <Feather name="heart" size={11} color="#FF4B4B" />
+                        <Text style={[styles.recCardMetaText, { color: textTertColor }]}>
+                          {trail.like_count ?? 0}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </FadeInView>
+        )}
+
+        {/* Recent Community Posts */}
+        {recentPosts && recentPosts.length > 0 && (
+          <FadeInView delay={400}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Feather name="message-circle" size={18} color={isDark ? '#4ADE80' : '#2D4A2E'} />
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+                    {t('communityTitle', language)}
+                  </Text>
+                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                    {t('communitySub', language)}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Community')}>
+                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ gap: 10, marginTop: 16 }}>
+                {recentPosts.slice(0, 3).map((post: any) => (
+                  <TouchableOpacity
+                    key={post.id}
+                    style={[styles.communityCard, { backgroundColor: cardBg }]}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('PostDetail', { id: post.id })}>
+                    <View style={styles.communityCardHeader}>
+                      <View style={styles.communityAvatar}>
+                        {post.author?.profile_image ? (
+                          <Image source={{ uri: post.author.profile_image }} style={styles.communityAvatarImg} />
+                        ) : (
+                          <Feather name="user" size={14} color="#B0B8C1" />
+                        )}
+                      </View>
+                      <Text style={[styles.communityAuthor, { color: textColor }]}>
+                        {post.author?.nickname || '익명'}
+                      </Text>
+                      <Text style={[styles.communityTime, { color: textTertColor }]}>
+                        {post.created_at
+                          ? new Date(post.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+                          : ''}
+                      </Text>
+                    </View>
+                    <Text style={[styles.communityContent, { color: textColor }]} numberOfLines={2}>
+                      {post.title || post.content || ''}
+                    </Text>
+                    <View style={styles.communityCardFooter}>
+                      <View style={styles.communityStatRow}>
+                        <Feather name="heart" size={12} color={textTertColor} />
+                        <Text style={[styles.communityStatText, { color: textTertColor }]}>{post.like_count ?? 0}</Text>
+                      </View>
+                      <View style={styles.communityStatRow}>
+                        <Feather name="message-square" size={12} color={textTertColor} />
+                        <Text style={[styles.communityStatText, { color: textTertColor }]}>{post.comment_count ?? 0}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </FadeInView>
+        )}
+
         {/* UGC CTA — single compact line */}
         <View style={[styles.ugcRow, isDark && { backgroundColor: '#1a1a1a' }]}>
-          <Text style={styles.ugcText}>{t('ugcCTA', language)}</Text>
+          <Feather name="edit-3" size={16} color="#8B95A1" style={{ marginRight: 8 }} />
+          <Text style={[styles.ugcText, { flex: 1 }]}>{t('ugcCTA', language)}</Text>
           <TouchableOpacity
             style={styles.ugcBtn}
             onPress={() => navigation.navigate('Community')}
@@ -401,6 +575,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   heroCTAPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -412,6 +588,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroCTASecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -564,6 +742,116 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+
+  // Section header with icon
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Recommended trail cards
+  recCard: {
+    width: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  recCardImage: {
+    width: '100%',
+    height: 120,
+  },
+  recCardImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F2F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recCardBody: {
+    padding: 12,
+  },
+  recCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#191F28',
+    marginBottom: 6,
+  },
+  recCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  recCardMetaText: {
+    fontSize: 11,
+    color: '#B0B8C1',
+  },
+
+  // Community cards
+  communityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  communityCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  communityAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F2F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  communityAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  communityAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#191F28',
+    flex: 1,
+  },
+  communityTime: {
+    fontSize: 11,
+    color: '#B0B8C1',
+  },
+  communityContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#191F28',
+    marginBottom: 8,
+  },
+  communityCardFooter: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  communityStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  communityStatText: {
+    fontSize: 12,
+    color: '#B0B8C1',
   },
 
   // Footer

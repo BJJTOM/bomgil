@@ -13,8 +13,8 @@ from apps.reviews.serializers import ReviewSerializer
 from apps.trails.models import Trail, TrailLike
 from apps.trails.serializers import TrailListSerializer
 
-from .models import CustomUser, PhoneVerification, UserBadge
-from .serializers import UserPublicSerializer, UserSerializer
+from .models import CustomUser, Notification, PhoneVerification, UserBadge
+from .serializers import NotificationSerializer, UserPublicSerializer, UserSerializer, UserXPDetailSerializer
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -23,6 +23,28 @@ logger = logging.getLogger(__name__)
 
 class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class AccountDeleteView(APIView):
+    """Soft-delete the authenticated user (set is_active=False)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        return Response(
+            {"detail": "\uD68C\uC6D0 \uD0C8\uD1F4\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class MeXPView(generics.RetrieveAPIView):
+    serializer_class = UserXPDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
@@ -179,6 +201,15 @@ class FollowView(APIView):
             request.user.following.remove(target)
             return Response({"following": False})
         request.user.following.add(target)
+        # Notify the target user about the new follower
+        from .notifications import create_notification
+        create_notification(
+            user=target,
+            actor=request.user,
+            title='새 팔로워',
+            body=f'{request.user.nickname}님이 회원님을 팔로우합니다.',
+            notification_type='follow',
+        )
         return Response({"following": True}, status=201)
 
 
@@ -196,6 +227,36 @@ class FollowingView(generics.ListAPIView):
     def get_queryset(self):
         user = get_object_or_404(CustomUser, nickname=self.kwargs['nickname'])
         return user.following.all()
+
+
+class PasswordChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get("old_password", "")
+        new_password = request.data.get("new_password", "")
+
+        if not old_password or not new_password:
+            return Response(
+                {"error": "현재 비밀번호와 새 비밀번호를 입력해주세요."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not request.user.check_password(old_password):
+            return Response(
+                {"error": "현재 비밀번호가 올바르지 않습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {"error": "새 비밀번호는 8자 이상이어야 합니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=["password"])
+        return Response({"message": "비밀번호가 변경되었습니다."})
 
 
 class GuestLoginThrottle(AnonRateThrottle):
@@ -252,3 +313,48 @@ class ThrottledRegisterView(APIView):
         from dj_rest_auth.registration.views import RegisterView
         view = RegisterView.as_view()
         return view(request, *args, **kwargs)
+
+
+class FCMTokenView(APIView):
+    """Save the FCM push token for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get('token', '').strip()
+        if not token:
+            return Response({'error': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.fcm_token != token:
+            request.user.fcm_token = token
+            request.user.save(update_fields=['fcm_token'])
+        return Response({'saved': True})
+
+
+class NotificationListView(generics.ListAPIView):
+    """List the current user's notifications (paginated by cursor)."""
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            user=self.request.user,
+        ).select_related('actor')
+
+
+class NotificationUnreadCountView(APIView):
+    """Return the count of unread notifications."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({'unread_count': count})
+
+
+class NotificationReadAllView(APIView):
+    """Mark all notifications as read."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        updated = Notification.objects.filter(
+            user=request.user, is_read=False
+        ).update(is_read=True)
+        return Response({'marked': updated})

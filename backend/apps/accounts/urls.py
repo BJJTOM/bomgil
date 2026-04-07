@@ -1,12 +1,19 @@
 from django.urls import include, path
 
 from .views import (
+    AccountDeleteView,
     EmailLoginView,
+    FCMTokenView,
     FollowersView,
+    PasswordChangeView,
     FollowingView,
     FollowView,
     GuestLoginView,
     MeView,
+    MeXPView,
+    NotificationListView,
+    NotificationReadAllView,
+    NotificationUnreadCountView,
     PhoneSendView,
     PhoneVerifyView,
     ThrottledRegisterView,
@@ -24,6 +31,8 @@ urlpatterns = [
     path("social/google/", include("allauth.socialaccount.providers.google.urls")),
     path("social/kakao/", include("allauth.socialaccount.providers.kakao.urls")),
     path("me/", MeView.as_view(), name="user-me"),
+    path("me/delete/", AccountDeleteView.as_view(), name="account-delete"),
+    path("me/xp/", MeXPView.as_view(), name="user-me-xp"),
     path("me/likes/", UserLikedTrailsView.as_view(), name="user-liked-trails"),
     path("users/<str:nickname>/", UserProfileView.as_view(), name="user-profile"),
     path("users/<str:nickname>/trails/", UserTrailsView.as_view(), name="user-trails"),
@@ -36,7 +45,15 @@ urlpatterns = [
     path("email-login/", EmailLoginView.as_view(), name="email-login"),
     # Guest login
     path("guest-login/", GuestLoginView.as_view(), name="guest-login"),
+    # Password change
+    path("password-change/", PasswordChangeView.as_view(), name="password-change"),
     # Phone verification
     path("phone/send/", PhoneSendView.as_view(), name="phone-send"),
     path("phone/verify/", PhoneVerifyView.as_view(), name="phone-verify"),
+    # FCM token
+    path("fcm-token/", FCMTokenView.as_view(), name="fcm-token"),
+    # Notifications
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/unread-count/", NotificationUnreadCountView.as_view(), name="notification-unread-count"),
+    path("notifications/read-all/", NotificationReadAllView.as_view(), name="notification-read-all"),
 ]

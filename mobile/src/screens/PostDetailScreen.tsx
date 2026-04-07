@@ -24,6 +24,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { CommunityPost, PostComment } from '../types';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -265,7 +266,16 @@ export default function PostDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuthStore();
+  const { isDark } = useThemeStore();
   const postId = route.params?.postId;
+
+  const bg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+  const inputBg = isDark ? '#1e1e1e' : '#F7F8FA';
 
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; nickname: string } | null>(null);
@@ -367,13 +377,13 @@ export default function PostDetailScreen() {
 
   if (isLoading || !post) {
     return (
-      <View style={[s.container, { paddingTop: insets.top }]}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Text style={s.backIcon}>←</Text></TouchableOpacity>
-          <Text style={s.headerTitle}>게시글</Text>
+      <View style={[s.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+        <View style={[s.header, { borderBottomColor: borderColor }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: inputBg }]}><Feather name="arrow-left" size={22} color={textColor} /></TouchableOpacity>
+          <Text style={[s.headerTitle, { color: textColor }]}>{'\uAC8C\uC2DC\uAE00'}</Text>
           <View style={{ width: 34 }} />
         </View>
-        <View style={s.loadingContainer}><Text style={s.loadingText}>로딩 중...</Text></View>
+        <View style={s.loadingContainer}><Text style={[s.loadingText, { color: textTertColor }]}>{'\uB85C\uB529 \uC911...'}</Text></View>
       </View>
     );
   }
@@ -387,19 +397,19 @@ export default function PostDetailScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[s.container, { paddingTop: insets.top }]}
+      style={[s.container, { paddingTop: insets.top, backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 56 : 20}>
 
-      {/* Header — 즐겨찾기 + 더보기 */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Feather name="arrow-left" size={22} color={colors.textPrimary} /></TouchableOpacity>
-        <Text style={s.headerTitle}>게시글</Text>
+      {/* Header */}
+      <View style={[s.header, { borderBottomColor: borderColor }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: inputBg }]}><Feather name="arrow-left" size={22} color={textColor} /></TouchableOpacity>
+        <Text style={[s.headerTitle, { color: textColor }]}>{'\uAC8C\uC2DC\uAE00'}</Text>
         <View style={s.headerRight}>
           <TouchableOpacity onPress={handleBookmark} activeOpacity={0.6} style={s.headerIconBtn}>
-            <Feather name="bookmark" size={20} color={post?.is_bookmarked ? '#F59E0B' : colors.textTertiary} />
+            <Feather name="bookmark" size={20} color={post?.is_bookmarked ? '#F59E0B' : textTertColor} />
           </TouchableOpacity>
-          <TouchableOpacity style={s.moreBtn} onPress={() => setShowPostSheet(true)}><Feather name="more-horizontal" size={20} color={colors.textPrimary} /></TouchableOpacity>
+          <TouchableOpacity style={[s.moreBtn, { backgroundColor: inputBg }]} onPress={() => setShowPostSheet(true)}><Feather name="more-horizontal" size={20} color={textColor} /></TouchableOpacity>
         </View>
       </View>
 
@@ -416,26 +426,26 @@ export default function PostDetailScreen() {
               <View>
                 {/* Category */}
                 <View style={s.categoryRow}>
-                  <View style={s.categoryBadge}><Text style={s.categoryBadgeText}>{post.category_display}</Text></View>
+                  <View style={[s.categoryBadge, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}><Text style={s.categoryBadgeText}>{post.category_display}</Text></View>
                 </View>
                 {/* Title */}
-                <Text style={s.title}>{post.title}</Text>
+                <Text style={[s.title, { color: textColor }]}>{post.title}</Text>
                 {/* Author */}
                 <TouchableOpacity style={s.authorRow} activeOpacity={0.7}
                   onPress={() => navigation.navigate('Profile', { nickname: post.author_nickname })}>
                   <View style={s.authorAvatar}>
                     {post.author_image ? <Image source={{ uri: post.author_image }} style={s.authorAvatarImg} /> :
-                      <View style={s.authorAvatarPlaceholder}><Text style={{ fontSize: 13, color: colors.textTertiary }}>U</Text></View>}
+                      <View style={[s.authorAvatarPlaceholder, isDark && { backgroundColor: '#2a2a2a' }]}><Text style={{ fontSize: 13, color: textTertColor }}>U</Text></View>}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.authorName}>{post.author_nickname}</Text>
-                    <Text style={s.metaText}>{timeAgo(post.created_at)} · 조회 {post.view_count}</Text>
+                    <Text style={[s.authorName, { color: textColor }]}>{post.author_nickname}</Text>
+                    <Text style={[s.metaText, { color: textTertColor }]}>{timeAgo(post.created_at)} {'\u00B7'} {'\uC870\uD68C'} {post.view_count}</Text>
                   </View>
                 </TouchableOpacity>
-                <View style={s.divider} />
+                <View style={[s.divider, { backgroundColor: borderColor }]} />
                 {/* Content */}
-                <Text style={s.content}>{post.content}</Text>
-                {/* Images — grid layout */}
+                <Text style={[s.content, { color: textColor }]}>{post.content}</Text>
+                {/* Images -- grid layout */}
                 {post.images && post.images.length > 0 && (
                   <View style={[s.imageSection, post.images.length > 1 && s.imageGrid]}>
                     {post.images.length === 1 ? (
@@ -458,21 +468,21 @@ export default function PostDetailScreen() {
                   </View>
                 )}
                 {/* Action bar */}
-                <View style={s.actionBar}>
+                <View style={[s.actionBar, { borderTopColor: borderColor }]}>
                   <TouchableOpacity style={s.actionItem} onPress={handleLike} activeOpacity={0.6}>
-                    <Feather name="heart" size={18} color={post.is_liked ? '#FF4B4B' : colors.textTertiary} />
-                    <Text style={[s.actionCount, post.is_liked && { color: '#FF4B4B' }]}>{post.like_count}</Text>
+                    <Feather name="heart" size={18} color={post.is_liked ? '#FF4B4B' : textTertColor} />
+                    <Text style={[s.actionCount, { color: textSecColor }, post.is_liked && { color: '#FF4B4B' }]}>{post.like_count}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionItem} onPress={() => inputRef.current?.focus()} activeOpacity={0.6}>
-                    <Feather name="message-circle" size={18} color={colors.textTertiary} />
-                    <Text style={s.actionCount}>{post.comment_count}</Text>
+                    <Feather name="message-circle" size={18} color={textTertColor} />
+                    <Text style={[s.actionCount, { color: textSecColor }]}>{post.comment_count}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionItem} onPress={handleShare} activeOpacity={0.6}>
-                    <Feather name="share" size={18} color={colors.textTertiary} />
+                    <Feather name="share" size={18} color={textTertColor} />
                   </TouchableOpacity>
                 </View>
-                <View style={s.sectionDivider} />
-                <Text style={s.commentSectionTitle}>댓글 {post.comment_count}</Text>
+                <View style={[s.sectionDivider, isDark && { backgroundColor: '#1a1a1a' }]} />
+                <Text style={[s.commentSectionTitle, { color: textColor }]}>{'\uB313\uAE00'} {post.comment_count}</Text>
               </View>
             );
           }
@@ -488,19 +498,19 @@ export default function PostDetailScreen() {
       />
 
       {/* Comment input */}
-      <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 12), backgroundColor: bg, borderTopColor: borderColor }]}>
         {replyTo && (
           <View style={s.replyIndicator}>
-            <Text style={s.replyIndicatorText}>{replyTo.nickname}에게 답글</Text>
-            <TouchableOpacity onPress={() => setReplyTo(null)}><Text style={s.replyCancel}>✕</Text></TouchableOpacity>
+            <Text style={s.replyIndicatorText}>{replyTo.nickname}{'\uC5D0\uAC8C \uB2F5\uAE00'}</Text>
+            <TouchableOpacity onPress={() => setReplyTo(null)}><Text style={[s.replyCancel, { color: textTertColor }]}>{'\u2715'}</Text></TouchableOpacity>
           </View>
         )}
         <View style={s.inputRow}>
           <TextInput
             ref={inputRef}
-            style={s.input}
-            placeholder={isAuthenticated ? '댓글을 입력하세요...' : '로그인 후 댓글을 작성할 수 있어요'}
-            placeholderTextColor={colors.textTertiary}
+            style={[s.input, { backgroundColor: inputBg, color: textColor }]}
+            placeholder={isAuthenticated ? '\uB313\uAE00\uC744 \uC785\uB825\uD558\uC138\uC694...' : '\uB85C\uADF8\uC778 \uD6C4 \uB313\uAE00\uC744 \uC791\uC131\uD560 \uC218 \uC788\uC5B4\uC694'}
+            placeholderTextColor={textTertColor}
             value={commentText}
             onChangeText={setCommentText}
             multiline
@@ -512,7 +522,7 @@ export default function PostDetailScreen() {
             style={[s.sendBtn, (!commentText.trim() || submittingComment) && s.sendBtnDisabled]}
             onPress={handleSubmitComment}
             disabled={!commentText.trim() || submittingComment}>
-            <Feather name="arrow-up" size={18} color={commentText.trim() ? '#fff' : colors.textTertiary} />
+            <Feather name="arrow-up" size={18} color={commentText.trim() ? '#fff' : textTertColor} />
           </TouchableOpacity>
         </View>
       </View>

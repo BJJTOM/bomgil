@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -47,18 +48,53 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   const { isAuthenticated } = useAuthStore();
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const pageRef = useRef(1);
 
-  const { data: posts = [], isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
+  const { isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
     queryKey: ['community-posts', category, searchQuery],
     queryFn: async () => {
-      let params = '?';
+      let params = '?page=1&';
       if (category) params += `category=${category}&`;
       if (searchQuery) params += `q=${encodeURIComponent(searchQuery)}&`;
       const { data } = await api.get(`/community/posts/${params}`);
-      return data.results ?? data;
+      const results = data.results ?? data;
+      setPosts(results);
+      setPage(1);
+      pageRef.current = 1;
+      setHasMore(Array.isArray(results) && results.length >= 20 && !!data.next);
+      return results;
     },
     staleTime: 30000,
   });
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = pageRef.current + 1;
+      let params = `?page=${nextPage}&`;
+      if (category) params += `category=${category}&`;
+      if (searchQuery) params += `q=${encodeURIComponent(searchQuery)}&`;
+      const { data } = await api.get(`/community/posts/${params}`);
+      const results = data.results ?? data;
+      if (Array.isArray(results) && results.length > 0) {
+        setPosts((prev) => [...prev, ...results]);
+        pageRef.current = nextPage;
+        setPage(nextPage);
+        setHasMore(results.length >= 20 && !!data.next);
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, category, searchQuery]);
 
   const handleLike = useCallback((postId: number) => {
     if (!isAuthenticated) { navigation.navigate('Login'); return; }
@@ -107,6 +143,11 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
                 <View style={styles.miniAvatarPlaceholder}><Text style={{ fontSize: 8, color: colors.textTertiary }}>U</Text></View>
               )}
               <Text style={styles.postAuthorName}>{item.author_nickname}</Text>
+              {item.author_level != null && item.author_level > 0 && (
+                <View style={styles.lvBadge}>
+                  <Text style={styles.lvBadgeText}>Lv.{item.author_level}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <Text style={styles.postTime}>{timeAgo(item.created_at)}</Text>
           </View>
@@ -200,6 +241,13 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore ? (
+            <View style={styles.loadingMore}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null}
         />
       )}
     </View>
@@ -253,6 +301,18 @@ const styles = StyleSheet.create({
   miniAvatar: { width: 16, height: 16, borderRadius: 8 },
   miniAvatarPlaceholder: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
   postAuthorName: { fontSize: 12, color: colors.textSecondary },
+  lvBadge: {
+    backgroundColor: colors.primary50,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 2,
+  },
+  lvBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   postTime: { fontSize: 11, color: colors.textTertiary },
 
   // Stats — 심플 아이콘, 사이즈 업
@@ -267,4 +327,5 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 6, textAlign: 'center' },
   emptyDesc: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
+  loadingMore: { paddingVertical: 20, alignItems: 'center' },
 });

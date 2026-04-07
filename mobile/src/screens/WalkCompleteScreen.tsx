@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
+import { useThemeStore } from '../stores/theme';
 import { KmSplit } from '../utils/walkEngine';
 
 const { width } = Dimensions.get('window');
@@ -33,10 +35,42 @@ function formatPace(pace: string | number): string {
   return `${min}'${sec.toString().padStart(2, '0')}"`;
 }
 
+interface StatCardProps {
+  icon: string;
+  value: string;
+  label: string;
+  accent?: boolean;
+  isDark: boolean;
+}
+
+function StatCard({ icon, value, label, accent, isDark }: StatCardProps) {
+  const cardBg = isDark ? '#1a1a1a' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const labelColor = isDark ? 'rgba(255,255,255,0.5)' : colors.textTertiary;
+
+  return (
+    <View style={[styles.miniStatCard, { backgroundColor: cardBg }]}>
+      <View style={[styles.miniStatIconWrap, accent && { backgroundColor: isDark ? 'rgba(45,74,46,0.3)' : 'rgba(45,74,46,0.08)' }]}>
+        <Feather name={icon} size={18} color={accent ? colors.primary : (isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary)} />
+      </View>
+      <Text style={[styles.miniStatValue, { color: accent ? colors.primary : textColor }]}>{value}</Text>
+      <Text style={[styles.miniStatLabel, { color: labelColor }]}>{label}</Text>
+    </View>
+  );
+}
+
 export default function WalkCompleteScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { isDark } = useThemeStore();
+
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
 
   const {
     distance = '0',
@@ -81,6 +115,8 @@ export default function WalkCompleteScreen() {
   const maxSpeedNum =
     typeof maxSpeed === 'string' ? parseFloat(maxSpeed) : maxSpeed;
 
+  const totalMinutes = Math.round(totalSeconds / 60);
+
   let splits: KmSplit[] = [];
   try {
     splits = typeof splitsJson === 'string' ? JSON.parse(splitsJson) : splitsJson;
@@ -98,78 +134,97 @@ export default function WalkCompleteScreen() {
 
   const handleShare = async () => {
     try {
+      const shareText = `\uC624\uB298 \uBAA8\uB8E8\uC5D0\uC11C ${distNum.toFixed(2)}km\uB97C \uAC78\uC5C8\uC5B4\uC694! \uD83D\uDEB6 ${totalMinutes}\uBD84 | ${stepsNum.toLocaleString()}\uAC78\uC74C | ${caloriesNum}kcal #\uBAA8\uB8E8 #\uAC77\uAE30`;
       await Share.share({
-        message: `Moru - ${distNum.toFixed(2)}km 완료!\n${distNum.toFixed(2)}km, ${stepsNum.toLocaleString()} 걸음, ${timeStr}`,
+        message: shareText,
       });
     } catch {}
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Header accent */}
-        <Text style={styles.accentLabel}>WALK COMPLETED</Text>
-        <Text style={styles.celebrationText}>오늘도 멋진 걸음!</Text>
+        <View style={styles.completeBadge}>
+          <Feather name="check-circle" size={16} color={colors.primary} />
+          <Text style={[styles.accentLabel, { color: colors.primary }]}>WALK COMPLETED</Text>
+        </View>
+        <Text style={[styles.celebrationText, { color: textColor }]}>{'\uC624\uB298\uB3C4 \uBA4B\uC9C4 \uAC78\uC74C!'}</Text>
 
-        {/* Stat Card */}
-        <View style={styles.statCard}>
-          <Text style={styles.brandText}>MORU</Text>
+        {/* Main Stat Card */}
+        <View style={[styles.statCard, { backgroundColor: cardBg }]}>
+          <Text style={[styles.brandText, { color: colors.primary }]}>MORU</Text>
 
           {/* Big distance */}
           <View style={styles.distanceRow}>
-            <Text style={styles.distanceBig}>{distNum.toFixed(2)}</Text>
-            <Text style={styles.distanceUnit}>km</Text>
+            <Text style={[styles.distanceBig, { color: textColor }]}>{distNum.toFixed(2)}</Text>
+            <Text style={[styles.distanceUnit, { color: textTertColor }]}>km</Text>
           </View>
 
           {/* Primary stats grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCell}>
-              <Text style={styles.statCellValue}>{timeStr}</Text>
-              <Text style={styles.statCellLabel}>시간</Text>
+              <Feather name="clock" size={14} color={textTertColor} style={{ marginBottom: 6 }} />
+              <Text style={[styles.statCellValue, { color: textColor }]}>{timeStr}</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uC2DC\uAC04'}</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statCell}>
+              <Feather name="trending-up" size={14} color={colors.accent} style={{ marginBottom: 6 }} />
               <Text style={[styles.statCellValue, { color: colors.accent }]}>
                 {typeof pace === 'string' && pace.includes("'") ? pace : formatPace(pace)}
               </Text>
-              <Text style={styles.statCellLabel}>페이스</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uD398\uC774\uC2A4'}</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statCell}>
-              <Text style={styles.statCellValue}>{caloriesNum}</Text>
-              <Text style={styles.statCellLabel}>칼로리</Text>
+              <Feather name="zap" size={14} color={textTertColor} style={{ marginBottom: 6 }} />
+              <Text style={[styles.statCellValue, { color: textColor }]}>{caloriesNum}</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uCE7C\uB85C\uB9AC'}</Text>
             </View>
           </View>
 
           {/* Steps */}
           <View style={styles.stepsRow}>
-            <Text style={styles.stepsValue}>{stepsNum.toLocaleString()}</Text>
-            <Text style={styles.stepsLabel}> 걸음</Text>
+            <Feather name="navigation" size={14} color={textSecColor} style={{ marginRight: 6 }} />
+            <Text style={[styles.stepsValue, { color: textSecColor }]}>{stepsNum.toLocaleString()}</Text>
+            <Text style={[styles.stepsLabel, { color: textTertColor }]}> {'\uAC78\uC74C'}</Text>
           </View>
 
           {/* Date */}
-          <Text style={styles.dateText}>{dateStr}</Text>
+          <Text style={[styles.dateText, { color: textTertColor }]}>{dateStr}</Text>
 
           {/* Footer branding */}
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardFooterText}>moruwalk.com</Text>
+          <View style={[styles.cardFooter, { borderTopColor: borderColor }]}>
+            <Text style={[styles.cardFooterText, { color: textTertColor }]}>moruwalk.com</Text>
           </View>
+        </View>
+
+        {/* Stats Cards Grid */}
+        <View style={styles.statsCardsGrid}>
+          <StatCard icon="map-pin" value={`${distNum.toFixed(2)}km`} label={'\uAC70\uB9AC'} accent isDark={isDark} />
+          <StatCard icon="clock" value={`${totalMinutes}\uBD84`} label={'\uC2DC\uAC04'} isDark={isDark} />
+          <StatCard icon="footprints" value={stepsNum.toLocaleString()} label={'\uAC78\uC74C'} isDark={isDark} />
+          <StatCard icon="flame" value={`${caloriesNum}kcal`} label={'\uCE7C\uB85C\uB9AC'} isDark={isDark} />
         </View>
 
         {/* Splits Table */}
         {splits.length > 0 && (
-          <View style={styles.splitsSection}>
-            <Text style={styles.splitsTitle}>구간 기록</Text>
+          <View style={[styles.splitsSection, { backgroundColor: cardBg }]}>
+            <View style={styles.splitsTitleRow}>
+              <Feather name="bar-chart-2" size={16} color={textSecColor} />
+              <Text style={[styles.splitsTitle, { color: textSecColor }]}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
+            </View>
             {splits.map((split: KmSplit, index: number) => (
               <View
                 key={split.km}
                 style={[
                   styles.splitRow,
-                  index < splits.length - 1 && styles.splitRowBorder,
+                  index < splits.length - 1 && [styles.splitRowBorder, { borderBottomColor: borderColor }],
                 ]}>
-                <Text style={styles.splitKm}>{split.km} km</Text>
+                <Text style={[styles.splitKm, { color: textSecColor }]}>{split.km} km</Text>
                 <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
               </View>
             ))}
@@ -179,9 +234,12 @@ export default function WalkCompleteScreen() {
         {/* Tagged Photos */}
         {taggedPhotos.length > 0 && (
           <View style={styles.photosSection}>
-            <Text style={styles.photosSectionTitle}>
-              사진 ({taggedPhotos.length})
-            </Text>
+            <View style={styles.photosTitleRow}>
+              <Feather name="camera" size={16} color={textSecColor} />
+              <Text style={[styles.photosSectionTitle, { color: textSecColor }]}>
+                {'\uC0AC\uC9C4'} ({taggedPhotos.length})
+              </Text>
+            </View>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -207,16 +265,17 @@ export default function WalkCompleteScreen() {
             style={styles.shareBtn}
             onPress={handleShare}
             activeOpacity={0.85}>
-            <Text style={styles.shareBtnText}>공유하기</Text>
+            <Feather name="share-2" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.shareBtnText}>{'\uACF5\uC720\uD558\uAE30'}</Text>
           </TouchableOpacity>
 
           <View style={styles.secondaryRow}>
             <TouchableOpacity
-              style={styles.secondaryBtn}
+              style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
               onPress={() => navigation.navigate('ActivityDetail', {
                 activity: {
                   id: activityId,
-                  title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 도보`,
+                  title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} \uB3C4\uBCF4`,
                   distance_km: distance,
                   duration_minutes: Math.round(totalSeconds / 60),
                   total_steps: parseInt(steps) || 0,
@@ -232,13 +291,15 @@ export default function WalkCompleteScreen() {
                 fromWalkComplete: true,
               })}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>활동 상세</Text>
+              <Feather name="file-text" size={16} color={textSecColor} style={{ marginRight: 6 }} />
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{'\uD65C\uB3D9 \uC0C1\uC138'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.secondaryBtn}
+              style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
               onPress={() => navigation.popToTop()}
               activeOpacity={0.85}>
-              <Text style={styles.secondaryBtnText}>홈으로</Text>
+              <Feather name="home" size={16} color={textSecColor} style={{ marginRight: 6 }} />
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{'\uD648\uC73C\uB85C'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -258,13 +319,17 @@ const styles = StyleSheet.create({
   },
 
   // Header
+  completeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 48,
+    marginBottom: 8,
+  },
   accentLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accent,
     letterSpacing: 3,
-    marginTop: 48,
-    marginBottom: 8,
   },
   celebrationText: {
     fontSize: 22,
@@ -291,7 +356,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.primary, opacity: 0.5,
+    opacity: 0.5,
     letterSpacing: 3,
     marginBottom: 8,
   },
@@ -343,7 +408,7 @@ const styles = StyleSheet.create({
   // Steps
   stepsRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: 4,
   },
   stepsValue: {
@@ -377,6 +442,46 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  // Stats Cards Grid
+  statsCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: width - 48,
+    gap: 10,
+    marginBottom: 20,
+  },
+  miniStatCard: {
+    width: (width - 48 - 10) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  miniStatIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  miniStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  miniStatLabel: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    fontWeight: '500',
+  },
+
   // Splits
   splitsSection: {
     width: width - 48,
@@ -390,12 +495,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
+  splitsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
   splitsTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
     letterSpacing: 1,
-    marginBottom: 12,
   },
   splitRow: {
     flexDirection: 'row',
@@ -423,11 +533,16 @@ const styles = StyleSheet.create({
     width: width - 48,
     marginBottom: 24,
   },
+  photosTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
   photosSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: 12,
   },
   photosList: {
     gap: 10,
@@ -453,6 +568,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     height: 52,
     borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -470,6 +586,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     backgroundColor: '#F2F4F6',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },

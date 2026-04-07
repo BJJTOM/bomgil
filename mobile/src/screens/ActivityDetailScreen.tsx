@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
 import api from '../api/client';
@@ -365,7 +366,7 @@ export default function ActivityDetailScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>{'<'}</Text>
+            <Feather name="arrow-left" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>활동 상세</Text>
           <View style={{ width: 36 }} />
@@ -429,18 +430,22 @@ export default function ActivityDetailScreen() {
           {/* 2. Stats cards — Row 1 */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
+              <Feather name="clock" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>시간</Text>
               <Text style={styles.statVal}>{formatDuration(duration)}</Text>
             </View>
             <View style={styles.statCard}>
+              <Feather name="navigation" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>거리</Text>
               <Text style={styles.statVal}>{distance.toFixed(2)} km</Text>
             </View>
             <View style={styles.statCard}>
+              <Feather name="activity" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>걸음</Text>
               <Text style={styles.statVal}>{steps.toLocaleString()}</Text>
             </View>
             <View style={styles.statCard}>
+              <Feather name="zap" size={16} color="#FF8C42" style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>칼로리</Text>
               <Text style={styles.statVal}>{calories} kcal</Text>
             </View>
@@ -449,18 +454,94 @@ export default function ActivityDetailScreen() {
           {/* Stats cards — Row 2 */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
+              <Feather name="trending-up" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>평균 페이스</Text>
               <Text style={styles.statVal}>{formatPace(pace)}</Text>
             </View>
             <View style={styles.statCard}>
+              <Feather name="triangle" size={16} color={elevation > 0 ? '#FF6B35' : '#B0B8C1'} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>고도 상승</Text>
-              <Text style={styles.statVal}>{elevation > 0 ? `+${Math.round(elevation)}m` : '-'}</Text>
+              <Text style={[styles.statVal, elevation > 0 && { color: '#FF6B35' }]}>
+                {elevation > 0 ? `+${Math.round(elevation)}m` : '-'}
+              </Text>
             </View>
             <View style={styles.statCard}>
+              <Feather name="radio" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.statLabel}>소스</Text>
               <Text style={styles.statVal}>{activity.source === 'phone_gps' ? 'GPS' : activity.source || '-'}</Text>
             </View>
           </View>
+
+          {/* Distance Markers along route */}
+          {hasPath && distance > 0.5 && (
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Feather name="flag" size={16} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { marginLeft: 6, marginBottom: 0 }]}>거리 구간</Text>
+              </View>
+              <View style={styles.distanceMarkersRow}>
+                {Array.from({ length: Math.floor(distance) }, (_, i) => i + 1).slice(0, 10).map((km) => (
+                  <View key={km} style={styles.distanceMarker}>
+                    <View style={styles.distanceMarkerDot}>
+                      <Text style={styles.distanceMarkerText}>{km}</Text>
+                    </View>
+                    <Text style={styles.distanceMarkerLabel}>km</Text>
+                  </View>
+                ))}
+                <View style={styles.distanceMarkerFinish}>
+                  <Feather name="flag" size={14} color="#FF4B4B" />
+                  <Text style={styles.distanceMarkerLabel}>{distance.toFixed(1)}km</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Elevation Profile */}
+          {trackPoints.length > 5 && trackPoints.some((p: any) => p.elevation != null || p.altitude != null || p.ele != null) && (() => {
+            const elevations: number[] = trackPoints
+              .map((p: any) => p.elevation ?? p.altitude ?? p.ele)
+              .filter((e: any) => e != null && !isNaN(e)) as number[];
+            if (elevations.length < 5) return null;
+            const minElev = Math.min(...elevations);
+            const maxElev = Math.max(...elevations);
+            const range = maxElev - minElev || 1;
+            const profileWidth = SW - 40;
+            const profileHeight = 80;
+            // Sample to ~50 points for display
+            const step = Math.max(1, Math.floor(elevations.length / 50));
+            const sampled = elevations.filter((_, i) => i % step === 0);
+            const barWidth = profileWidth / sampled.length;
+            return (
+              <View style={styles.section}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Feather name="trending-up" size={16} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { marginLeft: 6, marginBottom: 0 }]}>고도 프로필</Text>
+                  <Text style={{ fontSize: 12, color: '#8B95A1', marginLeft: 8 }}>
+                    {Math.round(minElev)}m ~ {Math.round(maxElev)}m
+                  </Text>
+                </View>
+                <View style={[styles.elevationChart, { width: profileWidth, height: profileHeight }]}>
+                  {sampled.map((elev, i) => {
+                    const height = ((elev - minElev) / range) * (profileHeight - 10) + 4;
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          width: barWidth - 1,
+                          height,
+                          backgroundColor: colors.primary,
+                          opacity: 0.6,
+                          borderTopLeftRadius: 2,
+                          borderTopRightRadius: 2,
+                          alignSelf: 'flex-end',
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* 3. Photos section */}
           {taggedPhotos.length > 0 && (
@@ -850,6 +931,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 12,
+  },
+  distanceMarkersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  distanceMarker: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  distanceMarkerDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45,74,46,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  distanceMarkerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  distanceMarkerLabel: {
+    fontSize: 10,
+    color: colors.textTertiary,
+  },
+  distanceMarkerFinish: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  elevationChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingHorizontal: 4,
+    paddingTop: 4,
   },
   photoItem: {
     marginRight: 12,

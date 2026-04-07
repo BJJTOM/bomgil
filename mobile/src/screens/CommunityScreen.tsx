@@ -8,9 +8,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import api from '../api/client';
 import CommunityBoardTab from './community/CommunityBoardTab';
 import CommunityGroupTab from './community/CommunityGroupTab';
 import CommunityChallengeTab from './community/CommunityChallengeTab';
@@ -27,6 +29,17 @@ export default function CommunityScreen() {
   const { isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState(0);
   const [searchVisible, setSearchVisible] = useState(false);
+
+  const { data: unreadData } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: async () => {
+      const { data } = await api.get('/auth/notifications/unread-count/');
+      return data as { unread_count: number };
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+  const hasUnread = (unreadData?.unread_count ?? 0) > 0;
 
   const getFabAction = () => {
     if (!isAuthenticated) return () => navigation.navigate('Login');
@@ -51,6 +64,7 @@ export default function CommunityScreen() {
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications')}>
             <Feather name="bell" size={20} color={colors.textPrimary} />
+            {hasUnread && <View style={styles.bellBadge} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -111,6 +125,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   iconBtnText: { fontSize: 16 },
+  bellBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#E74C3C',
+    borderWidth: 1.5,
+    borderColor: '#F7F8FA',
+  },
 
   // Tab bar
   tabBar: {

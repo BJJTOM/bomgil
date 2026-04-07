@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
 import { useThemeStore } from '../stores/theme';
+import { useQuery } from '@tanstack/react-query';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
 
@@ -72,6 +73,30 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // Fetch profile data with follower/following counts
+  const { data: profileData } = useQuery({
+    queryKey: ['profile', user?.nickname],
+    queryFn: async () => {
+      const { data } = await api.get(`/auth/users/${user?.nickname}/`);
+      return data;
+    },
+    enabled: isAuthenticated && !!user?.nickname,
+    staleTime: 60000,
+  });
+
+  const isGuestUser = user?.email?.includes('@roami.guest') || user?.nickname?.startsWith('게스트_');
+
+  // XP / Level state
+  const [xpData, setXpData] = useState<{
+    xp: number; level: number; level_name: string; next_level_xp: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      api.get('/auth/me/xp/').then(({ data }) => setXpData(data)).catch(() => {});
+    }
+  }, [isAuthenticated]);
+
   const { language, setLanguage } = useLanguageStore();
   const { mode: themeMode, isDark, setMode: setThemeMode } = useThemeStore();
   const [showLangModal, setShowLangModal] = useState(false);
@@ -118,6 +143,29 @@ export default function SettingsScreen() {
             { icon: 'map', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
             { icon: 'heart', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
             { icon: 'download', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
+            ...(!isGuestUser ? [{ icon: 'lock', label: '\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD', onPress: () => navigation.navigate('PasswordChange') }] : []),
+            { icon: 'user-x', label: '\uD68C\uC6D0 \uD0C8\uD1F4', onPress: () => {
+              Alert.alert(
+                '\uD68C\uC6D0 \uD0C8\uD1F4',
+                '\uC815\uB9D0 \uD0C8\uD1F4\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uD0C8\uD1F4 \uD6C4 \uACC4\uC815\uACFC \uBAA8\uB4E0 \uB370\uC774\uD130\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',
+                [
+                  { text: '\uCDE8\uC18C', style: 'cancel' },
+                  {
+                    text: '\uD0C8\uD1F4\uD558\uAE30',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await api.delete('/auth/me/delete/');
+                        logout();
+                        navigation.navigate('Main');
+                      } catch {
+                        Alert.alert('\uC624\uB958', '\uD68C\uC6D0 \uD0C8\uD1F4\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.');
+                      }
+                    },
+                  },
+                ],
+              );
+            }},
           ]
         : [
             {
@@ -204,6 +252,63 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        {/* Follower / Following Counts */}
+        {isAuthenticated && user && profileData ? (
+          <View style={[styles.followStatsRow, { backgroundColor: cardBg }]}>
+            <TouchableOpacity
+              style={styles.followStatItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.follower_count ?? 0}</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로워</Text>
+            </TouchableOpacity>
+            <View style={[styles.followStatDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+            <TouchableOpacity
+              style={styles.followStatItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.following_count ?? 0}</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로잉</Text>
+            </TouchableOpacity>
+            <View style={[styles.followStatDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+            <TouchableOpacity
+              style={styles.followStatItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.trail_count ?? 0}</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>코스</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* XP / Level Card */}
+        {isAuthenticated && xpData ? (() => {
+          const currentLevelXP = [0, 0, 100, 300, 700, 1500, 3000, 5000, 8000, 12000, 20000][xpData.level] || 0;
+          const nextXP = xpData.next_level_xp;
+          const isMaxLevel = nextXP === 0;
+          const progressRatio = isMaxLevel ? 1 : (nextXP - currentLevelXP) > 0
+            ? (xpData.xp - currentLevelXP) / (nextXP - currentLevelXP)
+            : 0;
+          const progressPercent = Math.min(Math.max(progressRatio, 0), 1);
+          return (
+            <View style={[styles.xpCard, { backgroundColor: cardBg }]}>
+              <View style={styles.xpHeader}>
+                <View style={styles.xpLevelBadge}>
+                  <Text style={styles.xpLevelBadgeText}>Lv.{xpData.level}</Text>
+                </View>
+                <Text style={[styles.xpLevelName, { color: textColor }]}>{xpData.level_name}</Text>
+                <Text style={[styles.xpAmount, { color: textSecColor }]}>{xpData.xp} XP</Text>
+              </View>
+              <View style={styles.xpBarBg}>
+                <View style={[styles.xpBarFill, { width: `${progressPercent * 100}%` }]} />
+              </View>
+              <Text style={[styles.xpBarLabel, { color: textTertColor }]}>
+                {isMaxLevel ? 'MAX LEVEL' : `${xpData.xp} / ${nextXP} XP`}
+              </Text>
+            </View>
+          );
+        })() : null}
 
         {/* Sections */}
         {sections.map((section) => (
@@ -357,6 +462,35 @@ const styles = StyleSheet.create({
   },
 
   // User card
+  followStatsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: -16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  followStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  followStatValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#191F28',
+  },
+  followStatLabel: {
+    fontSize: 11,
+    color: '#B0B8C1',
+    marginTop: 2,
+  },
+  followStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#F2F4F6',
+    alignSelf: 'center',
+  },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,6 +533,57 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 22,
     color: colors.textTertiary,
+  },
+
+  // XP / Level Card
+  xpCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+  },
+  xpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  xpLevelBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  xpLevelBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  xpLevelName: {
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  xpAmount: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  xpBarBg: {
+    height: 8,
+    backgroundColor: '#F2F4F6',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  xpBarFill: {
+    height: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 4,
+  },
+  xpBarLabel: {
+    fontSize: 11,
+    textAlign: 'right',
   },
 
   // Sections

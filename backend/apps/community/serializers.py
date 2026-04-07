@@ -60,6 +60,7 @@ class PostCommentSerializer(serializers.ModelSerializer):
 class PostListSerializer(serializers.ModelSerializer):
     author_nickname = serializers.CharField(source='author.nickname', read_only=True)
     author_image = serializers.ImageField(source='author.profile_image', read_only=True)
+    author_level = serializers.IntegerField(source='author.level', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     thumbnail = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -68,7 +69,7 @@ class PostListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
-            'id', 'author', 'author_nickname', 'author_image',
+            'id', 'author', 'author_nickname', 'author_image', 'author_level',
             'category', 'category_display', 'title', 'thumbnail',
             'like_count', 'comment_count', 'view_count', 'bookmark_count',
             'is_liked', 'is_bookmarked', 'is_pinned', 'created_at',
@@ -94,6 +95,7 @@ class PostListSerializer(serializers.ModelSerializer):
 class PostDetailSerializer(serializers.ModelSerializer):
     author_nickname = serializers.CharField(source='author.nickname', read_only=True)
     author_image = serializers.ImageField(source='author.profile_image', read_only=True)
+    author_level = serializers.IntegerField(source='author.level', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     images = PostImageSerializer(source='post_images', many=True, read_only=True)
     comments = serializers.SerializerMethodField()
@@ -104,7 +106,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
-            'id', 'author', 'author_nickname', 'author_image',
+            'id', 'author', 'author_nickname', 'author_image', 'author_level',
             'category', 'category_display', 'title', 'content',
             'images', 'trail', 'like_count', 'comment_count', 'view_count',
             'bookmark_count', 'comments', 'is_liked', 'is_bookmarked',

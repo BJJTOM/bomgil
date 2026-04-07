@@ -89,7 +89,7 @@ export default function GroupDetailPage() {
           {/* Action */}
           {group.is_member ? (
             <div className="flex gap-2.5">
-              <button className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-semibold">채팅방</button>
+              <button onClick={() => router.push(`/chat/${groupId}`)} className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-semibold">채팅방</button>
               <button onClick={handleLeave} className="px-5 py-3.5 rounded-xl bg-gray-50 text-gray-500 font-semibold">나가기</button>
             </div>
           ) : (
@@ -109,6 +109,7 @@ export default function GroupDetailPage() {
                 </div>
                 <span className="text-[12px] text-gray-900 text-center truncate w-full">{m.nickname}</span>
                 {m.role === "owner" && <span className="text-[9px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mt-0.5">방장</span>}
+                {m.role === "admin" && <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mt-0.5">관리자</span>}
               </Link>
             ))}
           </div>

@@ -165,6 +165,13 @@ function WalkCompleteContent() {
           {t("walk.shareWalk")}
         </button>
 
+        <Link
+          href="/trails/new"
+          className="w-full py-3.5 bg-white/10 text-white/80 rounded-[16px] text-[14px] font-medium text-center active:scale-[0.98] transition-transform block"
+        >
+          코스로 등록하기
+        </Link>
+
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/activities"

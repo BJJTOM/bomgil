@@ -74,6 +74,7 @@ export default function SettingsPage() {
       items: [
         { label: language === "ko" ? "언어 설정" : "Language", value: LANGUAGES.find(l => l.code === language)?.label, icon: "🌐", action: "language" },
         { label: language === "ko" ? "알림 설정" : "Notifications", href: "/notifications", icon: "🔔" },
+        { label: language === "ko" ? "공지사항" : "Notices", href: "/notices", icon: "📢" },
       ],
     },
     {

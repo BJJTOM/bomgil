@@ -403,9 +403,10 @@ export class WalkEngine {
   }
 
   getStats(): WalkStats {
-    const currentSegmentTime =
+    const wallClockTime =
       this.startTime > 0 ? (Date.now() - this.startTime) / 1000 : 0;
-    const totalTime = this.durationOffset + currentSegmentTime;
+    // Use activeTime (excludes pauses) + durationOffset (previous segments)
+    const totalTime = this.activeTime;
     const pace =
       this.activeTime > 0 && this.distance > 0.01
         ? this.activeTime / 60 / this.distance

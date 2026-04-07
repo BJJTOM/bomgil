@@ -50,8 +50,8 @@ STORAGES = {
 STORAGES["default"] = {
     "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
 }
-AWS_ACCESS_KEY_ID = os.environ["R2_ACCESS_KEY_ID"]  # Required
-AWS_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]  # Required
+AWS_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "78673a73bb9b436de9003572ad5a0382")
+AWS_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "adfad506e5b56b62b147cdd8140e1cccc5f39423d30b3c28957411c27f66bca7")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "moru-media")
 AWS_S3_ENDPOINT_URL = os.environ.get("R2_ENDPOINT_URL", "https://028d8e2de23582d1fc6235c2dd8fa760.r2.cloudflarestorage.com")
 AWS_S3_REGION_NAME = "auto"

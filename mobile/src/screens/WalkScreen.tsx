@@ -739,7 +739,7 @@ export default function WalkScreen() {
         {prevSegment && (prevSegment.distance > 0 || prevSegment.duration > 0) && (
           <View style={styles.prevBanner}>
             <Text style={styles.prevBannerText}>
-              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분  →  총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
+              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분  |  총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
             </Text>
           </View>
         )}
@@ -759,15 +759,34 @@ export default function WalkScreen() {
           <Text style={styles.distUnit}>km</Text>
         </View>
 
-        {/* Compact stat row */}
-        <View style={styles.compactStats}>
-          <Text style={styles.compactStatItem}>{formatPace(stats.currentPace)}/km</Text>
-          <Text style={styles.compactStatDot}>·</Text>
-          <Text style={styles.compactStatItem}>{stats.steps.toLocaleString()}걸음</Text>
-          <Text style={styles.compactStatDot}>·</Text>
-          <Text style={styles.compactStatItem}>{stats.calories}kcal</Text>
-          <Text style={styles.compactStatDot}>·</Text>
-          <Text style={styles.compactStatItem}>{stats.speed.toFixed(1)}km/h</Text>
+        {/* Pace */}
+        <View style={styles.paceRow}>
+          <Text style={styles.paceLabel}>현재 페이스</Text>
+          <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
+          <Text style={styles.paceUnit}>/km</Text>
+        </View>
+
+        {/* 4-stat grid */}
+        <View style={styles.grid}>
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
+            <Text style={styles.gridLabel}>걸음</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.calories}</Text>
+            <Text style={styles.gridLabel}>kcal</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.speed.toFixed(1)}</Text>
+            <Text style={styles.gridLabel}>km/h</Text>
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridVal}>{stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m</Text>
+            <Text style={styles.gridLabel}>고도</Text>
+          </View>
         </View>
       </Animated.View>
 

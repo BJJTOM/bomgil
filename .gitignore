@@ -39,6 +39,8 @@ docker-compose.override.yml
 # Secrets
 *.pem
 *.key
+*.keystore
+*.jks
 credentials.json
 secrets.json
 

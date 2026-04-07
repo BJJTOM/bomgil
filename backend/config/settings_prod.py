@@ -45,11 +45,21 @@ STORAGES = {
 }
 
 # ---------------------------------------------------------------------------
-# Media files — local disk (ephemeral on Render free tier)
-# Files survive until next redeploy. For persistence, configure S3.
+# Media files — Cloudflare R2 (S3-compatible)
 # ---------------------------------------------------------------------------
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "mediafiles"
+STORAGES["default"] = {
+    "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+}
+AWS_ACCESS_KEY_ID = "406fefe4b734690ef52359ba0564b217"
+AWS_SECRET_ACCESS_KEY = "47662c116627e3cbbe3e827f6ebd2fbeacf3bacd0f3463f1ddf53e45d006c498"
+AWS_STORAGE_BUCKET_NAME = "moru-media"
+AWS_S3_ENDPOINT_URL = "https://406fefe4b734690ef52359ba0564b217.r2.cloudflarestorage.com"
+AWS_S3_REGION_NAME = "auto"
+AWS_DEFAULT_ACL = None
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.406fefe4b734690ef52359ba0564b217.r2.dev"
+MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 # ---------------------------------------------------------------------------
 # CORS

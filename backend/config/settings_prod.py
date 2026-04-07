@@ -53,13 +53,13 @@ STORAGES["default"] = {
 AWS_ACCESS_KEY_ID = "406fefe4b734690ef52359ba0564b217"
 AWS_SECRET_ACCESS_KEY = "47662c116627e3cbbe3e827f6ebd2fbeacf3bacd0f3463f1ddf53e45d006c498"
 AWS_STORAGE_BUCKET_NAME = "moru-media"
-AWS_S3_ENDPOINT_URL = "https://406fefe4b734690ef52359ba0564b217.r2.cloudflarestorage.com"
+AWS_S3_ENDPOINT_URL = "https://028d8e2de23582d1fc6235c2dd8fa760.r2.cloudflarestorage.com"
 AWS_S3_REGION_NAME = "auto"
 AWS_DEFAULT_ACL = None
 AWS_S3_SIGNATURE_VERSION = "s3v4"
 AWS_QUERYSTRING_AUTH = True
 AWS_QUERYSTRING_EXPIRE = 3600  # signed URLs valid for 1 hour
-MEDIA_URL = f"https://406fefe4b734690ef52359ba0564b217.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/"
+MEDIA_URL = f"https://028d8e2de23582d1fc6235c2dd8fa760.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/"
 
 # ---------------------------------------------------------------------------
 # CORS

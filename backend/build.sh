@@ -12,4 +12,7 @@ python manage.py collectstatic --no-input
 echo "=== Running migrations ==="
 python manage.py migrate --run-syncdb
 
+echo "=== Seeding notices ==="
+python manage.py seed_notices
+
 echo "=== Build complete ==="

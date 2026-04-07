@@ -81,7 +81,7 @@ export default function SettingsScreen() {
       return data;
     },
     enabled: isAuthenticated && !!user?.nickname,
-    staleTime: 60000,
+    staleTime: 10000,
   });
 
   const isGuestUser = user?.email?.includes('@roami.guest') || user?.nickname?.startsWith('게스트_');

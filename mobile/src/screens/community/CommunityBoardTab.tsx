@@ -49,43 +49,40 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const pageRef = useRef(1);
+  const nextUrlRef = useRef<string | null>(null);
 
   const { isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
     queryKey: ['community-posts', category, searchQuery],
     queryFn: async () => {
-      let params = '?page=1&';
+      let params = '?';
       if (category) params += `category=${category}&`;
       if (searchQuery) params += `q=${encodeURIComponent(searchQuery)}&`;
       const { data } = await api.get(`/community/posts/${params}`);
       const results = data.results ?? data;
       setPosts(results);
-      setPage(1);
-      pageRef.current = 1;
-      setHasMore(Array.isArray(results) && results.length >= 20 && !!data.next);
+      nextUrlRef.current = data.next || null;
+      setHasMore(!!data.next);
       return results;
     },
     staleTime: 30000,
   });
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || !nextUrlRef.current) return;
     setLoadingMore(true);
     try {
-      const nextPage = pageRef.current + 1;
-      let params = `?page=${nextPage}&`;
-      if (category) params += `category=${category}&`;
-      if (searchQuery) params += `q=${encodeURIComponent(searchQuery)}&`;
-      const { data } = await api.get(`/community/posts/${params}`);
+      const { data } = await api.get(nextUrlRef.current.replace(/^https?:\/\/[^/]+\/api\/v1/, ''));
       const results = data.results ?? data;
       if (Array.isArray(results) && results.length > 0) {
-        setPosts((prev) => [...prev, ...results]);
-        pageRef.current = nextPage;
-        setPage(nextPage);
-        setHasMore(results.length >= 20 && !!data.next);
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPosts = results.filter((p: CommunityPost) => !existingIds.has(p.id));
+          return [...prev, ...newPosts];
+        });
+        nextUrlRef.current = data.next || null;
+        setHasMore(!!data.next);
       } else {
         setHasMore(false);
       }

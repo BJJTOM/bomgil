@@ -57,9 +57,9 @@ AWS_S3_ENDPOINT_URL = "https://406fefe4b734690ef52359ba0564b217.r2.cloudflaresto
 AWS_S3_REGION_NAME = "auto"
 AWS_DEFAULT_ACL = None
 AWS_S3_SIGNATURE_VERSION = "s3v4"
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.406fefe4b734690ef52359ba0564b217.r2.dev"
-MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+AWS_QUERYSTRING_AUTH = True
+AWS_QUERYSTRING_EXPIRE = 3600  # signed URLs valid for 1 hour
+MEDIA_URL = f"https://406fefe4b734690ef52359ba0564b217.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/"
 
 # ---------------------------------------------------------------------------
 # CORS

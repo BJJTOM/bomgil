@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { FadeInView } from '../components/FadeInView';
 import api from '../api/client';
-import { Linking, NativeModules } from 'react-native';
+import { Linking } from 'react-native';
 import {
   initHealthConnect,
   requestHealthPermissions,
@@ -23,8 +23,6 @@ import {
   getWalkSessions,
   HealthWalkSession,
 } from '../utils/healthConnect';
-
-const { HealthConnectModule } = NativeModules;
 
 export default function HealthImportScreen() {
   const insets = useSafeAreaInsets();
@@ -51,8 +49,17 @@ export default function HealthImportScreen() {
         const data = await getWalkSessions(30);
         setSessions(data);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.log('Health Connect init error:', e);
+      const msg = e?.message || String(e);
+      if (msg.includes('not installed') || msg.includes('package')) {
+        setAvailable(false);
+      } else {
+        Alert.alert(
+          'Health Connect \uC624\uB958',
+          `\uCD08\uAE30\uD654 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4: ${msg}`,
+        );
+      }
     }
     setLoading(false);
   }, []);
@@ -66,29 +73,56 @@ export default function HealthImportScreen() {
     }
   }, [initialize]);
 
-  const handleRequestPermission = () => {
-    // Open Health Connect permission management via native module
+  const handleRequestPermission = async () => {
     try {
-      HealthConnectModule?.openPermissions();
-    } catch {
-      Linking.openSettings();
+      const granted = await requestHealthPermissions();
+      if (granted) {
+        setPermissionGranted(true);
+        setLoading(true);
+        const data = await getWalkSessions(30);
+        setSessions(data);
+        setLoading(false);
+      } else {
+        Alert.alert(
+          '\uAD8C\uD55C \uBD80\uC5EC \uC2E4\uD328',
+          'Health Connect \uAD8C\uD55C\uC744 \uD5C8\uC6A9\uD574\uC8FC\uC138\uC694. \uC124\uC815\uC5D0\uC11C \uC9C1\uC811 \uD5C8\uC6A9\uD560 \uC218\uB3C4 \uC788\uC2B5\uB2C8\uB2E4.',
+          [
+            { text: '\uCDE8\uC18C', style: 'cancel' },
+            { text: '\uC124\uC815 \uC5F4\uAE30', onPress: () => Linking.openSettings() },
+          ],
+        );
+      }
+    } catch (e: any) {
+      console.log('Permission request error:', e);
+      Alert.alert(
+        '\uAD8C\uD55C \uC694\uCCAD \uC624\uB958',
+        '\uAD8C\uD55C \uC694\uCCAD \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC124\uC815\uC5D0\uC11C \uC9C1\uC811 \uD5C8\uC6A9\uD574\uC8FC\uC138\uC694.',
+        [
+          { text: '\uD655\uC778', onPress: () => Linking.openSettings() },
+        ],
+      );
     }
   };
 
   // Re-check permissions when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
-      const has = await hasHealthPermissions();
-      if (has && !permissionGranted) {
-        setPermissionGranted(true);
-        setLoading(true);
-        const data = await getWalkSessions(30);
-        setSessions(data);
-        setLoading(false);
+      if (!available) return;
+      try {
+        const has = await hasHealthPermissions();
+        if (has && !permissionGranted) {
+          setPermissionGranted(true);
+          setLoading(true);
+          const data = await getWalkSessions(30);
+          setSessions(data);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.log('Focus permission check error:', e);
       }
     });
     return unsubscribe;
-  }, [navigation, permissionGranted]);
+  }, [navigation, permissionGranted, available]);
 
   const formatDurationShort = (mins: number) => {
     const h = Math.floor(mins / 60);
@@ -263,10 +297,28 @@ export default function HealthImportScreen() {
       ) : !available ? (
         <View style={styles.centerWrap}>
           <Text style={styles.emptyIcon}>{'⌚'}</Text>
-          <Text style={styles.emptyTitle}>Health Connect를 사용할 수 없습니다</Text>
+          <Text style={styles.emptyTitle}>Health Connect{'\uB97C'} {'\uC0AC\uC6A9\uD560'} {'\uC218'} {'\uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
           <Text style={styles.emptyDesc}>
-            Android 기기에서 Health Connect 앱을 설치해주세요.
+            Health Connect {'\uC571\uC744'} {'\uC124\uCE58\uD558\uBA74'} {'\uAC24\uB7ED\uC2DC'} {'\uC6CC\uCE58'} {'\uAC78\uAE30'} {'\uAE30\uB85D\uC744'} {'\uAC00\uC838\uC62C'} {'\uC218'} {'\uC788\uC2B5\uB2C8\uB2E4'}.
           </Text>
+          {Platform.OS === 'android' && (
+            <TouchableOpacity
+              style={styles.permissionBtn}
+              onPress={() => {
+                Linking.openURL('https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata').catch(() => {
+                  Alert.alert('\uC624\uB958', 'Play Store\uB97C \uC5F4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.');
+                });
+              }}
+              activeOpacity={0.85}>
+              <Text style={styles.permissionBtnText}>Play Store{'\uC5D0\uC11C'} {'\uC124\uCE58'}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.permissionBtn, { backgroundColor: '#E8E8E8', marginTop: 10 }]}
+            onPress={() => initialize()}
+            activeOpacity={0.85}>
+            <Text style={[styles.permissionBtnText, { color: colors.textPrimary }]}>{'\uB2E4\uC2DC'} {'\uD655\uC778'}</Text>
+          </TouchableOpacity>
         </View>
       ) : !permissionGranted ? (
         <View style={styles.centerWrap}>

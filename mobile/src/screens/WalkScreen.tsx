@@ -114,6 +114,9 @@ export default function WalkScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<any>(null);
 
+  const periodicSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bgSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const countdownScale = useRef(new Animated.Value(1)).current;
   const countdownOpacity = useRef(new Animated.Value(1)).current;
   const autoPausePulse = useRef(new Animated.Value(1)).current;
@@ -166,15 +169,105 @@ export default function WalkScreen() {
     } else { autoPausePulse.setValue(1); }
   }, [stats.isAutoPaused]);
 
+  // Save current walk state to AsyncStorage for crash protection
+  const saveWalkState = useCallback(async () => {
+    try {
+      const currentStats = engineRef.current.getStats();
+      const data = JSON.stringify({
+        stats: currentStats,
+        routeCoords,
+        trackPoints: engineRef.current.getTrackPoints(),
+        spots,
+        taggedPhotos,
+        timestamp: Date.now(),
+      });
+      await AsyncStorage.setItem('walk_in_progress', data);
+    } catch {}
+  }, [routeCoords, spots, taggedPhotos]);
+
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
       setIsBackground(s === 'background');
-      // When returning to foreground, force stats and route update
+      if (s === 'background' && state === 'walking') {
+        // Save immediately when going to background
+        saveWalkState();
+        // Then save every 30 seconds while in background
+        bgSaveRef.current = setInterval(() => saveWalkState(), 30000);
+      }
       if (s === 'active') {
+        // Clear background save timer
+        if (bgSaveRef.current) {
+          clearInterval(bgSaveRef.current);
+          bgSaveRef.current = null;
+        }
+        // Force stats and route update
         setStats(engineRef.current.getStats());
       }
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+    };
+  }, [state, saveWalkState]);
+
+  // Periodic crash protection save every 60 seconds during walk
+  useEffect(() => {
+    if (state === 'walking') {
+      periodicSaveRef.current = setInterval(() => saveWalkState(), 60000);
+    } else {
+      if (periodicSaveRef.current) {
+        clearInterval(periodicSaveRef.current);
+        periodicSaveRef.current = null;
+      }
+    }
+    return () => {
+      if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
+    };
+  }, [state, saveWalkState]);
+
+  // Check for unsaved walk data on mount (crash recovery)
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem('walk_in_progress');
+        if (saved) {
+          const data = JSON.parse(saved);
+          const ageMinutes = (Date.now() - data.timestamp) / 60000;
+          // Only offer recovery if data is less than 2 hours old
+          if (ageMinutes < 120 && data.stats?.distance > 0.05) {
+            Alert.alert(
+              '이전 걷기 기록 발견',
+              `${data.stats.distance.toFixed(2)}km, ${Math.round(data.stats.duration / 60)}분 기록이 있습니다.\n복구하시겠습니까?`,
+              [
+                {
+                  text: '삭제',
+                  style: 'destructive',
+                  onPress: () => AsyncStorage.removeItem('walk_in_progress').catch(() => {}),
+                },
+                {
+                  text: '복구',
+                  onPress: () => {
+                    if (data.routeCoords?.length > 0) {
+                      setRouteCoords(data.routeCoords);
+                    }
+                    if (data.spots?.length > 0) {
+                      setSpots(data.spots);
+                    }
+                    if (data.taggedPhotos?.length > 0) {
+                      setTaggedPhotos(data.taggedPhotos);
+                    }
+                    AsyncStorage.removeItem('walk_in_progress').catch(() => {});
+                  },
+                },
+              ],
+            );
+          } else {
+            // Data too old, clean up
+            await AsyncStorage.removeItem('walk_in_progress');
+          }
+        }
+      } catch {}
+    })();
   }, []);
 
   const handleTakePhoto = useCallback(async () => {
@@ -251,7 +344,14 @@ export default function WalkScreen() {
           setStats(engineRef.current.getStats());
         },
         () => {},
-        { enableHighAccuracy: true, distanceFilter: 2, timeout: 15000 },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 3,
+          timeout: 15000,
+          maximumAge: 0,
+          interval: 2000,
+          fastestInterval: 1000,
+        } as any,
       );
     } catch {}
   }, []);
@@ -278,6 +378,10 @@ export default function WalkScreen() {
   const completeWalk = async () => {
     if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
     if (timerRef.current) clearInterval(timerRef.current);
+    if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
+    if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+    // Clear crash recovery data — walk completed successfully
+    AsyncStorage.removeItem('walk_in_progress').catch(() => {});
     const finalStats = engineRef.current.getStats();
     const trackPoints = engineRef.current.getTrackPoints();
 
@@ -380,6 +484,8 @@ export default function WalkScreen() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
+      if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
+      if (bgSaveRef.current) clearInterval(bgSaveRef.current);
     };
   }, []);
 

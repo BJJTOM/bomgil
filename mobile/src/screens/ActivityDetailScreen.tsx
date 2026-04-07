@@ -387,7 +387,10 @@ export default function ActivityDetailScreen() {
               startLng: firstPoint?.lng,
               endLat: hasPath ? lastPoint?.lat : undefined,
               endLng: hasPath ? lastPoint?.lng : undefined,
-              spots: walkSpots.filter((s: any) => s.lat && s.lng),
+              spots: [
+                ...walkSpots.filter((s: any) => s.lat && s.lng),
+                ...taggedPhotos.filter((p: any) => p.lat && p.lng).map((p: any) => ({ lat: p.lat, lng: p.lng, name: p.title || 'Photo', type: 'photo' })),
+              ],
               title: activity.title || '활동 경로',
               distance: activity.distance_km ? parseFloat(activity.distance_km) : distance,
               duration: activity.duration_minutes || duration,
@@ -400,12 +403,35 @@ export default function ActivityDetailScreen() {
               pathCoordinates={hasPath ? pathCoords : undefined}
               height={240}
               theme="dark"
-              spots={walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type }))}
+              spots={[
+                ...walkSpots.filter((s: any) => s.lat && s.lng).map((s: any) => ({ lat: s.lat, lng: s.lng, name: s.name, type: s.type })),
+                ...taggedPhotos.filter((p: any) => p.lat && p.lng).map((p: any) => ({ lat: p.lat, lng: p.lng, name: p.title || 'Photo', type: 'photo' })),
+              ]}
             />
             <View style={styles.mapExpandBtn}>
               <Text style={styles.mapExpandIcon}>{'⤢'}</Text>
             </View>
           </TouchableOpacity>
+
+          {/* Photos thumbnails below map */}
+          {taggedPhotos.length > 0 && (
+            <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                {taggedPhotos.map((photo: any, idx: number) => (
+                  <View key={`map-thumb-${idx}`} style={{ marginRight: 8, alignItems: 'center' }}>
+                    <Image
+                      source={{ uri: photo.uri }}
+                      style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 2, borderColor: '#7F77DD' }}
+                      resizeMode="cover"
+                    />
+                    {photo.lat != null && photo.lng != null && (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#7F77DD', marginTop: 4 }} />
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* 2. Title & Date */}
           <View style={styles.titleSection}>

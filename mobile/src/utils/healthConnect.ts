@@ -18,7 +18,13 @@ export async function initHealthConnect(): Promise<boolean> {
   try {
     const available = await initialize();
     return !!available;
-  } catch (e) {
+  } catch (e: any) {
+    const msg = (e?.message || String(e)).toLowerCase();
+    // Health Connect not installed — return false, don't throw
+    if (msg.includes('not installed') || msg.includes('not available') || msg.includes('package') || msg.includes('provider')) {
+      console.log('[Moru] Health Connect not installed');
+      return false;
+    }
     console.log('[Moru] Health Connect init error:', e);
     return false;
   }

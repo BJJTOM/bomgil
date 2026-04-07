@@ -1,14 +1,15 @@
 /**
- * Moru Walk Engine
+ * Moru Walk Engine v2
  * Professional-grade walk tracking comparable to Nike Run / Garmin
  *
  * Features:
- * - Kalman-filtered GPS for noise reduction
- * - Auto-pause when speed drops below threshold
- * - Per-km split tracking
- * - Elevation gain/loss calculation
- * - Step estimation from distance
- * - Cadence calculation
+ * - Kalman-filtered GPS with speed-adaptive strength
+ * - Heading consistency check to reject impossible turns
+ * - Auto-pause with 8-sample rolling average
+ * - Per-km split tracking with elevation per split
+ * - Pace-based step estimation
+ * - MET-based calorie calculation
+ * - Exponential moving average for elevation smoothing
  */
 
 export interface TrackPoint {
@@ -24,6 +25,7 @@ export interface KmSplit {
   km: number;
   duration: number; // seconds for this km
   pace: number; // min/km
+  avgPace: number; // min/km — more accurate average pace for split
   elevationGain: number;
   elevationLoss: number;
 }
@@ -65,7 +67,31 @@ function haversine(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Simple Kalman filter for GPS smoothing
+// Calculate bearing between two points (degrees 0-360)
+function bearing(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const la1 = (lat1 * Math.PI) / 180;
+  const la2 = (lat2 * Math.PI) / 180;
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x =
+    Math.cos(la1) * Math.sin(la2) -
+    Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+// Angle difference (0-180)
+function angleDiff(a: number, b: number): number {
+  let diff = Math.abs(a - b) % 360;
+  if (diff > 180) diff = 360 - diff;
+  return diff;
+}
+
+// Speed-adaptive Kalman filter for GPS smoothing
 class KalmanFilter {
   private lat: number = 0;
   private lng: number = 0;
@@ -76,8 +102,18 @@ class KalmanFilter {
     lat: number,
     lng: number,
     accuracy: number,
+    speedKmh: number = 0,
   ): { lat: number; lng: number } {
     accuracy = Math.max(accuracy, this.minAccuracy);
+
+    // Speed-based accuracy adjustment: when stationary, increase filter strength
+    if (speedKmh < 0.5) {
+      // Stationary — trust existing position more, reduce jitter
+      accuracy = accuracy * 2.5;
+    } else if (speedKmh < 2) {
+      // Very slow — moderate filter strength
+      accuracy = accuracy * 1.5;
+    }
 
     if (this.variance < 0) {
       // First update
@@ -94,6 +130,24 @@ class KalmanFilter {
 
     return { lat: this.lat, lng: this.lng };
   }
+}
+
+// Get pace-based steps per km
+function getStepsPerKm(paceMinPerKm: number): number {
+  if (paceMinPerKm > 12) return 1200; // Walking slow
+  if (paceMinPerKm >= 8) return 1400; // Normal walking
+  if (paceMinPerKm >= 6) return 1600; // Fast walking
+  return 1800; // Jogging
+}
+
+// Get MET value based on speed in km/h
+function getMET(speedKmh: number): number {
+  if (speedKmh < 3) return 2.0; // Very slow
+  if (speedKmh < 4) return 3.0; // Walking 3-4 km/h
+  if (speedKmh < 5) return 3.5; // Walking 4-5 km/h
+  if (speedKmh < 6) return 4.3; // Brisk walking 5-6 km/h
+  if (speedKmh < 7) return 5.0; // Fast walking 6-7 km/h
+  return 7.0; // Jogging 7+ km/h
 }
 
 export class WalkEngine {
@@ -113,14 +167,24 @@ export class WalkEngine {
   private currentSplitDistance = 0; // distance at start of current km
   private currentSplitEleGain = 0;
   private currentSplitEleLoss = 0;
+  private currentSplitActiveTime = 0; // active seconds in current split
   private isAutoPaused = false;
-  private autoPauseThreshold = 0.5; // km/h — below this = auto pause
+  private autoPauseThreshold = 0.3; // km/h — below this = auto pause (more sensitive)
   private lastSpeedSamples: number[] = [];
+  private lastBearing: number | null = null;
+
+  // Cumulative step and calorie tracking (dynamic, per-update)
+  private totalSteps = 0;
+  private totalCalories = 0;
+
+  // Elevation smoothing (exponential moving average)
+  private smoothedElevation: number | null = null;
+  private readonly ELE_SMOOTHING_ALPHA = 0.3; // lower = smoother
 
   // Constants
-  private readonly STEPS_PER_KM = 1500; // average walking (more realistic)
-  private readonly CALORIES_PER_KM = 75; // average walking (more realistic)
-  private readonly MIN_DISTANCE_FILTER = 0.002; // 2 meters — less aggressive filtering
+  private readonly DEFAULT_WEIGHT_KG = 65;
+  private readonly MIN_DISTANCE_FILTER = 0.001; // 1 meter — reduced for accuracy
+  private readonly ELE_NOISE_FILTER = 2; // meters — GPS elevation is noisy
 
   start() {
     this.startTime = Date.now();
@@ -135,8 +199,21 @@ export class WalkEngine {
     accuracy: number | null,
     timestamp: number,
   ): TrackPoint | null {
-    // Apply Kalman filter
-    const filtered = this.kalman.update(lat, lng, accuracy || 10);
+    // Estimate current speed for Kalman filter
+    let estimatedSpeedKmh = 0;
+    if (this.lastSpeedSamples.length > 0) {
+      estimatedSpeedKmh =
+        this.lastSpeedSamples.reduce((a, b) => a + b, 0) /
+        this.lastSpeedSamples.length;
+    }
+
+    // Apply Kalman filter with speed awareness
+    const filtered = this.kalman.update(
+      lat,
+      lng,
+      accuracy || 10,
+      estimatedSpeedKmh,
+    );
 
     const point: TrackPoint = {
       lat: filtered.lat,
@@ -151,9 +228,29 @@ export class WalkEngine {
       const prev = this.trackPoints[this.trackPoints.length - 1];
       const d = haversine(prev.lat, prev.lng, filtered.lat, filtered.lng);
 
-      // Filter out GPS jitter
+      // Filter out GPS jitter — minimum 1m between accepted points
       if (d < this.MIN_DISTANCE_FILTER) {
         return null; // Skip this point
+      }
+
+      // Heading consistency check: reject points requiring 180-degree turn at walking speed
+      if (this.lastBearing !== null && d > 0.001) {
+        const newBearing = bearing(
+          prev.lat,
+          prev.lng,
+          filtered.lat,
+          filtered.lng,
+        );
+        const turnAngle = angleDiff(this.lastBearing, newBearing);
+        // At walking speed (< 8 km/h) with short distance (< 5m),
+        // reject > 150 degree turns (likely GPS bounce)
+        if (
+          estimatedSpeedKmh < 8 &&
+          d < 0.005 &&
+          turnAngle > 150
+        ) {
+          return null; // Skip this point — likely GPS noise
+        }
       }
 
       // Calculate speed
@@ -163,9 +260,9 @@ export class WalkEngine {
         const speedKmh = (d / timeDiff) * 3600;
         point.speed = speedKmh / 3.6; // m/s
 
-        // Auto-pause detection
+        // Auto-pause detection with 8 samples for stability
         this.lastSpeedSamples.push(speedKmh);
-        if (this.lastSpeedSamples.length > 5) this.lastSpeedSamples.shift();
+        if (this.lastSpeedSamples.length > 8) this.lastSpeedSamples.shift();
         const avgSpeed =
           this.lastSpeedSamples.reduce((a, b) => a + b, 0) /
           this.lastSpeedSamples.length;
@@ -178,56 +275,113 @@ export class WalkEngine {
             this.isAutoPaused = false;
           }
           this.activeTime += timeDiff;
+          this.currentSplitActiveTime += timeDiff;
           this.distance += d;
+
+          // Dynamic step counting based on current pace
+          const currentPaceMinPerKm =
+            speedKmh > 0 ? 60 / speedKmh : 12;
+          const stepsPerKm = getStepsPerKm(currentPaceMinPerKm);
+          this.totalSteps += d * stepsPerKm;
+
+          // MET-based calorie calculation
+          const met = getMET(speedKmh);
+          const durationHours = timeDiff / 3600;
+          this.totalCalories +=
+            met * this.DEFAULT_WEIGHT_KG * durationHours;
 
           // Track max speed
           if (speedKmh > this.maxSpeed && speedKmh < 20) {
             // cap at 20km/h for walking
             this.maxSpeed = speedKmh;
           }
-        }
-      }
 
-      // Elevation tracking
-      if (altitude != null && prev.ele != null) {
-        const eleDiff = altitude - prev.ele;
-        if (Math.abs(eleDiff) > 1) {
-          // Ignore < 1m changes (noise)
-          if (eleDiff > 0) {
-            this.elevationGain += eleDiff;
-            this.currentSplitEleGain += eleDiff;
-          } else {
-            this.elevationLoss += Math.abs(eleDiff);
-            this.currentSplitEleLoss += Math.abs(eleDiff);
+          // Update bearing for heading consistency check
+          if (d > 0.002) {
+            // Only update bearing for moves > 2m
+            this.lastBearing = bearing(
+              prev.lat,
+              prev.lng,
+              filtered.lat,
+              filtered.lng,
+            );
           }
         }
       }
 
+      // Elevation tracking with exponential moving average smoothing
       if (altitude != null) {
-        this.maxElevation = Math.max(this.maxElevation, altitude);
-        this.minElevation = Math.min(this.minElevation, altitude);
+        // Apply EMA smoothing
+        if (this.smoothedElevation === null) {
+          this.smoothedElevation = altitude;
+        } else {
+          this.smoothedElevation =
+            this.ELE_SMOOTHING_ALPHA * altitude +
+            (1 - this.ELE_SMOOTHING_ALPHA) * this.smoothedElevation;
+        }
+
+        if (prev.ele != null) {
+          // Use smoothed values for gain/loss calculation
+          const prevSmoothed =
+            this.trackPoints.length > 1
+              ? this.smoothedElevation -
+                this.ELE_SMOOTHING_ALPHA * (altitude - (prev.ele || 0))
+              : prev.ele;
+          const eleDiff = this.smoothedElevation - prevSmoothed;
+
+          if (Math.abs(eleDiff) > this.ELE_NOISE_FILTER) {
+            // Ignore < 2m changes (GPS elevation noise)
+            if (eleDiff > 0) {
+              this.elevationGain += eleDiff;
+              this.currentSplitEleGain += eleDiff;
+            } else {
+              this.elevationLoss += Math.abs(eleDiff);
+              this.currentSplitEleLoss += Math.abs(eleDiff);
+            }
+          }
+        }
+
+        this.maxElevation = Math.max(
+          this.maxElevation,
+          this.smoothedElevation,
+        );
+        this.minElevation = Math.min(
+          this.minElevation,
+          this.smoothedElevation,
+        );
       }
 
       // Check for km split
       const currentKm = Math.floor(this.distance);
       if (currentKm > this.splits.length) {
         const splitDuration = (timestamp - this.currentSplitStart) / 1000;
+        const splitDistance =
+          this.distance - this.currentSplitDistance;
+        // More accurate pace using actual active time in this split
+        const avgPace =
+          this.currentSplitActiveTime > 0 && splitDistance > 0
+            ? this.currentSplitActiveTime / 60 / splitDistance
+            : splitDuration / 60;
         this.splits.push({
           km: currentKm,
           duration: splitDuration,
-          pace: splitDuration / 60, // min/km
-          elevationGain: this.currentSplitEleGain,
-          elevationLoss: this.currentSplitEleLoss,
+          pace: splitDuration / 60, // min/km (wall clock)
+          avgPace, // min/km (active time, more accurate)
+          elevationGain: Math.round(this.currentSplitEleGain),
+          elevationLoss: Math.round(this.currentSplitEleLoss),
         });
         this.currentSplitStart = timestamp;
+        this.currentSplitDistance = this.distance;
         this.currentSplitEleGain = 0;
         this.currentSplitEleLoss = 0;
+        this.currentSplitActiveTime = 0;
       }
     } else {
       // First point
       if (altitude != null) {
         this.maxElevation = altitude;
         this.minElevation = altitude;
+        this.smoothedElevation = altitude;
       }
     }
 
@@ -270,7 +424,7 @@ export class WalkEngine {
       currentPace = this.activeTime / 60 / this.distance;
     }
 
-    const steps = Math.round(this.distance * this.STEPS_PER_KM);
+    const steps = Math.round(this.totalSteps);
     const cadence =
       this.activeTime > 0 ? (steps / this.activeTime) * 60 : 0;
 
@@ -286,7 +440,7 @@ export class WalkEngine {
           : 0,
       steps,
       cadence: Math.round(cadence),
-      calories: Math.round(this.distance * this.CALORIES_PER_KM),
+      calories: Math.round(this.totalCalories),
       elevationGain: Math.round(this.elevationGain),
       elevationLoss: Math.round(this.elevationLoss),
       maxElevation:
@@ -325,5 +479,13 @@ export class WalkEngine {
     this.splits = [];
     this.isAutoPaused = false;
     this.lastSpeedSamples = [];
+    this.lastBearing = null;
+    this.totalSteps = 0;
+    this.totalCalories = 0;
+    this.smoothedElevation = null;
+    this.currentSplitDistance = 0;
+    this.currentSplitActiveTime = 0;
+    this.currentSplitEleGain = 0;
+    this.currentSplitEleLoss = 0;
   }
 }

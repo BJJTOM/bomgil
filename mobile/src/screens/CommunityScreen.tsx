@@ -25,6 +25,7 @@ export default function CommunityScreen() {
   const navigation = useNavigation<any>();
   const { isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState(0);
+  const [searchVisible, setSearchVisible] = useState(false);
 
   const getFabAction = () => {
     if (!isAuthenticated) return () => navigation.navigate('Login');
@@ -53,25 +54,32 @@ export default function CommunityScreen() {
         </View>
       </View>
 
-      {/* Tab Bar */}
+      {/* Tab Bar + Search icon */}
       <View style={styles.tabBar}>
-        {TABS.map((tab, i) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={styles.tabItem}
-            onPress={() => setActiveTab(i)}
-            activeOpacity={0.7}>
-            <Text style={[styles.tabLabel, activeTab === i && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-            {activeTab === i && <View style={styles.tabIndicator} />}
-          </TouchableOpacity>
-        ))}
+        <View style={styles.tabItems}>
+          {TABS.map((tab, i) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tabItem}
+              onPress={() => setActiveTab(i)}
+              activeOpacity={0.7}>
+              <Text style={[styles.tabLabel, activeTab === i && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+              {activeTab === i && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={styles.tabSearchBtn}
+          onPress={() => setSearchVisible(!searchVisible)}>
+          <Text style={{ fontSize: 16, color: searchVisible ? colors.primary : colors.textTertiary }}>{'🔍'}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tab Content — 스와이프 대신 직접 렌더 (제스처 충돌 방지) */}
       <View style={styles.tabContent}>
-        {activeTab === 0 && <CommunityBoardTab />}
+        {activeTab === 0 && <CommunityBoardTab searchVisible={searchVisible} />}
         {activeTab === 1 && <CommunityGroupTab />}
         {activeTab === 2 && <CommunityChallengeTab />}
       </View>
@@ -105,8 +113,13 @@ const styles = StyleSheet.create({
 
   // Tab bar
   tabBar: {
-    flexDirection: 'row', paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F2F4F6',
+  },
+  tabItems: { flexDirection: 'row', flex: 1 },
+  tabSearchBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
   },
   tabItem: { marginRight: 24, paddingVertical: 12, position: 'relative' },
   tabLabel: { fontSize: 15, fontWeight: '500', color: colors.textTertiary },

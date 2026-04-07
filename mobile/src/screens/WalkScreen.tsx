@@ -124,7 +124,16 @@ export default function WalkScreen() {
 
   // ---- RESUME from paused walk ----
   useEffect(() => {
-    if (resumeData) {
+    if (!resumeData) return;
+
+    const doResume = async () => {
+      // Request GPS permission first
+      if (Platform.OS === 'android') {
+        try {
+          await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        } catch {}
+      }
+
       // Restore previous data
       const segments = resumeData.segments || [];
       const prevCoords: [number, number][] = [];
@@ -140,16 +149,27 @@ export default function WalkScreen() {
       setRouteCoords(prevCoords);
       setSpots(resumeData.spots || []);
       setTaggedPhotos(resumeData.taggedPhotos || []);
+
+      // Set initial map position from last known coord
+      if (prevCoords.length > 0) {
+        const lastCoord = prevCoords[prevCoords.length - 1];
+        setCurrentPos({ lat: lastCoord[1], lng: lastCoord[0] });
+      }
+
       // Set engine offset for cumulative stats
       engineRef.current.setOffset(prevDistance, prevSteps, prevCalories, prevDuration, prevElevation);
+
       // Skip countdown, start immediately
       setState('walking');
       engineRef.current.start();
       timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
       startGps();
+
       // Clean up paused data
       AsyncStorage.removeItem('walk_paused').catch(() => {});
-    }
+    };
+
+    doResume();
   }, []); // eslint-disable-line
 
   // ---- COUNTDOWN ----
@@ -545,7 +565,7 @@ export default function WalkScreen() {
     Alert.alert(
       '일시 저장 완료',
       '48시간 내에 이어서 걸을 수 있어요.\n활동 탭에서 "이어서 걷기"를 눌러주세요.',
-      [{ text: '확인', onPress: () => navigation.replace('Main') }],
+      [{ text: '확인', onPress: () => navigation.replace('Main', { screen: 'Activity' }) }],
     );
   };
 

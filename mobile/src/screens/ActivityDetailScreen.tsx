@@ -780,6 +780,34 @@ export default function ActivityDetailScreen() {
                   </View>
                 </View>
               )}
+
+              {/* Resume / Continue walking from this activity */}
+              {(activity.track_points?.length > 0) && (
+                <TouchableOpacity
+                  style={styles.resumeFromActivityBtn}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const rc = (activity.track_points || []).map((p: any) => [p.lng || p[0], p.lat || p[1]] as [number, number]);
+                    const resumeData = {
+                      segments: [{
+                        routeCoords: rc,
+                        trackPoints: activity.track_points || [],
+                        distance: parseFloat(activity.distance_km || '0'),
+                        duration: (activity.duration_minutes || 0) * 60,
+                        steps: activity.total_steps || 0,
+                        calories: activity.calories_burned || 0,
+                        elevationGain: activity.elevation_gain_m || 0,
+                      }],
+                      spots: walkSpots,
+                      taggedPhotos: taggedPhotos,
+                      trailId: activity.trail || null,
+                    };
+                    navigation.navigate('Walk', { resumeData });
+                  }}>
+                  <Feather name="play-circle" size={18} color={colors.primary} />
+                  <Text style={styles.resumeFromActivityText}>이 기록에서 이어서 걷기</Text>
+                </TouchableOpacity>
+              )}
             </View>
         </ScrollView>
       </View>
@@ -1203,6 +1231,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  resumeFromActivityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '30',
+    backgroundColor: colors.primary + '08',
+  },
+  resumeFromActivityText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   titleInput: {
     fontSize: 22,

@@ -42,7 +42,7 @@ export function MapView({
   markers = [],
   pathCoordinates,
   onMarkerClick,
-  className = "w-full h-full",
+  className = "w-full h-full min-h-[400px]",
   theme = "light",
   showStats = false,
   distance,
@@ -55,25 +55,19 @@ export function MapView({
   const markerLayersRef = useRef<any[]>([]);
   const posMarkerRef = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const initializedRef = useRef(false);
 
   const isDark = theme === "dark";
 
   // Initialize map once
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
-
-    // Clean up any existing map
-    if (mapInstanceRef.current) {
-      try { mapInstanceRef.current.remove(); } catch {}
-      mapInstanceRef.current = null;
-    }
-
-    let cancelled = false;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     const initMap = async () => {
       try {
         const L = (await import("leaflet")).default;
-        if (cancelled) return;
         leafletRef.current = L;
 
         delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -83,12 +77,10 @@ export function MapView({
           shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
 
-        if (!mapRef.current || cancelled) return;
-
         const defaultCenter = center || { lat: 37.5665, lng: 126.978 };
         const tile = TILE_LAYERS[theme];
 
-        const map = L.map(mapRef.current, {
+        const map = L.map(mapRef.current!, {
           center: [defaultCenter.lat, defaultCenter.lng],
           zoom,
           zoomControl: false,
@@ -104,21 +96,17 @@ export function MapView({
         mapInstanceRef.current = map;
         setLoaded(true);
 
-        // Multiple invalidateSize calls for reliable rendering
-        const delays = [100, 300, 600, 1000];
-        delays.forEach((ms) => {
-          setTimeout(() => {
-            try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
-          }, ms);
-        });
+        setTimeout(() => {
+          try { map.invalidateSize(); } catch {}
+        }, 200);
       } catch (err) {
         console.error("Map load error:", err);
-        if (mapRef.current && !cancelled) {
+        if (mapRef.current) {
           mapRef.current.innerHTML = `
             <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${isDark ? "#1a1a2e" : "#f0f9f4"};border-radius:16px;">
               <div style="text-align:center;color:${isDark ? "#555" : "#777"};">
-                <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
-                <p style="font-size:13px;">지도를 불러올 수 없습니다</p>
+                <div style="font-size:48px;margin-bottom:8px;">🗺️</div>
+                <p style="font-size:14px;">지도를 불러올 수 없습니다</p>
               </div>
             </div>
           `;
@@ -126,14 +114,13 @@ export function MapView({
       }
     };
 
-    const timer = setTimeout(initMap, 50);
+    initMap();
 
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
       if (mapInstanceRef.current) {
-        try { mapInstanceRef.current.remove(); } catch {}
+        mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+        initializedRef.current = false;
       }
     };
   }, [theme]);
@@ -239,28 +226,15 @@ export function MapView({
       if (onMarkerClick) marker.on("click", () => onMarkerClick(m.id));
       markerLayersRef.current.push(marker);
     });
-
-    // Re-invalidate after drawing
-    setTimeout(() => {
-      try { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); } catch {}
-    }, 200);
   }, [pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
 
   return (
-    <div className={`relative overflow-hidden ${className}`}>
-      <div ref={mapRef} className="absolute inset-0" />
+    <div className={`relative ${className}`}>
+      <div ref={mapRef} className="w-full h-full" />
       <style jsx global>{`
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }
           50% { transform: scale(1.5); opacity: 0; }
-        }
-        .leaflet-container {
-          width: 100% !important;
-          height: 100% !important;
-          background: ${isDark ? "#1a1a2e" : "#f7f8fa"};
-        }
-        .leaflet-tile-pane {
-          will-change: transform;
         }
       `}</style>
 

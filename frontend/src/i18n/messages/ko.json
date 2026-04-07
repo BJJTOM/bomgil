@@ -312,7 +312,8 @@
     "pace": "페이스",
     "weeklyDistance": "이번 주 걸은 거리",
     "record": "기록",
-    "recorded": "명이 기록했어요"
+    "recorded": "명이 기록했어요",
+    "totalStats": "누적 통계"
   },
   "walk": {
     "start": "걷기 시작",

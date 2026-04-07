@@ -61,8 +61,9 @@ export function useToggleLike() {
       const { data } = await api.post(`/trails/${trailId}/like/`);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, trailId) => {
       queryClient.invalidateQueries({ queryKey: ["trails"] });
+      queryClient.invalidateQueries({ queryKey: ["trail", trailId] });
     },
   });
 }

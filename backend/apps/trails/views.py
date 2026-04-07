@@ -78,7 +78,7 @@ class TrailViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def spots(self, request, pk=None):
         trail = self.get_object()
-        spots = trail.spots.filter(status="approved").order_by("order")
+        spots = trail.spots.all().order_by("order")
         serializer = SpotSerializer(spots, many=True, context={"request": request})
         return Response(serializer.data)
 

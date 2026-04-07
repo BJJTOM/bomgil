@@ -148,6 +148,31 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
+      {/* Total Stats */}
+      {stats && (
+        <div className="px-5 pt-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-[16px] border border-[#E5E8EB] p-5">
+              <h2 className="text-[15px] font-bold text-[#191F28] mb-3">{t("activities.totalStats")}</h2>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-[20px] font-bold text-[#2D4A2E] font-en">{stats.total_distance_km.toFixed(1)}</p>
+                  <p className="text-[11px] text-[#B0B8C1]">km</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[20px] font-bold text-[#2D4A2E] font-en">{stats.total_steps.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#B0B8C1]">{t("activities.steps")}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[20px] font-bold text-[#2D4A2E] font-en">{stats.total_calories.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#B0B8C1]">kcal</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Activity list */}
       <div className="px-5 pt-4 pb-24">
         <div className="max-w-3xl mx-auto">

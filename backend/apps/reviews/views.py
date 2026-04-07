@@ -30,7 +30,7 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         trail = get_object_or_404(Trail, pk=self.kwargs["trail_id"])
-        serializer.save(author=self.request.user, trail=trail)
+        serializer.save(author=self.request.user, trail=trail, status="approved")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

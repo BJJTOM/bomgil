@@ -312,7 +312,8 @@
     "pace": "配速",
     "weeklyDistance": "本周步行距离",
     "record": "记录",
-    "recorded": "人已记录"
+    "recorded": "人已记录",
+    "totalStats": "累计统计"
   },
   "walk": {
     "start": "开始步行",

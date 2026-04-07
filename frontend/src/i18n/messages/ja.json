@@ -312,7 +312,8 @@
     "pace": "ペース",
     "weeklyDistance": "今週歩いた距離",
     "record": "記録",
-    "recorded": "人が記録しました"
+    "recorded": "人が記録しました",
+    "totalStats": "累計統計"
   },
   "walk": {
     "start": "ウォーキング開始",

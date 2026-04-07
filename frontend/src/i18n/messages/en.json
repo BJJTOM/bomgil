@@ -312,7 +312,8 @@
     "pace": "Pace",
     "weeklyDistance": "Distance walked this week",
     "record": "record",
-    "recorded": "people recorded"
+    "recorded": "people recorded",
+    "totalStats": "Total Stats"
   },
   "walk": {
     "start": "Start Walking",

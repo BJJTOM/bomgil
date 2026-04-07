@@ -221,11 +221,11 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
   searchClear: { fontSize: 14, color: colors.textTertiary, padding: 4 },
 
-  // Category — ScrollView (must not clip)
-  categoryBar: { height: 48, marginBottom: 4 },
-  categoryList: { paddingHorizontal: 16, paddingVertical: 8, gap: 8, alignItems: 'center' },
+  // Category — must not clip
+  categoryBar: { flexShrink: 0, flexGrow: 0 },
+  categoryList: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' },
   categoryChip: {
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
     backgroundColor: '#F7F8FA',
   },
   categoryChipActive: { backgroundColor: colors.primary },

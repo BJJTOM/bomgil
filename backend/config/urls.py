@@ -22,7 +22,7 @@ def _platform_stats(request):
 
 urlpatterns = [
     path("api/v1/stats/", _platform_stats),
-    path("moru-admin-panel/", admin.site.urls),
+    path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/trails/", include("apps.trails.urls")),
     path("api/v1/spots/", include("apps.spots.urls")),

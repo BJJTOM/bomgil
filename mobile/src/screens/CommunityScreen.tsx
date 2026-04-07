@@ -49,7 +49,7 @@ export default function CommunityScreen() {
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications')}>
-            <Text style={styles.iconBtnText}>N</Text>
+            <Text style={styles.iconBtnText}>{'🔔'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -103,13 +103,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: '#F7F8FA',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#F7F8FA',
     alignItems: 'center', justifyContent: 'center',
   },
-  iconBtnText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  iconBtnText: { fontSize: 16 },
 
   // Tab bar
   tabBar: {
@@ -123,10 +123,10 @@ const styles = StyleSheet.create({
   },
   tabItem: { marginRight: 24, paddingVertical: 12, position: 'relative' },
   tabLabel: { fontSize: 15, fontWeight: '500', color: colors.textTertiary },
-  tabLabelActive: { color: colors.textPrimary, fontWeight: '700' },
+  tabLabelActive: { color: colors.primary, fontWeight: '700' },
   tabIndicator: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    height: 2, borderRadius: 1, backgroundColor: colors.textPrimary,
+    height: 2.5, borderRadius: 1.5, backgroundColor: colors.primary,
   },
 
   // Content
@@ -135,10 +135,10 @@ const styles = StyleSheet.create({
   // FAB
   fab: {
     position: 'absolute', right: 20,
-    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary,
+    width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 6,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },
-  fabIcon: { color: '#fff', fontSize: 24, fontWeight: '300', lineHeight: 26 },
+  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 30 },
 });

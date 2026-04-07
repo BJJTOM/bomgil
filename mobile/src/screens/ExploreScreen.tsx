@@ -393,7 +393,9 @@ const styles = StyleSheet.create({
   // Header — clean, no heavy border
   header: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 10,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F2F4F6',
   },
 
   // Search — pill shape, subtle shadow
@@ -441,12 +443,12 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 16,
-    gap: 6,
+    paddingRight: 20,
+    gap: 8,
   },
   chipRow: {
     paddingHorizontal: 20,
-    gap: 6,
+    gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -547,8 +549,8 @@ const styles = StyleSheet.create({
   // Expanded filter options
   filterOptionsRow: {
     paddingHorizontal: 20,
-    paddingTop: 6,
-    gap: 6,
+    paddingTop: 8,
+    gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -576,13 +578,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   resultCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textTertiary,
+    fontWeight: '500',
   },
   list: {
     paddingHorizontal: 20,
     paddingBottom: 100,
-    gap: 12,
+    gap: 16,
   },
   cardWrap: {
     flex: 1,
@@ -605,10 +608,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   emptyDesc: {
     fontSize: 13,

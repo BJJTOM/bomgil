@@ -60,11 +60,11 @@ const TAB_CONFIG: {
   icon: string;
   component: React.ComponentType<any>;
 }[] = [
-  { name: 'Home', label: '홈', icon: '⌂', component: HomeScreen },
-  { name: 'Explore', label: '탐색', icon: '⊕', component: ExploreScreen },
-  { name: 'Activity', label: '활동', icon: '◈', component: ActivityScreen },
-  { name: 'Community', label: '커뮤니티', icon: '⊞', component: CommunityScreen },
-  { name: 'Settings', label: 'MY', icon: '⊙', component: SettingsScreen },
+  { name: 'Home', label: '홈', icon: '🏠', component: HomeScreen },
+  { name: 'Explore', label: '탐색', icon: '🔍', component: ExploreScreen },
+  { name: 'Activity', label: '활동', icon: '🚶', component: ActivityScreen },
+  { name: 'Community', label: '커뮤니티', icon: '💬', component: CommunityScreen },
+  { name: 'Settings', label: 'MY', icon: '👤', component: SettingsScreen },
 ];
 
 function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean }) {
@@ -83,9 +83,8 @@ function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Text
         style={{
-          fontSize: 20,
-          color: isFocused ? colors.primary : colors.textTertiary,
-          opacity: isFocused ? 1 : 0.5,
+          fontSize: 22,
+          opacity: isFocused ? 1 : 0.45,
         }}>
         {icon}
       </Text>
@@ -135,6 +134,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 ]}>
                 {config?.label || route.name}
               </Text>
+              {isFocused && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -231,12 +231,12 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: -2 },
       },
       android: {
-        elevation: 16,
+        elevation: 12,
       },
     }),
   },
@@ -251,5 +251,13 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 10,
+    marginTop: 2,
+  },
+  activeIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 3,
   },
 });

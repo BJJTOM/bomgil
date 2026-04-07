@@ -267,10 +267,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   celebrationText: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 32,
+    letterSpacing: -0.3,
   },
 
   // Stat Card
@@ -278,11 +279,11 @@ const styles = StyleSheet.create({
     width: width - 48,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 16,
+    shadowRadius: 12,
     elevation: 3,
-    borderRadius: 20,
+    borderRadius: 24,
     paddingVertical: 28,
     paddingHorizontal: 24,
     marginBottom: 20,
@@ -383,6 +384,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   splitsTitle: {
     fontSize: 13,
@@ -429,7 +435,7 @@ const styles = StyleSheet.create({
   photoCard: {
     width: 140,
     height: 140,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   photoImage: {
@@ -445,14 +451,15 @@ const styles = StyleSheet.create({
   },
   shareBtn: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 28,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   shareBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -460,14 +467,15 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 28,
+    height: 48,
+    borderRadius: 14,
     backgroundColor: '#F2F4F6',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   secondaryBtnText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.textSecondary,
   },
 });

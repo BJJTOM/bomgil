@@ -137,7 +137,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={styles.eyeBtn}
                 onPress={() => setShowPassword(!showPassword)}>
-                <Text style={styles.eyeIcon}>{showPassword ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: colors.primary,
     letterSpacing: -0.5,
@@ -199,20 +199,21 @@ const styles = StyleSheet.create({
   // Card
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 16,
+    shadowRadius: 12,
     elevation: 3,
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 24,
+    letterSpacing: -0.3,
   },
 
   // Error
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 8,
   },
@@ -287,8 +288,8 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   // Divider

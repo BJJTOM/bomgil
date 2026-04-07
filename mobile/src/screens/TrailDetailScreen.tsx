@@ -707,23 +707,23 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 80,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    height: 100,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   coverGradientBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 140,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    height: 160,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   backButton: {
     position: 'absolute',
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -736,10 +736,10 @@ const styles = StyleSheet.create({
   },
   diffBadge: {
     position: 'absolute',
-    left: 62,
+    left: 68,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     zIndex: 10,
   },
@@ -754,10 +754,11 @@ const styles = StyleSheet.create({
     right: 20,
   },
   coverTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   coverRegion: {
     fontSize: 14,
@@ -774,9 +775,10 @@ const styles = StyleSheet.create({
   },
   statsText: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#8B95A1',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
 
   // ── Action Bar ─────────────────────────────────────────
@@ -792,12 +794,12 @@ const styles = StyleSheet.create({
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#F7F8FA',
     gap: 6,
-    minHeight: 40,
+    minHeight: 42,
   },
   actionBtnLiked: {
     backgroundColor: '#FFF0F0',
@@ -813,7 +815,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#8B95A1',
   },
   actionBtnTextLiked: {
@@ -833,10 +835,11 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: '#191F28',
-    marginBottom: 14,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   sectionCount: {
     fontSize: 15,
@@ -963,16 +966,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   writeReviewBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#F7F8FA',
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
     marginBottom: 12,
   },
   writeReviewBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B95A1',
+    color: '#FFFFFF',
   },
   emptyReviews: {
     paddingVertical: 32,
@@ -1017,9 +1020,10 @@ const styles = StyleSheet.create({
   },
   reviewSubmitBtn: {
     backgroundColor: '#2D4A2E',
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   reviewSubmitDisabled: {
     opacity: 0.4,
@@ -1141,8 +1145,8 @@ const styles = StyleSheet.create({
   detailItem: {
     width: '45%',
     backgroundColor: '#F7F8FA',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 14,
   },
   detailLabel: {
     fontSize: 11,
@@ -1166,10 +1170,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   transportBox: {
-    marginTop: 12,
+    marginTop: 16,
     backgroundColor: '#F0F7F0',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 14,
+    padding: 16,
   },
   transportLabel: {
     fontSize: 12,

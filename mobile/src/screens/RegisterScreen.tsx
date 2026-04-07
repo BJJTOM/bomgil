@@ -191,7 +191,7 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
               />
               <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw1(!showPw1)}>
-                <Text style={styles.eyeIcon}>{showPw1 ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+                <Text style={styles.eyeIcon}>{showPw1 ? '🙈' : '👁'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -237,7 +237,7 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
               />
               <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw2(!showPw2)}>
-                <Text style={styles.eyeIcon}>{showPw2 ? '\uD83D\uDE48' : '\uD83D\uDC41'}</Text>
+                <Text style={styles.eyeIcon}>{showPw2 ? '🙈' : '👁'}</Text>
               </TouchableOpacity>
             </View>
             {form.password2.length > 0 && form.password1 !== form.password2 && (
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   backBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
   },
   backText: {
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.5,
@@ -346,13 +346,13 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 28,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   errorBox: {
     backgroundColor: 'rgba(255,75,75,0.08)',
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 8,
     marginTop: 16,
@@ -454,8 +454,8 @@ const styles = StyleSheet.create({
   },
   registerBtnText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   dividerRow: {
     flexDirection: 'row',

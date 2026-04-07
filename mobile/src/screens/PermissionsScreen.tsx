@@ -1,143 +1,158 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, Linking } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Linking, PermissionsAndroid } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
-import { requestNotificationPermission } from '../utils/notifications';
 
-const PERMISSIONS = [
-  {
-    key: 'location',
-    icon: '📍',
-    title: '위치 정보',
-    desc: '걷기 경로를 기록하고 주변 코스를 찾습니다',
-    required: false,
-    label: '선택',
-  },
-  {
-    key: 'notification',
-    icon: '🔔',
-    title: '알림',
-    desc: '새로운 댓글, 좋아요 알림을 받습니다',
-    required: false,
-    label: '선택',
-  },
-  {
-    key: 'activity',
-    icon: '🏃',
-    title: '신체 활동',
-    desc: '걸음수와 활동 데이터를 기록합니다',
-    required: false,
-    label: '선택',
-  },
-];
+interface PermissionItem {
+  name: string;
+  icon: string;
+  desc: string;
+  status: 'granted' | 'denied' | 'unknown' | 'checking';
+}
 
-export default function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
+export default function PermissionsScreen() {
   const insets = useSafeAreaInsets();
-  const [agreed, setAgreed] = useState<Record<string, boolean>>({});
+  const navigation = useNavigation<any>();
+  const [permissions, setPermissions] = useState<PermissionItem[]>([
+    { name: '위치 (GPS)', icon: 'map-pin', desc: '걷기 기록, 주변 코스 검색', status: 'checking' },
+    { name: '백그라운드 위치', icon: 'navigation', desc: '걷기 중 앱 전환 시 기록 유지', status: 'checking' },
+    { name: '카메라', icon: 'camera', desc: '걷기 중 사진 촬영', status: 'checking' },
+    { name: '사진/미디어', icon: 'image', desc: '이미지 첨부', status: 'checking' },
+    { name: '신체 활동', icon: 'activity', desc: '걸음수 측정', status: 'checking' },
+    { name: '알림', icon: 'bell', desc: '푸시 알림 수신', status: 'checking' },
+  ]);
 
-  const togglePermission = (key: string) => {
-    setAgreed(prev => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    if (Platform.OS !== 'android') return;
+
+    const checks = [
+      { idx: 0, perm: PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION },
+      { idx: 1, perm: PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION },
+      { idx: 2, perm: PermissionsAndroid.PERMISSIONS.CAMERA },
+      { idx: 3, perm: (PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES || PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE },
+      { idx: 4, perm: PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION },
+      { idx: 5, perm: (PermissionsAndroid.PERMISSIONS as any).POST_NOTIFICATIONS },
+    ];
+
+    const updated = [...permissions];
+    for (const check of checks) {
+      try {
+        if (check.perm) {
+          const result = await PermissionsAndroid.check(check.perm);
+          updated[check.idx] = { ...updated[check.idx], status: result ? 'granted' : 'denied' };
+        } else {
+          updated[check.idx] = { ...updated[check.idx], status: 'unknown' };
+        }
+      } catch {
+        updated[check.idx] = { ...updated[check.idx], status: 'unknown' };
+      }
+    }
+    setPermissions(updated);
   };
 
-  const handleContinue = async () => {
-    await AsyncStorage.setItem('permissions_shown', 'true');
+  const statusColor = (s: string) => {
+    if (s === 'granted') return '#22C55E';
+    if (s === 'denied') return '#EF4444';
+    return colors.textTertiary;
+  };
 
-    // Request actual permissions based on selections
-    if (agreed.location) {
-      // Location permission will be requested when Walk screen opens
-    }
-    if (agreed.notification) {
-      await requestNotificationPermission();
-    }
-
-    onComplete();
+  const statusLabel = (s: string) => {
+    if (s === 'granted') return '허용됨';
+    if (s === 'denied') return '거부됨';
+    if (s === 'checking') return '확인 중...';
+    return '알 수 없음';
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-      {/* Header */}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.appName}>Moru</Text>
-        <Text style={styles.title}>앱 사용을 위해{'\n'}아래 권한이 필요합니다</Text>
-        <Text style={styles.subtitle}>선택 권한은 동의하지 않아도 앱을 사용할 수 있습니다</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>앱 권한 관리</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Permission Items */}
-      <View style={styles.permList}>
-        {PERMISSIONS.map((perm) => (
-          <TouchableOpacity
-            key={perm.key}
-            style={[styles.permItem, agreed[perm.key] && styles.permItemActive]}
-            onPress={() => togglePermission(perm.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.permIcon}>{perm.icon}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <Text style={styles.sectionDesc}>
+          모루 앱이 사용하는 권한 목록입니다.{'\n'}
+          거부된 권한은 설정에서 변경할 수 있습니다.
+        </Text>
+
+        {permissions.map((perm, i) => (
+          <View key={i} style={styles.permRow}>
+            <View style={[styles.permIcon, { backgroundColor: statusColor(perm.status) + '15' }]}>
+              <Feather name={perm.icon} size={18} color={statusColor(perm.status)} />
+            </View>
             <View style={styles.permInfo}>
-              <View style={styles.permTitleRow}>
-                <Text style={styles.permTitle}>{perm.title}</Text>
-                <View style={[styles.permBadge, agreed[perm.key] && styles.permBadgeActive]}>
-                  <Text style={[styles.permBadgeText, agreed[perm.key] && styles.permBadgeTextActive]}>
-                    {agreed[perm.key] ? '동의' : perm.label}
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.permName}>{perm.name}</Text>
               <Text style={styles.permDesc}>{perm.desc}</Text>
             </View>
-          </TouchableOpacity>
+            <View style={[styles.permStatus, { backgroundColor: statusColor(perm.status) + '15' }]}>
+              <Text style={[styles.permStatusText, { color: statusColor(perm.status) }]}>
+                {statusLabel(perm.status)}
+              </Text>
+            </View>
+          </View>
         ))}
-      </View>
 
-      {/* Info */}
-      <View style={styles.infoBox}>
-        <Text style={styles.infoText}>• 위치 정보는 걷기 기록 시에만 사용됩니다</Text>
-        <Text style={styles.infoText}>• 수집된 정보는 서비스 제공 목적으로만 사용됩니다</Text>
-        <Text style={styles.infoText}>• 설정 {'>'} 앱 권한에서 언제든 변경할 수 있습니다</Text>
-      </View>
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => Linking.openSettings()}
+          activeOpacity={0.7}>
+          <Feather name="settings" size={16} color={colors.primary} />
+          <Text style={styles.settingsBtnText}>시스템 설정에서 권한 변경</Text>
+        </TouchableOpacity>
 
-      {/* Buttons */}
-      <View style={styles.buttons}>
-        <TouchableOpacity style={styles.agreeAllBtn} onPress={() => {
-          const all: Record<string, boolean> = {};
-          PERMISSIONS.forEach(p => all[p.key] = true);
-          setAgreed(all);
-        }}>
-          <Text style={styles.agreeAllText}>전체 동의</Text>
+        <TouchableOpacity
+          style={[styles.settingsBtn, { marginTop: 8 }]}
+          onPress={checkPermissions}
+          activeOpacity={0.7}>
+          <Feather name="refresh-cw" size={16} color={colors.primary} />
+          <Text style={styles.settingsBtnText}>권한 상태 새로고침</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}>
-          <Text style={styles.continueBtnText}>시작하기</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 24 },
-  header: { marginBottom: 32 },
-  appName: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 16, fontFamily: 'System' },
-  title: { fontSize: 24, fontWeight: '800', color: colors.textPrimary, lineHeight: 34 },
-  subtitle: { fontSize: 13, color: colors.textTertiary, marginTop: 8 },
-  permList: { gap: 12 },
-  permItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.borderLight, backgroundColor: '#fff',
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12,
   },
-  permItemActive: { borderColor: colors.primary, backgroundColor: colors.primary + '08' },
-  permIcon: { fontSize: 28 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '600', color: colors.textPrimary },
+  sectionDesc: {
+    fontSize: 13, color: colors.textTertiary, lineHeight: 20,
+    paddingHorizontal: 20, paddingVertical: 16,
+  },
+  permRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', marginHorizontal: 20, marginBottom: 8,
+    padding: 14, borderRadius: 14,
+  },
+  permIcon: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
   permInfo: { flex: 1 },
-  permTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  permTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  permBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20, backgroundColor: colors.bgSecondary },
-  permBadgeActive: { backgroundColor: colors.primary },
-  permBadgeText: { fontSize: 11, fontWeight: '600', color: colors.textTertiary },
-  permBadgeTextActive: { color: '#fff' },
-  permDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-  infoBox: { marginTop: 24, padding: 16, backgroundColor: colors.bgSecondary, borderRadius: 12, gap: 6 },
-  infoText: { fontSize: 11, color: colors.textTertiary, lineHeight: 16 },
-  buttons: { marginTop: 'auto', gap: 10, paddingTop: 20 },
-  agreeAllBtn: { padding: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.borderDefault, alignItems: 'center' },
-  agreeAllText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
-  continueBtn: { padding: 16, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center' },
-  continueBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  permName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  permDesc: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  permStatus: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
+  },
+  permStatusText: { fontSize: 11, fontWeight: '600' },
+  settingsBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, marginHorizontal: 20, marginTop: 20,
+    paddingVertical: 14, borderRadius: 14, backgroundColor: '#fff',
+  },
+  settingsBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 });

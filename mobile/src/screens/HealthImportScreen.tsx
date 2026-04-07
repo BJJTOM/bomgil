@@ -34,32 +34,34 @@ export default function HealthImportScreen() {
   const [available, setAvailable] = useState(false);
   const [sessions, setSessions] = useState<HealthWalkSession[]>([]);
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   const initialize = useCallback(async () => {
     setLoading(true);
+    setErrorMsg('');
     try {
       const isAvailable = await initHealthConnect();
       setAvailable(isAvailable);
       if (!isAvailable) {
+        setErrorMsg('Health Connect를 사용할 수 없습니다. 기기에서 지원하지 않거나 설치가 필요합니다.');
         setLoading(false);
         return;
       }
       const hasPerm = await hasHealthPermissions();
       setPermissionGranted(hasPerm);
       if (hasPerm) {
-        const data = await getWalkSessions(30);
-        setSessions(data);
+        try {
+          const data = await getWalkSessions(30);
+          setSessions(data);
+        } catch (fetchErr: any) {
+          setErrorMsg(`데이터 가져오기 실패: ${fetchErr?.message || '알 수 없는 오류'}`);
+        }
       }
     } catch (e: any) {
-      console.log('Health Connect init error:', e);
       const msg = e?.message || String(e);
-      if (msg.includes('not installed') || msg.includes('package')) {
-        setAvailable(false);
-      } else {
-        Alert.alert(
-          'Health Connect \uC624\uB958',
-          `\uCD08\uAE30\uD654 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4: ${msg}`,
-        );
-      }
+      console.log('Health Connect init error:', msg);
+      setAvailable(false);
+      setErrorMsg(`초기화 오류: ${msg}`);
     }
     setLoading(false);
   }, []);
@@ -297,10 +299,11 @@ export default function HealthImportScreen() {
       ) : !available ? (
         <View style={styles.centerWrap}>
           <Text style={styles.emptyIcon}>{'⌚'}</Text>
-          <Text style={styles.emptyTitle}>Health Connect{'\uB97C'} {'\uC0AC\uC6A9\uD560'} {'\uC218'} {'\uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+          <Text style={styles.emptyTitle}>Health Connect를 사용할 수 없습니다</Text>
           <Text style={styles.emptyDesc}>
-            Health Connect {'\uC571\uC744'} {'\uC124\uCE58\uD558\uBA74'} {'\uAC24\uB7ED\uC2DC'} {'\uC6CC\uCE58'} {'\uAC78\uAE30'} {'\uAE30\uB85D\uC744'} {'\uAC00\uC838\uC62C'} {'\uC218'} {'\uC788\uC2B5\uB2C8\uB2E4'}.
+            Health Connect 앱을 설치하면 갤럭시 워치 걷기 기록을 가져올 수 있습니다.
           </Text>
+          {errorMsg ? <Text style={[styles.emptyDesc, { color: '#FF6B6B', marginTop: 8, fontSize: 12 }]}>{errorMsg}</Text> : null}
           {Platform.OS === 'android' && (
             <TouchableOpacity
               style={styles.permissionBtn}

@@ -16,16 +16,22 @@ const PERMISSIONS: Permission[] = [
 
 export async function initHealthConnect(): Promise<boolean> {
   try {
+    // On Android 14+ (SDK 34+), Health Connect is built-in
+    // initialize() may return true/false or throw
     const available = await initialize();
+    console.log('[Moru] Health Connect initialize result:', available);
     return !!available;
   } catch (e: any) {
     const msg = (e?.message || String(e)).toLowerCase();
-    // Health Connect not installed — return false, don't throw
-    if (msg.includes('not installed') || msg.includes('not available') || msg.includes('package') || msg.includes('provider')) {
-      console.log('[Moru] Health Connect not installed');
+    console.log('[Moru] Health Connect init error:', msg);
+    // Known non-fatal errors — Health Connect not installed or not ready
+    if (msg.includes('not installed') || msg.includes('not available') ||
+        msg.includes('package') || msg.includes('provider') ||
+        msg.includes('could not bind') || msg.includes('service') ||
+        msg.includes('sdk') || msg.includes('api')) {
       return false;
     }
-    console.log('[Moru] Health Connect init error:', e);
+    // Unknown error — still return false, don't crash
     return false;
   }
 }

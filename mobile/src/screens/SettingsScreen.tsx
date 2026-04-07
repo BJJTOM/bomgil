@@ -218,6 +218,7 @@ export default function SettingsScreen() {
           onPress: () => setShowThemeModal(true),
         },
         { icon: 'bell', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
+        { icon: 'shield', label: '앱 권한 관리', onPress: () => navigation.navigate('Permissions') },
       ],
     },
     {

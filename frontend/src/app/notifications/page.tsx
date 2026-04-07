@@ -114,7 +114,7 @@ export default function NotificationsPage() {
               <button
                 key={n.id}
                 onClick={() => {
-                  if (n.story_id) router.push(`/community`);
+                  if (n.story_id) router.push(`/community/${n.story_id}`);
                 }}
                 className={`w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-white/60 transition-colors ${
                   !n.is_read ? "bg-primary/5" : ""

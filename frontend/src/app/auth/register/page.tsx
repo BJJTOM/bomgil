@@ -234,8 +234,8 @@ export default function RegisterPage() {
 
         <p className="text-center text-[11px] text-text-tertiary mt-6 leading-relaxed">
           {t("register.termsNotice")}{" "}
-          <span className="underline cursor-pointer">{t("register.terms")}</span> {t("register.and")}{" "}
-          <span className="underline cursor-pointer">{t("register.privacy")}</span>{t("register.termsAgree")}
+          <Link href="/terms" className="underline">{t("register.terms")}</Link> {t("register.and")}{" "}
+          <Link href="/privacy" className="underline">{t("register.privacy")}</Link>{t("register.termsAgree")}
         </p>
       </div>
     </div>

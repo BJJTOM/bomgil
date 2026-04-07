@@ -59,7 +59,7 @@ function WalkCompleteContent() {
         await navigator.share({
           title: `Moru - ${distance.toFixed(2)}km ${t("walk.finish")}!`,
           text: `${distance.toFixed(2)}km, ${steps.toLocaleString()} ${t("activities.steps")}, ${timeStr}`,
-          url: "https://frontend-sigma-nine-57.vercel.app",
+          url: typeof window !== "undefined" ? window.location.origin : "https://moruwalk.com",
         });
       } catch {}
     }

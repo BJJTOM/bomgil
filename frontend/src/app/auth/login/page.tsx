@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(e);
 
@@ -92,20 +93,45 @@ export default function LoginPage() {
               <label className="text-[13px] font-medium text-text-secondary block mb-2">
                 {t("auth.password")}
               </label>
-              <input
-                type="password"
-                name={"r_" + Date.now()}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
-                autoComplete="off"
-                data-lpignore="true"
-                data-form-type="other"
-                className="input-field"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name={"r_" + Date.now()}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  className="input-field pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-tertiary hover:text-text-secondary transition-colors"
+                >
+                  {showPassword ? "숨기기" : "보기"}
+                </button>
+              </div>
             </div>
             <button type="button" onClick={handleSubmit} disabled={loading} className="btn-primary w-full mt-2">
               {loading ? t("loginPage.loggingIn") : t("auth.loginButton")}
+            </button>
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-border-light" />
+              <span className="text-[12px] text-text-tertiary">또는</span>
+              <div className="flex-1 h-px bg-border-light" />
+            </div>
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              disabled={loading}
+              className="w-full py-2.5 border border-border-default rounded-button text-[14px] font-medium text-text-secondary hover:bg-bg-secondary transition-colors"
+            >
+              게스트로 둘러보기
             </button>
           </div>
 

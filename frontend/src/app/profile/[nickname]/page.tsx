@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -36,7 +36,9 @@ type Tab = "trails" | "likes" | "reviews" | "activities";
 
 export default function ProfilePage() {
   const { nickname } = useParams();
-  const { user: me } = useAuthStore();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const { user: me, isAuthenticated } = useAuthStore();
   const isMyProfile = me?.nickname === nickname;
   const [activeTab, setActiveTab] = useState<Tab>("trails");
 
@@ -187,13 +189,30 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isMyProfile && (
+          {isMyProfile ? (
             <Link
               href="/profile/edit"
               className="mt-3 inline-block w-full max-w-[200px] py-2 bg-[#F7F8FA] text-[#191F28] rounded-[14px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors"
             >
               프로필 수정
             </Link>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!isAuthenticated) { router.push("/auth/login"); return; }
+                try {
+                  await api.post(`/auth/users/${nickname}/follow/`);
+                  qc.invalidateQueries({ queryKey: ["profile", nickname] });
+                } catch {}
+              }}
+              className={`mt-3 w-full max-w-[200px] py-2.5 rounded-[14px] text-[13px] font-semibold transition-colors ${
+                (profile as any).is_following
+                  ? "bg-[#F7F8FA] text-[#8B95A1] hover:bg-[#E5E8EB]"
+                  : "bg-[#2D4A2E] text-white hover:bg-[#1a3a1b]"
+              }`}
+            >
+              {(profile as any).is_following ? "팔로잉" : "팔로우"}
+            </button>
           )}
         </div>
 

@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useActivities, useActivityStats } from "@/hooks/useActivities";
+import { useQueryClient } from "@tanstack/react-query";
 import { useT } from "@/stores/language";
+import { useAuthStore } from "@/stores/auth";
+import api from "@/lib/api";
 import type { ActivityTrack } from "@/types";
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -18,8 +22,27 @@ const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
 
 export default function ActivitiesPage() {
   const { t, language } = useT();
+  const { isAuthenticated } = useAuthStore();
+  const qc = useQueryClient();
   const { data: stats, isLoading: statsLoading } = useActivityStats();
   const { data: activities = [], isLoading } = useActivities();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const hour = new Date().getHours();
+  const greeting = language === "ko"
+    ? hour < 12 ? "좋은 아침이에요!" : hour < 18 ? "좋은 오후에요!" : "좋은 저녁이에요!"
+    : hour < 12 ? "Good morning!" : hour < 18 ? "Good afternoon!" : "Good evening!";
+
+  const handleDelete = async (id: number) => {
+    if (!confirm(language === "ko" ? "이 활동 기록을 삭제하시겠어요?" : "Delete this activity?")) return;
+    setDeletingId(id);
+    try {
+      await api.delete(`/activities/${id}/`);
+      qc.invalidateQueries({ queryKey: ["activities"] });
+      qc.invalidateQueries({ queryKey: ["activity-stats"] });
+    } catch {}
+    setDeletingId(null);
+  };
 
   function formatDuration(minutes: number | null) {
     if (!minutes) return "-";
@@ -79,8 +102,9 @@ export default function ActivitiesPage() {
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-5">
             <div>
+              <p className="text-[13px] text-[#8B95A1] mb-0.5">{greeting}</p>
               <h1 className="text-[22px] font-bold text-[#191F28]">{t("activities.title")}</h1>
-              <p className="text-[13px] text-[#B0B8C1] mt-0.5">{todayDateStr}</p>
+              <p className="text-[12px] text-[#B0B8C1] mt-0.5">{todayDateStr}</p>
             </div>
             <Link href="/activities/upload" className="px-3.5 py-1.5 bg-[#F7F8FA] text-[#2D4A2E] rounded-[20px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors">
               + {t("activities.addRecord")}
@@ -186,50 +210,67 @@ export default function ActivitiesPage() {
                 </div>
               ))
             ) : activities.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-[14px] text-[#B0B8C1]">{t("activities.noRecords")}</p>
+              <div className="py-16 text-center">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4 text-2xl">🚶</div>
+                <p className="text-[15px] font-semibold text-gray-900 mb-1">{language === "ko" ? "아직 활동 기록이 없어요" : "No activities yet"}</p>
+                <p className="text-[13px] text-gray-400 mb-5">{language === "ko" ? "걷기를 시작해보세요!" : "Start a walk!"}</p>
+                <Link href="/walk" className="inline-block px-5 py-2 bg-[#2D4A2E] text-white text-sm font-semibold rounded-full">
+                  {language === "ko" ? "걷기 시작" : "Start Walk"}
+                </Link>
               </div>
             ) : (
               activities.map((activity: ActivityTrack) => (
-                <Link key={activity.id} href={`/activities/${activity.id}`} className="block bg-white rounded-[16px] border border-[#E5E8EB] p-4 hover:shadow-card transition-shadow">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{SOURCE_LABELS[activity.source]?.icon || "📍"}</span>
+                <div key={activity.id} className="bg-white rounded-[16px] border border-[#E5E8EB] p-4 hover:shadow-card transition-shadow">
+                  <Link href={`/activities/${activity.id}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{SOURCE_LABELS[activity.source]?.icon || "📍"}</span>
+                        <div>
+                          <p className="text-[14px] font-semibold text-[#191F28]">
+                            {activity.title || `${SOURCE_LABELS[activity.source]?.label} ${t("activities.record")}`}
+                          </p>
+                          <p className="text-[11px] text-[#B0B8C1] mt-0.5">
+                            {activity.started_at
+                              ? new Date(activity.started_at).toLocaleDateString(language, { month: "long", day: "numeric", weekday: "short" })
+                              : new Date(activity.created_at).toLocaleDateString(language, { month: "long", day: "numeric", weekday: "short" })}
+                            {" · "}
+                            {SOURCE_LABELS[activity.source]?.label}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[12px] font-semibold text-[#2D4A2E] bg-[#f0f7f0] px-2.5 py-1 rounded-[20px]">{activity.distance_km ? `${parseFloat(activity.distance_km).toFixed(1)}km` : "-"}</span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mt-2.5">
                       <div>
-                        <p className="text-[14px] font-semibold text-[#191F28]">
-                          {activity.title || `${SOURCE_LABELS[activity.source]?.label} ${t("activities.record")}`}
-                        </p>
-                        <p className="text-[11px] text-[#B0B8C1] mt-0.5">
-                          {activity.started_at
-                            ? new Date(activity.started_at).toLocaleDateString(language, { month: "long", day: "numeric", weekday: "short" })
-                            : new Date(activity.created_at).toLocaleDateString(language, { month: "long", day: "numeric", weekday: "short" })}
-                          {" · "}
-                          {SOURCE_LABELS[activity.source]?.label}
-                        </p>
+                        <p className="text-[10px] text-[#B0B8C1]">{t("activities.distance")}</p>
+                        <p className="text-[13px] font-semibold text-[#191F28] font-en">{activity.distance_km ? `${parseFloat(activity.distance_km).toFixed(1)}km` : "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#B0B8C1]">{t("activities.time")}</p>
+                        <p className="text-[13px] font-semibold text-[#191F28]">{formatDuration(activity.duration_minutes)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#B0B8C1]">{t("activities.steps")}</p>
+                        <p className="text-[13px] font-semibold text-[#191F28] font-en">{activity.total_steps?.toLocaleString() || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#B0B8C1]">{t("activities.pace")}</p>
+                        <p className="text-[13px] font-semibold text-[#191F28] font-en">{formatPace(activity.avg_pace_min_km)}</p>
                       </div>
                     </div>
-                    <span className="text-[12px] font-semibold text-[#2D4A2E] bg-[#f0f7f0] px-2.5 py-1 rounded-[20px]">{activity.distance_km ? `${parseFloat(activity.distance_km).toFixed(1)}km` : "-"}</span>
+                  </Link>
+                  {/* Delete button */}
+                  <div className="flex justify-end mt-2 pt-2 border-t border-[#F2F4F6]">
+                    <button
+                      onClick={() => handleDelete(activity.id)}
+                      disabled={deletingId === activity.id}
+                      className="text-[12px] text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
+                    >
+                      {deletingId === activity.id ? "..." : (language === "ko" ? "삭제" : "Delete")}
+                    </button>
                   </div>
-
-                  <div className="grid grid-cols-4 gap-2 mt-2.5">
-                    <div>
-                      <p className="text-[10px] text-[#B0B8C1]">{t("activities.distance")}</p>
-                      <p className="text-[13px] font-semibold text-[#191F28] font-en">{activity.distance_km ? `${parseFloat(activity.distance_km).toFixed(1)}km` : "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-[#B0B8C1]">{t("activities.time")}</p>
-                      <p className="text-[13px] font-semibold text-[#191F28]">{formatDuration(activity.duration_minutes)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-[#B0B8C1]">{t("activities.steps")}</p>
-                      <p className="text-[13px] font-semibold text-[#191F28] font-en">{activity.total_steps?.toLocaleString() || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-[#B0B8C1]">{t("activities.pace")}</p>
-                      <p className="text-[13px] font-semibold text-[#191F28] font-en">{formatPace(activity.avg_pace_min_km)}</p>
-                    </div>
-                  </div>
-                </Link>
+                </div>
               ))
             )}
           </div>

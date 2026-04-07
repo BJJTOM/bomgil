@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const { user, isAuthenticated, logout, setUser } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -23,6 +25,15 @@ export default function SettingsPage() {
       });
       setUser(data);
     } catch {}
+    setShowPhotoMenu(false);
+  };
+
+  const handlePhotoDelete = async () => {
+    try {
+      const { data } = await api.patch("/auth/me/", { profile_image: null });
+      setUser(data);
+    } catch {}
+    setShowPhotoMenu(false);
   };
   const { language, setLanguage } = useLanguageStore();
   const { t } = useT();
@@ -49,6 +60,7 @@ export default function SettingsPage() {
         ...(isAuthenticated ? [
           { label: language === "ko" ? "프로필 수정" : "Edit Profile", href: "/profile/edit", icon: "👤" },
           { label: language === "ko" ? "내 활동 기록" : "My Activities", href: "/activities", icon: "📊" },
+          { label: language === "ko" ? "내 코스 관리" : "My Trails", href: `/profile/${user?.nickname}`, icon: "🗺" },
           { label: language === "ko" ? "좋아요한 코스" : "Liked Trails", href: "/likes", icon: "❤️" },
           { label: language === "ko" ? "저장한 코스" : "Saved Trails", href: "/saved", icon: "📥" },
         ] : [
@@ -87,16 +99,27 @@ export default function SettingsPage() {
         {isAuthenticated && user && (
           <div className="mx-5 mb-4 card-hover p-4 flex items-center gap-3.5">
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            <button onClick={() => fileInputRef.current?.click()} className="relative w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {user.profile_image ? (
-                <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl">👤</span>
+            <div className="relative">
+              <button onClick={() => setShowPhotoMenu(!showPhotoMenu)} className="relative w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {user.profile_image ? (
+                  <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl">👤</span>
+                )}
+                <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-white">
+                  <span className="text-[8px]">📷</span>
+                </div>
+              </button>
+              {showPhotoMenu && (
+                <div className="absolute top-16 left-0 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 min-w-[130px]">
+                  <button onClick={() => { setShowPhotoMenu(false); fileInputRef.current?.click(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-900 hover:bg-gray-50">사진 변경</button>
+                  {user.profile_image && (
+                    <button onClick={handlePhotoDelete} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50">사진 삭제</button>
+                  )}
+                  <button onClick={() => setShowPhotoMenu(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-50">취소</button>
+                </div>
               )}
-              <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-white">
-                <span className="text-[8px]">📷</span>
-              </div>
-            </button>
+            </div>
             <Link href={`/profile/${user.nickname}`} className="flex-1">
               <p className="font-bold text-[16px]">{user.nickname}</p>
               <p className="text-[12px] text-text-tertiary">{user.email}</p>

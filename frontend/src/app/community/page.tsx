@@ -27,12 +27,12 @@ const CATEGORIES = [
 
 const GROUP_CATS = [
   { key: "", label: "전체" },
-  { key: "hiking", label: "등산" },
-  { key: "walking", label: "산책" },
-  { key: "running", label: "러닝" },
-  { key: "trail", label: "트레일" },
-  { key: "photo", label: "사진" },
-  { key: "social", label: "친목" },
+  { key: "hiking", label: "🏔 등산" },
+  { key: "walking", label: "🚶 산책" },
+  { key: "running", label: "🏃 러닝" },
+  { key: "trail", label: "🥾 트레일" },
+  { key: "photo", label: "📸 사진" },
+  { key: "social", label: "🤝 친목" },
 ];
 
 const STATUS_MAP: Record<string, { bg: string; text: string }> = {
@@ -197,7 +197,7 @@ function FeedTab() {
                     <span>{post.like_count}</span>
                   </button>
                   <span className="flex items-center gap-1 text-[12px] text-gray-400">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    <span className="text-[14px] leading-none">○</span>
                     {post.comment_count}
                   </span>
                   <span className="text-[12px] text-gray-300">조회 {post.view_count}</span>
@@ -286,8 +286,8 @@ function GroupsTab() {
                 </div>
                 <p className="text-[13px] text-gray-500 line-clamp-1 mb-1.5">{g.description}</p>
                 <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                  <span>{g.member_count}{g.max_members > 0 ? `/${g.max_members}` : ""}명</span>
-                  {g.region && <><span>·</span><span>{g.region}</span></>}
+                  <span>👥 {g.member_count}{g.max_members > 0 ? `/${g.max_members}` : ""}명</span>
+                  {g.region && <><span>·</span><span>📍 {g.region}</span></>}
                   <span>·</span>
                   <span>{g.category_display}</span>
                 </div>
@@ -382,8 +382,8 @@ function ChallengesTab() {
             {/* Bottom */}
             <div className="flex items-center justify-between">
               <div className="flex gap-3 text-[12px] text-gray-400">
-                <span>{ch.participant_count}명 참여</span>
-                {ch.status === "active" && daysLeft > 0 && <span className="text-amber-500 font-medium">{daysLeft}일 남음</span>}
+                <span>👥 {ch.participant_count}명 참여</span>
+                {ch.status === "active" && daysLeft > 0 && <span className="text-amber-500 font-medium">⏰ {daysLeft}일 남음</span>}
               </div>
               {ch.is_joined ? (
                 <span className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">참여중 ✓</span>

@@ -247,6 +247,9 @@ export default function PostDetailPage() {
           <button onClick={() => inputRef.current?.focus()} className="flex items-center gap-1.5 text-sm text-gray-500">
             <span className="text-[22px]">○</span> {post.comment_count}
           </button>
+          <button onClick={() => { if (typeof navigator !== "undefined" && navigator.share) navigator.share({ title: post.title, text: post.title, url: window.location.href }); }} className="flex items-center gap-1.5 text-sm text-gray-500">
+            <span className="text-[22px]">↗</span>
+          </button>
         </div>
 
         {/* Section divider */}

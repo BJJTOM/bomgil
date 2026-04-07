@@ -7,6 +7,7 @@ import analytics from '@react-native-firebase/analytics';
 import crashlytics from '@react-native-firebase/crashlytics';
 import AppNavigator from './src/navigation/AppNavigator';
 import PermissionsScreen from './src/screens/PermissionsScreen';
+import SplashScreen from './src/components/SplashScreen';
 import { requestNotificationPermission } from './src/utils/notifications';
 
 const queryClient = new QueryClient({
@@ -14,6 +15,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [showPermissions, setShowPermissions] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -28,6 +30,10 @@ export default function App() {
     analytics().logEvent('app_open');
     requestNotificationPermission();
   }, []);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   if (showPermissions === null) return null; // Loading
 

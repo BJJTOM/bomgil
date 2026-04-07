@@ -34,11 +34,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('이메일과 비밀번호를 입력해주세요');
       return;
     }
     if (!isValidEmail(email)) {
-      setError('\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('올바른 이메일 주소를 입력해주세요');
       return;
     }
     setError('');
@@ -122,11 +122,11 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+            <Text style={styles.label}>{'비밀번호'}</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder={'\uBE44\uBC00\uBC88\uD638 \uC785\uB825'}
+                placeholder={'비밀번호 입력'}
                 placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}

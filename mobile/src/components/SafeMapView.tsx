@@ -48,12 +48,12 @@ function MapPlaceholder({
 }) {
   return (
     <View style={styles.placeholder}>
-      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}\uFE0F'}</Text>
+      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}️'}</Text>
       <Text style={styles.placeholderRegion}>
         {region || ''} {country || ''}
       </Text>
       <Text style={styles.placeholderCoords}>
-        {lat.toFixed(4)}\u00B0N, {lng.toFixed(4)}\u00B0E
+        {lat.toFixed(4)}°N, {lng.toFixed(4)}°E
       </Text>
     </View>
   );

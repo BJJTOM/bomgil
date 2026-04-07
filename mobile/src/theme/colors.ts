@@ -13,3 +13,23 @@ export const colors = {
   borderLight: '#F2F4F6',
   bgSecondary: '#F7F8FA',
 };
+
+export const darkColors = {
+  primary: '#4ADE80',
+  primary50: 'rgba(74,222,128,0.1)',
+  accent: '#A8E6CF',
+  accentLight: 'rgba(168,230,207,0.15)',
+  warm: '#0a0a0a',
+  surface: '#1e1e1e',
+  danger: '#EF4444',
+  textPrimary: '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.7)',
+  textTertiary: 'rgba(255,255,255,0.4)',
+  borderDefault: 'rgba(255,255,255,0.1)',
+  borderLight: 'rgba(255,255,255,0.06)',
+  bgSecondary: '#1a1a1a',
+};
+
+export function getColors(isDark: boolean) {
+  return isDark ? darkColors : colors;
+}

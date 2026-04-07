@@ -22,6 +22,7 @@ import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
 import { useLanguageStore, Language } from '../stores/language';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40 - 10) / 2;
@@ -113,7 +114,13 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { language, setLanguage } = useLanguageStore();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
   const [showLangModal, setShowLangModal] = useState(false);
+
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#191F28';
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : '#B0B8C1';
 
   const { data: platformStats } = useQuery({
     queryKey: ['platform-stats'],
@@ -145,7 +152,7 @@ export default function HomeScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar barStyle="light-content" translucent={true} />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -194,43 +201,43 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* Stats bar — overlapping hero bottom */}
-        <View style={styles.statsBar}>
+        <View style={[styles.statsBar, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{STATS[0].value}</Text>
-            <Text style={styles.statLabel}>{STATS[0].label}</Text>
+            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[0].value}</Text>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[0].label}</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{STATS[1].value}</Text>
-            <Text style={styles.statLabel}>{STATS[1].label}</Text>
+            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[1].value}</Text>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[1].label}</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{STATS[2].value}</Text>
-            <Text style={styles.statLabel}>{STATS[2].label}</Text>
+            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[2].value}</Text>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[2].label}</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{STATS[3].value}</Text>
-            <Text style={styles.statLabel}>{STATS[3].label}</Text>
+            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[3].value}</Text>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[3].label}</Text>
           </View>
         </View>
 
         {/* Discover by Country */}
         <FadeInView delay={100}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('discoverTitle', language)}</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('discoverTitle', language)}</Text>
             <View style={styles.countryGrid}>
               {DISCOVER_COUNTRIES.map((country) => (
                 <TouchableOpacity
                   key={country.code}
-                  style={styles.countryItem}
+                  style={[styles.countryItem, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}
                   activeOpacity={0.6}
                   onPress={() =>
                     navigation.navigate('Explore', { country: country.code })
                   }>
                   <Text style={styles.countryEmoji}>{country.emoji}</Text>
-                  <Text style={styles.countryName}>{country.name}</Text>
+                  <Text style={[styles.countryName, { color: textColor }]}>{country.name}</Text>
                   <Text style={styles.countryDesc} numberOfLines={1}>
                     {country.desc}
                   </Text>
@@ -245,8 +252,8 @@ export default function HomeScreen() {
           <View style={styles.trailSection}>
             <View style={styles.trailHeader}>
               <View>
-                <Text style={styles.sectionTitle}>{t('popularTitle', language)}</Text>
-                <Text style={styles.sectionSub}>{t('popularSub', language)}</Text>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>{t('popularTitle', language)}</Text>
+                <Text style={[styles.sectionSub, { color: textTertColor }]}>{t('popularSub', language)}</Text>
               </View>
               <TouchableOpacity
                 onPress={() =>
@@ -288,7 +295,7 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* UGC CTA — single compact line */}
-        <View style={styles.ugcRow}>
+        <View style={[styles.ugcRow, isDark && { backgroundColor: '#1a1a1a' }]}>
           <Text style={styles.ugcText}>{t('ugcCTA', language)}</Text>
           <TouchableOpacity
             style={styles.ugcBtn}
@@ -312,8 +319,8 @@ export default function HomeScreen() {
           style={styles.modalOverlay}
           onPress={() => setShowLangModal(false)}
           activeOpacity={1}>
-          <View style={styles.langModal}>
-            <Text style={styles.langModalTitle}>언어 설정</Text>
+          <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
+            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>언어 설정</Text>
             {([
               { code: 'ko' as Language, label: '한국어', flag: '🇰🇷' },
               { code: 'en' as Language, label: 'English', flag: '🇺🇸' },

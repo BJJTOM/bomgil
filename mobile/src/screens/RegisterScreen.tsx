@@ -67,19 +67,19 @@ export default function RegisterScreen() {
     setError('');
 
     if (!isValidEmail(form.email)) {
-      setError('\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('올바른 이메일 주소를 입력해주세요');
       return;
     }
     if (!form.nickname.trim()) {
-      setError('\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694');
+      setError('닉네임을 입력해주세요');
       return;
     }
     if (form.password1.length < 8) {
-      setError('\uBE44\uBC00\uBC88\uD638\uB294 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4');
+      setError('비밀번호는 8자 이상이어야 합니다');
       return;
     }
     if (form.password1 !== form.password2) {
-      setError('\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4');
+      setError('비밀번호가 일치하지 않습니다');
       return;
     }
 
@@ -179,11 +179,11 @@ export default function RegisterScreen() {
             </Text>
 
             {/* Password */}
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638'}</Text>
+            <Text style={styles.label}>{'비밀번호'}</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder={'8\uC790 \uC774\uC0C1 \uC785\uB825'}
+                placeholder={'8자 이상 입력'}
                 placeholderTextColor={colors.textTertiary}
                 value={form.password1}
                 onChangeText={(v) => updateField('password1', v)}
@@ -225,11 +225,11 @@ export default function RegisterScreen() {
             )}
 
             {/* Password Confirm */}
-            <Text style={styles.label}>{'\uBE44\uBC00\uBC88\uD638 \uD655\uC778'}</Text>
+            <Text style={styles.label}>{'비밀번호 확인'}</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder={'\uBE44\uBC00\uBC88\uD638 \uB2E4\uC2DC \uC785\uB825'}
+                placeholder={'비밀번호 다시 입력'}
                 placeholderTextColor={colors.textTertiary}
                 value={form.password2}
                 onChangeText={(v) => updateField('password2', v)}

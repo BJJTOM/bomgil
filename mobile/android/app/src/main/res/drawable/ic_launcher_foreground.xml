@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#2D4A2E"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+    <!-- Letter M -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,68 L35,40 L44,55 L54,40 L54,68 L49,68 L49,52 L44,60 L39,52 L39,68 Z"/>
+    <!-- Small walking figure dot -->
+    <path
+        android:fillColor="#4ADE80"
+        android:pathData="M67,38m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+</vector>

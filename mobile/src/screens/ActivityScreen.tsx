@@ -17,6 +17,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
 import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
@@ -68,6 +69,12 @@ export default function ActivityScreen() {
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const bg = isDark ? '#0a0a0a' : '#F8F9FB';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
 
   const { data: stats } = useQuery({
     queryKey: ['activity-stats'],
@@ -170,13 +177,13 @@ export default function ActivityScreen() {
 
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
         <View style={styles.headerSimple}>
-          <Text style={styles.headerTitle}>{'활동 기록'}</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]}>{'활동 기록'}</Text>
         </View>
         <View style={styles.loginPrompt}>
           <Text style={styles.loginPromptIcon}>{'\uD83E\uDDB6'}</Text>
-          <Text style={styles.loginPromptTitle}>
+          <Text style={[styles.loginPromptTitle, { color: textSecColor }]}>
             {'로그인하고 걸기 기록을 시작하세요'}
           </Text>
           <TouchableOpacity
@@ -191,8 +198,8 @@ export default function ActivityScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FB" />
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -203,20 +210,20 @@ export default function ActivityScreen() {
         {/* ===== HEADER with greeting ===== */}
         <View style={styles.headerSection}>
           <FadeInView delay={0}>
-            <Text style={styles.dateText}>{todayDateStr}</Text>
-            <Text style={styles.greetingText}>{greeting}</Text>
+            <Text style={[styles.dateText, { color: textTertColor }]}>{todayDateStr}</Text>
+            <Text style={[styles.greetingText, { color: textColor }]}>{greeting}</Text>
           </FadeInView>
         </View>
 
         {/* ===== BIG STAT CARD with progress ring ===== */}
         <FadeInView delay={50}>
-          <View style={styles.bigStatCard}>
+          <View style={[styles.bigStatCard, { backgroundColor: cardBg }]}>
             <View style={styles.progressRingOuter}>
               <View style={styles.progressRingInner}>
-                <Text style={styles.bigDistanceValue}>
+                <Text style={[styles.bigDistanceValue, { color: textColor }]}>
                   {todayStats.distance.toFixed(1)}
                 </Text>
-                <Text style={styles.bigDistanceUnit}>km</Text>
+                <Text style={[styles.bigDistanceUnit, { color: textTertColor }]}>km</Text>
               </View>
             </View>
 
@@ -224,13 +231,13 @@ export default function ActivityScreen() {
             <View style={styles.statsIconRow}>
               <View style={styles.statIconItem}>
                 <Text style={styles.statIcon}>{'\uD83C\uDFC3'}</Text>
-                <Text style={styles.statIconValue}>{todayStats.steps.toLocaleString()}</Text>
-                <Text style={styles.statIconLabel}>{'걸음'}</Text>
+                <Text style={[styles.statIconValue, { color: textColor }]}>{todayStats.steps.toLocaleString()}</Text>
+                <Text style={[styles.statIconLabel, { color: textTertColor }]}>{'걸음'}</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
               <View style={styles.statIconItem}>
                 <Text style={styles.statIcon}>{'\uD83D\uDD25'}</Text>
-                <Text style={styles.statIconValue}>{todayStats.calories}</Text>
+                <Text style={[styles.statIconValue, { color: textColor }]}>{todayStats.calories}</Text>
                 <Text style={styles.statIconLabel}>kcal</Text>
               </View>
             </View>
@@ -248,10 +255,10 @@ export default function ActivityScreen() {
 
           <FadeInView delay={175}>
             <TouchableOpacity
-              style={styles.watchImportBtn}
+              style={[styles.watchImportBtn, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}
               onPress={() => navigation.navigate('HealthImport')}
               activeOpacity={0.85}>
-              <Text style={styles.watchImportText}>{'⌚ 워치 기록 가져오기'}</Text>
+              <Text style={[styles.watchImportText, isDark && { color: 'rgba(255,255,255,0.7)' }]}>{'⌚ 워치 기록 가져오기'}</Text>
             </TouchableOpacity>
           </FadeInView>
         </View>
@@ -260,7 +267,7 @@ export default function ActivityScreen() {
         <View style={styles.recentSection}>
           <FadeInView delay={250}>
             <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>{'최근 활동'}</Text>
+              <Text style={[styles.recentTitle, { color: textColor }]}>{'최근 활동'}</Text>
               {activities.length > 5 && (
                 <TouchableOpacity
                   onPress={() => navigation.navigate('WalkStats')}
@@ -273,7 +280,7 @@ export default function ActivityScreen() {
 
           {recentActivities.length === 0 ? (
             <FadeInView delay={300}>
-              <View style={styles.noRecords}>
+              <View style={[styles.noRecords, { backgroundColor: cardBg }]}>
                 <Text style={styles.noRecordsEmoji}>{'\uD83D\uDEB6'}</Text>
                 <Text style={styles.noRecordsText}>
                   {'아직 활동 기록이 없어요'}
@@ -304,7 +311,7 @@ export default function ActivityScreen() {
               return (
                 <FadeInView key={activity.id} delay={300 + index * 50}>
                   <TouchableOpacity
-                    style={styles.activityCard}
+                    style={[styles.activityCard, { backgroundColor: cardBg }]}
                     activeOpacity={0.7}
                     onPress={() => navigation.navigate('ActivityDetail', { activity })}
                     onLongPress={() => handleDelete(activity)}>
@@ -314,15 +321,15 @@ export default function ActivityScreen() {
                       </Text>
                     </View>
                     <View style={styles.activityInfo}>
-                      <Text style={styles.activityTitleMain} numberOfLines={1}>
+                      <Text style={[styles.activityTitleMain, { color: textColor }]} numberOfLines={1}>
                         {activity.title || `${sourceInfo?.label || ''} 기록`}
                       </Text>
-                      <Text style={styles.activityMeta}>
+                      <Text style={[styles.activityMeta, { color: textTertColor }]}>
                         {dateStr}  {'·'}  {[distanceStr, durationStr].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
                     <TouchableOpacity
-                      style={styles.deleteBtn}
+                      style={[styles.deleteBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       onPress={() => handleDelete(activity)}>
                       <Text style={styles.deleteBtnText}>{'✕'}</Text>

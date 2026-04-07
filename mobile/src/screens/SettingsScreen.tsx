@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
+import { useThemeStore } from '../stores/theme';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
 
@@ -71,9 +72,25 @@ export default function SettingsScreen() {
   };
 
   const { language, setLanguage } = useLanguageStore();
+  const { mode: themeMode, isDark, setMode: setThemeMode } = useThemeStore();
   const [showLangModal, setShowLangModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const bg = isDark ? '#0a0a0a' : colors.bgSecondary;
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : colors.borderLight;
+
+  const themeLabels: Record<string, string> = {
+    system: '시스템 설정',
+    light: '라이트 모드',
+    dark: '다크 모드',
+  };
+  const currentThemeLabel = themeLabels[themeMode];
 
   const handleLogout = () => setShowLogoutModal(true);
 
@@ -123,6 +140,12 @@ export default function SettingsScreen() {
           value: LANGUAGES.find((l) => l.code === language)?.label,
           onPress: () => setShowLangModal(true),
         },
+        {
+          icon: '\uD83C\uDF19',
+          label: '다크 모드',
+          value: currentThemeLabel,
+          onPress: () => setShowThemeModal(true),
+        },
         { icon: '🔔', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
       ],
     },
@@ -138,23 +161,23 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgSecondary} />
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backIcon}>{'←'}</Text>
+            <Text style={[styles.backIcon, { color: textColor }]}>{'←'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>설정</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]}>설정</Text>
           <View style={{ width: 36 }} />
         </View>
 
         {/* User Card */}
         {isAuthenticated && user ? (
-          <View style={styles.userCard}>
+          <View style={[styles.userCard, { backgroundColor: cardBg }]}>
             <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
               <View style={styles.avatar}>
                 {user.profile_image ? (
@@ -171,8 +194,8 @@ export default function SettingsScreen() {
               style={styles.userInfo}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
-              <Text style={styles.userName}>{user.nickname}</Text>
-              <Text style={styles.userEmail}>{user.email}</Text>
+              <Text style={[styles.userName, { color: textColor }]}>{user.nickname}</Text>
+              <Text style={[styles.userEmail, { color: textTertColor }]}>{user.email}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
               <Text style={styles.chevron}>{'›'}</Text>
@@ -183,21 +206,21 @@ export default function SettingsScreen() {
         {/* Sections */}
         {sections.map((section) => (
           <View key={section.title} style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>{section.title.toUpperCase()}</Text>
-            <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: textTertColor }]}>{section.title.toUpperCase()}</Text>
+            <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
               {section.items.map((item, index) => (
                 <TouchableOpacity
                   key={item.label}
                   style={[
                     styles.menuItem,
-                    index < section.items.length - 1 && styles.menuItemBorder,
+                    index < section.items.length - 1 && [styles.menuItemBorder, { borderBottomColor: borderColor }],
                   ]}
                   onPress={item.onPress}
                   activeOpacity={item.onPress ? 0.6 : 1}>
                   <Text style={styles.menuIcon}>{item.icon}</Text>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <Text style={[styles.menuLabel, { color: textColor }]}>{item.label}</Text>
                   {item.value ? (
-                    <Text style={styles.menuValue}>{item.value}</Text>
+                    <Text style={[styles.menuValue, { color: textTertColor }]}>{item.value}</Text>
                   ) : null}
                   {item.onPress && <Text style={styles.menuChevron}>{'›'}</Text>}
                 </TouchableOpacity>
@@ -226,8 +249,8 @@ export default function SettingsScreen() {
           style={styles.modalOverlay}
           onPress={() => setShowLangModal(false)}
           activeOpacity={1}>
-          <View style={styles.langModal}>
-            <Text style={styles.langModalTitle}>언어 설정</Text>
+          <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
+            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>언어 설정</Text>
             {([
               { code: 'ko' as Language, label: '한국어', flag: '🇰🇷' },
               { code: 'en' as Language, label: 'English', flag: '🇺🇸' },
@@ -246,10 +269,35 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* Theme Selection Modal */}
+      <Modal visible={showThemeModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowThemeModal(false)}
+          activeOpacity={1}>
+          <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
+            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>{'테마 설정'}</Text>
+            {([
+              { key: 'system' as const, label: '시스템 설정', icon: '\uD83D\uDCF1' },
+              { key: 'light' as const, label: '라이트 모드', icon: '☀️' },
+              { key: 'dark' as const, label: '다크 모드', icon: '\uD83C\uDF19' },
+            ]).map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.langItem, themeMode === item.key && (isDark ? { backgroundColor: 'rgba(74,222,128,0.1)' } : styles.langItemActive)]}
+                onPress={() => { setThemeMode(item.key); setShowThemeModal(false); }}>
+                <Text style={styles.langFlag}>{item.icon}</Text>
+                <Text style={[styles.langLabel, isDark && { color: '#FFFFFF' }]}>{item.label}</Text>
+                {themeMode === item.key && <Text style={[styles.langCheck, isDark && { color: '#4ADE80' }]}>{'✓'}</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
       {/* Logout Confirmation Modal */}
       <Modal visible={showLogoutModal} transparent animationType="fade">
         <View style={styles.logoutOverlay}>
-          <View style={styles.logoutModal}>
+          <View style={[styles.logoutModal, isDark && { backgroundColor: '#1e1e1e' }]}>
             {loggingOut ? (
               <View style={styles.logoutLoading}>
                 <ActivityIndicator size="large" color={colors.primary} />

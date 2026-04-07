@@ -42,7 +42,7 @@ export function MapView({
   markers = [],
   pathCoordinates,
   onMarkerClick,
-  className = "w-full h-full min-h-[400px]",
+  className = "w-full h-full",
   theme = "light",
   showStats = false,
   distance,
@@ -104,17 +104,21 @@ export function MapView({
         mapInstanceRef.current = map;
         setLoaded(true);
 
-        setTimeout(() => {
-          try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
-        }, 300);
+        // Multiple invalidateSize calls for reliable rendering
+        const delays = [100, 300, 600, 1000];
+        delays.forEach((ms) => {
+          setTimeout(() => {
+            try { if (mapInstanceRef.current) map.invalidateSize(); } catch {}
+          }, ms);
+        });
       } catch (err) {
         console.error("Map load error:", err);
         if (mapRef.current && !cancelled) {
           mapRef.current.innerHTML = `
             <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${isDark ? "#1a1a2e" : "#f0f9f4"};border-radius:16px;">
               <div style="text-align:center;color:${isDark ? "#555" : "#777"};">
-                <div style="font-size:48px;margin-bottom:8px;">🗺️</div>
-                <p style="font-size:14px;">지도를 불러올 수 없습니다</p>
+                <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
+                <p style="font-size:13px;">지도를 불러올 수 없습니다</p>
               </div>
             </div>
           `;
@@ -122,7 +126,6 @@ export function MapView({
       }
     };
 
-    // Small delay to ensure DOM is ready after conditional render
     const timer = setTimeout(initMap, 50);
 
     return () => {
@@ -236,15 +239,28 @@ export function MapView({
       if (onMarkerClick) marker.on("click", () => onMarkerClick(m.id));
       markerLayersRef.current.push(marker);
     });
+
+    // Re-invalidate after drawing
+    setTimeout(() => {
+      try { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); } catch {}
+    }, 200);
   }, [pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
 
   return (
-    <div className={`relative ${className}`}>
-      <div ref={mapRef} className="w-full h-full" />
+    <div className={`relative overflow-hidden ${className}`}>
+      <div ref={mapRef} className="absolute inset-0" />
       <style jsx global>{`
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }
           50% { transform: scale(1.5); opacity: 0; }
+        }
+        .leaflet-container {
+          width: 100% !important;
+          height: 100% !important;
+          background: ${isDark ? "#1a1a2e" : "#f7f8fa"};
+        }
+        .leaflet-tile-pane {
+          will-change: transform;
         }
       `}</style>
 

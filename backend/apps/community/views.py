@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.db.models import F, Q
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
@@ -79,9 +79,13 @@ class MyBookmarkedPostsView(generics.ListAPIView):
         ).select_related('author').prefetch_related('post_images')
 
 
+class PostCreateThrottle(throttling.UserRateThrottle):
+    rate = '30/hour'
+
 class PostCreateView(generics.CreateAPIView):
     serializer_class = PostCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PostCreateThrottle]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -233,11 +237,15 @@ class CommentReplyView(generics.CreateAPIView):
 class PostImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+
     def post(self, request, pk):
         post = generics.get_object_or_404(Post, pk=pk, author=request.user)
         images = request.FILES.getlist('images')
         created = []
         for i, img in enumerate(images[:10]):
+            if img.size > self.MAX_IMAGE_SIZE:
+                continue  # skip oversized files silently
             obj = PostImage.objects.create(post=post, image=img, order=i)
             created.append({'id': obj.id, 'image': obj.image.url, 'order': obj.order})
         return Response(created, status=status.HTTP_201_CREATED)

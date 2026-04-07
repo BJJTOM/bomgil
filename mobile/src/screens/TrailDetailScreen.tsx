@@ -14,7 +14,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
+  Modal,
 } from 'react-native';
+import Feather from 'react-native-vector-icons/Feather';
 
 class TrailDetailErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -121,6 +124,9 @@ function TrailDetailScreenInner() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [savingOffline, setSavingOffline] = useState(false);
   const [showAllSpots, setShowAllSpots] = useState(false);
+  const [viewerImages, setViewerImages] = useState<string[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   useEffect(() => {
     if (trailId) {
@@ -256,10 +262,12 @@ function TrailDetailScreenInner() {
   ].filter(Boolean);
 
   return (
+    <>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -281,29 +289,22 @@ function TrailDetailScreenInner() {
             </View>
           )}
 
+          {/* Status bar protection */}
+          <View style={[styles.statusBarOverlay, { height: insets.top }]} />
           {/* Gradient overlay */}
-          <View style={styles.coverGradientTop} />
           <View style={styles.coverGradientBottom} />
-
-          {/* Back button */}
-          <TouchableOpacity
-            style={[styles.backButton, { top: insets.top + 8 }]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}>
-            <Text style={styles.backIcon}>{'←'}</Text>
-          </TouchableOpacity>
-
-          {/* Difficulty badge */}
-          <View style={[styles.diffBadge, { top: insets.top + 8 }, { backgroundColor: diff.bg }]}>
-            <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
-          </View>
 
           {/* Title overlay at bottom */}
           <View style={styles.coverOverlay}>
             <Text style={styles.coverTitle} numberOfLines={2}>{trail?.title || ''}</Text>
-            <Text style={styles.coverRegion}>
-              {[trail?.region, trail?.country].filter(Boolean).join(', ')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.coverRegion}>
+                {[trail?.region, trail?.country].filter(Boolean).join(', ')}
+              </Text>
+              <View style={[styles.diffBadgeBottom, { backgroundColor: diff.bg }]}>
+                <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -315,45 +316,30 @@ function TrailDetailScreenInner() {
         </View>
 
         {/* ===== 3. Action Bar ===== */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.actionRow}
-          bounces={false}>
+        <View style={styles.actionBar}>
+          <View style={styles.actionIcons}>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
+              <Feather name="heart" size={20} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, trail.is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={handleShare} activeOpacity={0.7}>
+              <Feather name="share" size={20} color="#8B95A1" />
+              <Text style={styles.actionIconLabel}>{'공유'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
+              <Feather name={savedOffline ? 'check-circle' : 'bookmark'} size={20} color={savedOffline ? colors.primary : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, savedOffline && { color: colors.primary }]}>
+                {savingOffline ? '...' : savedOffline ? '저장됨' : '저장'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
-            style={[styles.actionBtn, trail.is_liked && styles.actionBtnLiked]}
-            onPress={() => likeMutation.mutate()}
-            activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{trail.is_liked ? '❤️' : '\u{1F90D}'}</Text>
-            <Text style={[styles.actionBtnText, trail.is_liked && styles.actionBtnTextLiked]}>
-              {'좋아요'} {trail.like_count ?? 0}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{'↗️'}</Text>
-            <Text style={styles.actionBtnText}>{'공유'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, savedOffline && styles.actionBtnSaved]}
-            onPress={handleSaveOffline}
-            disabled={savingOffline}
-            activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{savedOffline ? '✅' : '\u{1F4E5}'}</Text>
-            <Text style={[styles.actionBtnText, savedOffline && styles.actionBtnTextSaved]}>
-              {savingOffline ? '저장 중...' : savedOffline ? '저장됨' : '저장'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnPrimary]}
+            style={styles.walkBtn}
             onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
-            activeOpacity={0.7}>
-            <Text style={styles.actionBtnIcon}>{'\u{1F6B6}'}</Text>
-            <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>{'걷기'}</Text>
+            activeOpacity={0.8}>
+            <Text style={styles.walkBtnText}>{'걷기 시작'}</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
 
         {/* ===== 4. Description ===== */}
         <View style={styles.section}>
@@ -508,19 +494,24 @@ function TrailDetailScreenInner() {
                     </View>
                   ) : null}
                   {spot.images && spot.images.length > 0 && (
-                    <FlatList
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      data={spot.images}
-                      keyExtractor={(img) => String(img.id)}
-                      renderItem={({ item: img }) => (
-                        <Image
-                          source={{ uri: img.image }}
-                          style={styles.spotPhoto}
-                          resizeMode="cover"
-                        />
-                      )}
-                    />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                      {spot.images.map((img: any, imgIdx: number) => (
+                        <TouchableOpacity
+                          key={img.id}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setViewerImages(spot.images.map((i: any) => i.image));
+                            setViewerIndex(imgIdx);
+                            setViewerVisible(true);
+                          }}>
+                          <Image
+                            source={{ uri: img.image }}
+                            style={styles.spotPhoto}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   )}
                 </View>
               </View>
@@ -668,6 +659,42 @@ function TrailDetailScreenInner() {
         <View style={{ height: 120 }} />
       </ScrollView>
     </KeyboardAvoidingView>
+
+      {/* Fullscreen Image Viewer */}
+      <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={() => setViewerVisible(false)}>
+        <View style={styles.viewerOverlay}>
+          <StatusBar backgroundColor="#000" barStyle="light-content" />
+          <TouchableOpacity style={styles.viewerCloseBtn} onPress={() => setViewerVisible(false)}>
+            <Text style={styles.viewerCloseText}>{'✕'}</Text>
+          </TouchableOpacity>
+          {viewerImages.length > 1 && (
+            <Text style={styles.viewerCounter}>{viewerIndex + 1} / {viewerImages.length}</Text>
+          )}
+          <FlatList
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            data={viewerImages}
+            keyExtractor={(_, i) => String(i)}
+            initialScrollIndex={viewerIndex}
+            getItemLayout={(_, i) => ({ length: Dimensions.get('window').width, offset: Dimensions.get('window').width * i, index: i })}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / Dimensions.get('window').width);
+              setViewerIndex(idx);
+            }}
+            renderItem={({ item }) => (
+              <View style={{ width: Dimensions.get('window').width, justifyContent: 'center', alignItems: 'center' }}>
+                <Image
+                  source={{ uri: item }}
+                  style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.7 }}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -683,9 +710,10 @@ const styles = StyleSheet.create({
 
   // ── Cover ──────────────────────────────────────────────
   coverContainer: {
-    height: 280,
+    height: 320,
     position: 'relative',
     backgroundColor: '#2D4A2E',
+    overflow: 'hidden',
   },
   coverImage: {
     width: '100%',
@@ -702,46 +730,26 @@ const styles = StyleSheet.create({
     fontSize: 72,
     opacity: 0.25,
   },
-  coverGradientTop: {
+  statusBarOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 100,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 5,
   },
   coverGradientBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 160,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    height: 140,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  backIcon: {
-    fontSize: 18,
-    color: '#191F28',
-    marginTop: -1,
-  },
-  diffBadge: {
-    position: 'absolute',
-    left: 68,
-    alignSelf: 'flex-start',
+  diffBadgeBottom: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    zIndex: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   diffText: {
     fontSize: 12,
@@ -782,50 +790,46 @@ const styles = StyleSheet.create({
   },
 
   // ── Action Bar ─────────────────────────────────────────
-  actionRow: {
+  actionBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F2F4F6',
     backgroundColor: '#fff',
+    gap: 12,
   },
-  actionBtn: {
+  actionIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#F7F8FA',
-    gap: 6,
-    minHeight: 42,
+    gap: 16,
   },
-  actionBtnLiked: {
-    backgroundColor: '#FFF0F0',
+  actionIconBtn: {
+    alignItems: 'center',
+    gap: 2,
   },
-  actionBtnSaved: {
-    backgroundColor: '#F7F8FA',
+  actionIconEmoji: {
+    fontSize: 20,
   },
-  actionBtnPrimary: {
-    backgroundColor: '#2D4A2E',
-  },
-  actionBtnIcon: {
-    fontSize: 14,
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
+  actionIconLabel: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#8B95A1',
   },
-  actionBtnTextLiked: {
-    color: '#DC2626',
+  walkBtn: {
+    flex: 1,
+    backgroundColor: '#2D4A2E',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginLeft: 8,
   },
-  actionBtnTextSaved: {
-    color: '#2D4A2E',
-  },
-  actionBtnTextPrimary: {
+  walkBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.3,
   },
 
   // ── Sections ───────────────────────────────────────────
@@ -1212,5 +1216,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textTertiary,
     marginTop: 2,
+  },
+  viewerOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+  },
+  viewerCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerCloseText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  viewerCounter: {
+    position: 'absolute',
+    top: 56,
+    alignSelf: 'center',
+    zIndex: 10,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
   },
 });

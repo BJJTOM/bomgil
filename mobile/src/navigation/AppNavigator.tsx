@@ -11,6 +11,7 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -60,11 +61,11 @@ const TAB_CONFIG: {
   icon: string;
   component: React.ComponentType<any>;
 }[] = [
-  { name: 'Home', label: '홈', icon: '🏠', component: HomeScreen },
-  { name: 'Explore', label: '탐색', icon: '🔍', component: ExploreScreen },
-  { name: 'Activity', label: '활동', icon: '🚶', component: ActivityScreen },
-  { name: 'Community', label: '커뮤니티', icon: '💬', component: CommunityScreen },
-  { name: 'Settings', label: 'MY', icon: '👤', component: SettingsScreen },
+  { name: 'Home', label: '홈', icon: 'home', component: HomeScreen },
+  { name: 'Explore', label: '탐색', icon: 'compass', component: ExploreScreen },
+  { name: 'Activity', label: '활동', icon: 'activity', component: ActivityScreen },
+  { name: 'Community', label: '커뮤니티', icon: 'message-circle', component: CommunityScreen },
+  { name: 'Settings', label: 'MY', icon: 'user', component: SettingsScreen },
 ];
 
 function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean }) {
@@ -73,7 +74,7 @@ function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean
   useEffect(() => {
     if (isFocused) {
       Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 1.2, duration: 100, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.15, duration: 100, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
       ]).start();
     }
@@ -81,13 +82,11 @@ function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <Text
-        style={{
-          fontSize: 22,
-          opacity: isFocused ? 1 : 0.45,
-        }}>
-        {icon}
-      </Text>
+      <Feather
+        name={icon}
+        size={22}
+        color={isFocused ? colors.primary : '#ADB5BD'}
+      />
     </Animated.View>
   );
 }

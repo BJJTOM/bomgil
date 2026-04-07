@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import CommunityBoardTab from './community/CommunityBoardTab';
@@ -49,7 +50,7 @@ export default function CommunityScreen() {
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications')}>
-            <Text style={styles.iconBtnText}>{'🔔'}</Text>
+            <Feather name="bell" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -73,7 +74,7 @@ export default function CommunityScreen() {
         <TouchableOpacity
           style={styles.tabSearchBtn}
           onPress={() => setSearchVisible(!searchVisible)}>
-          <Text style={{ fontSize: 16, color: searchVisible ? colors.primary : colors.textTertiary }}>{'🔍'}</Text>
+          <Feather name="search" size={18} color={searchVisible ? colors.primary : colors.textTertiary} />
         </TouchableOpacity>
       </View>
 
@@ -90,7 +91,7 @@ export default function CommunityScreen() {
           style={[styles.fab, { bottom: insets.bottom + 80 }]}
           activeOpacity={0.85}
           onPress={fabAction}>
-          <Text style={styles.fabIcon}>+</Text>
+          <Feather name="plus" size={24} color="#fff" />
         </TouchableOpacity>
       )}
     </View>

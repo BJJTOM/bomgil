@@ -10,14 +10,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
+import { useAuthStore } from '../stores/auth';
 import { colors } from '../theme/colors';
 import { CommunityPost, PostCategory } from '../types';
+
+const API_URL = 'https://api.moruwalk.com/api/v1';
 
 const CATEGORIES: { key: PostCategory; label: string }[] = [
   { key: 'free', label: '자유' },
@@ -113,17 +117,27 @@ export default function PostCreateScreen() {
       // 이미지 업로드 (실패해도 게시글은 저장됨)
       if (images.length > 0 && postId) {
         try {
+          const formData = new FormData();
           for (const img of images) {
-            const formData = new FormData();
             formData.append('images', {
               uri: img.uri,
               type: img.type || 'image/jpeg',
               name: img.fileName || `photo_${Date.now()}.jpg`,
             } as any);
-            await api.post(`/community/posts/${postId}/images/`, formData);
+          }
+          const token = useAuthStore.getState().accessToken;
+          const res = await fetch(`${API_URL}/community/posts/${postId}/images/`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`${res.status}: ${errText.slice(0, 200)}`);
           }
         } catch (imgErr: any) {
-          Alert.alert('알림', '게시글은 등록되었지만 이미지 업로드에 실패했습니다.');
+          const errDetail = imgErr?.response?.data ? JSON.stringify(imgErr.response.data).slice(0, 200) : imgErr?.message || 'unknown';
+          Alert.alert('이미지 업로드 실패', errDetail);
         }
       }
 
@@ -159,9 +173,13 @@ export default function PostCreateScreen() {
           style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
           onPress={handleSubmit}
           disabled={!canSubmit || submitting}>
-          <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
-            {submitting ? '...' : isEdit ? '수정' : '완료'}
-          </Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
+              {isEdit ? '수정' : '완료'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 

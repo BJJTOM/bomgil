@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
@@ -57,7 +58,7 @@ function PulseButton({ onPress, children }: { onPress: () => void; children: Rea
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity style={styles.startWalkBtn} onPress={onPress} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.startWalkBtnLarge} onPress={onPress} activeOpacity={0.85}>
         {children}
       </TouchableOpacity>
     </Animated.View>
@@ -76,7 +77,7 @@ export default function ActivityScreen() {
   const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
   const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
 
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['activity-stats'],
     queryFn: async () => {
       const { data } = await api.get('/activities/my_stats/', { timeout: 10000 });
@@ -84,8 +85,7 @@ export default function ActivityScreen() {
     },
     enabled: isAuthenticated,
     retry: 1,
-    staleTime: 30000,
-    refetchOnWindowFocus: true,
+    staleTime: 60000,
     placeholderData: (prev: ActivityStats | undefined) => prev,
   });
 
@@ -96,13 +96,12 @@ export default function ActivityScreen() {
   } = useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
-      const { data } = await api.get('/activities/', { timeout: 10000 });
+      const { data } = await api.get('/activities/', { params: { page_size: 100 }, timeout: 10000 });
       return data as PaginatedResponse<ActivityTrack>;
     },
     enabled: isAuthenticated,
     retry: 1,
-    staleTime: 30000,
-    refetchOnWindowFocus: true,
+    staleTime: 60000,
     placeholderData: (prev: PaginatedResponse<ActivityTrack> | undefined) => prev,
   });
 
@@ -111,7 +110,8 @@ export default function ActivityScreen() {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch]),
+      refetchStats();
+    }, [refetch, refetchStats]),
   );
 
   const formatDuration = (minutes: number | null) => {
@@ -148,7 +148,10 @@ export default function ActivityScreen() {
     calories: allCalories,
   };
 
-  const recentActivities = activities.slice(0, 5);
+  const [activityPage, setActivityPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const paginatedActivities = activities.slice(0, activityPage * PAGE_SIZE);
+  const hasMoreActivities = activities.length > activityPage * PAGE_SIZE;
 
   const handleDelete = (activity: ActivityTrack) => {
     Alert.alert(
@@ -215,70 +218,60 @@ export default function ActivityScreen() {
           </FadeInView>
         </View>
 
-        {/* ===== BIG STAT CARD with progress ring ===== */}
+        {/* ===== STATS CARD ===== */}
         <FadeInView delay={50}>
-          <View style={[styles.bigStatCard, { backgroundColor: cardBg }]}>
-            <View style={styles.progressRingOuter}>
-              <View style={styles.progressRingInner}>
-                <Text style={[styles.bigDistanceValue, { color: textColor }]}>
-                  {todayStats.distance.toFixed(1)}
-                </Text>
-                <Text style={[styles.bigDistanceUnit, { color: textTertColor }]}>km</Text>
-              </View>
-            </View>
-
-            {/* Stats row with icons */}
-            <View style={styles.statsIconRow}>
-              <View style={styles.statIconItem}>
-                <Text style={styles.statIcon}>{'\uD83C\uDFC3'}</Text>
-                <Text style={[styles.statIconValue, { color: textColor }]}>{todayStats.steps.toLocaleString()}</Text>
-                <Text style={[styles.statIconLabel, { color: textTertColor }]}>{'걸음'}</Text>
+          <View style={[styles.statsCard, { backgroundColor: cardBg }]}>
+            <View style={styles.statsMainRow}>
+              <View style={styles.statMainItem}>
+                <Text style={[styles.statMainValue, { color: textColor }]}>{todayStats.distance.toFixed(1)}</Text>
+                <Text style={[styles.statMainUnit, { color: textTertColor }]}>km</Text>
               </View>
               <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-              <View style={styles.statIconItem}>
-                <Text style={styles.statIcon}>{'\uD83D\uDD25'}</Text>
-                <Text style={[styles.statIconValue, { color: textColor }]}>{todayStats.calories}</Text>
-                <Text style={styles.statIconLabel}>kcal</Text>
+              <View style={styles.statSubItem}>
+                <Feather name="trending-up" size={14} color="#60A5FA" />
+                <Text style={[styles.statSubValue, { color: textColor }]}>{todayStats.steps.toLocaleString()}</Text>
+                <Text style={[styles.statSubLabel, { color: textTertColor }]}>걸음</Text>
+              </View>
+              <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+              <View style={styles.statSubItem}>
+                <Feather name="zap" size={14} color="#F59E0B" />
+                <Text style={[styles.statSubValue, { color: textColor }]}>{todayStats.calories}</Text>
+                <Text style={[styles.statSubLabel, { color: textTertColor }]}>kcal</Text>
               </View>
             </View>
           </View>
         </FadeInView>
 
-        {/* ===== CTA SECTION ===== */}
-        <View style={styles.ctaSection}>
-          <FadeInView delay={150}>
-            <PulseButton onPress={() => navigation.navigate('Walk')}>
-              <Text style={styles.startWalkEmoji}>{'\uD83D\uDEB6'}</Text>
-              <Text style={styles.startWalkText}>{'걸기 시작'}</Text>
-            </PulseButton>
-          </FadeInView>
-
-          <FadeInView delay={175}>
-            <TouchableOpacity
-              style={[styles.watchImportBtn, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}
-              onPress={() => navigation.navigate('HealthImport')}
-              activeOpacity={0.85}>
-              <Text style={[styles.watchImportText, isDark && { color: 'rgba(255,255,255,0.7)' }]}>{'⌚ 워치 기록 가져오기'}</Text>
-            </TouchableOpacity>
-          </FadeInView>
-        </View>
+        {/* ===== CTA ===== */}
+        <FadeInView delay={150}>
+          <TouchableOpacity
+            style={styles.startWalkBtnLarge}
+            onPress={() => navigation.navigate('Walk')}
+            activeOpacity={0.85}>
+            <View style={styles.startWalkIconCircle}>
+              <Feather name="play" size={24} color="#fff" />
+            </View>
+            <Text style={styles.startWalkTextLarge}>걷기 시작</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.watchImportLink, isDark && { borderColor: 'rgba(255,255,255,0.1)' }]}
+            onPress={() => navigation.navigate('HealthImport')}
+            activeOpacity={0.7}>
+            <Feather name="watch" size={14} color={isDark ? 'rgba(255,255,255,0.5)' : colors.textTertiary} />
+            <Text style={[styles.watchImportLinkText, isDark && { color: 'rgba(255,255,255,0.5)' }]}>워치 기록 가져오기</Text>
+            <Feather name="chevron-right" size={14} color={isDark ? 'rgba(255,255,255,0.3)' : colors.textTertiary} />
+          </TouchableOpacity>
+        </FadeInView>
 
         {/* ===== RECENT ACTIVITIES ===== */}
         <View style={styles.recentSection}>
           <FadeInView delay={250}>
             <View style={styles.recentHeader}>
-              <Text style={[styles.recentTitle, { color: textColor }]}>{'최근 활동'}</Text>
-              {activities.length > 5 && (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('WalkStats')}
-                  activeOpacity={0.7}>
-                  <Text style={styles.seeAllText}>{'모두 보기'}</Text>
-                </TouchableOpacity>
-              )}
+              <Text style={[styles.recentTitle, { color: textColor }]}>최근 활동 <Text style={{ color: textTertColor, fontSize: 14, fontWeight: '500' }}>{activities.length}</Text></Text>
             </View>
           </FadeInView>
 
-          {recentActivities.length === 0 ? (
+          {paginatedActivities.length === 0 ? (
             <FadeInView delay={300}>
               <View style={[styles.noRecords, { backgroundColor: cardBg }]}>
                 <Text style={styles.noRecordsEmoji}>{'\uD83D\uDEB6'}</Text>
@@ -291,7 +284,7 @@ export default function ActivityScreen() {
               </View>
             </FadeInView>
           ) : (
-            recentActivities.map((activity, index) => {
+            paginatedActivities.map((activity, index) => {
               const dateStr = activity.started_at
                 ? new Date(activity.started_at).toLocaleDateString('ko-KR', {
                     month: 'long',
@@ -316,9 +309,7 @@ export default function ActivityScreen() {
                     onPress={() => navigation.navigate('ActivityDetail', { activity })}
                     onLongPress={() => handleDelete(activity)}>
                     <View style={[styles.activityIconWrap, { backgroundColor: iconColor + '18' }]}>
-                      <Text style={styles.activityIcon}>
-                        {sourceInfo?.icon || '\uD83D\uDCCD'}
-                      </Text>
+                      <Feather name="map-pin" size={18} color={iconColor} />
                     </View>
                     <View style={styles.activityInfo}>
                       <Text style={[styles.activityTitleMain, { color: textColor }]} numberOfLines={1}>
@@ -332,12 +323,21 @@ export default function ActivityScreen() {
                       style={[styles.deleteBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       onPress={() => handleDelete(activity)}>
-                      <Text style={styles.deleteBtnText}>{'✕'}</Text>
+                      <Feather name="x" size={14} color={colors.textTertiary} />
                     </TouchableOpacity>
                   </TouchableOpacity>
                 </FadeInView>
               );
             })
+          )}
+          {hasMoreActivities && (
+            <TouchableOpacity
+              style={[styles.loadMoreBtn, { backgroundColor: cardBg }]}
+              onPress={() => setActivityPage(p => p + 1)}
+              activeOpacity={0.7}>
+              <Text style={styles.loadMoreText}>더보기</Text>
+              <Feather name="chevron-down" size={16} color={colors.primary} />
+            </TouchableOpacity>
           )}
         </View>
       </ScrollView>
@@ -410,135 +410,105 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
 
-  // ===== Big stat card =====
-  bigStatCard: {
+  // ===== Stats card =====
+  statsCard: {
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  progressRingOuter: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 6,
-    borderColor: colors.primary + '25',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    position: 'relative',
-  },
-  progressRingInner: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 6,
-    borderColor: colors.primary,
-    borderTopColor: colors.primary,
-    borderRightColor: colors.primary,
-    borderBottomColor: colors.primary + '30',
-    borderLeftColor: colors.primary + '30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FAFBFC',
-  },
-  bigDistanceValue: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    lineHeight: 54,
-    letterSpacing: -1.5,
-  },
-  bigDistanceUnit: {
-    fontSize: 15,
-    color: colors.textTertiary,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  statsIconRow: {
+  statsMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 32,
   },
-  statIconItem: {
+  statMainItem: {
+    flex: 1.2,
     alignItems: 'center',
   },
-  statIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+  statMainValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -1,
   },
-  statIconValue: {
+  statMainUnit: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    fontWeight: '500',
+    marginTop: -2,
+  },
+  statSubItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  statSubValue: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  statIconLabel: {
-    fontSize: 12,
+  statSubLabel: {
+    fontSize: 11,
     color: colors.textTertiary,
     fontWeight: '500',
-    marginTop: 2,
   },
   statDivider: {
     width: 1,
-    height: 32,
+    height: 36,
     backgroundColor: '#E5E7EB',
+    marginHorizontal: 4,
   },
 
-  // ===== CTA section =====
-  ctaSection: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 8,
-  },
-  startWalkBtn: {
+  // ===== CTA =====
+  startWalkBtnLarge: {
+    marginHorizontal: 20,
+    marginTop: 20,
     backgroundColor: colors.primary,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 6,
   },
-  startWalkEmoji: {
-    fontSize: 22,
-  },
-  startWalkText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  watchImportBtn: {
-    marginTop: 12,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 16,
+  startWalkIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    justifyContent: 'center',
   },
-  watchImportText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textSecondary,
+  startWalkTextLarge: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  watchImportLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginHorizontal: 20,
+  },
+  watchImportLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textTertiary,
   },
 
   // ===== Recent section =====
@@ -613,6 +583,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     fontWeight: '600',
+  },
+
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
 
   // Empty

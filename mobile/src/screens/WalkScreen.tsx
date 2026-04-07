@@ -14,9 +14,12 @@ import {
   TextInput,
   Alert,
   BackHandler,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
 import Geolocation from '@react-native-community/geolocation';
@@ -94,6 +97,9 @@ export default function WalkScreen() {
   const [showStopModal, setShowStopModal] = useState(false);
   const [spots, setSpots] = useState<WalkSpot[]>([]);
   const [showSpotModal, setShowSpotModal] = useState(false);
+  const [showRecordSummary, setShowRecordSummary] = useState(false);
+  const [editingSpotIdx, setEditingSpotIdx] = useState<number | null>(null);
+  const [recordPhotoViewer, setRecordPhotoViewer] = useState<{ visible: boolean; index: number }>({ visible: false, index: 0 });
   const [spotName, setSpotName] = useState('');
   const [spotType, setSpotType] = useState('맛집');
   const [spotDesc, setSpotDesc] = useState('');
@@ -203,22 +209,31 @@ export default function WalkScreen() {
       Alert.alert('필수 입력', '장소 이름을 입력해주세요.');
       return;
     }
-    if (!currentPos) {
-      Alert.alert('위치 오류', 'GPS 위치를 가져올 수 없습니다.');
-      return;
+    if (editingSpotIdx !== null) {
+      // Edit existing spot
+      setSpots(prev => prev.map((s, i) => i === editingSpotIdx ? {
+        ...s, name: spotName.trim(), type: spotType, description: spotDesc.trim(),
+      } : s));
+      setEditingSpotIdx(null);
+    } else {
+      if (!currentPos) {
+        Alert.alert('위치 오류', 'GPS 위치를 가져올 수 없습니다.');
+        return;
+      }
+      setSpots(prev => [...prev, {
+        name: spotName.trim(),
+        type: spotType,
+        description: spotDesc.trim(),
+        lat: currentPos.lat,
+        lng: currentPos.lng,
+      }]);
     }
-    setSpots(prev => [...prev, {
-      name: spotName.trim(),
-      type: spotType,
-      description: spotDesc.trim(),
-      lat: currentPos.lat,
-      lng: currentPos.lng,
-    }]);
     setSpotName('');
     setSpotType('맛집');
     setSpotDesc('');
+    setEditingSpotIdx(null);
     setShowSpotModal(false);
-  }, [spotName, spotType, spotDesc, currentPos]);
+  }, [spotName, spotType, spotDesc, currentPos, editingSpotIdx]);
 
   const startGps = useCallback(() => {
     try {
@@ -498,34 +513,7 @@ export default function WalkScreen() {
           </Text>
         </View>
 
-        {/* Map top-right: camera button */}
-        {state === 'walking' && (
-          <TouchableOpacity
-            style={[styles.cameraBtn, { top: insets.top + 12 }]}
-            onPress={handleTakePhoto} activeOpacity={0.8}>
-            <Text style={{ fontSize: 18 }}>{'\uD83D\uDCF7'}</Text>
-            {taggedPhotos.length > 0 && (
-              <View style={styles.camBadge}>
-                <Text style={styles.camBadgeText}>{taggedPhotos.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {/* Map bottom-right: spot button */}
-        {state === 'walking' && (
-          <TouchableOpacity
-            style={[styles.spotBtn, { top: insets.top + 64 }]}
-            onPress={() => setShowSpotModal(true)}
-            activeOpacity={0.8}>
-            <Text style={{ fontSize: 14, color: '#fff', fontWeight: '700' }}>+ 스팟</Text>
-            {spots.length > 0 && (
-              <View style={styles.spotBadge}>
-                <Text style={styles.spotBadgeText}>{spots.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
+        {/* Map overlay buttons removed — using bottom quick actions instead */}
 
         {/* Map bottom gradient fade */}
         <View style={styles.mapFade} />
@@ -574,6 +562,26 @@ export default function WalkScreen() {
           </View>
         </View>
       </Animated.View>
+
+      {/* ====== QUICK ACTIONS (spot/camera above controls) ====== */}
+      {state === 'walking' && (
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickBtn} onPress={handleTakePhoto} activeOpacity={0.8}>
+            <Feather name="camera" size={16} color="#fff" />
+            <Text style={styles.quickBtnLabel}>사진</Text>
+            {taggedPhotos.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{taggedPhotos.length}</Text></View>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => setShowSpotModal(true)} activeOpacity={0.8}>
+            <Feather name="map-pin" size={16} color="#fff" />
+            <Text style={styles.quickBtnLabel}>스팟</Text>
+            {spots.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{spots.length}</Text></View>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => setShowRecordSummary(true)} activeOpacity={0.8}>
+            <Feather name="list" size={16} color="#fff" />
+            <Text style={styles.quickBtnLabel}>기록</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ====== CONTROLS ====== */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
@@ -636,12 +644,174 @@ export default function WalkScreen() {
         </View>
       </Modal>
 
+      {/* ====== RECORD SUMMARY POPUP ====== */}
+      <Modal visible={showRecordSummary} transparent animationType="slide" onRequestClose={() => setShowRecordSummary(false)}>
+        <TouchableOpacity style={styles.spotModalOverlay} activeOpacity={1} onPress={() => setShowRecordSummary(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.recordSummaryCard}>
+            <View style={styles.spotModalHandle} />
+            <Text style={[styles.spotModalTitle, { color: '#fff' }]}>기록 현황</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 450 }}>
+              {/* Spots list */}
+              <View style={styles.recordSection}>
+                <View style={styles.recordSectionHeader}>
+                  <Feather name="map-pin" size={14} color={colors.primary} />
+                  <Text style={styles.recordSectionLabel}>스팟 {spots.length}</Text>
+                </View>
+                {spots.length === 0 ? (
+                  <Text style={styles.recordEmpty}>스팟을 추가하면 코스에 기록돼요</Text>
+                ) : (
+                  spots.map((s, i) => (
+                    <View key={i} style={styles.recordSpotCard}>
+                      <View style={styles.recordSpotInfo}>
+                        <View style={[styles.recordSpotTypeBadge, { backgroundColor: SPOT_TYPES.find(t => t.value === s.type)?.color || '#888' }]}>
+                          <Text style={styles.recordSpotTypeText}>{s.type}</Text>
+                        </View>
+                        <Text style={styles.recordSpotName} numberOfLines={1}>{s.name}</Text>
+                        {s.description ? <Text style={styles.recordSpotDesc} numberOfLines={1}>{s.description}</Text> : null}
+                        <Text style={styles.recordSpotCoord}>
+                          <Feather name="navigation" size={10} color="rgba(255,255,255,0.3)" />{' '}
+                          {s.lat.toFixed(4)}, {s.lng.toFixed(4)}
+                        </Text>
+                      </View>
+                      <View style={styles.recordSpotActions}>
+                        <TouchableOpacity
+                          style={styles.recordSpotActionBtn}
+                          onPress={() => {
+                            setEditingSpotIdx(i);
+                            setSpotName(s.name);
+                            setSpotType(s.type);
+                            setSpotDesc(s.description);
+                            setShowRecordSummary(false);
+                            setShowSpotModal(true);
+                          }}>
+                          <Feather name="edit-2" size={13} color="rgba(255,255,255,0.5)" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.recordSpotActionBtn}
+                          onPress={() => {
+                            Alert.alert('스팟 삭제', `"${s.name}"을 삭제할까요?`, [
+                              { text: '취소', style: 'cancel' },
+                              { text: '삭제', style: 'destructive', onPress: () => setSpots(prev => prev.filter((_, idx) => idx !== i)) },
+                            ]);
+                          }}>
+                          <Feather name="trash-2" size={13} color="#FF6B6B" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+
+              {/* Photos list */}
+              <View style={[styles.recordSection, { marginTop: 20 }]}>
+                <View style={styles.recordSectionHeader}>
+                  <Feather name="camera" size={14} color="#60A5FA" />
+                  <Text style={styles.recordSectionLabel}>사진 {taggedPhotos.length}</Text>
+                </View>
+                {taggedPhotos.length === 0 ? (
+                  <Text style={styles.recordEmpty}>사진을 찍으면 위치와 함께 저장돼요</Text>
+                ) : (
+                  taggedPhotos.map((p, i) => (
+                    <View key={i} style={styles.recordSpotCard}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setRecordPhotoViewer({ visible: true, index: i })}
+                        style={styles.recordPhotoThumb}>
+                        <Image source={{ uri: p.uri }} style={styles.recordPhotoThumbImg} />
+                      </TouchableOpacity>
+                      <View style={styles.recordSpotInfo}>
+                        <Text style={styles.recordSpotName} numberOfLines={1}>
+                          {p.title || `사진 ${i + 1}`}
+                        </Text>
+                        {p.description ? <Text style={styles.recordSpotDesc} numberOfLines={1}>{p.description}</Text> : null}
+                        <Text style={styles.recordSpotCoord}>
+                          {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 1 }}>
+                          {new Date(p.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                      <View style={styles.recordSpotActions}>
+                        <TouchableOpacity
+                          style={styles.recordSpotActionBtn}
+                          onPress={() => {
+                            Alert.prompt ? Alert.prompt('제목 수정', '', [
+                              { text: '취소', style: 'cancel' },
+                              { text: '저장', onPress: (val) => setTaggedPhotos(prev => prev.map((ph, idx) => idx === i ? { ...ph, title: val || '' } : ph)) },
+                            ], 'plain-text', p.title || '') : (() => {
+                              // Android fallback — just use simple title edit
+                              setTaggedPhotos(prev => prev.map((ph, idx) => idx === i ? { ...ph, title: `사진 ${i + 1}` } : ph));
+                            })();
+                          }}>
+                          <Feather name="edit-2" size={13} color="rgba(255,255,255,0.5)" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.recordSpotActionBtn}
+                          onPress={() => {
+                            Alert.alert('사진 삭제', '이 사진을 삭제할까요?', [
+                              { text: '취소', style: 'cancel' },
+                              { text: '삭제', style: 'destructive', onPress: () => setTaggedPhotos(prev => prev.filter((_, idx) => idx !== i)) },
+                            ]);
+                          }}>
+                          <Feather name="trash-2" size={13} color="#FF6B6B" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity style={styles.recordCloseBtn} onPress={() => setShowRecordSummary(false)}>
+              <Text style={styles.recordCloseBtnText}>닫기</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ====== RECORD PHOTO VIEWER ====== */}
+      <Modal visible={recordPhotoViewer.visible} transparent animationType="fade" onRequestClose={() => setRecordPhotoViewer({ visible: false, index: 0 })}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: insets.top + 10, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => setRecordPhotoViewer({ visible: false, index: 0 })}>
+            <Feather name="x" size={20} color="#fff" />
+          </TouchableOpacity>
+          {taggedPhotos.length > 1 && (
+            <Text style={{ position: 'absolute', top: insets.top + 16, alignSelf: 'center', zIndex: 10, fontSize: 14, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>
+              {recordPhotoViewer.index + 1} / {taggedPhotos.length}
+            </Text>
+          )}
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: recordPhotoViewer.index * Dimensions.get('window').width, y: 0 }}
+            onMomentumScrollEnd={(e) => setRecordPhotoViewer(prev => ({ ...prev, index: Math.round(e.nativeEvent.contentOffset.x / Dimensions.get('window').width) }))}>
+            {taggedPhotos.map((p, i) => (
+              <View key={i} style={{ width: Dimensions.get('window').width, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Image source={{ uri: p.uri }} style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').width }} resizeMode="contain" />
+                <View style={{ position: 'absolute', bottom: insets.bottom + 40, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>
+                    <Feather name="navigation" size={11} color="rgba(255,255,255,0.5)" /> {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 }}>
+                    {new Date(p.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
       {/* ====== SPOT CREATION MODAL ====== */}
       <Modal visible={showSpotModal} transparent animationType="slide">
         <View style={styles.spotModalOverlay}>
           <View style={styles.spotModalCard}>
             <View style={styles.spotModalHandle} />
-            <Text style={styles.spotModalTitle}>스팟 추가</Text>
+            <Text style={styles.spotModalTitle}>{editingSpotIdx !== null ? '스팟 수정' : '스팟 추가'}</Text>
 
             <Text style={styles.spotFieldLabel}>장소 이름 *</Text>
             <TextInput
@@ -1204,6 +1374,146 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#fff',
+  },
+
+  // ---- QUICK ACTIONS ----
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  quickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  quickBtnLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  quickBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  quickBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ---- RECORD SUMMARY ----
+  recordSummaryCard: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 34,
+    paddingTop: 12,
+  },
+  recordSection: {},
+  recordSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  recordSectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.5,
+  },
+  recordEmpty: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.25)',
+    paddingVertical: 12,
+    paddingLeft: 4,
+  },
+  recordSpotCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+  },
+  recordSpotInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  recordSpotTypeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 2,
+  },
+  recordSpotTypeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  recordSpotName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  recordSpotDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.45)',
+  },
+  recordSpotCoord: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.25)',
+    marginTop: 2,
+  },
+  recordSpotActions: {
+    flexDirection: 'column',
+    gap: 8,
+    marginLeft: 8,
+  },
+  recordSpotActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordPhotoThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  recordPhotoThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  recordCloseBtn: {
+    marginTop: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  recordCloseBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
   },
 
   // ---- SPOT MODAL ----

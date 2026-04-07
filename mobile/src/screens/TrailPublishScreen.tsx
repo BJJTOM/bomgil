@@ -19,8 +19,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/client';
+import { useAuthStore } from '../stores/auth';
 import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
+
+const API_URL = 'https://api.moruwalk.com/api/v1';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -266,9 +269,61 @@ export default function TrailPublishScreen() {
             type: coverImage.type || 'image/jpeg',
             name: coverImage.fileName || 'cover.jpg',
           } as any);
-          await api.patch(`/trails/${trailId}/`, formData);
-        } catch (imgErr) {
-          console.log('Cover image upload failed:', imgErr);
+          const token = useAuthStore.getState().accessToken;
+          const res = await fetch(`${API_URL}/trails/${trailId}/`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            Alert.alert('커버 이미지 업로드 실패', `${res.status}: ${errText.slice(0, 200)}`);
+          }
+        } catch (imgErr: any) {
+          Alert.alert('커버 이미지 업로드 실패', imgErr?.message || 'unknown');
+        }
+      }
+
+      // Upload spots
+      if (spots.length > 0 && trailId) {
+        const token = useAuthStore.getState().accessToken;
+        for (let i = 0; i < spots.length; i++) {
+          const spot = spots[i];
+          try {
+            const { data: spotData } = await api.post('/spots/', {
+              trail: trailId,
+              name: spot.name,
+              spot_type: spot.type || 'photo',
+              description: spot.description || '',
+              lat: spot.lat || 0,
+              lng: spot.lng || 0,
+              order: i,
+            });
+            // Upload spot image if exists
+            if (spot.imageUrl && spotData.id) {
+              try {
+                const imgForm = new FormData();
+                imgForm.append('spot', String(spotData.id));
+                imgForm.append('image', {
+                  uri: spot.imageUrl,
+                  type: 'image/jpeg',
+                  name: `spot_${spotData.id}.jpg`,
+                } as any);
+                imgForm.append('order', '0');
+                const imgRes = await fetch(`${API_URL}/spots/images/`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` },
+                  body: imgForm,
+                });
+                if (!imgRes.ok) {
+                  const errText = await imgRes.text();
+                  Alert.alert('경유지 이미지 실패', `${imgRes.status}: ${errText.slice(0, 200)}`);
+                }
+              } catch (imgErr: any) {
+                Alert.alert('경유지 이미지 오류', imgErr?.message || 'unknown');
+              }
+            }
+          } catch {}
         }
       }
 
@@ -603,68 +658,81 @@ export default function TrailPublishScreen() {
 
       {/* Spot add modal */}
       {showSpotModal && (
-        <View style={styles.spotModalOverlay}>
-          <View style={styles.spotModal}>
+        <KeyboardAvoidingView
+          style={styles.spotModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowSpotModal(false)}
+          />
+          <View style={styles.spotModalSheet}>
+            <View style={styles.spotModalHandle} />
             <Text style={styles.spotModalTitle}>경유지 추가</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="장소 이름 *"
-              placeholderTextColor={colors.textTertiary}
-              value={newSpotName}
-              onChangeText={setNewSpotName}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 10 }}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {[
-                  { value: 'restaurant', label: '맛집' },
-                  { value: 'cafe', label: '카페' },
-                  { value: 'photo', label: '포토' },
-                  { value: 'rest', label: '휴식' },
-                  { value: 'view', label: '전망' },
-                ].map(t => (
-                  <TouchableOpacity
-                    key={t.value}
-                    style={[styles.chipSmall, newSpotType === t.value && { backgroundColor: SPOT_TYPE_COLORS[t.label] || colors.primary }]}
-                    onPress={() => setNewSpotType(t.value)}>
-                    <Text style={[styles.chipSmallText, newSpotType === t.value && { color: '#fff' }]}>{t.label}</Text>
-                  </TouchableOpacity>
-                ))}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 420 }}>
+              <TextInput
+                style={styles.input}
+                placeholder="장소 이름 *"
+                placeholderTextColor={colors.textTertiary}
+                value={newSpotName}
+                onChangeText={setNewSpotName}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {[
+                    { value: 'restaurant', label: '맛집' },
+                    { value: 'cafe', label: '카페' },
+                    { value: 'photo', label: '포토' },
+                    { value: 'rest', label: '휴식' },
+                    { value: 'view', label: '전망' },
+                  ].map(t => (
+                    <TouchableOpacity
+                      key={t.value}
+                      style={[styles.chipSmall, newSpotType === t.value && { backgroundColor: SPOT_TYPE_COLORS[t.label] || colors.primary }]}
+                      onPress={() => setNewSpotType(t.value)}>
+                      <Text style={[styles.chipSmallText, newSpotType === t.value && { color: '#fff' }]}>{t.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+              <TextInput
+                style={styles.input}
+                placeholder="한줄 설명 (선택)"
+                placeholderTextColor={colors.textTertiary}
+                value={newSpotDesc}
+                onChangeText={setNewSpotDesc}
+              />
+              <TextInput
+                style={[styles.input, { marginTop: 8 }]}
+                placeholder="위치 (선택) 예: 안국역 2번 출구 앞"
+                placeholderTextColor={colors.textTertiary}
+                value={newSpotLocation}
+                onChangeText={setNewSpotLocation}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: 8, marginBottom: 6 }]}>사진</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
+                  launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                    if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
+                  });
+                }}>
+                  <Text style={styles.miniPickBtnText}>{'\uD83D\uDCF7'} 카메라</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
+                  launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                    if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
+                  });
+                }}>
+                  <Text style={styles.miniPickBtnText}>{'\uD83D\uDDBC'} 갤러리</Text>
+                </TouchableOpacity>
               </View>
+              {newSpotImageUri ? (
+                <Image source={{ uri: newSpotImageUri }} style={{ width: '100%', height: 120, borderRadius: 12, marginTop: 8 }} />
+              ) : null}
             </ScrollView>
-            <TextInput
-              style={styles.input}
-              placeholder="한줄 설명 (선택)"
-              placeholderTextColor={colors.textTertiary}
-              value={newSpotDesc}
-              onChangeText={setNewSpotDesc}
-            />
-            <TextInput
-              style={[styles.input, { marginTop: 8 }]}
-              placeholder="위치 (선택) 예: 안국역 2번 출구 앞"
-              placeholderTextColor={colors.textTertiary}
-              value={newSpotLocation}
-              onChangeText={setNewSpotLocation}
-            />
-            <Text style={[styles.fieldLabel, { marginTop: 8, marginBottom: 6 }]}>사진</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
-                launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
-                  if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
-                });
-              }}>
-                <Text style={styles.miniPickBtnText}>{'\uD83D\uDCF7'} 카메라</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
-                launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
-                  if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
-                });
-              }}>
-                <Text style={styles.miniPickBtnText}>{'\uD83D\uDDBC'} 갤러리</Text>
-              </TouchableOpacity>
-            </View>
-            {newSpotImageUri ? (
-              <Image source={{ uri: newSpotImageUri }} style={{ width: '100%', height: 120, borderRadius: 12, marginTop: 8 }} />
-            ) : null}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
                 style={[styles.spotModalBtn, { backgroundColor: '#F2F4F6' }]}
@@ -678,7 +746,7 @@ export default function TrailPublishScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       )}
 
       {/* 12. Submit buttons */}
@@ -985,14 +1053,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    justifyContent: 'flex-end',
     zIndex: 100,
   },
-  spotModal: {
+  spotModalSheet: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 34,
+    paddingTop: 12,
+  },
+  spotModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E8EB',
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   spotModalTitle: {
     fontSize: 17,

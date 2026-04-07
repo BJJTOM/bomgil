@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
@@ -108,24 +109,24 @@ export default function SettingsScreen() {
       title: '계정',
       items: isAuthenticated
         ? [
-            { icon: '👤', label: '프로필 수정', onPress: () => navigation.navigate('ProfileEdit') },
+            { icon: 'user', label: '프로필 수정', onPress: () => navigation.navigate('ProfileEdit') },
             {
-              icon: '📊',
+              icon: 'bar-chart-2',
               label: '내 활동 기록',
               onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
-            { icon: '🗺', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
-            { icon: '❤️', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
-            { icon: '📥', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
+            { icon: 'map', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
+            { icon: 'heart', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
+            { icon: 'download', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
           ]
         : [
             {
-              icon: '🔑',
+              icon: 'log-in',
               label: '로그인',
               onPress: () => navigation.navigate('Login'),
             },
             {
-              icon: '✨',
+              icon: 'user-plus',
               label: '회원가입',
               onPress: () => navigation.navigate('Register'),
             },
@@ -135,27 +136,27 @@ export default function SettingsScreen() {
       title: '앱 설정',
       items: [
         {
-          icon: '🌐',
+          icon: 'globe',
           label: '언어 설정',
           value: LANGUAGES.find((l) => l.code === language)?.label,
           onPress: () => setShowLangModal(true),
         },
         {
-          icon: '\uD83C\uDF19',
+          icon: 'moon',
           label: '다크 모드',
           value: currentThemeLabel,
           onPress: () => setShowThemeModal(true),
         },
-        { icon: '🔔', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
+        { icon: 'bell', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
       ],
     },
     {
       title: '정보',
       items: [
-        { icon: '📋', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
-        { icon: '🔒', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
-        { icon: '📄', label: '오픈소스 라이선스', onPress: () => {} },
-        { icon: 'ℹ️', label: '버전 정보', value: '1.0.0' },
+        { icon: 'file-text', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
+        { icon: 'shield', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
+        { icon: 'code', label: '오픈소스 라이선스', onPress: () => {} },
+        { icon: 'info', label: '버전 정보', value: '1.0.0' },
       ],
     },
   ];
@@ -169,7 +170,7 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={[styles.backIcon, { color: textColor }]}>{'←'}</Text>
+            <Feather name="arrow-left" size={22} color={textColor} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: textColor }]}>설정</Text>
           <View style={{ width: 36 }} />
@@ -198,7 +199,7 @@ export default function SettingsScreen() {
               <Text style={[styles.userEmail, { color: textTertColor }]}>{user.email}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
-              <Text style={styles.chevron}>{'›'}</Text>
+              <Feather name="chevron-right" size={18} color={textTertColor} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -217,7 +218,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={item.onPress}
                   activeOpacity={item.onPress ? 0.6 : 1}>
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Feather name={item.icon} size={18} color={textTertColor} style={styles.menuIcon} />
                   <Text style={[styles.menuLabel, { color: textColor }]}>{item.label}</Text>
                   {item.value ? (
                     <Text style={[styles.menuValue, { color: textTertColor }]}>{item.value}</Text>
@@ -278,17 +279,17 @@ export default function SettingsScreen() {
           <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
             <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>{'테마 설정'}</Text>
             {([
-              { key: 'system' as const, label: '시스템 설정', icon: '\uD83D\uDCF1' },
-              { key: 'light' as const, label: '라이트 모드', icon: '☀️' },
-              { key: 'dark' as const, label: '다크 모드', icon: '\uD83C\uDF19' },
+              { key: 'system' as const, label: '시스템 설정', icon: 'smartphone' },
+              { key: 'light' as const, label: '라이트 모드', icon: 'sun' },
+              { key: 'dark' as const, label: '다크 모드', icon: 'moon' },
             ]).map((item) => (
               <TouchableOpacity
                 key={item.key}
                 style={[styles.langItem, themeMode === item.key && (isDark ? { backgroundColor: 'rgba(74,222,128,0.1)' } : styles.langItemActive)]}
                 onPress={() => { setThemeMode(item.key); setShowThemeModal(false); }}>
-                <Text style={styles.langFlag}>{item.icon}</Text>
+                <Feather name={item.icon} size={18} color={isDark ? '#FFFFFF' : colors.textPrimary} style={{ marginRight: 12 }} />
                 <Text style={[styles.langLabel, isDark && { color: '#FFFFFF' }]}>{item.label}</Text>
-                {themeMode === item.key && <Text style={[styles.langCheck, isDark && { color: '#4ADE80' }]}>{'✓'}</Text>}
+                {themeMode === item.key && <Feather name="check" size={18} color={isDark ? '#4ADE80' : colors.primary} />}
               </TouchableOpacity>
             ))}
           </View>

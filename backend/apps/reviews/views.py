@@ -30,6 +30,9 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         trail = get_object_or_404(Trail, pk=self.kwargs["trail_id"])
+        if Review.objects.filter(trail=trail, author=self.request.user).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "이미 이 코스에 리뷰를 작성했습니다."})
         serializer.save(author=self.request.user, trail=trail, status="approved")
 
     def create(self, request, *args, **kwargs):

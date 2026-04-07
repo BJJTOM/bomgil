@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { CommunityPost, PostComment } from '../types';
@@ -68,7 +69,7 @@ function SheetItem({ icon, label, danger, onPress }: {
 }) {
   return (
     <TouchableOpacity style={s.sheetItem} onPress={onPress} activeOpacity={0.6}>
-      <Text style={s.sheetItemIcon}>{icon}</Text>
+      <Feather name={icon} size={18} color={danger ? '#FF4B4B' : colors.textSecondary} style={{ marginRight: 12 }} />
       <Text style={[s.sheetItemLabel, danger && { color: '#FF4B4B' }]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -117,7 +118,7 @@ function ImageViewer({ images, initialIndex, visible, onClose }: {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.viewerContainer}>
         <TouchableOpacity style={s.viewerClose} onPress={onClose}>
-          <Text style={s.viewerCloseText}>✕</Text>
+          <Feather name="x" size={22} color="#fff" />
         </TouchableOpacity>
         <FlatList
           data={images}
@@ -129,7 +130,9 @@ function ImageViewer({ images, initialIndex, visible, onClose }: {
           onMomentumScrollEnd={(e) => setCurrent(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <Image source={{ uri: item.image }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }} resizeMode="contain" />
+            <View style={{ width: SCREEN_WIDTH, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+              <Image source={{ uri: item.image }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 0.8 }} resizeMode="contain" />
+            </View>
           )}
         />
         {images.length > 1 && <Text style={s.viewerCounter}>{current + 1} / {images.length}</Text>}
@@ -214,7 +217,7 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: {
             <Text style={s.commentTime}>{timeAgo(comment.created_at)}</Text>
             {comment.updated_at !== comment.created_at && <Text style={s.editedLabel}>(수정됨)</Text>}
             <TouchableOpacity style={s.commentMoreBtn} onPress={() => setShowSheet(true)}>
-              <Text style={s.commentMoreIcon}>···</Text>
+              <Feather name="more-horizontal" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
           {editing ? (
@@ -230,9 +233,7 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: {
           )}
           <View style={s.commentActions}>
             <TouchableOpacity onPress={handleLike} activeOpacity={0.6} style={s.commentActionBtn}>
-              <Text style={[s.commentActionIcon, comment.is_liked && { color: '#FF4B4B' }]}>
-                {comment.is_liked ? '♥' : '♡'}
-              </Text>
+              <Feather name="heart" size={13} color={comment.is_liked ? '#FF4B4B' : colors.textTertiary} />
               {comment.like_count > 0 && <Text style={s.commentActionCount}>{comment.like_count}</Text>}
             </TouchableOpacity>
             {depth === 0 && (
@@ -247,10 +248,10 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: {
         <CommentItem key={reply.id} comment={reply} postId={postId} onReply={onReply} depth={1} />
       ))}
       <BottomSheet visible={showSheet} onClose={() => setShowSheet(false)}>
-        {isMine && <SheetItem icon="✏" label="수정" onPress={() => { setShowSheet(false); setEditing(true); setEditText(comment.content); }} />}
-        {isMine && <SheetItem icon="−" label="삭제" danger onPress={() => { setShowSheet(false); handleDelete(); }} />}
-        {!isMine && <SheetItem icon="!" label="신고" onPress={() => { setShowSheet(false); setShowReport(true); }} />}
-        {!isMine && <SheetItem icon="⊘" label="이 사용자 차단" danger onPress={() => { setShowSheet(false); handleBlock(); }} />}
+        {isMine && <SheetItem icon="edit-2" label="수정" onPress={() => { setShowSheet(false); setEditing(true); setEditText(comment.content); }} />}
+        {isMine && <SheetItem icon="trash-2" label="삭제" danger onPress={() => { setShowSheet(false); handleDelete(); }} />}
+        {!isMine && <SheetItem icon="alert-circle" label="신고" onPress={() => { setShowSheet(false); setShowReport(true); }} />}
+        {!isMine && <SheetItem icon="slash" label="이 사용자 차단" danger onPress={() => { setShowSheet(false); handleBlock(); }} />}
       </BottomSheet>
       <ReportModal visible={showReport} onClose={() => setShowReport(false)} onSubmit={handleReport} />
     </>
@@ -392,13 +393,13 @@ export default function PostDetailScreen() {
 
       {/* Header — 즐겨찾기 + 더보기 */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Text style={s.backIcon}>←</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Feather name="arrow-left" size={22} color={colors.textPrimary} /></TouchableOpacity>
         <Text style={s.headerTitle}>게시글</Text>
         <View style={s.headerRight}>
           <TouchableOpacity onPress={handleBookmark} activeOpacity={0.6} style={s.headerIconBtn}>
-            <Text style={[s.headerIconText, post?.is_bookmarked && { color: '#F59E0B' }]}>{post?.is_bookmarked ? '★' : '☆'}</Text>
+            <Feather name="bookmark" size={20} color={post?.is_bookmarked ? '#F59E0B' : colors.textTertiary} />
           </TouchableOpacity>
-          <TouchableOpacity style={s.moreBtn} onPress={() => setShowPostSheet(true)}><Text style={s.moreIcon}>···</Text></TouchableOpacity>
+          <TouchableOpacity style={s.moreBtn} onPress={() => setShowPostSheet(true)}><Feather name="more-horizontal" size={20} color={colors.textPrimary} /></TouchableOpacity>
         </View>
       </View>
 
@@ -434,28 +435,40 @@ export default function PostDetailScreen() {
                 <View style={s.divider} />
                 {/* Content */}
                 <Text style={s.content}>{post.content}</Text>
-                {/* Images */}
+                {/* Images — grid layout */}
                 {post.images && post.images.length > 0 && (
-                  <View style={s.imageSection}>
-                    {post.images.map((img, idx) => (
-                      <TouchableOpacity key={img.id} activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: idx })}>
-                        <Image source={{ uri: img.image }} style={s.contentImage} resizeMode="cover" />
+                  <View style={[s.imageSection, post.images.length > 1 && s.imageGrid]}>
+                    {post.images.length === 1 ? (
+                      <TouchableOpacity activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: 0 })}>
+                        <Image source={{ uri: post.images[0].image }} style={s.contentImageSingle} resizeMode="cover" />
                       </TouchableOpacity>
-                    ))}
+                    ) : (
+                      post.images.map((img, idx) => (
+                        <TouchableOpacity key={img.id} activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: idx })}
+                          style={[s.imageGridItem, { width: post.images.length === 2 ? '49%' as any : '32%' as any }]}>
+                          <Image source={{ uri: img.image }} style={s.contentImageGrid} resizeMode="cover" />
+                          {idx === 3 && post.images.length > 4 && (
+                            <View style={s.imageOverlayCount}>
+                              <Text style={s.imageOverlayText}>+{post.images.length - 4}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      )).slice(0, 4)
+                    )}
                   </View>
                 )}
                 {/* Action bar */}
                 <View style={s.actionBar}>
                   <TouchableOpacity style={s.actionItem} onPress={handleLike} activeOpacity={0.6}>
-                    <Text style={[s.actionIcon, post.is_liked && { color: '#FF4B4B' }]}>{post.is_liked ? '♥' : '♡'}</Text>
+                    <Feather name="heart" size={18} color={post.is_liked ? '#FF4B4B' : colors.textTertiary} />
                     <Text style={[s.actionCount, post.is_liked && { color: '#FF4B4B' }]}>{post.like_count}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionItem} onPress={() => inputRef.current?.focus()} activeOpacity={0.6}>
-                    <Text style={s.actionIcon}>○</Text>
+                    <Feather name="message-circle" size={18} color={colors.textTertiary} />
                     <Text style={s.actionCount}>{post.comment_count}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionItem} onPress={handleShare} activeOpacity={0.6}>
-                    <Text style={s.actionIcon}>↗</Text>
+                    <Feather name="share" size={18} color={colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
                 <View style={s.sectionDivider} />
@@ -499,19 +512,19 @@ export default function PostDetailScreen() {
             style={[s.sendBtn, (!commentText.trim() || submittingComment) && s.sendBtnDisabled]}
             onPress={handleSubmitComment}
             disabled={!commentText.trim() || submittingComment}>
-            <Text style={[s.sendBtnText, !commentText.trim() && s.sendBtnTextDisabled]}>↑</Text>
+            <Feather name="arrow-up" size={18} color={commentText.trim() ? '#fff' : colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Modals */}
       <BottomSheet visible={showPostSheet} onClose={() => setShowPostSheet(false)}>
-        <SheetItem icon="↗" label="공유하기" onPress={() => { setShowPostSheet(false); handleShare(); }} />
-        <SheetItem icon="☆" label={post.is_bookmarked ? '북마크 해제' : '북마크'} onPress={() => { setShowPostSheet(false); handleBookmark(); }} />
-        {isMine && <SheetItem icon="✏" label="수정하기" onPress={() => { setShowPostSheet(false); navigation.navigate('PostCreate', { editPost: post }); }} />}
-        {isMine && <SheetItem icon="−" label="삭제하기" danger onPress={() => { setShowPostSheet(false); handleDelete(); }} />}
-        {!isMine && <SheetItem icon="!" label="신고하기" onPress={() => { setShowPostSheet(false); setShowReport(true); }} />}
-        {!isMine && <SheetItem icon="⊘" label="이 사용자 차단" danger onPress={() => { setShowPostSheet(false); handleBlock(); }} />}
+        <SheetItem icon="share" label="공유하기" onPress={() => { setShowPostSheet(false); handleShare(); }} />
+        <SheetItem icon="bookmark" label={post.is_bookmarked ? '북마크 해제' : '북마크'} onPress={() => { setShowPostSheet(false); handleBookmark(); }} />
+        {isMine && <SheetItem icon="edit-2" label="수정하기" onPress={() => { setShowPostSheet(false); navigation.navigate('PostCreate', { editPost: post }); }} />}
+        {isMine && <SheetItem icon="trash-2" label="삭제하기" danger onPress={() => { setShowPostSheet(false); handleDelete(); }} />}
+        {!isMine && <SheetItem icon="alert-circle" label="신고하기" onPress={() => { setShowPostSheet(false); setShowReport(true); }} />}
+        {!isMine && <SheetItem icon="slash" label="이 사용자 차단" danger onPress={() => { setShowPostSheet(false); handleBlock(); }} />}
       </BottomSheet>
       <ReportModal visible={showReport} onClose={() => setShowReport(false)} onSubmit={handleReport} />
       {post.images && post.images.length > 0 && (
@@ -549,6 +562,12 @@ const s = StyleSheet.create({
   content: { fontSize: 15, color: colors.textPrimary, lineHeight: 24, paddingHorizontal: 20, paddingVertical: 16 },
   imageSection: { paddingHorizontal: 20, gap: 8, paddingBottom: 8 },
   contentImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: '#F7F8FA' },
+  contentImageSingle: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: '#F7F8FA' },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  imageGridItem: { aspectRatio: 1, borderRadius: 8, overflow: 'hidden' },
+  contentImageGrid: { width: '100%', height: '100%' },
+  imageOverlayCount: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  imageOverlayText: { color: '#fff', fontSize: 20, fontWeight: '700' },
 
   // Action bar — 심플 텍스트 아이콘, 사이즈 업
   actionBar: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F2F4F6', gap: 24 },

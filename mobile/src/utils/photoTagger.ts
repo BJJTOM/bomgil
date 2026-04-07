@@ -5,6 +5,8 @@ export interface TaggedPhoto {
   lat: number;
   lng: number;
   timestamp: string;
+  title?: string;
+  description?: string;
 }
 
 export async function takeTaggedPhoto(

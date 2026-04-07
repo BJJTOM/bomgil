@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../../api/client';
 import { colors } from '../../theme/colors';
 import { CommunityPost } from '../../types';
@@ -112,13 +113,11 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
           {/* Stats — 심플 아이콘, 리스트에서도 좋아요 가능 */}
           <View style={styles.postStats}>
             <TouchableOpacity style={styles.statBtn} onPress={() => handleLike(item.id)} activeOpacity={0.6}>
-              <Text style={[styles.statIcon, item.is_liked && { color: '#FF4B4B' }]}>
-                {item.is_liked ? '♥' : '♡'}
-              </Text>
+              <Feather name="heart" size={14} color={item.is_liked ? '#FF4B4B' : colors.textTertiary} />
               <Text style={[styles.statText, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
             </TouchableOpacity>
             <View style={styles.statBtn}>
-              <Text style={styles.statIcon}>○</Text>
+              <Feather name="message-circle" size={14} color={colors.textTertiary} />
               <Text style={styles.statText}>{item.comment_count}</Text>
             </View>
             <View style={styles.statBtn}>
@@ -141,7 +140,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
       {searchVisible && (
         <View style={styles.searchBar}>
           <View style={styles.searchInputWrap}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Feather name="search" size={16} color={colors.textTertiary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="게시글 검색"

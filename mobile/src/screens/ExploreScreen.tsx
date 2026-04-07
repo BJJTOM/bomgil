@@ -16,8 +16,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
+import RankingsInline from './RankingsInline';
 import { Trail, PaginatedResponse } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
@@ -89,7 +91,9 @@ export default function ExploreScreen() {
   const route = useRoute<any>();
 
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('-like_count');
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'courses' | 'rankings'>('courses');
+  const [sortBy, setSortBy] = useState('-created_at');
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     if (route.params?.country) initial.country = route.params.country;
@@ -113,7 +117,7 @@ export default function ExploreScreen() {
     queryKey: ['trails', queryParams],
     queryFn: async () => {
       try {
-        const { data: res } = await api.get('/trails/', { params: queryParams });
+        const { data: res } = await api.get('/trails/', { params: { ...queryParams, page_size: 200 } });
         return res;
       } catch (e) {
         console.log('Trails fetch error:', e);
@@ -206,27 +210,43 @@ export default function ExploreScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
-      {/* Header */}
+      {/* Header — Tabs */}
       <View style={styles.header}>
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="코스, 지역, 키워드 검색..."
-            placeholderTextColor={colors.textTertiary}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search ? (
-            <TouchableOpacity
-              onPress={() => setSearch('')}
-              style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>✕</Text>
-            </TouchableOpacity>
-          ) : null}
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'courses' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('courses')}>
+            <Text style={[styles.tabBtnText, activeTab === 'courses' && styles.tabBtnTextActive]}>코스</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'rankings' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('rankings')}>
+            <Text style={[styles.tabBtnText, activeTab === 'rankings' && styles.tabBtnTextActive]}>랭킹</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Filter Row + Search (courses tab only) */}
+        {activeTab === 'courses' && (
+          <>
+            {searchVisible && (
+              <View style={styles.searchBar}>
+                <Feather name="search" size={16} color={colors.textTertiary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="코스, 지역, 키워드 검색..."
+                  placeholderTextColor={colors.textTertiary}
+                  value={search}
+                  onChangeText={setSearch}
+                  returnKeyType="search"
+                  autoFocus
+                />
+                {search ? (
+                  <TouchableOpacity onPress={() => setSearch('')} style={styles.clearBtn}>
+                    <Feather name="x" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
 
         {/* Filter Row */}
         <View style={styles.filterRow}>
@@ -279,8 +299,8 @@ export default function ExploreScreen() {
               {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' ▾'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Rankings')} style={styles.rankBtn} activeOpacity={0.7}>
-            <Text style={styles.rankBtnText}>🏆</Text>
+          <TouchableOpacity onPress={() => setSearchVisible(!searchVisible)} style={styles.searchToggleSmall}>
+            <Feather name="search" size={16} color={searchVisible ? colors.primary : colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
@@ -337,8 +357,15 @@ export default function ExploreScreen() {
             </View>
           </TouchableOpacity>
         </Modal>
+          </>
+        )}
       </View>
 
+      {/* Content — courses or rankings */}
+      {activeTab === 'rankings' ? (
+        <RankingsInline />
+      ) : (
+      <>
       {/* Result Count */}
       <View style={styles.resultHeader}>
         <Text style={styles.resultCount}>
@@ -380,6 +407,8 @@ export default function ExploreScreen() {
           }
         />
       )}
+      </>
+      )}
     </View>
   );
 }
@@ -390,12 +419,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
 
-  // Header — clean, no heavy border
+  // Header
   header: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F2F4F6',
+    paddingBottom: 4,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 0,
+  },
+  tabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    borderBottomColor: colors.primary,
+  },
+  tabBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textTertiary,
+  },
+  tabBtnTextActive: {
+    color: colors.textPrimary,
+  },
+  searchToggle: {
+    padding: 8,
+  },
+  searchToggleSmall: {
+    padding: 8,
+    marginLeft: 4,
   },
 
   // Search — pill shape, subtle shadow
@@ -443,8 +501,12 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 20,
-    gap: 8,
+    paddingRight: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
+    gap: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F2F4F6',
   },
   chipRow: {
     paddingHorizontal: 20,

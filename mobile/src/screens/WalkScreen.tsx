@@ -108,6 +108,7 @@ export default function WalkScreen() {
   const [photoDesc, setPhotoDesc] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const fromTrailCreate = route.params?.fromTrailCreate;
+  const resumeData = route.params?.resumeData; // from ActivityScreen "이어서 걷기"
 
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
@@ -121,9 +122,40 @@ export default function WalkScreen() {
   const countdownOpacity = useRef(new Animated.Value(1)).current;
   const autoPausePulse = useRef(new Animated.Value(1)).current;
 
+  // ---- RESUME from paused walk ----
+  useEffect(() => {
+    if (resumeData) {
+      // Restore previous data
+      const segments = resumeData.segments || [];
+      const prevCoords: [number, number][] = [];
+      let prevDistance = 0, prevSteps = 0, prevCalories = 0, prevDuration = 0, prevElevation = 0;
+      for (const seg of segments) {
+        if (seg.routeCoords) prevCoords.push(...seg.routeCoords);
+        prevDistance += seg.distance || 0;
+        prevSteps += seg.steps || 0;
+        prevCalories += seg.calories || 0;
+        prevDuration += seg.duration || 0;
+        prevElevation += seg.elevationGain || 0;
+      }
+      setRouteCoords(prevCoords);
+      setSpots(resumeData.spots || []);
+      setTaggedPhotos(resumeData.taggedPhotos || []);
+      // Set engine offset for cumulative stats
+      engineRef.current.setOffset(prevDistance, prevSteps, prevCalories, prevDuration, prevElevation);
+      // Skip countdown, start immediately
+      setState('walking');
+      engineRef.current.start();
+      timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
+      startGps();
+      // Clean up paused data
+      AsyncStorage.removeItem('walk_paused').catch(() => {});
+    }
+  }, []); // eslint-disable-line
+
   // ---- COUNTDOWN ----
   useEffect(() => {
     if (state !== 'countdown') return;
+    if (resumeData) return; // skip countdown if resuming
     if (Platform.OS === 'android') {
       PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -478,6 +510,45 @@ export default function WalkScreen() {
     }
   };
 
+  const handlePauseSave = async () => {
+    // Stop GPS and timer but keep data
+    if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
+    if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+
+    const finalStats = engineRef.current.getStats();
+    const trackPoints = engineRef.current.getTrackPoints();
+
+    const savedWalk = {
+      savedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48 hours
+      segments: [{
+        startedAt: new Date(Date.now() - finalStats.totalTime * 1000).toISOString(),
+        endedAt: new Date().toISOString(),
+        routeCoords,
+        trackPoints,
+        distance: finalStats.distance,
+        duration: finalStats.duration,
+        steps: finalStats.steps,
+        calories: finalStats.calories,
+        elevationGain: finalStats.elevationGain,
+      }],
+      spots,
+      taggedPhotos,
+      trailId: trailId || null,
+    };
+
+    await AsyncStorage.setItem('walk_paused', JSON.stringify(savedWalk)).catch(() => {});
+    AsyncStorage.removeItem('walk_in_progress').catch(() => {});
+
+    Alert.alert(
+      '일시 저장 완료',
+      '48시간 내에 이어서 걸을 수 있어요.\n활동 탭에서 "이어서 걷기"를 눌러주세요.',
+      [{ text: '확인', onPress: () => navigation.replace('Main') }],
+    );
+  };
+
   const handleStop = () => setShowStopModal(true);
 
   useEffect(() => {
@@ -718,9 +789,9 @@ export default function WalkScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalIconWrap}>
-              <Text style={styles.modalIcon}>{'\uD83D\uDEB6'}</Text>
+              <Feather name="flag" size={28} color="#fff" />
             </View>
-            <Text style={styles.modalTitle}>걸기를 종료할까요?</Text>
+            <Text style={styles.modalTitle}>걷기를 종료할까요?</Text>
             <View style={styles.modalStats}>
               <View style={styles.modalStatItem}>
                 <Text style={styles.modalStatVal}>{stats.distance.toFixed(2)}</Text>
@@ -741,7 +812,15 @@ export default function WalkScreen() {
               style={styles.modalStopBtn}
               onPress={() => { setShowStopModal(false); completeWalk(); }}
               activeOpacity={0.85}>
-              <Text style={styles.modalStopBtnText}>종료하기</Text>
+              <Feather name="check-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.modalStopBtnText}>완전 종료</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalPauseBtn}
+              onPress={() => { setShowStopModal(false); handlePauseSave(); }}
+              activeOpacity={0.85}>
+              <Feather name="pause-circle" size={18} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.modalPauseBtnText}>일시 저장 (나중에 이어하기)</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalCancelBtn}
@@ -1416,12 +1495,31 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: 10,
   },
   modalStopBtnText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  modalPauseBtn: {
+    width: '100%',
+    backgroundColor: colors.primary + '12',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '30',
+  },
+  modalPauseBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
   },
   modalCancelBtn: {
     width: '100%',

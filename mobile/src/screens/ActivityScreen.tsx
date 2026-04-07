@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
@@ -149,6 +150,24 @@ export default function ActivityScreen() {
   };
 
   const [activityPage, setActivityPage] = useState(1);
+  const [pausedWalk, setPausedWalk] = useState<any>(null);
+
+  // Check for paused walk
+  React.useEffect(() => {
+    AsyncStorage.getItem('walk_paused').then((val) => {
+      if (val) {
+        try {
+          const data = JSON.parse(val);
+          // Check expiration (48 hours)
+          if (new Date(data.expiresAt) > new Date()) {
+            setPausedWalk(data);
+          } else {
+            AsyncStorage.removeItem('walk_paused');
+          }
+        } catch { AsyncStorage.removeItem('walk_paused'); }
+      }
+    }).catch(() => {});
+  }, []);
   const PAGE_SIZE = 10;
   const paginatedActivities = activities.slice(0, activityPage * PAGE_SIZE);
   const hasMoreActivities = activities.length > activityPage * PAGE_SIZE;
@@ -241,6 +260,36 @@ export default function ActivityScreen() {
             </View>
           </View>
         </FadeInView>
+
+        {/* ===== PAUSED WALK RESUME ===== */}
+        {pausedWalk && (
+          <FadeInView delay={100}>
+            <TouchableOpacity
+              style={[styles.resumeWalkCard, { backgroundColor: cardBg }]}
+              onPress={() => navigation.navigate('Walk', { resumeData: pausedWalk })}
+              activeOpacity={0.8}>
+              <View style={styles.resumeIconCircle}>
+                <Feather name="play" size={18} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.resumeTitle, { color: textColor }]}>저장된 걷기 이어하기</Text>
+                <Text style={[styles.resumeMeta, { color: textTertColor }]}>
+                  {pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.distance || 0), 0).toFixed(1)}km · {pausedWalk.spots?.length || 0}개 스팟 · {new Date(pausedWalk.savedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert('저장 삭제', '저장된 걷기 데이터를 삭제할까요?', [
+                    { text: '취소', style: 'cancel' },
+                    { text: '삭제', style: 'destructive', onPress: () => { AsyncStorage.removeItem('walk_paused'); setPausedWalk(null); } },
+                  ]);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Feather name="x" size={16} color={textTertColor} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </FadeInView>
+        )}
 
         {/* ===== CTA ===== */}
         <FadeInView delay={150}>
@@ -585,6 +634,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  resumeWalkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '40',
+    gap: 12,
+  },
+  resumeIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resumeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  resumeMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   loadMoreBtn: {
     flexDirection: 'row',
     alignItems: 'center',

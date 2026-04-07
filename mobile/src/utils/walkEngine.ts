@@ -192,6 +192,16 @@ export class WalkEngine {
     this.currentSplitStart = Date.now();
   }
 
+  /** Set cumulative offsets when resuming a paused walk */
+  setOffset(distance: number, steps: number, calories: number, duration: number, elevationGain: number) {
+    this.distance = distance;
+    this.totalSteps = steps;
+    this.totalCalories = calories;
+    this.activeTime = duration;
+    this.elevationGain = elevationGain;
+    this.currentSplitDistance = distance;
+  }
+
   addPoint(
     lat: number,
     lng: number,

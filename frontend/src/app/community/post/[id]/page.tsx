@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { Icon } from "@/components/Icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -189,7 +190,7 @@ export default function PostDetailPage() {
           <button onClick={() => router.back()} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-lg">←</button>
           <span className="text-[16px] font-semibold text-gray-900">게시글</span>
           <div className="flex items-center gap-1.5">
-            <button onClick={handleBookmark} className="text-xl">{post.is_bookmarked ? <span className="text-yellow-500">★</span> : <span className="text-gray-400">☆</span>}</button>
+            <button onClick={handleBookmark}><Icon.Bookmark size={20} className={post.is_bookmarked ? "text-yellow-500" : "text-gray-400"} fill={post.is_bookmarked ? "currentColor" : "none"} /></button>
             <div className="relative">
               <button onClick={() => setShowMenu(!showMenu)} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-sm font-bold text-gray-500">···</button>
               {showMenu && (
@@ -242,13 +243,13 @@ export default function PostDetailPage() {
         {/* Actions */}
         <div className="flex items-center gap-5 px-5 py-3 border-t border-b border-gray-100">
           <button onClick={handleLike} className={`flex items-center gap-1.5 text-sm ${post.is_liked ? "text-red-500" : "text-gray-500"}`}>
-            <span className="text-[22px]">{post.is_liked ? "♥" : "♡"}</span> {post.like_count}
+            <Icon.Heart size={20} fill={post.is_liked ? "currentColor" : "none"} /> {post.like_count}
           </button>
           <button onClick={() => inputRef.current?.focus()} className="flex items-center gap-1.5 text-sm text-gray-500">
-            <span className="text-[22px]">○</span> {post.comment_count}
+            <Icon.MessageCircle size={20} /> {post.comment_count}
           </button>
           <button onClick={() => { if (typeof navigator !== "undefined" && navigator.share) navigator.share({ title: post.title, text: post.title, url: window.location.href }); }} className="flex items-center gap-1.5 text-sm text-gray-500">
-            <span className="text-[22px]">↗</span>
+            <Icon.Share size={20} />
           </button>
         </div>
 

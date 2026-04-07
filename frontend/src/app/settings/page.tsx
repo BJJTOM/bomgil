@@ -139,12 +139,27 @@ export default function SettingsPage() {
             <p className="px-5 text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">{section.title}</p>
             <div className="mx-5 bg-white rounded-card shadow-soft overflow-hidden divide-y divide-border-light">
               {section.items.map((item: any) => {
+                const iconMap: Record<string, React.ReactNode> = {
+                  "user": <Icon.User size={18} className="text-gray-500" />,
+                  "bar-chart": <Icon.BarChart size={18} className="text-gray-500" />,
+                  "map": <Icon.Map size={18} className="text-gray-500" />,
+                  "heart": <Icon.Heart size={18} className="text-gray-500" />,
+                  "download": <Icon.Download size={18} className="text-gray-500" />,
+                  "lock": <Icon.Lock size={18} className="text-gray-500" />,
+                  "key": <Icon.Key size={18} className="text-gray-500" />,
+                  "globe": <Icon.Globe size={18} className="text-gray-500" />,
+                  "bell": <Icon.Bell size={18} className="text-gray-500" />,
+                  "megaphone": <Icon.Megaphone size={18} className="text-gray-500" />,
+                  "file-text": <Icon.FileText size={18} className="text-gray-500" />,
+                  "shield": <Icon.Shield size={18} className="text-gray-500" />,
+                  "info": <Icon.Info size={18} className="text-gray-500" />,
+                };
                 const content = (
                   <div className="flex items-center gap-3 px-4 py-3.5">
-                    <span className="text-[18px] w-7 text-center">{item.icon}</span>
+                    <span className="w-7 flex justify-center">{iconMap[item.icon] || <span className="text-[18px]">{item.icon}</span>}</span>
                     <span className="flex-1 text-[14px] font-medium">{item.label}</span>
                     {item.value && <span className="text-[13px] text-text-tertiary">{item.value}</span>}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                    <Icon.ChevronRight size={14} className="text-gray-300" />
                   </div>
                 );
 

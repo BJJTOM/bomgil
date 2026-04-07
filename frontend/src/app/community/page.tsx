@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Icon } from "@/components/Icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -193,11 +194,11 @@ function FeedTab() {
                     onClick={(e) => handleLike(e, post.id)}
                     className={`flex items-center gap-1 text-[12px] transition-colors ${post.is_liked ? "text-red-500" : "text-gray-400 hover:text-red-400"}`}
                   >
-                    <span className="text-[14px] leading-none">{post.is_liked ? "♥" : "♡"}</span>
+                    <Icon.Heart size={14} fill={post.is_liked ? "currentColor" : "none"} />
                     <span>{post.like_count}</span>
                   </button>
                   <span className="flex items-center gap-1 text-[12px] text-gray-400">
-                    <span className="text-[14px] leading-none">○</span>
+                    <Icon.MessageCircle size={14} />
                     {post.comment_count}
                   </span>
                   <span className="text-[12px] text-gray-300">조회 {post.view_count}</span>

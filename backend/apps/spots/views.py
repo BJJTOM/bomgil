@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from config.permissions import IsOwnerOrReadOnly
 
@@ -8,10 +9,19 @@ from .models import Spot, SpotImage
 from .serializers import SpotCreateSerializer, SpotImageSerializer, SpotSerializer
 
 
+class SpotCreateThrottle(UserRateThrottle):
+    rate = "50/hour"
+
+
 class SpotViewSet(viewsets.ModelViewSet):
     queryset = Spot.objects.select_related("trail", "author").prefetch_related("images")
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     filterset_fields = ["trail"]
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [SpotCreateThrottle()]
+        return []
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):

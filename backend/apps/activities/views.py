@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from .gpx_parser import compute_summary, parse_gpx, simplify_track
 from .models import ActivityTrack, DailyActivitySummary
@@ -15,8 +16,17 @@ from .serializers import (
 )
 
 
+class ActivityCreateThrottle(UserRateThrottle):
+    rate = "50/hour"
+
+
 class ActivityTrackViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [ActivityCreateThrottle()]
+        return []
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -33,6 +43,20 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        started_at = serializer.validated_data.get("started_at")
+        if started_at:
+            window_start = started_at - timezone.timedelta(minutes=5)
+            window_end = started_at + timezone.timedelta(minutes=5)
+            duplicate = ActivityTrack.objects.filter(
+                user=self.request.user,
+                started_at__gte=window_start,
+                started_at__lte=window_end,
+            ).exists()
+            if duplicate:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError(
+                    {"detail": "A similar activity was already recorded within 5 minutes."}
+                )
         instance = serializer.save(user=self.request.user)
         if instance.gpx_file:
             points, summary = parse_gpx(instance.gpx_file)

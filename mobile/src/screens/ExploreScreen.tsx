@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -101,6 +101,14 @@ export default function ExploreScreen() {
   });
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
   const [showSortModal, setShowSortModal] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const queryParams = useMemo(() => {
     const params: Record<string, string> = {};
@@ -108,9 +116,9 @@ export default function ExploreScreen() {
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params[k] = v;
     });
-    if (search.trim()) params.search = search.trim();
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
     return params;
-  }, [filters, search, sortBy]);
+  }, [filters, debouncedSearch, sortBy]);
 
   // Filtered query (with search param for API)
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -142,9 +150,9 @@ export default function ExploreScreen() {
 
   const trails = useMemo(() => {
     const apiResults = data?.results ?? (Array.isArray(data) ? data : []);
-    if (!search.trim()) return apiResults as Trail[];
+    if (!debouncedSearch.trim()) return apiResults as Trail[];
 
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase();
 
     // Also search through all trails for tag matches
     const allTrails = allData?.results ?? (Array.isArray(allData) ? allData : []);
@@ -170,7 +178,7 @@ export default function ExploreScreen() {
         t.country?.toLowerCase().includes(q) ||
         t.tags?.some(tag => tag.name.toLowerCase().includes(q) || tag.name_en?.toLowerCase().includes(q)),
     );
-  }, [data, allData, search]);
+  }, [data, allData, debouncedSearch]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 

@@ -161,7 +161,7 @@ function TrailDetailScreenInner() {
         return [];
       }
     },
-    enabled: !!trailId && !!trail,
+    enabled: !!trailId,
     retry: 1,
   });
 
@@ -171,7 +171,7 @@ function TrailDetailScreenInner() {
       const { data } = await api.get(`/reviews/trails/${trailId}/`);
       return (data?.results || data || []) as Review[];
     },
-    enabled: !!trailId && !!trail,
+    enabled: !!trailId,
     retry: 1,
   });
 

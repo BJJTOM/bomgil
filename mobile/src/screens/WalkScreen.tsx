@@ -13,6 +13,7 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -363,6 +364,34 @@ export default function WalkScreen() {
       if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
     };
   }, []);
+
+  // Prevent accidental back navigation during walk
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (state === 'walking' || state === 'paused') {
+        Alert.alert(
+          '걸기 종료',
+          '걸기를 종료하고 나가시겠습니까?\n기록된 데이터가 저장되지 않을 수 있습니다.',
+          [
+            { text: '계속 걸기', style: 'cancel' },
+            { text: '종료', style: 'destructive', onPress: () => {
+              if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
+              if (timerRef.current) clearInterval(timerRef.current);
+              navigation.goBack();
+            }},
+          ],
+        );
+        return true;
+      }
+      if (state === 'countdown') {
+        if (timerRef.current) clearInterval(timerRef.current);
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    });
+    return () => backHandler.remove();
+  }, [state, navigation]);
 
   const routeGeoJSON = routeCoords.length >= 2 ? {
     type: 'Feature' as const, properties: {},

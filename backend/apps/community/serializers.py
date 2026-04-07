@@ -4,6 +4,7 @@ from .models import (
     Post, PostImage, PostComment, PostLike, CommentLike, PostBookmark, Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
+    Notice,
 )
 
 
@@ -314,3 +315,9 @@ class ChallengeDetailSerializer(ChallengeListSerializer):
     def get_leaderboard(self, obj):
         top = obj.participants.select_related('user').all()[:20]
         return ChallengeParticipantSerializer(top, many=True).data
+
+
+class NoticeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notice
+        fields = ['id', 'title', 'content', 'is_pinned', 'created_at', 'updated_at']

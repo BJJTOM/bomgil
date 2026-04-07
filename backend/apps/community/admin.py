@@ -4,6 +4,7 @@ from .models import (
     Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
+    Notice,
 )
 
 
@@ -42,3 +43,11 @@ class GroupAdmin(admin.ModelAdmin):
 class ChallengeAdmin(admin.ModelAdmin):
     list_display = ['title', 'challenge_type', 'status', 'goal_value', 'participant_count', 'start_date', 'end_date']
     list_filter = ['status', 'challenge_type']
+
+
+@admin.register(Notice)
+class NoticeAdmin(admin.ModelAdmin):
+    list_display = ['title', 'is_pinned', 'is_published', 'created_at', 'updated_at']
+    list_filter = ['is_pinned', 'is_published']
+    search_fields = ['title', 'content']
+    list_editable = ['is_pinned', 'is_published']

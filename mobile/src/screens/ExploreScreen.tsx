@@ -125,7 +125,7 @@ export default function ExploreScreen() {
     queryKey: ['trails', queryParams],
     queryFn: async () => {
       try {
-        const { data: res } = await api.get('/trails/', { params: { ...queryParams, page_size: 200 } });
+        const { data: res } = await api.get('/trails/', { params: { ...queryParams, page_size: 30 } });
         return res;
       } catch (e) {
         console.log('Trails fetch error:', e);
@@ -141,7 +141,7 @@ export default function ExploreScreen() {
     queryKey: ['trails-all'],
     queryFn: async () => {
       try {
-        const { data: res } = await api.get('/trails/', { params: { page_size: 200 } });
+        const { data: res } = await api.get('/trails/', { params: { page_size: 50 } });
         return res;
       } catch { return { results: [] }; }
     },

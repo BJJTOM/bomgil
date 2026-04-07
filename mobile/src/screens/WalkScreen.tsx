@@ -290,12 +290,14 @@ export default function WalkScreen() {
       trackPoints,
     });
     const localKey = `activity_${Date.now()}_extra`;
-    await AsyncStorage.setItem(localKey, extraData).catch((e) => console.log('[Moru] Save error:', e));
-    await AsyncStorage.setItem('activity_latest_extra', extraData).catch((e) => console.log('[Moru] Save latest error:', e));
-    console.log(`[Moru] Saved to ${localKey} and activity_latest_extra`);
+    // Save locally and to server in parallel
+    const localSave = Promise.all([
+      AsyncStorage.setItem(localKey, extraData).catch(() => {}),
+      AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {}),
+    ]);
 
     let activityId: string | number | null = null;
-    if (isAuthenticated) {
+    const apiSave = isAuthenticated ? (async () => {
       try {
         const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
         const actRes = await api.post('/activities/', {
@@ -311,12 +313,13 @@ export default function WalkScreen() {
           elevation_gain_m: finalStats.elevationGain,
         });
         activityId = actRes?.data?.id;
-        // Also save with actual ID for later retrieval
         if (activityId) {
-          await AsyncStorage.setItem(`activity_${activityId}_extra`, extraData).catch(() => {});
+          AsyncStorage.setItem(`activity_${activityId}_extra`, extraData).catch(() => {});
         }
       } catch (e) { console.log('Save error:', e); }
-    }
+    })() : Promise.resolve();
+
+    await Promise.all([localSave, apiSave]);
     const goToComplete = () => {
       navigation.replace('WalkComplete', {
         distance: finalStats.distance.toFixed(2),

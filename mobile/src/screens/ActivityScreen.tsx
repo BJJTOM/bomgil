@@ -85,7 +85,7 @@ export default function ActivityScreen() {
     },
     enabled: isAuthenticated,
     retry: 1,
-    staleTime: 60000,
+    staleTime: 30000,
     placeholderData: (prev: ActivityStats | undefined) => prev,
   });
 
@@ -96,12 +96,12 @@ export default function ActivityScreen() {
   } = useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
-      const { data } = await api.get('/activities/', { params: { page_size: 100 }, timeout: 10000 });
+      const { data } = await api.get('/activities/', { params: { page_size: 30 }, timeout: 10000 });
       return data as PaginatedResponse<ActivityTrack>;
     },
     enabled: isAuthenticated,
     retry: 1,
-    staleTime: 60000,
+    staleTime: 30000,
     placeholderData: (prev: PaginatedResponse<ActivityTrack> | undefined) => prev,
   });
 

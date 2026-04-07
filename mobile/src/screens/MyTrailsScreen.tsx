@@ -26,7 +26,7 @@ export default function MyTrailsScreen() {
   const { data: trails = [], isLoading, refetch } = useQuery<Trail[]>({
     queryKey: ['my-trails'],
     queryFn: async () => {
-      const { data } = await api.get('/trails/', { params: { page_size: 200, ordering: '-created_at' } });
+      const { data } = await api.get('/trails/', { params: { page_size: 50, ordering: '-created_at' } });
       const results = data.results ?? data;
       return results.filter((t: any) => t.author?.id === user?.id);
     },

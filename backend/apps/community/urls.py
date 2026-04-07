@@ -42,4 +42,7 @@ urlpatterns = [
     path('challenges/<int:pk>/', views.ChallengeDetailView.as_view(), name='challenge-detail'),
     path('challenges/<int:pk>/join/', views.ChallengeJoinView.as_view(), name='challenge-join'),
     path('challenges/<int:pk>/leaderboard/', views.ChallengeLeaderboardView.as_view(), name='challenge-leaderboard'),
+
+    # 공지사항
+    path('notices/', views.NoticeListView.as_view(), name='notice-list'),
 ]

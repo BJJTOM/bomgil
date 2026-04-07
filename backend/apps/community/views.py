@@ -8,6 +8,7 @@ from .models import (
     Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
+    Notice,
 )
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateSerializer, PostUpdateSerializer,
@@ -16,6 +17,7 @@ from .serializers import (
     GroupMessageSerializer, GroupMemberSerializer,
     ChallengeListSerializer, ChallengeDetailSerializer,
     ChallengeParticipantSerializer,
+    NoticeSerializer,
 )
 
 
@@ -447,3 +449,9 @@ class ChallengeLeaderboardView(generics.ListAPIView):
         return ChallengeParticipant.objects.filter(
             challenge_id=self.kwargs['pk']
         ).select_related('user').order_by('-current_value')[:50]
+
+
+class NoticeListView(generics.ListAPIView):
+    serializer_class = NoticeSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = Notice.objects.filter(is_published=True)

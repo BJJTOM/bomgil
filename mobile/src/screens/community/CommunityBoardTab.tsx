@@ -57,6 +57,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
       const { data } = await api.get(`/community/posts/${params}`);
       return data.results ?? data;
     },
+    staleTime: 30000,
   });
 
   const handleLike = useCallback((postId: number) => {

@@ -153,6 +153,7 @@ export default function SettingsScreen() {
     {
       title: '정보',
       items: [
+        { icon: 'bell', label: '공지사항', onPress: () => navigation.navigate('Notice') },
         { icon: 'file-text', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
         { icon: 'shield', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
         { icon: 'code', label: '오픈소스 라이선스', onPress: () => {} },

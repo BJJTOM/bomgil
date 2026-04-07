@@ -36,6 +36,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import LikedTrailsScreen from '../screens/LikedTrailsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import NoticeScreen from '../screens/NoticeScreen';
 import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import SavedTrailsScreen from '../screens/SavedTrailsScreen';
@@ -188,6 +189,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
         <Stack.Screen name="LikedTrails" component={LikedTrailsScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="Notice" component={NoticeScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />
         <Stack.Screen name="SavedTrails" component={SavedTrailsScreen} />

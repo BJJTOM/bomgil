@@ -281,3 +281,21 @@ class ChallengeParticipant(models.Model):
     class Meta:
         unique_together = ('challenge', 'user')
         ordering = ['-current_value']
+
+
+# ──────────────────────────────────────
+# Notice (공지사항)
+# ──────────────────────────────────────
+class Notice(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    is_pinned = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+
+    def __str__(self):
+        return f"{'[중요] ' if self.is_pinned else ''}{self.title}"

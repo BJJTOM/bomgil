@@ -110,7 +110,7 @@ export default function PostCreateScreen() {
       } else {
         const { data } = await api.post('/community/posts/create/', {
           category, title: title.trim(), content: content.trim(),
-        });
+        }, { timeout: 15000 });
         postId = data.id;
       }
 
@@ -146,11 +146,16 @@ export default function PostCreateScreen() {
       navigation.goBack();
     } catch (e: any) {
       const errData = e?.response?.data;
+      const status = e?.response?.status;
       let msg = '게시글 저장에 실패했습니다.';
-      if (errData && typeof errData === 'object') {
+      if (status === 429) {
+        msg = '너무 많은 요청입니다. 잠시 후 다시 시도해주세요.';
+      } else if (errData && typeof errData === 'object') {
         const firstKey = Object.keys(errData)[0];
         const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
         msg = typeof firstVal === 'string' ? firstVal : JSON.stringify(firstVal);
+      } else if (e?.code === 'ECONNABORTED' || e?.message?.includes('timeout')) {
+        msg = '서버 응답이 느립니다. 다시 시도해주세요.';
       }
       Alert.alert('오류', msg);
     } finally {

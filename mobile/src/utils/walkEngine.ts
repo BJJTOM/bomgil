@@ -186,13 +186,30 @@ export class WalkEngine {
   private readonly MIN_DISTANCE_FILTER = 0.001; // 1 meter — reduced for accuracy
   private readonly ELE_NOISE_FILTER = 2; // meters — GPS elevation is noisy
 
+  private pausedAt = 0; // timestamp when paused
+  private totalPausedTime = 0; // accumulated pause duration in ms
+  private durationOffset = 0; // seconds from previous segments
+
   start() {
     this.startTime = Date.now();
     this.lastActiveTime = Date.now();
     this.currentSplitStart = Date.now();
+    this.pausedAt = 0;
+    this.totalPausedTime = 0;
   }
 
-  private durationOffset = 0; // seconds from previous segments
+  pause() {
+    if (this.pausedAt === 0) {
+      this.pausedAt = Date.now();
+    }
+  }
+
+  resume() {
+    if (this.pausedAt > 0) {
+      this.totalPausedTime += Date.now() - this.pausedAt;
+      this.pausedAt = 0;
+    }
+  }
 
   /** Set cumulative offsets when resuming a paused walk */
   setOffset(distance: number, steps: number, calories: number, duration: number, elevationGain: number) {
@@ -403,10 +420,13 @@ export class WalkEngine {
   }
 
   getStats(): WalkStats {
-    const wallClockTime =
-      this.startTime > 0 ? (Date.now() - this.startTime) / 1000 : 0;
-    // Use activeTime (excludes pauses) + durationOffset (previous segments)
-    const totalTime = this.activeTime;
+    // Wall clock minus paused time + offset from previous segments
+    let elapsed = 0;
+    if (this.startTime > 0) {
+      const now = this.pausedAt > 0 ? this.pausedAt : Date.now();
+      elapsed = (now - this.startTime - this.totalPausedTime) / 1000;
+    }
+    const totalTime = this.durationOffset + Math.max(0, elapsed);
     const pace =
       this.activeTime > 0 && this.distance > 0.01
         ? this.activeTime / 60 / this.distance

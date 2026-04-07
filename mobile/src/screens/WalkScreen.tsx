@@ -423,12 +423,15 @@ export default function WalkScreen() {
 
   const pauseWalk = () => {
     setState('paused');
+    engineRef.current.pause();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} watchIdRef.current = null; }
+    setStats(engineRef.current.getStats()); // update stats with paused time
   };
 
   const resumeWalk = () => {
     setState('walking');
+    engineRef.current.resume();
     if (!timerRef.current) {
       timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
     }

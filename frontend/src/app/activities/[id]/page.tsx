@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useActivity } from "@/hooks/useActivities";
+import { useQueryClient } from "@tanstack/react-query";
 import { MapView } from "@/components/MapView";
+import api from "@/lib/api";
 import type { TrackPoint } from "@/types";
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -34,7 +37,19 @@ function formatPace(pace: string | null) {
 export default function ActivityDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const qc = useQueryClient();
   const { data: activity, isLoading } = useActivity(id as string);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+
+  const handleSaveTitle = async () => {
+    if (!editTitle.trim() || !id) return;
+    try {
+      await api.patch(`/activities/${id}/`, { title: editTitle.trim() });
+      qc.invalidateQueries({ queryKey: ["activity", id] });
+      setEditingTitle(false);
+    } catch {}
+  };
 
   if (isLoading) {
     return (
@@ -108,10 +123,26 @@ export default function ActivityDetailPage() {
         <div className="card shadow-card p-5 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">{SOURCE_LABELS[activity.source]?.icon || "📍"}</span>
-            <div>
-              <h1 className="text-[18px] font-bold">
-                {activity.title || `${SOURCE_LABELS[activity.source]?.label} 기록`}
-              </h1>
+            <div className="flex-1">
+              {editingTitle ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    className="text-[18px] font-bold bg-bg-secondary rounded-lg px-2 py-1 outline-none flex-1"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(); if (e.key === "Escape") setEditingTitle(false); }}
+                    autoFocus
+                  />
+                  <button onClick={handleSaveTitle} className="text-[13px] text-primary font-semibold">저장</button>
+                  <button onClick={() => setEditingTitle(false)} className="text-[13px] text-text-tertiary">취소</button>
+                </div>
+              ) : (
+                <h1 className="text-[18px] font-bold cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => { setEditTitle(activity.title || ""); setEditingTitle(true); }}>
+                  {activity.title || `${SOURCE_LABELS[activity.source]?.label} 기록`}
+                  <span className="text-[11px] text-text-tertiary ml-1.5">✎</span>
+                </h1>
+              )}
               <p className="text-[12px] text-text-tertiary">
                 {activity.started_at
                   ? new Date(activity.started_at).toLocaleDateString("ko", { year: "numeric", month: "long", day: "numeric", weekday: "short" })

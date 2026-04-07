@@ -57,8 +57,14 @@ export default function WalkPage() {
   const [splits, setSplits] = useState<KmSplit[]>([]);
   const [isAutoPaused, setIsAutoPaused] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [spotName, setSpotName] = useState("");
+  const [spotType, setSpotType] = useState("photo");
+  const [photos, setPhotos] = useState<{ uri: string; lat: number; lng: number }[]>([]);
+  const [spots, setSpots] = useState<{ name: string; type: string; lat: number; lng: number }[]>([]);
   const [gpsError, setGpsError] = useState("");
   const [mapReady, setMapReady] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const trackPointsRef = useRef<TrackPoint[]>([]);
   const distanceRef = useRef(0);
@@ -255,6 +261,51 @@ export default function WalkPage() {
     else setGpsError(ko ? "위치를 가져올 수 없습니다" : "Unable to get location");
   }, [ko]);
 
+  const SPOT_TYPES = [
+    { key: "restaurant", label: ko ? "맛집" : "Food", color: "#FF6B6B" },
+    { key: "cafe", label: ko ? "카페" : "Cafe", color: "#F59E0B" },
+    { key: "photo", label: ko ? "포토" : "Photo", color: "#4ADE80" },
+    { key: "rest", label: ko ? "휴식" : "Rest", color: "#60A5FA" },
+    { key: "view", label: ko ? "전망" : "View", color: "#A78BFA" },
+  ];
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const points = trackPointsRef.current;
+    const lastPos = points.length > 0 ? points[points.length - 1] : initialPosRef.current;
+    if (lastPos) {
+      setPhotos((prev) => [...prev, { uri: URL.createObjectURL(file), lat: lastPos.lat, lng: lastPos.lng }]);
+    }
+    e.target.value = "";
+  };
+
+  const handleAddSpot = () => {
+    if (!spotName.trim()) return;
+    const points = trackPointsRef.current;
+    const lastPos = points.length > 0 ? points[points.length - 1] : initialPosRef.current;
+    if (lastPos) {
+      const newSpot = { name: spotName.trim(), type: spotType, lat: lastPos.lat, lng: lastPos.lng };
+      setSpots((prev) => [...prev, newSpot]);
+
+      // Add marker to map
+      const L = LRef.current;
+      const map = mapObjRef.current;
+      if (L && map) {
+        const color = SPOT_TYPES.find((s) => s.key === spotType)?.color || "#4ADE80";
+        const icon = L.divIcon({
+          html: `<div style="width:24px;height:24px;background:${color};border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
+            <span style="font-size:11px;color:#fff;font-weight:700">${SPOT_TYPES.findIndex((s) => s.key === spotType) + 1}</span>
+          </div>`,
+          className: "", iconSize: [24, 24], iconAnchor: [12, 12],
+        });
+        L.marker([lastPos.lat, lastPos.lng], { icon, interactive: false }).addTo(map);
+      }
+    }
+    setSpotName("");
+    setShowSpotModal(false);
+  };
+
   // ── COUNTDOWN: get GPS position first, then start ──
   useEffect(() => {
     if (state !== "countdown") return;
@@ -450,11 +501,24 @@ export default function WalkPage() {
 
       {/* === CONTROLS === */}
       {isWalking && (
-        <div className="flex-shrink-0 flex items-center justify-center gap-7 py-4 pb-safe" style={{ height: 100 }}>
+        <div className="flex-shrink-0 flex items-center justify-center gap-5 py-4 pb-safe" style={{ height: 100 }}>
+          <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+
           {state === "walking" ? (
-            <button onClick={pauseWalk} className="w-[68px] h-[68px] rounded-full bg-white flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#111"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
-            </button>
+            <>
+              {/* Camera */}
+              <button onClick={() => photoInputRef.current?.click()} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+              {/* Pause */}
+              <button onClick={pauseWalk} className="w-[68px] h-[68px] rounded-full bg-white flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#111"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+              </button>
+              {/* Spot */}
+              <button onClick={() => setShowSpotModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </button>
+            </>
           ) : (
             <>
               <button onClick={() => setShowStopModal(true)} className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center">
@@ -465,6 +529,46 @@ export default function WalkPage() {
               </button>
             </>
           )}
+
+          {/* Photo/Spot count badges */}
+          {(photos.length > 0 || spots.length > 0) && (
+            <div className="absolute bottom-1 right-5 flex gap-2">
+              {photos.length > 0 && <span className="text-[10px] text-white/40">📷 {photos.length}</span>}
+              {spots.length > 0 && <span className="text-[10px] text-white/40">📍 {spots.length}</span>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === SPOT MODAL === */}
+      {showSpotModal && (
+        <div className="fixed inset-0 z-[70] bg-black/70 flex items-end justify-center">
+          <div className="bg-[#1a1a1a] rounded-t-3xl p-6 w-full max-w-[400px]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[16px] font-bold text-white">{ko ? "스팟 추가" : "Add Spot"}</h3>
+              <button onClick={() => setShowSpotModal(false)} className="text-white/40 text-lg">✕</button>
+            </div>
+            <div className="flex gap-2 mb-4">
+              {SPOT_TYPES.map((s) => (
+                <button key={s.key} onClick={() => setSpotType(s.key)}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-semibold text-center transition-all"
+                  style={{ background: spotType === s.key ? s.color : "rgba(255,255,255,0.06)", color: spotType === s.key ? "#fff" : "rgba(255,255,255,0.5)" }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <input
+              className="w-full bg-white/[0.06] rounded-xl px-4 py-3 text-[14px] text-white placeholder-white/30 outline-none mb-4"
+              placeholder={ko ? "스팟 이름" : "Spot name"}
+              value={spotName}
+              onChange={(e) => setSpotName(e.target.value)}
+              autoFocus
+            />
+            <button onClick={handleAddSpot} disabled={!spotName.trim()}
+              className={`w-full py-3.5 rounded-xl text-[15px] font-bold transition-all ${spotName.trim() ? "bg-[#4ADE80] text-black" : "bg-white/[0.06] text-white/30"}`}>
+              {ko ? "추가" : "Add"}
+            </button>
+          </div>
         </div>
       )}
 

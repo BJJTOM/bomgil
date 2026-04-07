@@ -782,32 +782,41 @@ export default function ActivityDetailScreen() {
               )}
 
               {/* Resume / Continue walking from this activity */}
-              {(activity.track_points?.length > 0) && (
-                <TouchableOpacity
-                  style={styles.resumeFromActivityBtn}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    const rc = (activity.track_points || []).map((p: any) => [p.lng || p[0], p.lat || p[1]] as [number, number]);
+              <TouchableOpacity
+                style={styles.resumeFromActivityBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  try {
+                    const tp = activity.track_points || [];
+                    const rc: [number, number][] = tp.map((p: any) => {
+                      if (Array.isArray(p)) return p as [number, number];
+                      const lng = p.lng ?? p.longitude ?? 0;
+                      const lat = p.lat ?? p.latitude ?? 0;
+                      return [lng, lat] as [number, number];
+                    }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
+
                     const resumeData = {
                       segments: [{
                         routeCoords: rc,
-                        trackPoints: activity.track_points || [],
+                        trackPoints: tp,
                         distance: parseFloat(activity.distance_km || '0'),
                         duration: (activity.duration_minutes || 0) * 60,
                         steps: activity.total_steps || 0,
                         calories: activity.calories_burned || 0,
                         elevationGain: activity.elevation_gain_m || 0,
                       }],
-                      spots: walkSpots,
-                      taggedPhotos: taggedPhotos,
+                      spots: walkSpots || [],
+                      taggedPhotos: taggedPhotos || [],
                       trailId: activity.trail || null,
                     };
-                    navigation.navigate('Walk', { resumeData });
-                  }}>
-                  <Feather name="play-circle" size={18} color={colors.primary} />
-                  <Text style={styles.resumeFromActivityText}>이 기록에서 이어서 걷기</Text>
-                </TouchableOpacity>
-              )}
+                    navigation.replace('Walk', { resumeData });
+                  } catch (e: any) {
+                    Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
+                  }
+                }}>
+                <Feather name="play-circle" size={18} color={colors.primary} />
+                <Text style={styles.resumeFromActivityText}>이 기록에서 이어서 걷기</Text>
+              </TouchableOpacity>
             </View>
         </ScrollView>
       </View>

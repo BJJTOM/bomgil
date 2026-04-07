@@ -709,7 +709,10 @@ export default function WalkScreen() {
             : styles.dotYellow
           ]} />
           <Text style={styles.mapStatusText}>
-            {state === 'walking' ? (stats.isAutoPaused ? '자동 일시정지' : '기록 중') : '일시정지'}
+            {resumeData
+              ? (state === 'walking' ? '이어서 기록 중' : '이어하기 일시정지')
+              : (state === 'walking' ? (stats.isAutoPaused ? '자동 일시정지' : '기록 중') : '일시정지')
+            }
           </Text>
         </View>
 

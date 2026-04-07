@@ -274,7 +274,10 @@ export default function ActivityScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.resumeTitle, { color: textColor }]}>저장된 걷기 이어하기</Text>
                 <Text style={[styles.resumeMeta, { color: textTertColor }]}>
-                  {pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.distance || 0), 0).toFixed(1)}km · {pausedWalk.spots?.length || 0}개 스팟 · {new Date(pausedWalk.savedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.distance || 0), 0).toFixed(1)}km · {Math.round(pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.duration || 0), 0) / 60)}분 · {pausedWalk.spots?.length || 0}개 스팟
+                </Text>
+                <Text style={[styles.resumeExpiry, { color: textTertColor }]}>
+                  {new Date(pausedWalk.savedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 저장 · 거리/걸음/칼로리 이어서 누적됩니다
                 </Text>
               </View>
               <TouchableOpacity
@@ -658,8 +661,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   resumeMeta: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '500',
     marginTop: 2,
+  },
+  resumeExpiry: {
+    fontSize: 11,
+    marginTop: 3,
   },
   loadMoreBtn: {
     flexDirection: 'row',

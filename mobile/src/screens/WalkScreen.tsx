@@ -739,10 +739,10 @@ export default function WalkScreen() {
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
 
         {/* Resume: previous segment banner */}
-        {prevSegment && (prevSegment.distance > 0 || prevSegment.duration > 0) && (
+        {prevSegment && (
           <View style={styles.prevBanner}>
             <Text style={styles.prevBannerText}>
-              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분  |  총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
+              이전 {prevSegment.distance.toFixed(1)}km · {formatTime(prevSegment.duration)}  |  총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
             </Text>
           </View>
         )}
@@ -1666,14 +1666,15 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 4,
+    gap: 20,
+    paddingVertical: 8,
+    paddingBottom: 4,
   },
   quickBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },

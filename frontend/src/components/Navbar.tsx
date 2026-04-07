@@ -7,7 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useLanguageStore, useT, LANGUAGES } from "@/stores/language";
 
 export function Navbar() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const pathname = usePathname();
   const { language, setLanguage } = useLanguageStore();
   const { t } = useT();
@@ -154,7 +154,7 @@ export function Navbar() {
                       <div className="h-px bg-border-light mx-3 my-1" />
 
                       <button
-                        onClick={() => { setShowUserMenu(false); window.location.href = "/settings"; }}
+                        onClick={() => { setShowUserMenu(false); logout(); window.location.href = "/"; }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-[13px] font-medium text-red-500"
                       >
                         <span className="w-5 text-center">{"\uD83D\uDC4B"}</span>

@@ -76,6 +76,10 @@ export default function ActivityDetailPage() {
               center={center}
               pathCoordinates={pathCoordinates}
               zoom={13}
+              theme="dark"
+              showStats
+              distance={activity.distance_km || undefined}
+              duration={activity.duration_minutes ? String(activity.duration_minutes) : undefined}
               className="w-full h-full"
               markers={[
                 { id: 1, lat: trackPoints[0].lat, lng: trackPoints[0].lng, title: "출발", emoji: "🟢" },
@@ -83,16 +87,19 @@ export default function ActivityDetailPage() {
               ]}
             />
           ) : (
-            <div className="w-full h-full bg-bg-secondary flex items-center justify-center">
-              <p className="text-text-tertiary text-[14px]">경로 데이터 없음</p>
+            <div className="w-full h-full bg-[#1a1a2e] flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-[40px] mb-2 opacity-30">🗺️</div>
+                <p className="text-[#555] text-[14px]">경로 데이터 없음</p>
+              </div>
             </div>
           )}
         </div>
         <button
           onClick={() => router.back()}
-          className="absolute top-14 left-4 md:top-20 bg-white/90 backdrop-blur-sm w-9 h-9 rounded-full flex items-center justify-center shadow-soft"
+          className="absolute top-14 left-4 md:top-20 bg-black/50 backdrop-blur-md w-9 h-9 rounded-full flex items-center justify-center border border-white/10"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
       </div>
 

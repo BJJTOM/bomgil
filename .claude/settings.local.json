@@ -71,7 +71,8 @@
       "Bash(vercel ls:*)",
       "Bash(vercel:*)",
       "Bash(curl -s \"https://api.moruwalk.com/api/v1/trails/\")",
-      "Bash(curl -s \"https://api.moruwalk.com/api/v1/spots/?trail=251\")"
+      "Bash(curl -s \"https://api.moruwalk.com/api/v1/spots/?trail=251\")",
+      "Bash(ls -la /Users/tom/Desktop/map_ai/frontend/src/app/activities/[id]/page.tsx)"
     ]
   }
 }

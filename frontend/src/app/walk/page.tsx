@@ -418,7 +418,7 @@ export default function WalkPage() {
           <div style={{ width: 160, height: 160, borderRadius: 80, background: "#2D4A2E", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(45,74,46,0.4)" }} className="animate-pulse">
             <span style={{ color: "#fff", fontSize: 64, fontWeight: 800 }}>{countdown}</span>
           </div>
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 14, marginTop: 48 }}>{ko ? "경로 ��동 기록" : "Route auto-recording"}</p>
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 14, marginTop: 48 }}>{ko ? "경로 자동 기록" : "Route auto-recording"}</p>
         </div>
       )}
 
@@ -449,7 +449,7 @@ export default function WalkPage() {
               background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15",
             }} />
             <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 600 }}>
-              {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시���지" : "Auto-paused") : (ko ? "기록 중" : "REC")) : (ko ? "일시정지" : "Paused")}
+              {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시정지" : "Auto-paused") : (ko ? "기록 중" : "REC")) : (ko ? "일시정지" : "Paused")}
             </span>
             <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontFamily: "monospace" }}>{formatTime(elapsed)}</span>
           </div>

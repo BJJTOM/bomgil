@@ -80,7 +80,7 @@ class MyBookmarkedPostsView(generics.ListAPIView):
 
 
 class PostCreateThrottle(throttling.UserRateThrottle):
-    rate = '30/hour'
+    rate = '200/hour'
 
 class PostCreateView(generics.CreateAPIView):
     serializer_class = PostCreateSerializer

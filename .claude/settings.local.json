@@ -75,7 +75,9 @@
       "Bash(ls -la /Users/tom/Desktop/map_ai/frontend/src/app/activities/[id]/page.tsx)",
       "Bash(curl -s -X OPTIONS \"https://api.moruwalk.com/api/v1/trails/256/\" -w \"%{http_code}\")",
       "Bash(curl -s -X PATCH https://api.moruwalk.com/api/v1/trails/256/ -H 'Content-Type: application/json' -d '{\"title\":\"test\"}')",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(curl -s -X POST https://api.moruwalk.com/api/v1/community/posts/create/ -H 'Content-Type: application/json' -d '{}')",
+      "Bash(curl -s \"https://api.moruwalk.com/api/v1/trails/?ordering=-created_at\")"
     ]
   }
 }

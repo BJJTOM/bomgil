@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -84,6 +85,7 @@ interface Spot {
 export default function TrailPublishScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
   const route = useRoute<any>();
 
   const {
@@ -270,6 +272,9 @@ export default function TrailPublishScreen() {
         }
       }
 
+      queryClient.invalidateQueries({ queryKey: ['trails'] });
+      queryClient.invalidateQueries({ queryKey: ['trails-all'] });
+      queryClient.invalidateQueries({ queryKey: ['my-trails'] });
       Alert.alert('등록 완료', '코스가 성공적으로 등록되었습니다!', [
         {
           text: '확인',

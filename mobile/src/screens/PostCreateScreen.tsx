@@ -110,24 +110,34 @@ export default function PostCreateScreen() {
         postId = data.id;
       }
 
-      // 이미지 업로드
+      // 이미지 업로드 (실패해도 게시글은 저장됨)
       if (images.length > 0 && postId) {
-        const formData = new FormData();
-        images.forEach((img, i) => {
-          formData.append('images', {
-            uri: img.uri,
-            type: img.type || 'image/jpeg',
-            name: img.fileName || `photo_${i}_${Date.now()}.jpg`,
-          } as any);
-        });
-        await api.post(`/community/posts/${postId}/images/`, formData);
+        try {
+          for (const img of images) {
+            const formData = new FormData();
+            formData.append('images', {
+              uri: img.uri,
+              type: img.type || 'image/jpeg',
+              name: img.fileName || `photo_${Date.now()}.jpg`,
+            } as any);
+            await api.post(`/community/posts/${postId}/images/`, formData);
+          }
+        } catch (imgErr: any) {
+          Alert.alert('알림', '게시글은 등록되었지만 이미지 업로드에 실패했습니다.');
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['community-posts'] });
       if (postId) queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
       navigation.goBack();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail || e?.response?.data?.title?.[0] || '게시글 저장에 실패했습니다.';
+      const errData = e?.response?.data;
+      let msg = '게시글 저장에 실패했습니다.';
+      if (errData && typeof errData === 'object') {
+        const firstKey = Object.keys(errData)[0];
+        const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
+        msg = typeof firstVal === 'string' ? firstVal : JSON.stringify(firstVal);
+      }
       Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);

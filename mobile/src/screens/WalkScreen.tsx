@@ -423,14 +423,18 @@ export default function WalkScreen() {
 
   const pauseWalk = () => {
     setState('paused');
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} watchIdRef.current = null; }
   };
 
   const resumeWalk = () => {
     setState('walking');
-    timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
-    startGps();
+    if (!timerRef.current) {
+      timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
+    }
+    if (watchIdRef.current === null) {
+      startGps();
+    }
   };
 
   const completeWalk = async () => {
@@ -731,24 +735,12 @@ export default function WalkScreen() {
       {/* ====== STATS PANEL (bottom) ====== */}
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
 
-        {/* Resume segment info */}
+        {/* Resume: previous segment banner */}
         {prevSegment && (prevSegment.distance > 0 || prevSegment.duration > 0) && (
-          <View style={styles.resumeInfoCard}>
-            <View style={styles.resumeInfoRow}>
-              <View style={styles.resumeInfoItem}>
-                <Text style={styles.resumeInfoLabel}>이전 구간</Text>
-                <Text style={styles.resumeInfoValue}>{prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분</Text>
-              </View>
-              <View style={styles.resumeInfoDivider} />
-              <View style={styles.resumeInfoItem}>
-                <Text style={styles.resumeInfoLabel}>현재 구간</Text>
-                <Text style={styles.resumeInfoValue}>{Math.max(0, stats.distance - prevSegment.distance).toFixed(1)}km · {formatTime(Math.max(0, stats.duration - prevSegment.duration))}</Text>
-              </View>
-            </View>
-            <View style={styles.resumeInfoTotalRow}>
-              <Feather name="activity" size={12} color={colors.primary} />
-              <Text style={styles.resumeInfoTotalText}>총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)} · {stats.steps.toLocaleString()}걸음</Text>
-            </View>
+          <View style={styles.prevBanner}>
+            <Text style={styles.prevBannerText}>
+              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분  →  총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
+            </Text>
           </View>
         )}
 
@@ -767,34 +759,15 @@ export default function WalkScreen() {
           <Text style={styles.distUnit}>km</Text>
         </View>
 
-        {/* Pace */}
-        <View style={styles.paceRow}>
-          <Text style={styles.paceLabel}>현재 페이스</Text>
-          <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
-          <Text style={styles.paceUnit}>/km</Text>
-        </View>
-
-        {/* 4-stat grid */}
-        <View style={styles.grid}>
-          <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
-            <Text style={styles.gridLabel}>걸음</Text>
-          </View>
-          <View style={styles.gridDivider} />
-          <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.calories}</Text>
-            <Text style={styles.gridLabel}>kcal</Text>
-          </View>
-          <View style={styles.gridDivider} />
-          <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.speed.toFixed(1)}</Text>
-            <Text style={styles.gridLabel}>km/h</Text>
-          </View>
-          <View style={styles.gridDivider} />
-          <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.elevationGain > 0 ? `+${stats.elevationGain}` : '0'}m</Text>
-            <Text style={styles.gridLabel}>고도</Text>
-          </View>
+        {/* Compact stat row */}
+        <View style={styles.compactStats}>
+          <Text style={styles.compactStatItem}>{formatPace(stats.currentPace)}/km</Text>
+          <Text style={styles.compactStatDot}>·</Text>
+          <Text style={styles.compactStatItem}>{stats.steps.toLocaleString()}걸음</Text>
+          <Text style={styles.compactStatDot}>·</Text>
+          <Text style={styles.compactStatItem}>{stats.calories}kcal</Text>
+          <Text style={styles.compactStatDot}>·</Text>
+          <Text style={styles.compactStatItem}>{stats.speed.toFixed(1)}km/h</Text>
         </View>
       </Animated.View>
 
@@ -802,18 +775,15 @@ export default function WalkScreen() {
       {state === 'walking' && (
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickBtn} onPress={handleTakePhoto} activeOpacity={0.8}>
-            <Feather name="camera" size={16} color="#fff" />
-            <Text style={styles.quickBtnLabel}>사진</Text>
+            <Feather name="camera" size={18} color="#fff" />
             {taggedPhotos.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{taggedPhotos.length}</Text></View>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickBtn} onPress={() => setShowSpotModal(true)} activeOpacity={0.8}>
-            <Feather name="map-pin" size={16} color="#fff" />
-            <Text style={styles.quickBtnLabel}>스팟</Text>
+            <Feather name="map-pin" size={18} color="#fff" />
             {spots.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{spots.length}</Text></View>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickBtn} onPress={() => setShowRecordSummary(true)} activeOpacity={0.8}>
-            <Feather name="list" size={16} color="#fff" />
-            <Text style={styles.quickBtnLabel}>기록</Text>
+            <Feather name="list" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       )}
@@ -1338,50 +1308,37 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     alignItems: 'center',
   },
-  resumeInfoCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 8,
+  prevBanner: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    alignSelf: 'center',
   },
-  resumeInfoRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  resumeInfoItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  resumeInfoLabel: {
-    fontSize: 10,
+  prevBannerText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.35)',
-    marginBottom: 2,
-    letterSpacing: 0.5,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
   },
-  resumeInfoValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  resumeInfoDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  resumeInfoTotalRow: {
+  compactStats: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 6,
+    flexWrap: 'wrap',
+    gap: 2,
   },
-  resumeInfoTotalText: {
+  compactStatItem: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+  },
+  compactStatDot: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.25)',
+    marginHorizontal: 3,
   },
   timeLabel: {
     fontSize: 11,
@@ -1687,18 +1644,16 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    gap: 16,
+    paddingVertical: 4,
   },
   quickBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickBtnLabel: {
     fontSize: 13,

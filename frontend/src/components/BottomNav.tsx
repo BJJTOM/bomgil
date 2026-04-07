@@ -11,6 +11,9 @@ export function BottomNav() {
   const { user, isAuthenticated } = useAuthStore();
   const profileHref = isAuthenticated && user?.nickname ? `/profile/${user.nickname}` : "/auth/login";
 
+  // Hide on walk pages
+  if (pathname.startsWith("/walk")) return null;
+
   const labels: Record<string, Record<string, string>> = {
     "/": { ko: "홈", en: "Home", ja: "ホーム", zh: "首页" },
     "/explore": { ko: "탐색", en: "Explore", ja: "探索", zh: "探索" },

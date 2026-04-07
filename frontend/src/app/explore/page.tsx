@@ -139,11 +139,27 @@ function ExploreContent() {
     setSortBy("-like_count");
   };
 
+  const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");
+
   return (
     <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
-      {/* Search & Filters Header */}
+      {/* Tabs + Search Header */}
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-        <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3 pb-3 space-y-2.5">
+        <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
+          {/* Tabs — 코스/랭킹 */}
+          <div className="flex gap-6 mb-2">
+            <button onClick={() => setActiveTab("courses")} className={`relative pb-2 text-[15px] font-medium ${activeTab === "courses" ? "text-gray-900 font-bold" : "text-gray-400"}`}>
+              {t("explore.title")}
+              {activeTab === "courses" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />}
+            </button>
+            <button onClick={() => setActiveTab("rankings")} className={`relative pb-2 text-[15px] font-medium ${activeTab === "rankings" ? "text-gray-900 font-bold" : "text-gray-400"}`}>
+              {t("rankings.title")}
+              {activeTab === "rankings" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />}
+            </button>
+          </div>
+        </div>
+
+        {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
           {/* Search */}
           <div className="relative">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -195,10 +211,20 @@ function ExploreContent() {
               </button>
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
-      <div className="max-w-5xl mx-auto px-5 py-5">
+      {activeTab === "rankings" && (
+        <div className="max-w-5xl mx-auto px-5 py-5">
+          <div className="text-center py-4">
+            <a href="/rankings" className="inline-block px-6 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
+              {t("rankings.title")} {"\u2192"}
+            </a>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 py-5">
         {/* Trail count */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] text-[#8B95A1]">
@@ -236,7 +262,7 @@ function ExploreContent() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

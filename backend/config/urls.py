@@ -8,18 +8,6 @@ from apps.trails.health import HealthCheckView
 from django.http import JsonResponse
 
 
-def _test_storage(request):
-    try:
-        from django.core.files.storage import default_storage
-        from django.core.files.base import ContentFile
-        path = default_storage.save('_test/test.txt', ContentFile(b'hello'))
-        url = default_storage.url(path)
-        default_storage.delete(path)
-        return JsonResponse({"status": "ok", "url": url, "backend": str(type(default_storage).__name__)})
-    except Exception as e:
-        import traceback
-        return JsonResponse({"status": "error", "error": str(e), "trace": traceback.format_exc()[:500]}, status=500)
-
 
 
 def _platform_stats(request):
@@ -33,7 +21,6 @@ def _platform_stats(request):
     return JsonResponse({"countries": countries, "trails": trails, "stories": stories, "users": users})
 
 urlpatterns = [
-    path("_test-storage/", _test_storage),
     path("api/v1/stats/", _platform_stats),
     path("moru-admin-panel/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),

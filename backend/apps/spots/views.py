@@ -11,6 +11,7 @@ from .serializers import SpotCreateSerializer, SpotImageSerializer, SpotSerializ
 class SpotViewSet(viewsets.ModelViewSet):
     queryset = Spot.objects.select_related("trail", "author").prefetch_related("images")
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    filterset_fields = ["trail"]
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):

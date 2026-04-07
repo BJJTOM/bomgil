@@ -734,21 +734,22 @@ export default function WalkScreen() {
         {/* Previous segment summary (resume only) */}
         {prevSegment && (
           <View style={styles.prevSegmentBar}>
+            <Feather name="clock" size={11} color="rgba(255,255,255,0.4)" />
             <Text style={styles.prevSegmentText}>
               이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분
             </Text>
             <View style={styles.prevSegmentDot} />
-            <Text style={styles.prevSegmentText}>
-              총 {stats.distance.toFixed(1)}km · {Math.round(stats.duration / 60)}분
+            <Text style={[styles.prevSegmentText, { color: 'rgba(255,255,255,0.7)' }]}>
+              총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
             </Text>
           </View>
         )}
 
-        {/* Time — shows current segment time for resume, or total */}
+        {/* Time */}
         <Text style={styles.timeLabel}>{prevSegment ? '현재 구간' : '시간'}</Text>
         <Text style={styles.timeValue}>
           {prevSegment
-            ? formatTime(stats.duration - prevSegment.duration)
+            ? formatTime(Math.max(0, stats.duration - prevSegment.duration))
             : formatTime(stats.duration)
           }
         </Text>

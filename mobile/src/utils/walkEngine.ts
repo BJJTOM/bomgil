@@ -192,12 +192,15 @@ export class WalkEngine {
     this.currentSplitStart = Date.now();
   }
 
+  private durationOffset = 0; // seconds from previous segments
+
   /** Set cumulative offsets when resuming a paused walk */
   setOffset(distance: number, steps: number, calories: number, duration: number, elevationGain: number) {
     this.distance = distance;
     this.totalSteps = steps;
     this.totalCalories = calories;
     this.activeTime = duration;
+    this.durationOffset = duration;
     this.elevationGain = elevationGain;
     this.currentSplitDistance = distance;
   }
@@ -400,8 +403,9 @@ export class WalkEngine {
   }
 
   getStats(): WalkStats {
-    const totalTime =
+    const currentSegmentTime =
       this.startTime > 0 ? (Date.now() - this.startTime) / 1000 : 0;
+    const totalTime = this.durationOffset + currentSegmentTime;
     const pace =
       this.activeTime > 0 && this.distance > 0.01
         ? this.activeTime / 60 / this.distance

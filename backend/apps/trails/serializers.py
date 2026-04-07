@@ -57,13 +57,14 @@ class TrailCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trail
         fields = [
-            "title", "title_en", "title_ja",
+            "id", "title", "title_en", "title_ja",
             "description", "description_en", "description_ja",
             "region", "country", "distance_km", "estimated_minutes",
             "difficulty", "elevation_gain",
             "start_lat", "start_lng", "end_lat", "end_lng",
             "path_data", "cover_image", "tag_ids", "best_season", "status",
         ]
+        read_only_fields = ["id"]
 
     def create(self, validated_data):
         tags = validated_data.pop("tag_ids", [])

@@ -22,7 +22,6 @@ interface KmSplit {
   duration: number;
 }
 
-// Kalman filter for GPS noise reduction
 class SimpleKalman {
   private estimate = 0;
   private errorCov = 1;
@@ -59,6 +58,7 @@ export default function WalkPage() {
   const [isAutoPaused, setIsAutoPaused] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [gpsError, setGpsError] = useState("");
+  const [mapReady, setMapReady] = useState(false);
 
   const trackPointsRef = useRef<TrackPoint[]>([]);
   const distanceRef = useRef(0);
@@ -69,13 +69,13 @@ export default function WalkPage() {
   const speedSamplesRef = useRef<number[]>([]);
   const kalmanLat = useRef(new SimpleKalman());
   const kalmanLng = useRef(new SimpleKalman());
+  const initialPosRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef(0);
   const pausedTimeRef = useRef(0);
 
-  // Leaflet refs
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapObjRef = useRef<any>(null);
   const LRef = useRef<any>(null);
@@ -83,7 +83,6 @@ export default function WalkPage() {
   const glowRef = useRef<any>(null);
   const posRef = useRef<any>(null);
   const startMarkerRef = useRef<any>(null);
-  const mapReadyRef = useRef(false);
 
   const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371;
@@ -107,72 +106,56 @@ export default function WalkPage() {
     return `${m}'${String(s).padStart(2, "0")}"`;
   };
 
-  // ── INIT LEAFLET ──
-  useEffect(() => {
-    if (!mapDivRef.current) return;
-    let cancelled = false;
+  // ── INIT MAP (only after countdown ends AND we have GPS position) ──
+  const initMap = useCallback(async (center: { lat: number; lng: number }) => {
+    if (!mapDivRef.current || mapObjRef.current) return;
+    try {
+      const L = (await import("leaflet")).default;
+      LRef.current = L;
 
-    (async () => {
-      try {
-        const L = (await import("leaflet")).default;
-        if (cancelled || !mapDivRef.current) return;
-        LRef.current = L;
+      const map = L.map(mapDivRef.current, {
+        center: [center.lat, center.lng],
+        zoom: 16,
+        zoomControl: false,
+        attributionControl: false,
+        fadeAnimation: false,
+        zoomAnimation: true,
+      });
 
-        const map = L.map(mapDivRef.current, {
-          center: [37.5665, 126.978],
-          zoom: 16,
-          zoomControl: false,
-          attributionControl: false,
-        });
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19,
+        updateWhenZooming: false,
+        updateWhenIdle: true,
+      }).addTo(map);
 
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+      glowRef.current = L.polyline([], { color: "#4ADE80", weight: 14, opacity: 0.12, lineCap: "round", lineJoin: "round" }).addTo(map);
+      polyRef.current = L.polyline([], { color: "#4ADE80", weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round" }).addTo(map);
 
-        glowRef.current = L.polyline([], { color: "#4ADE80", weight: 14, opacity: 0.12, lineCap: "round", lineJoin: "round" }).addTo(map);
-        polyRef.current = L.polyline([], { color: "#4ADE80", weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round" }).addTo(map);
+      const icon = L.divIcon({
+        html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center">
+          <div style="width:14px;height:14px;background:#4ADE80;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(74,222,128,0.6);z-index:2"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:rgba(74,222,128,0.2);animation:mapPulse 2s infinite"></div>
+        </div>`,
+        className: "", iconSize: [28, 28], iconAnchor: [14, 14],
+      });
+      posRef.current = L.marker([center.lat, center.lng], { icon, interactive: false }).addTo(map);
 
-        const icon = L.divIcon({
-          html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center">
-            <div style="width:14px;height:14px;background:#4ADE80;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(74,222,128,0.6);z-index:2"></div>
-            <div style="position:absolute;inset:0;border-radius:50%;background:rgba(74,222,128,0.2);animation:mapPulse 2s infinite"></div>
-          </div>`,
-          className: "", iconSize: [28, 28], iconAnchor: [14, 14],
-        });
-        posRef.current = L.marker([37.5665, 126.978], { icon, interactive: false }).addTo(map);
+      mapObjRef.current = map;
 
-        mapObjRef.current = map;
-        mapReadyRef.current = true;
-
-        // Aggressive invalidation for reliable tile loading
-        [100, 300, 600, 1000, 2000].forEach(ms =>
-          setTimeout(() => { try { map.invalidateSize(); } catch {} }, ms)
-        );
-      } catch (e) {
-        console.error("Leaflet init:", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (mapObjRef.current) {
-        try { mapObjRef.current.remove(); } catch {}
-        mapObjRef.current = null;
-        mapReadyRef.current = false;
-      }
-    };
+      // Single delayed invalidation after DOM is stable
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try { map.invalidateSize(); } catch {}
+          setMapReady(true);
+        }, 100);
+      });
+    } catch (e) {
+      console.error("Leaflet init:", e);
+    }
   }, []);
 
-  // Invalidate when state changes (map visibility changes)
-  useEffect(() => {
-    if (state !== "countdown" && mapObjRef.current) {
-      [50, 150, 300, 600, 1000, 2000].forEach(ms =>
-        setTimeout(() => { try { mapObjRef.current?.invalidateSize(); } catch {} }, ms)
-      );
-    }
-  }, [state]);
-
-  // ── MAP UPDATE ──
+  // ── MAP POINT UPDATE ──
   const addPointToMap = useCallback((lat: number, lng: number) => {
-    if (!mapReadyRef.current) return;
     const map = mapObjRef.current;
     const L = LRef.current;
     if (!map || !L) return;
@@ -201,7 +184,6 @@ export default function WalkPage() {
     const acc = pos.coords.accuracy;
     const ts = pos.timestamp || Date.now();
 
-    // Reject very inaccurate readings
     if (acc > 50) return;
 
     const lat = kalmanLat.current.filter(rawLat);
@@ -213,47 +195,31 @@ export default function WalkPage() {
     if (points.length > 0) {
       const last = points[points.length - 1];
       const d = haversine(last.lat, last.lng, lat, lng);
-
-      if (d < 0.003) return; // < 3m jitter
+      if (d < 0.003) return;
       const timeDiff = (ts - new Date(last.time).getTime()) / 1000;
       if (timeDiff <= 0) return;
-
       const speedKmh = (d / timeDiff) * 3600;
       pointSpeed = speedKmh;
+      if (speedKmh > 20) return;
 
-      if (speedKmh > 20) return; // > 20 km/h = vehicle
-
-      // Auto-pause detection
       speedSamplesRef.current.push(speedKmh);
       if (speedSamplesRef.current.length > 5) speedSamplesRef.current.shift();
       const avgSpd = speedSamplesRef.current.reduce((a, b) => a + b, 0) / speedSamplesRef.current.length;
+      if (avgSpd < 0.5) { setIsAutoPaused(true); return; }
+      else { setIsAutoPaused(false); }
 
-      if (avgSpd < 0.5) {
-        setIsAutoPaused(true);
-        return;
-      } else {
-        setIsAutoPaused(false);
-      }
-
-      // Accumulate distance
       distanceRef.current += d;
       setDistance(distanceRef.current);
       setSpeed(speedKmh);
-
-      // Derived stats
       setSteps(Math.round(distanceRef.current * 1350));
       setCalories(Math.round(distanceRef.current * 65));
 
-      // Pace
       if (distanceRef.current > 0.01) {
         const elapsedSec = (Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000;
         setAvgPace(elapsedSec / 60 / distanceRef.current);
       }
-      if (d > 0.001 && timeDiff > 0) {
-        setCurrentPace(timeDiff / 60 / d);
-      }
+      if (d > 0.001 && timeDiff > 0) setCurrentPace(timeDiff / 60 / d);
 
-      // Elevation
       if (alt != null) {
         if (lastAltRef.current != null) {
           const diff = alt - lastAltRef.current;
@@ -261,12 +227,9 @@ export default function WalkPage() {
             if (diff > 0) { elevGainRef.current += diff; setElevGain(Math.round(elevGainRef.current)); }
             lastAltRef.current = alt;
           }
-        } else {
-          lastAltRef.current = alt;
-        }
+        } else { lastAltRef.current = alt; }
       }
 
-      // Splits
       const currentKm = Math.floor(distanceRef.current);
       if (currentKm > splitsRef.current.length) {
         const splitDur = (ts - splitStartRef.current) / 1000;
@@ -277,12 +240,9 @@ export default function WalkPage() {
 
       addPointToMap(lat, lng);
     } else {
-      // First point
-      if (mapObjRef.current) {
-        mapObjRef.current.setView([lat, lng], 16);
-        posRef.current?.setLatLng([lat, lng]);
-        setTimeout(() => { try { mapObjRef.current?.invalidateSize(); } catch {} }, 200);
-      }
+      // First GPS point during walk — update map position
+      posRef.current?.setLatLng([lat, lng]);
+      mapObjRef.current?.setView([lat, lng], 16, { animate: false });
       splitStartRef.current = ts;
     }
 
@@ -295,20 +255,18 @@ export default function WalkPage() {
     else setGpsError(ko ? "위치를 가져올 수 없습니다" : "Unable to get location");
   }, [ko]);
 
-  // ── COUNTDOWN ──
+  // ── COUNTDOWN: get GPS position first, then start ──
   useEffect(() => {
     if (state !== "countdown") return;
 
+    // Get initial position during countdown
     navigator.geolocation?.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         kalmanLat.current.filter(lat);
         kalmanLng.current.filter(lng);
-        if (mapObjRef.current) {
-          mapObjRef.current.setView([lat, lng], 16);
-          posRef.current?.setLatLng([lat, lng]);
-        }
+        initialPosRef.current = { lat, lng };
       },
       handleGPSError,
       { enableHighAccuracy: true, timeout: 5000 }
@@ -326,6 +284,10 @@ export default function WalkPage() {
   const doStartWalk = () => {
     setState("walking");
     startTimeRef.current = Date.now();
+
+    // Initialize map with known position (no flash)
+    const center = initialPosRef.current || { lat: 37.5665, lng: 126.978 };
+    initMap(center);
 
     timerRef.current = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000));
@@ -385,6 +347,7 @@ export default function WalkPage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+      if (mapObjRef.current) { try { mapObjRef.current.remove(); } catch {} }
     };
   }, []);
 
@@ -396,6 +359,12 @@ export default function WalkPage() {
         @keyframes mapPulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }
           50% { transform: scale(1.5); opacity: 0; }
+        }
+        .walk-map .leaflet-container {
+          background: #0a0a0a !important;
+        }
+        .walk-map .leaflet-tile-pane {
+          will-change: transform;
         }
       `}</style>
 
@@ -413,19 +382,17 @@ export default function WalkPage() {
         </div>
       )}
 
-      {/* === MAP (always rendered, opacity controlled) === */}
-      <div className="relative flex-shrink-0" style={{ height: "48%", opacity: isWalking ? 1 : 0 }}>
-        <div ref={mapDivRef} className="absolute inset-0" />
+      {/* === MAP (only rendered after countdown) === */}
+      {isWalking && (
+        <div className="walk-map relative flex-shrink-0 overflow-hidden" style={{ height: "48%", background: "#0a0a0a" }}>
+          <div ref={mapDivRef} className="absolute inset-0" style={{ opacity: mapReady ? 1 : 0, transition: "opacity 0.3s ease" }} />
 
-        {/* GPS Error */}
-        {gpsError && isWalking && (
-          <div className="absolute top-12 left-3 right-3 z-10 bg-red-500/90 backdrop-blur rounded-xl px-4 py-2.5 text-white text-sm font-medium text-center">
-            {gpsError}
-          </div>
-        )}
+          {gpsError && (
+            <div className="absolute top-12 left-3 right-3 z-10 bg-red-500/90 backdrop-blur rounded-xl px-4 py-2.5 text-white text-sm font-medium text-center">
+              {gpsError}
+            </div>
+          )}
 
-        {/* Status pill */}
-        {isWalking && (
           <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-full px-3.5 py-1.5" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}>
             <div className="w-2 h-2 rounded-full" style={{
               background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15",
@@ -435,26 +402,21 @@ export default function WalkPage() {
             </span>
             <span className="text-white/50 text-[13px] font-mono">{formatTime(elapsed)}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* === STATS === */}
       {isWalking && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-auto">
-          {/* Distance */}
           <div className="flex items-baseline mb-0.5">
             <span className="text-[48px] font-extrabold text-white tracking-tighter leading-none">{distance.toFixed(2)}</span>
             <span className="text-[15px] font-medium text-white/35 ml-1.5">km</span>
           </div>
-
-          {/* Pace */}
           <div className="flex items-baseline gap-1.5 mb-3">
             <span className="text-[11px] text-white/35">{ko ? "페이스" : "Pace"}</span>
             <span className="text-[20px] font-bold text-[#4ADE80]">{formatPace(currentPace)}</span>
             <span className="text-[11px] text-white/25">/km</span>
           </div>
-
-          {/* 4 stat grid */}
           <div className="w-full flex rounded-2xl py-3 mb-2" style={{ background: "rgba(255,255,255,0.04)" }}>
             {[
               { val: steps.toLocaleString(), label: ko ? "걸음" : "Steps" },
@@ -468,14 +430,10 @@ export default function WalkPage() {
               </div>
             ))}
           </div>
-
-          {/* Avg pace */}
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] text-white/30">{ko ? "평균 페이스" : "Avg Pace"}</span>
             <span className="text-[14px] font-semibold text-white/60">{formatPace(avgPace)}</span>
           </div>
-
-          {/* Splits */}
           {splits.length > 0 && (
             <div className="w-full rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">{ko ? "구간 기록" : "Splits"}</p>

@@ -56,6 +56,7 @@ import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import HealthImportScreen from '../screens/HealthImportScreen';
 import PasswordChangeScreen from '../screens/PasswordChangeScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
+import FollowListScreen from '../screens/FollowListScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -229,6 +230,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
         <Stack.Screen name="HealthImport" component={HealthImportScreen} />
         <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
+        <Stack.Screen name="FollowList" component={FollowListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

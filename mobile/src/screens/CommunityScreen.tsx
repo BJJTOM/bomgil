@@ -37,7 +37,8 @@ export default function CommunityScreen() {
       return data as { unread_count: number };
     },
     enabled: isAuthenticated,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchInterval: 120000,
   });
   const hasUnread = (unreadData?.unread_count ?? 0) > 0;
 

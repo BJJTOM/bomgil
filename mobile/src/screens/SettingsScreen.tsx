@@ -19,7 +19,7 @@ import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
 import { useThemeStore } from '../stores/theme';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
 
@@ -40,6 +40,7 @@ interface Section {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
   const { user, isAuthenticated, logout, setUser } = useAuthStore();
 
   const handlePickPhoto = async () => {
@@ -53,24 +54,45 @@ export default function SettingsScreen() {
         type: asset.type || 'image/jpeg',
         name: asset.fileName || 'profile.jpg',
       } as any);
-      const { data } = await api.patch('/auth/me/', formData, {
-        
+      const token = useAuthStore.getState().accessToken;
+      const res = await fetch('https://api.moruwalk.com/api/v1/auth/me/', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
-      setUser(data);
-    } catch {}
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        Alert.alert('완료', '프로필 사진이 변경되었습니다.');
+      } else {
+        Alert.alert('오류', '사진 업로드에 실패했습니다.');
+      }
+    } catch {
+      Alert.alert('오류', '사진 업로드에 실패했습니다.');
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    try {
+      await api.patch('/auth/me/', { profile_image: null });
+      setUser({ ...user, profile_image: null } as any);
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      Alert.alert('완료', '프로필 사진이 삭제되었습니다.');
+    } catch {
+      Alert.alert('오류', '삭제에 실패했습니다.');
+    }
   };
 
   const handleAvatarPress = () => {
-    Alert.alert('프로필 사진', '', [
-      { text: '사진 변경', onPress: handlePickPhoto },
-      { text: '사진 삭제', style: 'destructive', onPress: async () => {
-        try {
-          await api.patch('/auth/me/', { profile_image: null });
-          setUser({ ...user, profile_image: null });
-        } catch {}
-      }},
-      { text: '취소', style: 'cancel' },
-    ]);
+    const options: any[] = [
+      { text: '앨범에서 선택', onPress: handlePickPhoto },
+    ];
+    if (user?.profile_image) {
+      options.push({ text: '사진 삭제', style: 'destructive', onPress: handleDeletePhoto });
+    }
+    options.push({ text: '취소', style: 'cancel' });
+    Alert.alert('프로필 사진', '프로필 사진을 변경하세요', options);
   };
 
   // Fetch profile data with follower/following counts
@@ -204,7 +226,6 @@ export default function SettingsScreen() {
         { icon: 'bell', label: '공지사항', onPress: () => navigation.navigate('Notice') },
         { icon: 'file-text', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
         { icon: 'shield', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
-        { icon: 'code', label: '오픈소스 라이선스', onPress: () => {} },
         { icon: 'info', label: '버전 정보', value: '1.0.0' },
       ],
     },
@@ -228,7 +249,7 @@ export default function SettingsScreen() {
         {/* User Card */}
         {isAuthenticated && user ? (
           <View style={[styles.userCard, { backgroundColor: cardBg }]}>
-            <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
+            <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7} style={{ position: 'relative' }}>
               <View style={styles.avatar}>
                 {user.profile_image ? (
                   <Image
@@ -236,8 +257,11 @@ export default function SettingsScreen() {
                     style={styles.avatarImage}
                   />
                 ) : (
-                  <Text style={styles.avatarEmoji}>{'\uD83D\uDC64'}</Text>
+                  <Feather name="user" size={28} color={colors.textTertiary} />
                 )}
+              </View>
+              <View style={styles.avatarCameraBadge}>
+                <Feather name="camera" size={11} color="#fff" />
               </View>
             </TouchableOpacity>
             <TouchableOpacity
@@ -259,7 +283,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={styles.followStatItem}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              onPress={() => navigation.navigate('FollowList', { nickname: user.nickname, tab: 'followers' })}>
               <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.follower_count ?? 0}</Text>
               <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로워</Text>
             </TouchableOpacity>
@@ -267,7 +291,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={styles.followStatItem}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
+              onPress={() => navigation.navigate('FollowList', { nickname: user.nickname, tab: 'following' })}>
               <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.following_count ?? 0}</Text>
               <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로잉</Text>
             </TouchableOpacity>
@@ -513,6 +537,19 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 56,
     height: 56,
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   avatarEmoji: {
     fontSize: 24,

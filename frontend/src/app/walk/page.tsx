@@ -22,7 +22,7 @@ interface KmSplit {
   duration: number;
 }
 
-// Kalman filter for GPS noise
+// Kalman filter for GPS noise reduction
 class SimpleKalman {
   private estimate = 0;
   private errorCov = 1;
@@ -58,6 +58,7 @@ export default function WalkPage() {
   const [splits, setSplits] = useState<KmSplit[]>([]);
   const [isAutoPaused, setIsAutoPaused] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
+  const [gpsError, setGpsError] = useState("");
 
   const trackPointsRef = useRef<TrackPoint[]>([]);
   const distanceRef = useRef(0);
@@ -74,7 +75,7 @@ export default function WalkPage() {
   const startTimeRef = useRef(0);
   const pausedTimeRef = useRef(0);
 
-  // Leaflet
+  // Leaflet refs
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapObjRef = useRef<any>(null);
   const LRef = useRef<any>(null);
@@ -106,7 +107,7 @@ export default function WalkPage() {
     return `${m}'${String(s).padStart(2, "0")}"`;
   };
 
-  // ---- INIT LEAFLET (runs once on mount, hidden during countdown) ----
+  // ── INIT LEAFLET ──
   useEffect(() => {
     if (!mapDivRef.current) return;
     let cancelled = false;
@@ -126,12 +127,9 @@ export default function WalkPage() {
 
         L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
 
-        // Glow line
         glowRef.current = L.polyline([], { color: "#4ADE80", weight: 14, opacity: 0.12, lineCap: "round", lineJoin: "round" }).addTo(map);
-        // Main line
         polyRef.current = L.polyline([], { color: "#4ADE80", weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round" }).addTo(map);
 
-        // Position marker
         const icon = L.divIcon({
           html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center">
             <div style="width:14px;height:14px;background:#4ADE80;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(74,222,128,0.6);z-index:2"></div>
@@ -144,9 +142,10 @@ export default function WalkPage() {
         mapObjRef.current = map;
         mapReadyRef.current = true;
 
-        // Resize after a beat
-        setTimeout(() => { try { map.invalidateSize(); } catch {} }, 300);
-        setTimeout(() => { try { map.invalidateSize(); } catch {} }, 1000);
+        // Aggressive invalidation for reliable tile loading
+        [100, 300, 600, 1000, 2000].forEach(ms =>
+          setTimeout(() => { try { map.invalidateSize(); } catch {} }, ms)
+        );
       } catch (e) {
         console.error("Leaflet init:", e);
       }
@@ -162,17 +161,16 @@ export default function WalkPage() {
     };
   }, []);
 
-  // Invalidate map size when walking starts (map becomes visible)
+  // Invalidate when state changes (map visibility changes)
   useEffect(() => {
     if (state !== "countdown" && mapObjRef.current) {
-      // Multiple invalidations to catch layout reflow
-      [50, 150, 300, 600, 1000].forEach(ms =>
+      [50, 150, 300, 600, 1000, 2000].forEach(ms =>
         setTimeout(() => { try { mapObjRef.current?.invalidateSize(); } catch {} }, ms)
       );
     }
   }, [state]);
 
-  // ---- ADD POINT TO MAP (imperative, no re-render) ----
+  // ── MAP UPDATE ──
   const addPointToMap = useCallback((lat: number, lng: number) => {
     if (!mapReadyRef.current) return;
     const map = mapObjRef.current;
@@ -185,7 +183,6 @@ export default function WalkPage() {
     posRef.current?.setLatLng(ll);
     map.panTo(ll, { animate: true, duration: 0.5 });
 
-    // Start marker (first point only)
     if (!startMarkerRef.current) {
       const sIcon = L.divIcon({
         html: `<div style="width:14px;height:14px;background:#34C759;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(52,199,89,0.5)"></div>`,
@@ -195,14 +192,18 @@ export default function WalkPage() {
     }
   }, []);
 
-  // ---- GPS HANDLER ----
+  // ── GPS HANDLER ──
   const handleGPS = useCallback((pos: GeolocationPosition) => {
+    setGpsError("");
     const rawLat = pos.coords.latitude;
     const rawLng = pos.coords.longitude;
     const alt = pos.coords.altitude;
+    const acc = pos.coords.accuracy;
     const ts = pos.timestamp || Date.now();
 
-    // Kalman filter
+    // Reject very inaccurate readings
+    if (acc > 50) return;
+
     const lat = kalmanLat.current.filter(rawLat);
     const lng = kalmanLng.current.filter(rawLng);
 
@@ -213,19 +214,16 @@ export default function WalkPage() {
       const last = points[points.length - 1];
       const d = haversine(last.lat, last.lng, lat, lng);
 
-      // Jitter filter: < 3m
-      if (d < 0.003) return;
-
+      if (d < 0.003) return; // < 3m jitter
       const timeDiff = (ts - new Date(last.time).getTime()) / 1000;
       if (timeDiff <= 0) return;
 
       const speedKmh = (d / timeDiff) * 3600;
       pointSpeed = speedKmh;
 
-      // Reject > 20 km/h
-      if (speedKmh > 20) return;
+      if (speedKmh > 20) return; // > 20 km/h = vehicle
 
-      // Auto-pause check
+      // Auto-pause detection
       speedSamplesRef.current.push(speedKmh);
       if (speedSamplesRef.current.length > 5) speedSamplesRef.current.shift();
       const avgSpd = speedSamplesRef.current.reduce((a, b) => a + b, 0) / speedSamplesRef.current.length;
@@ -237,17 +235,16 @@ export default function WalkPage() {
         setIsAutoPaused(false);
       }
 
-      // Add distance
+      // Accumulate distance
       distanceRef.current += d;
       setDistance(distanceRef.current);
       setSpeed(speedKmh);
 
-      // Stats
-      const totalSteps = Math.round(distanceRef.current * 1350);
-      setSteps(totalSteps);
+      // Derived stats
+      setSteps(Math.round(distanceRef.current * 1350));
       setCalories(Math.round(distanceRef.current * 65));
 
-      // Current pace (from recent points)
+      // Pace
       if (distanceRef.current > 0.01) {
         const elapsedSec = (Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000;
         setAvgPace(elapsedSec / 60 / distanceRef.current);
@@ -261,10 +258,7 @@ export default function WalkPage() {
         if (lastAltRef.current != null) {
           const diff = alt - lastAltRef.current;
           if (Math.abs(diff) >= 1) {
-            if (diff > 0) {
-              elevGainRef.current += diff;
-              setElevGain(Math.round(elevGainRef.current));
-            }
+            if (diff > 0) { elevGainRef.current += diff; setElevGain(Math.round(elevGainRef.current)); }
             lastAltRef.current = alt;
           }
         } else {
@@ -276,36 +270,35 @@ export default function WalkPage() {
       const currentKm = Math.floor(distanceRef.current);
       if (currentKm > splitsRef.current.length) {
         const splitDur = (ts - splitStartRef.current) / 1000;
-        const split: KmSplit = {
-          km: currentKm,
-          pace: formatPace(splitDur / 60),
-          duration: splitDur,
-        };
-        splitsRef.current.push(split);
+        splitsRef.current.push({ km: currentKm, pace: formatPace(splitDur / 60), duration: splitDur });
         setSplits([...splitsRef.current]);
         splitStartRef.current = ts;
       }
 
-      // Update map
       addPointToMap(lat, lng);
     } else {
-      // First point — center map
+      // First point
       if (mapObjRef.current) {
         mapObjRef.current.setView([lat, lng], 16);
         posRef.current?.setLatLng([lat, lng]);
+        setTimeout(() => { try { mapObjRef.current?.invalidateSize(); } catch {} }, 200);
       }
       splitStartRef.current = ts;
     }
 
-    const point: TrackPoint = { lat, lng, ele: alt, time: new Date(ts).toISOString(), speed: pointSpeed };
-    trackPointsRef.current.push(point);
+    trackPointsRef.current.push({ lat, lng, ele: alt, time: new Date(ts).toISOString(), speed: pointSpeed });
   }, [addPointToMap]);
 
-  // ---- COUNTDOWN ----
+  const handleGPSError = useCallback((err: GeolocationPositionError) => {
+    if (err.code === 1) setGpsError(ko ? "위치 권한을 허용해주세요" : "Location permission required");
+    else if (err.code === 2) setGpsError(ko ? "GPS 신호를 찾을 수 없습니다" : "GPS signal unavailable");
+    else setGpsError(ko ? "위치를 가져올 수 없습니다" : "Unable to get location");
+  }, [ko]);
+
+  // ── COUNTDOWN ──
   useEffect(() => {
     if (state !== "countdown") return;
 
-    // Pre-fetch GPS
     navigator.geolocation?.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
@@ -317,7 +310,7 @@ export default function WalkPage() {
           posRef.current?.setLatLng([lat, lng]);
         }
       },
-      () => {},
+      handleGPSError,
       { enableHighAccuracy: true, timeout: 5000 }
     );
 
@@ -339,7 +332,7 @@ export default function WalkPage() {
     }, 1000);
 
     watchIdRef.current = navigator.geolocation.watchPosition(
-      handleGPS, () => {},
+      handleGPS, handleGPSError,
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
   };
@@ -358,7 +351,7 @@ export default function WalkPage() {
       setElapsed(Math.floor((Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000));
     }, 1000);
     watchIdRef.current = navigator.geolocation.watchPosition(
-      handleGPS, () => {},
+      handleGPS, handleGPSError,
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
   };
@@ -388,7 +381,6 @@ export default function WalkPage() {
     router.push(`/walk/complete?${params.toString()}`);
   };
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -399,8 +391,7 @@ export default function WalkPage() {
   const isWalking = state === "walking" || state === "paused";
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#0a0a0a" }}>
-      {/* Pulse animation */}
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0a0a0a" }}>
       <style jsx global>{`
         @keyframes mapPulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }
@@ -408,105 +399,90 @@ export default function WalkPage() {
         }
       `}</style>
 
-      {/* === COUNTDOWN (full screen overlay) === */}
+      {/* === COUNTDOWN === */}
       {state === "countdown" && (
-        <div style={{ position: "absolute", inset: 0, zIndex: 60, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <button onClick={() => router.back()} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>&larr;</span>
+        <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center" style={{ background: "#0a0a0a" }}>
+          <button onClick={() => router.back()} className="absolute top-14 left-5 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <span className="text-white/50 text-lg">&larr;</span>
           </button>
-          <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 14, fontWeight: 600, letterSpacing: "0.4em", marginBottom: 48 }}>MORU</p>
-          <div style={{ width: 160, height: 160, borderRadius: 80, background: "#2D4A2E", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 60px rgba(45,74,46,0.4)" }} className="animate-pulse">
-            <span style={{ color: "#fff", fontSize: 64, fontWeight: 800 }}>{countdown}</span>
+          <p className="text-white/15 text-sm font-semibold tracking-[0.4em] mb-12">MORU</p>
+          <div className="w-40 h-40 rounded-full flex items-center justify-center animate-pulse" style={{ background: "#2D4A2E", boxShadow: "0 0 60px rgba(45,74,46,0.4)" }}>
+            <span className="text-white text-[64px] font-extrabold">{countdown}</span>
           </div>
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 14, marginTop: 48 }}>{ko ? "경로 자동 기록" : "Route auto-recording"}</p>
+          <p className="text-white/20 text-sm mt-12">{ko ? "GPS 신호 수신 중..." : "Acquiring GPS..."}</p>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* WALKING LAYOUT: map (top) | stats | controls */}
-      {/* ============================================ */}
+      {/* === MAP (always rendered, opacity controlled) === */}
+      <div className="relative flex-shrink-0" style={{ height: "48%", opacity: isWalking ? 1 : 0 }}>
+        <div ref={mapDivRef} className="absolute inset-0" />
 
-      {/* MAP SECTION — fixed height, no overlap */}
-      <div style={{
-        height: "48%",
-        width: "100%",
-        position: "relative",
-        overflow: "hidden",
-        visibility: isWalking ? "visible" : "hidden",
-      }}>
-        <div ref={mapDivRef} style={{ position: "absolute", inset: 0 }} />
+        {/* GPS Error */}
+        {gpsError && isWalking && (
+          <div className="absolute top-12 left-3 right-3 z-10 bg-red-500/90 backdrop-blur rounded-xl px-4 py-2.5 text-white text-sm font-medium text-center">
+            {gpsError}
+          </div>
+        )}
 
-        {/* Status pill — inside map bounds */}
+        {/* Status pill */}
         {isWalking && (
-          <div style={{
-            position: "absolute", top: 12, left: 12, zIndex: 10,
-            display: "flex", alignItems: "center", gap: 8,
-            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)",
-            borderRadius: 20, padding: "6px 14px",
-          }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: 4,
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-full px-3.5 py-1.5" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}>
+            <div className="w-2 h-2 rounded-full" style={{
               background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15",
             }} />
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 600 }}>
+            <span className="text-white/85 text-[13px] font-semibold">
               {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시정지" : "Auto-paused") : (ko ? "기록 중" : "REC")) : (ko ? "일시정지" : "Paused")}
             </span>
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontFamily: "monospace" }}>{formatTime(elapsed)}</span>
+            <span className="text-white/50 text-[13px] font-mono">{formatTime(elapsed)}</span>
           </div>
         )}
       </div>
 
-      {/* STATS SECTION — below map, scrollable */}
+      {/* === STATS === */}
       {isWalking && (
-        <div style={{
-          height: "38%",
-          width: "100%",
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "8px 24px",
-        }}>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-auto">
           {/* Distance */}
-          <div style={{ display: "flex", alignItems: "baseline", marginBottom: 2 }}>
-            <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", letterSpacing: -2, lineHeight: 1 }}>{distance.toFixed(2)}</span>
-            <span style={{ fontSize: 15, fontWeight: 500, color: "rgba(255,255,255,0.35)", marginLeft: 6 }}>km</span>
+          <div className="flex items-baseline mb-0.5">
+            <span className="text-[48px] font-extrabold text-white tracking-tighter leading-none">{distance.toFixed(2)}</span>
+            <span className="text-[15px] font-medium text-white/35 ml-1.5">km</span>
           </div>
 
           {/* Pace */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{ko ? "페이스" : "Pace"}</span>
-            <span style={{ fontSize: 20, fontWeight: 700, color: "#4ADE80" }}>{formatPace(currentPace)}</span>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>/km</span>
+          <div className="flex items-baseline gap-1.5 mb-3">
+            <span className="text-[11px] text-white/35">{ko ? "페이스" : "Pace"}</span>
+            <span className="text-[20px] font-bold text-[#4ADE80]">{formatPace(currentPace)}</span>
+            <span className="text-[11px] text-white/25">/km</span>
           </div>
 
-          {/* 4-stat grid */}
-          <div style={{
-            width: "100%", display: "flex", background: "rgba(255,255,255,0.04)",
-            borderRadius: 16, padding: "12px 0", marginBottom: 8,
-          }}>
+          {/* 4 stat grid */}
+          <div className="w-full flex rounded-2xl py-3 mb-2" style={{ background: "rgba(255,255,255,0.04)" }}>
             {[
               { val: steps.toLocaleString(), label: ko ? "걸음" : "Steps" },
               { val: String(calories), label: "kcal" },
               { val: speed.toFixed(1), label: "km/h" },
               { val: elevGain > 0 ? `+${elevGain}m` : "0m", label: ko ? "고도" : "Elev" },
             ].map((s, i) => (
-              <div key={i} style={{ flex: 1, textAlign: "center", borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{s.val}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>{s.label}</div>
+              <div key={i} className="flex-1 text-center" style={{ borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <div className="text-[15px] font-bold text-white">{s.val}</div>
+                <div className="text-[10px] text-white/35 uppercase">{s.label}</div>
               </div>
             ))}
           </div>
 
-          {/* Live splits */}
+          {/* Avg pace */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] text-white/30">{ko ? "평균 페이스" : "Avg Pace"}</span>
+            <span className="text-[14px] font-semibold text-white/60">{formatPace(avgPace)}</span>
+          </div>
+
+          {/* Splits */}
           {splits.length > 0 && (
-            <div style={{ width: "100%", background: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 12 }}>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{ko ? "구간 기록" : "Splits"}</p>
+            <div className="w-full rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">{ko ? "구간 기록" : "Splits"}</p>
               {splits.map((s) => (
-                <div key={s.km} style={{ display: "flex", alignItems: "center", padding: "3px 0", gap: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", width: 32 }}>{s.km}km</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#4ADE80" }}>{s.pace}</span>
+                <div key={s.km} className="flex items-center py-0.5 gap-3">
+                  <span className="text-[12px] font-semibold text-white/50 w-8">{s.km}km</span>
+                  <span className="text-[14px] font-bold text-[#4ADE80]">{s.pace}</span>
                 </div>
               ))}
             </div>
@@ -514,29 +490,19 @@ export default function WalkPage() {
         </div>
       )}
 
-      {/* CONTROLS — fixed at bottom */}
+      {/* === CONTROLS === */}
       {isWalking && (
-        <div style={{
-          height: "14%",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 28,
-        }}>
+        <div className="flex-shrink-0 flex items-center justify-center gap-7 py-4 pb-safe" style={{ height: 100 }}>
           {state === "walking" ? (
-            <button onClick={pauseWalk} style={{ width: 68, height: 68, borderRadius: 34, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#111">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
+            <button onClick={pauseWalk} className="w-[68px] h-[68px] rounded-full bg-white flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#111"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
             </button>
           ) : (
             <>
-              <button onClick={() => setShowStopModal(true)} style={{ width: 56, height: 56, borderRadius: 28, background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
+              <button onClick={() => setShowStopModal(true)} className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
               </button>
-              <button onClick={resumeWalk} style={{ width: 68, height: 68, borderRadius: 34, background: "#2D4A2E", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" }}>
+              <button onClick={resumeWalk} className="w-[68px] h-[68px] rounded-full flex items-center justify-center" style={{ background: "#2D4A2E" }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21" /></svg>
               </button>
             </>
@@ -547,7 +513,7 @@ export default function WalkPage() {
       {/* === STOP MODAL === */}
       {showStopModal && (
         <div className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center px-8">
-          <div className="bg-[#1a1a1a] rounded-[24px] p-7 w-full max-w-[340px] text-center">
+          <div className="bg-[#1a1a1a] rounded-3xl p-7 w-full max-w-[340px] text-center">
             <div className="w-14 h-14 rounded-full bg-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <span className="text-[28px]">🚶</span>
             </div>

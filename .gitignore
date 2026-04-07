@@ -41,8 +41,12 @@ docker-compose.override.yml
 *.key
 *.keystore
 *.jks
+*.p12
+*.pfx
 credentials.json
 secrets.json
+.env.prod
+.env.production
 
 # Media uploads (not backend/apps/media Django app)
 /media/

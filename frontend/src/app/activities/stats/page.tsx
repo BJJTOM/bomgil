@@ -115,6 +115,25 @@ export default function WalkStatsPage() {
             </div>
           </div>
         )}
+        {/* Badges */}
+        <div className="bg-white rounded-2xl p-5">
+          <h2 className="text-[15px] font-bold text-gray-900 mb-4">획득한 배지</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { key: "first_walk", emoji: "🥾", label: "첫 걸음", condition: (stats?.track_count || 0) >= 1 },
+              { key: "explorer", emoji: "🧭", label: "탐험가", condition: (stats?.track_count || 0) >= 10 },
+              { key: "walker_10km", emoji: "🏃", label: "10km 달성", condition: (stats?.total_distance_km || 0) >= 10 },
+              { key: "walker_50km", emoji: "🌟", label: "50km 달성", condition: (stats?.total_distance_km || 0) >= 50 },
+              { key: "walker_100km", emoji: "🏆", label: "100km 달성", condition: (stats?.total_distance_km || 0) >= 100 },
+              { key: "streak_7", emoji: "🔥", label: "7일 연속", condition: streak >= 7 },
+            ].map((badge) => (
+              <div key={badge.key} className={`text-center py-3 rounded-xl ${badge.condition ? "bg-emerald-50" : "bg-gray-50 opacity-40"}`}>
+                <span className="text-2xl">{badge.emoji}</span>
+                <p className="text-[11px] text-gray-600 mt-1 font-medium">{badge.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   );

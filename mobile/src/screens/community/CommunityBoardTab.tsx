@@ -46,6 +46,7 @@ export default function CommunityBoardTab() {
   const { isAuthenticated } = useAuthStore();
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchVisible, setSearchVisible] = useState(false);
 
   const { data: posts = [], isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
     queryKey: ['community-posts', category, searchQuery],
@@ -137,25 +138,32 @@ export default function CommunityBoardTab() {
 
   return (
     <View style={styles.container}>
-      {/* Search bar */}
-      <View style={styles.searchBar}>
-        <View style={styles.searchInputWrap}>
-          <Text style={styles.searchIcon}>Q</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="게시글 검색"
-            placeholderTextColor={colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+      {/* Search — icon only, expands on tap */}
+      {searchVisible ? (
+        <View style={styles.searchBar}>
+          <View style={styles.searchInputWrap}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="게시글 검색"
+              placeholderTextColor={colors.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              autoFocus
+            />
+            <TouchableOpacity onPress={() => { setSearchVisible(false); setSearchQuery(''); }}>
               <Text style={styles.searchClear}>✕</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
-      </View>
+      ) : (
+        <View style={styles.searchIconRow}>
+          <TouchableOpacity style={styles.searchIconBtn} onPress={() => setSearchVisible(true)}>
+            <Text style={{ fontSize: 18 }}>🔍</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Category filter — horizontal scroll, 잘리지 않게 */}
       <ScrollView
@@ -218,9 +226,23 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
   searchClear: { fontSize: 14, color: colors.textTertiary, padding: 4 },
 
-  // Category — ScrollView로 잘리지 않게
-  categoryBar: { flexGrow: 0, marginBottom: 4 },
-  categoryList: { paddingHorizontal: 20, paddingVertical: 8, gap: 8 },
+  searchIconRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 4,
+  },
+  searchIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F7F8FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Category — ScrollView
+  categoryBar: { flexGrow: 0, marginBottom: 4, minHeight: 44 },
+  categoryList: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   categoryChip: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
     backgroundColor: '#F7F8FA',

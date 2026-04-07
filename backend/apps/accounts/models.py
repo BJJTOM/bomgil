@@ -178,7 +178,7 @@ class Notification(models.Model):
         ('activity', '활동'),
     ]
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='account_notifications')
     actor = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications_sent'
     )

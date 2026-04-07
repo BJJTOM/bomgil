@@ -51,7 +51,7 @@ export default function SettingsScreen() {
         name: asset.fileName || 'profile.jpg',
       } as any);
       const { data } = await api.patch('/auth/me/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        
       });
       setUser(data);
     } catch {}

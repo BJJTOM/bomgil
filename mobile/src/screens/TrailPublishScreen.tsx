@@ -264,10 +264,7 @@ export default function TrailPublishScreen() {
             type: coverImage.type || 'image/jpeg',
             name: coverImage.fileName || 'cover.jpg',
           } as any);
-          await api.patch(`/trails/${trailId}/`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            transformRequest: (data: any) => data, // prevent axios from serializing FormData
-          });
+          await api.patch(`/trails/${trailId}/`, formData);
         } catch (imgErr) {
           console.log('Cover image upload failed:', imgErr);
         }

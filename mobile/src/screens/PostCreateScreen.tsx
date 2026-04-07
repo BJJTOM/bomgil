@@ -120,9 +120,7 @@ export default function PostCreateScreen() {
             name: img.fileName || `photo_${i}_${Date.now()}.jpg`,
           } as any);
         });
-        await api.post(`/community/posts/${postId}/images/`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post(`/community/posts/${postId}/images/`, formData);
       }
 
       queryClient.invalidateQueries({ queryKey: ['community-posts'] });

@@ -160,17 +160,22 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* 3-column stats */}
+          {/* Stats */}
           <div className="flex items-center justify-center mt-4">
             <div className="flex-1 text-center py-2">
               <p className="text-[18px] font-bold text-[#191F28]">{profile.trail_count || 0}</p>
               <p className="text-[11px] text-[#B0B8C1]">코스</p>
             </div>
             <div className="w-px h-8 bg-[#F2F4F6]" />
-            <div className="flex-1 text-center py-2">
-              <p className="text-[18px] font-bold text-[#191F28]">{profile.total_walks || 0}</p>
-              <p className="text-[11px] text-[#B0B8C1]">동행</p>
-            </div>
+            <Link href={`/profile/${nickname}/followers`} className="flex-1 text-center py-2 hover:bg-gray-50 rounded-lg transition-colors">
+              <p className="text-[18px] font-bold text-[#191F28]">{(profile as any).follower_count || 0}</p>
+              <p className="text-[11px] text-[#B0B8C1]">팔로워</p>
+            </Link>
+            <div className="w-px h-8 bg-[#F2F4F6]" />
+            <Link href={`/profile/${nickname}/followers`} className="flex-1 text-center py-2 hover:bg-gray-50 rounded-lg transition-colors">
+              <p className="text-[18px] font-bold text-[#191F28]">{(profile as any).following_count || 0}</p>
+              <p className="text-[11px] text-[#B0B8C1]">팔로잉</p>
+            </Link>
             <div className="w-px h-8 bg-[#F2F4F6]" />
             <div className="flex-1 text-center py-2">
               <p className="text-[18px] font-bold text-[#191F28]">{profile.review_count || 0}</p>

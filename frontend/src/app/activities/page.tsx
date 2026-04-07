@@ -106,9 +106,14 @@ export default function ActivitiesPage() {
               <h1 className="text-[22px] font-bold text-[#191F28]">{t("activities.title")}</h1>
               <p className="text-[12px] text-[#B0B8C1] mt-0.5">{todayDateStr}</p>
             </div>
-            <Link href="/activities/upload" className="px-3.5 py-1.5 bg-[#F7F8FA] text-[#2D4A2E] rounded-[20px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors">
-              + {t("activities.addRecord")}
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/activities/stats" className="px-3.5 py-1.5 bg-[#F7F8FA] text-[#8B95A1] rounded-[20px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors">
+                통계
+              </Link>
+              <Link href="/activities/upload" className="px-3.5 py-1.5 bg-[#F7F8FA] text-[#2D4A2E] rounded-[20px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors">
+                + {t("activities.addRecord")}
+              </Link>
+            </div>
           </div>
 
           {/* Today's main stat — distance */}

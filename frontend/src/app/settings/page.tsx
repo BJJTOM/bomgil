@@ -63,6 +63,7 @@ export default function SettingsPage() {
           { label: language === "ko" ? "내 코스 관리" : "My Trails", href: `/profile/${user?.nickname}`, icon: "🗺" },
           { label: language === "ko" ? "좋아요한 코스" : "Liked Trails", href: "/likes", icon: "❤️" },
           { label: language === "ko" ? "저장한 코스" : "Saved Trails", href: "/saved", icon: "📥" },
+          { label: language === "ko" ? "비밀번호 변경" : "Change Password", href: "/settings/password", icon: "🔑" },
         ] : [
           { label: language === "ko" ? "로그인" : "Login", href: "/auth/login", icon: "🔑" },
           { label: language === "ko" ? "회원가입" : "Sign Up", href: "/auth/register", icon: "✨" },

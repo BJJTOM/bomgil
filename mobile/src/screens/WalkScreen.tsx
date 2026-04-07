@@ -108,7 +108,10 @@ export default function WalkScreen() {
   const [photoDesc, setPhotoDesc] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const fromTrailCreate = route.params?.fromTrailCreate;
-  const resumeData = route.params?.resumeData; // from ActivityScreen "이어서 걷기"
+  const resumeData = route.params?.resumeData;
+
+  // Previous segment totals (for resume display)
+  const [prevSegment, setPrevSegment] = useState<{ distance: number; duration: number; steps: number; calories: number } | null>(null);
 
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
@@ -155,6 +158,9 @@ export default function WalkScreen() {
         const lastCoord = prevCoords[prevCoords.length - 1];
         setCurrentPos({ lat: lastCoord[1], lng: lastCoord[0] });
       }
+
+      // Save previous segment for display
+      setPrevSegment({ distance: prevDistance, duration: prevDuration, steps: prevSteps, calories: prevCalories });
 
       // Set engine offset for cumulative stats
       engineRef.current.setOffset(prevDistance, prevSteps, prevCalories, prevDuration, prevElevation);
@@ -725,9 +731,27 @@ export default function WalkScreen() {
       {/* ====== STATS PANEL (bottom) ====== */}
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
 
-        {/* Time */}
-        <Text style={styles.timeLabel}>시간</Text>
-        <Text style={styles.timeValue}>{formatTime(stats.duration)}</Text>
+        {/* Previous segment summary (resume only) */}
+        {prevSegment && (
+          <View style={styles.prevSegmentBar}>
+            <Text style={styles.prevSegmentText}>
+              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분
+            </Text>
+            <View style={styles.prevSegmentDot} />
+            <Text style={styles.prevSegmentText}>
+              총 {stats.distance.toFixed(1)}km · {Math.round(stats.duration / 60)}분
+            </Text>
+          </View>
+        )}
+
+        {/* Time — shows current segment time for resume, or total */}
+        <Text style={styles.timeLabel}>{prevSegment ? '현재 구간' : '시간'}</Text>
+        <Text style={styles.timeValue}>
+          {prevSegment
+            ? formatTime(stats.duration - prevSegment.duration)
+            : formatTime(stats.duration)
+          }
+        </Text>
 
         {/* Distance */}
         <View style={styles.distRow}>
@@ -1305,6 +1329,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 16,
     alignItems: 'center',
+  },
+  prevSegmentBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  prevSegmentText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  prevSegmentDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   timeLabel: {
     fontSize: 11,

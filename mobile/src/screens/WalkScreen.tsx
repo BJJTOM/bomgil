@@ -731,17 +731,24 @@ export default function WalkScreen() {
       {/* ====== STATS PANEL (bottom) ====== */}
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
 
-        {/* Previous segment summary (resume only) */}
-        {prevSegment && (
-          <View style={styles.prevSegmentBar}>
-            <Feather name="clock" size={11} color="rgba(255,255,255,0.4)" />
-            <Text style={styles.prevSegmentText}>
-              이전 {prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분
-            </Text>
-            <View style={styles.prevSegmentDot} />
-            <Text style={[styles.prevSegmentText, { color: 'rgba(255,255,255,0.7)' }]}>
-              총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)}
-            </Text>
+        {/* Resume segment info */}
+        {prevSegment && (prevSegment.distance > 0 || prevSegment.duration > 0) && (
+          <View style={styles.resumeInfoCard}>
+            <View style={styles.resumeInfoRow}>
+              <View style={styles.resumeInfoItem}>
+                <Text style={styles.resumeInfoLabel}>이전 구간</Text>
+                <Text style={styles.resumeInfoValue}>{prevSegment.distance.toFixed(1)}km · {Math.round(prevSegment.duration / 60)}분</Text>
+              </View>
+              <View style={styles.resumeInfoDivider} />
+              <View style={styles.resumeInfoItem}>
+                <Text style={styles.resumeInfoLabel}>현재 구간</Text>
+                <Text style={styles.resumeInfoValue}>{Math.max(0, stats.distance - prevSegment.distance).toFixed(1)}km · {formatTime(Math.max(0, stats.duration - prevSegment.duration))}</Text>
+              </View>
+            </View>
+            <View style={styles.resumeInfoTotalRow}>
+              <Feather name="activity" size={12} color={colors.primary} />
+              <Text style={styles.resumeInfoTotalText}>총 {stats.distance.toFixed(1)}km · {formatTime(stats.duration)} · {stats.steps.toLocaleString()}걸음</Text>
+            </View>
           </View>
         )}
 
@@ -1331,26 +1338,50 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     alignItems: 'center',
   },
-  prevSegmentBar: {
+  resumeInfoCard: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+  },
+  resumeInfoRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  resumeInfoItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  resumeInfoLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.35)',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  resumeInfoValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  resumeInfoDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  resumeInfoTotalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    marginBottom: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  prevSegmentText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.5)',
-  },
-  prevSegmentDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  resumeInfoTotalText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   timeLabel: {
     fontSize: 11,
@@ -1656,18 +1687,18 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   quickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   quickBtnLabel: {
     fontSize: 13,

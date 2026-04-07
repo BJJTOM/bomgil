@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icons";
 import { useAuthStore } from "@/stores/auth";
 import { useLanguageStore, LANGUAGES, useT } from "@/stores/language";
 import api from "@/lib/api";
@@ -58,33 +59,33 @@ export default function SettingsPage() {
       title: language === "ko" ? "계정" : "Account",
       items: [
         ...(isAuthenticated ? [
-          { label: language === "ko" ? "프로필 수정" : "Edit Profile", href: "/profile/edit", icon: "👤" },
-          { label: language === "ko" ? "내 활동 기록" : "My Activities", href: "/activities", icon: "📊" },
-          { label: language === "ko" ? "내 코스 관리" : "My Trails", href: `/profile/${user?.nickname}`, icon: "🗺" },
-          { label: language === "ko" ? "좋아요한 코스" : "Liked Trails", href: "/likes", icon: "❤️" },
-          { label: language === "ko" ? "저장한 코스" : "Saved Trails", href: "/saved", icon: "📥" },
-          { label: language === "ko" ? "비밀번호 변경" : "Change Password", href: "/settings/password", icon: "🔑" },
+          { label: language === "ko" ? "프로필 수정" : "Edit Profile", href: "/profile/edit", icon: "user" },
+          { label: language === "ko" ? "내 활동 기록" : "My Activities", href: "/activities", icon: "bar-chart" },
+          { label: language === "ko" ? "내 코스 관리" : "My Trails", href: `/profile/${user?.nickname}`, icon: "map" },
+          { label: language === "ko" ? "좋아요한 코스" : "Liked Trails", href: "/likes", icon: "heart" },
+          { label: language === "ko" ? "저장한 코스" : "Saved Trails", href: "/saved", icon: "download" },
+          { label: language === "ko" ? "비밀번호 변경" : "Change Password", href: "/settings/password", icon: "lock" },
         ] : [
-          { label: language === "ko" ? "로그인" : "Login", href: "/auth/login", icon: "🔑" },
-          { label: language === "ko" ? "회원가입" : "Sign Up", href: "/auth/register", icon: "✨" },
+          { label: language === "ko" ? "로그인" : "Login", href: "/auth/login", icon: "key" },
+          { label: language === "ko" ? "회원가입" : "Sign Up", href: "/auth/register", icon: "user" },
         ]),
       ],
     },
     {
       title: language === "ko" ? "앱 설정" : "App Settings",
       items: [
-        { label: language === "ko" ? "언어 설정" : "Language", value: LANGUAGES.find(l => l.code === language)?.label, icon: "🌐", action: "language" },
-        { label: language === "ko" ? "알림 설정" : "Notifications", href: "/notifications", icon: "🔔" },
-        { label: language === "ko" ? "공지사항" : "Notices", href: "/notices", icon: "📢" },
+        { label: language === "ko" ? "언어 설정" : "Language", value: LANGUAGES.find(l => l.code === language)?.label, icon: "globe", action: "language" },
+        { label: language === "ko" ? "알림 설정" : "Notifications", href: "/notifications", icon: "bell" },
+        { label: language === "ko" ? "공지사항" : "Notices", href: "/notices", icon: "megaphone" },
       ],
     },
     {
       title: language === "ko" ? "정보" : "Information",
       items: [
-        { label: language === "ko" ? "서비스 이용약관" : "Terms of Service", href: "/terms", icon: "📋" },
-        { label: language === "ko" ? "개인정보처리방침" : "Privacy Policy", href: "/privacy", icon: "🔒" },
-        { label: language === "ko" ? "오픈소스 라이선스" : "Open Source", href: "/licenses", icon: "📄" },
-        { label: language === "ko" ? "버전 정보" : "Version", value: "1.0.0", icon: "ℹ️" },
+        { label: language === "ko" ? "서비스 이용약관" : "Terms of Service", href: "/terms", icon: "file-text" },
+        { label: language === "ko" ? "개인정보처리방침" : "Privacy Policy", href: "/privacy", icon: "shield" },
+        { label: language === "ko" ? "오픈소스 라이선스" : "Open Source", href: "/licenses", icon: "file-text" },
+        { label: language === "ko" ? "버전 정보" : "Version", value: "1.0.0", icon: "info" },
       ],
     },
   ];

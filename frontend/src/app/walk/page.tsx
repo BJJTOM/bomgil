@@ -189,10 +189,36 @@ export default function WalkPage() {
   const complete = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
-    if (isAuthenticated) {
-      try { await createActivity.mutateAsync({ track_points: trackPointsRef.current, source: "phone_gps", title: `${new Date().toLocaleDateString(language, { month: "long", day: "numeric" })} ${ko ? "도보" : "Walk"}`, total_steps: steps, calories_burned: calories }); } catch {}
+
+    // Warn if no GPS data was captured
+    if (trackPointsRef.current.length < 2) {
+      const proceed = confirm(ko
+        ? "GPS 기록이 부족합니다. 경로가 저장되지 않을 수 있어요. 계속할까요?"
+        : "Not enough GPS data. Route may not be saved. Continue?");
+      if (!proceed) return;
     }
-    const p = new URLSearchParams({ distance: distance.toFixed(2), duration: String(elapsed), steps: String(steps), calories: String(calories), points: JSON.stringify(trackPointsRef.current.filter((_, i) => i % Math.max(1, Math.floor(trackPointsRef.current.length / 200)) === 0)) });
+
+    if (isAuthenticated && trackPointsRef.current.length >= 2) {
+      try {
+        await createActivity.mutateAsync({
+          track_points: trackPointsRef.current,
+          source: "phone_gps",
+          title: `${new Date().toLocaleDateString(language, { month: "long", day: "numeric" })} ${ko ? "도보" : "Walk"}`,
+          total_steps: steps,
+          calories_burned: calories,
+        });
+      } catch (e: any) {
+        console.error("Failed to save activity:", e);
+        alert(ko ? "활동 저장 실패: " + (e?.response?.data?.detail || e?.message || "알 수 없는 오류") : "Failed to save activity");
+      }
+    }
+    const p = new URLSearchParams({
+      distance: distance.toFixed(2),
+      duration: String(elapsed),
+      steps: String(steps),
+      calories: String(calories),
+      points: JSON.stringify(trackPointsRef.current.filter((_, i) => i % Math.max(1, Math.floor(trackPointsRef.current.length / 200)) === 0)),
+    });
     router.push(`/walk/complete?${p.toString()}`);
   };
 

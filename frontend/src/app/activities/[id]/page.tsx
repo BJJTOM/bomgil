@@ -91,7 +91,7 @@ export default function ActivityDetailPage() {
               center={center}
               pathCoordinates={pathCoordinates}
               zoom={13}
-              theme="dark"
+              theme="light"
               showStats
               distance={activity.distance_km || undefined}
               duration={activity.duration_minutes ? String(activity.duration_minutes) : undefined}
@@ -102,10 +102,11 @@ export default function ActivityDetailPage() {
               ]}
             />
           ) : (
-            <div className="w-full h-full bg-[#1a1a2e] flex items-center justify-center">
+            <div className="w-full h-full bg-gray-50 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-[40px] mb-2 opacity-30">🗺️</div>
-                <p className="text-[#555] text-[14px]">경로 데이터 없음</p>
+                <p className="text-gray-400 text-[14px]">경로 데이터 없음</p>
+                <p className="text-gray-300 text-[11px] mt-1">GPS로 걷기 기록을 시작하면 경로가 표시됩니다</p>
               </div>
             </div>
           )}

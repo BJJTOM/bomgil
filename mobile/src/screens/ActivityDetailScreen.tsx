@@ -449,10 +449,17 @@ export default function ActivityDetailScreen() {
             type: coverImage.type || 'image/jpeg',
             name: coverImage.fileName || 'cover.jpg',
           } as any);
-          await api.patch(`/trails/${trailId}/`, formData, {
+          const res = await fetch(`https://api.moruwalk.com/api/v1/trails/${trailId}/`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
           });
-        } catch (imgErr) {
-          console.log('Cover image upload failed:', imgErr);
+          if (!res.ok) {
+            const errText = await res.text();
+            console.log('[Moru] Cover image upload failed:', res.status, errText.slice(0, 200));
+          }
+        } catch (imgErr: any) {
+          console.log('Cover image upload error:', imgErr?.message);
         }
       }
 
@@ -1085,25 +1092,35 @@ export default function ActivityDetailScreen() {
               />
 
               <Text style={styles.fieldLabel}>커버 사진</Text>
-              <View style={styles.coverRow}>
-                {coverImage ? (
-                  <Image source={{ uri: coverImage.uri }} style={styles.coverPreview} resizeMode="cover" />
-                ) : (
-                  <View style={styles.coverPlaceholder}>
-                    <Feather name="image" size={20} color={colors.textTertiary} />
-                  </View>
-                )}
-                <View style={styles.coverButtons}>
-                  <TouchableOpacity style={styles.coverBtn} onPress={pickCoverFromCamera}>
-                    <Feather name="camera" size={14} color={colors.textPrimary} />
-                    <Text style={styles.coverBtnText}>카메라</Text>
+              {coverImage ? (
+                <View style={styles.coverImageWrap}>
+                  <Image source={{ uri: coverImage.uri }} style={styles.coverImageLarge} resizeMode="cover" />
+                  <TouchableOpacity style={styles.coverRemoveBtn} onPress={() => setCoverImage(null)}>
+                    <Feather name="x" size={14} color="#fff" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.coverBtn} onPress={pickCoverFromGallery}>
-                    <Feather name="image" size={14} color={colors.textPrimary} />
-                    <Text style={styles.coverBtnText}>갤러리</Text>
+                  <View style={styles.coverChangeRow}>
+                    <TouchableOpacity style={styles.coverChangeBtn} onPress={pickCoverFromCamera}>
+                      <Feather name="camera" size={14} color="#fff" />
+                      <Text style={styles.coverChangeText}>카메라</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.coverChangeBtn} onPress={pickCoverFromGallery}>
+                      <Feather name="image" size={14} color="#fff" />
+                      <Text style={styles.coverChangeText}>갤러리</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.coverPickerRow}>
+                  <TouchableOpacity style={styles.coverPickerBtn} onPress={pickCoverFromCamera} activeOpacity={0.7}>
+                    <Feather name="camera" size={20} color={colors.primary} />
+                    <Text style={styles.coverPickerText}>카메라</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.coverPickerBtn} onPress={pickCoverFromGallery} activeOpacity={0.7}>
+                    <Feather name="image" size={20} color={colors.primary} />
+                    <Text style={styles.coverPickerText}>갤러리</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              )}
 
               <View style={styles.fieldRow}>
                 <View style={{ flex: 1 }}>
@@ -1605,6 +1622,71 @@ const styles = StyleSheet.create({
   fieldRow: {
     flexDirection: 'row',
     gap: 12,
+  },
+  coverImageWrap: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  coverImageLarge: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#F2F4F6',
+  },
+  coverRemoveBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverChangeRow: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  coverChangeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  coverChangeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  coverPickerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  coverPickerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 18,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '30',
+    backgroundColor: colors.primary + '08',
+  },
+  coverPickerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   chipSm: {
     paddingHorizontal: 10,

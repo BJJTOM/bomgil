@@ -23,7 +23,12 @@ ALLOWED_HOSTS = [
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 DATABASES = {
-    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600) if DATABASE_URL else {
+    # conn_max_age=0 disables persistent connections. Render free PostgreSQL
+    # has a low connection cap (~97), and during deploys both old and new
+    # gunicorn workers run in parallel — persistent pools can exhaust the
+    # limit and cause new-worker startup to hang, which Render then treats
+    # as a deploy timeout.
+    "default": dj_database_url.parse(DATABASE_URL, conn_max_age=0) if DATABASE_URL else {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }

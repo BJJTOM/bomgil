@@ -5,7 +5,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
-import auth from '@react-native-firebase/auth';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
@@ -22,20 +21,8 @@ export default function PhoneAuthScreen() {
   const [code, setCode] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
-  const confirmationRef = useRef<any>(null);
-  const idTokenRef = useRef<string | null>(null);
-
-  const formatPhone = (raw: string) => {
-    // Convert "01012345678" → "+821012345678"
-    const digits = raw.replace(/\D/g, '');
-    if (digits.startsWith('0')) {
-      return '+82' + digits.substring(1);
-    }
-    if (digits.startsWith('82')) {
-      return '+' + digits;
-    }
-    return raw.startsWith('+') ? raw : '+' + digits;
-  };
+  const verificationTokenRef = useRef<string | null>(null);
+  const [userExists, setUserExists] = useState(false);
 
   const handleSendCode = async () => {
     if (!phone.trim()) {
@@ -44,12 +31,11 @@ export default function PhoneAuthScreen() {
     }
     setLoading(true);
     try {
-      const formattedPhone = formatPhone(phone);
-      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
-      confirmationRef.current = confirmation;
+      await api.post('/auth/phone/otp/send/', { phone_number: phone });
       setStep('code');
     } catch (e: any) {
-      Alert.alert('전송 실패', e?.message || '인증번호 전송에 실패했습니다. 전화번호를 확인해주세요.');
+      const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다.';
+      Alert.alert('전송 실패', msg);
     } finally {
       setLoading(false);
     }
@@ -60,31 +46,29 @@ export default function PhoneAuthScreen() {
       Alert.alert('알림', '6자리 인증번호를 입력해주세요.');
       return;
     }
-    if (!confirmationRef.current) {
-      Alert.alert('오류', '인증 세션이 만료되었습니다. 다시 시도해주세요.');
-      setStep('phone');
-      return;
-    }
     setLoading(true);
     try {
-      const userCred = await confirmationRef.current.confirm(code);
-      const idToken = await userCred.user.getIdToken();
-      idTokenRef.current = idToken;
+      const { data } = await api.post('/auth/phone/otp/verify/', {
+        phone_number: phone,
+        code,
+      });
+      verificationTokenRef.current = data.verification_token;
+      setUserExists(data.user_exists);
 
-      // Try to login first (existing user)
-      const { data } = await api.post('/auth/phone/firebase/', { id_token: idToken });
-      if (data.is_new) {
+      if (data.user_exists) {
+        // Existing user — login directly
+        const { data: loginData } = await api.post('/auth/phone/otp/complete/', {
+          verification_token: data.verification_token,
+        });
+        setTokens(loginData.access, loginData.refresh);
+        setUser(loginData.user);
+        navigation.replace('Main');
+      } else {
         // New user — ask for nickname
         setStep('nickname');
-      } else {
-        // Existing user — login complete
-        setTokens(data.access, data.refresh);
-        setUser(data.user);
-        navigation.replace('Main');
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.error || e?.message || '인증에 실패했습니다.';
-      Alert.alert('인증 실패', msg);
+      Alert.alert('인증 실패', e?.response?.data?.error || '인증번호가 일치하지 않습니다.');
     } finally {
       setLoading(false);
     }
@@ -95,15 +79,10 @@ export default function PhoneAuthScreen() {
       Alert.alert('알림', '닉네임은 2자 이상이어야 합니다.');
       return;
     }
-    if (!idTokenRef.current) {
-      Alert.alert('오류', '세션이 만료되었습니다.');
-      setStep('phone');
-      return;
-    }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/phone/firebase/', {
-        id_token: idTokenRef.current,
+      const { data } = await api.post('/auth/phone/otp/complete/', {
+        verification_token: verificationTokenRef.current,
         nickname: nickname.trim(),
       });
       setTokens(data.access, data.refresh);

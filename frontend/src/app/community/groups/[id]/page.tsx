@@ -89,7 +89,7 @@ export default function GroupDetailPage() {
           {/* Action */}
           {group.is_member ? (
             <div className="flex gap-2.5">
-              <button onClick={() => router.push(`/chat/${groupId}`)} className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-semibold">채팅방</button>
+              <button onClick={() => router.push(`/community/groups/${groupId}/chat`)} className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-semibold">채팅방</button>
               <button onClick={handleLeave} className="px-5 py-3.5 rounded-xl bg-gray-50 text-gray-500 font-semibold">나가기</button>
             </div>
           ) : (

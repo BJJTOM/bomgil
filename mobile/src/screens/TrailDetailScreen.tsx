@@ -924,21 +924,21 @@ const styles = StyleSheet.create({
     right: 20,
   },
   coverTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 6,
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  coverRegion: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.95)',
+    marginBottom: 4,
+    letterSpacing: -0.3,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
+  },
+  coverRegion: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.95)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1.5,
   },
 
   // ── Quick Stats ────────────────────────────────────────

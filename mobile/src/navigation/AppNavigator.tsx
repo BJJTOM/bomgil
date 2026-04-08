@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../stores/auth';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useT } from '../i18n';
@@ -182,6 +183,7 @@ const ONBOARDING_KEY = '@moru_onboarding_complete';
 
 export default function AppNavigator() {
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const isAuthenticated = useAuthStore((s: any) => s.isAuthenticated);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((value) => {
@@ -197,9 +199,15 @@ export default function AppNavigator() {
     );
   }
 
+  // Determine initial route:
+  // 1. Onboarding if first time
+  // 2. Login if not authenticated
+  // 3. Main if logged in
+  const initialRoute = !onboardingDone ? 'Onboarding' : (isAuthenticated ? 'Main' : 'Login');
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName={onboardingDone ? 'Main' : 'Onboarding'}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName={initialRoute}>
         <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Login" component={LoginScreen} />

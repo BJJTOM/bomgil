@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, Notification, XPLog
+from .models import CustomUser, Notification, PhoneAuthLog, XPLog
 
 
 @admin.register(CustomUser)
@@ -51,3 +51,18 @@ class XPLogAdmin(admin.ModelAdmin):
     list_display = ["user", "amount", "reason", "created_at"]
     list_filter = ["reason", "created_at"]
     search_fields = ["user__nickname", "reason"]
+
+
+@admin.register(PhoneAuthLog)
+class PhoneAuthLogAdmin(admin.ModelAdmin):
+    list_display = [
+        "phone_number", "event_type", "nickname", "email",
+        "ip_address", "created_at",
+    ]
+    list_filter = ["event_type", "created_at"]
+    search_fields = ["phone_number", "nickname", "email", "firebase_uid", "ip_address"]
+    readonly_fields = [
+        "phone_number", "event_type", "user", "firebase_uid",
+        "nickname", "email", "ip_address", "user_agent", "error_message", "created_at",
+    ]
+    date_hierarchy = "created_at"

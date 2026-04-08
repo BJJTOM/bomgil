@@ -140,6 +140,36 @@ export default function NewTrailPage() {
   const [drawDistance, setDrawDistance] = useState(0);
   const [drawDuration, setDrawDuration] = useState(0);
 
+  // Hydrate from completed walk if redirected from /walk/complete
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("from") !== "walk") return;
+    try {
+      const raw = sessionStorage.getItem("moru_walk_to_trail");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data.pathCoords || data.pathCoords.length < 2) return;
+      const start = data.pathCoords[0];
+      const end = data.pathCoords[data.pathCoords.length - 1];
+      setPathCoords(data.pathCoords);
+      setDrawDistance(data.distance || 0);
+      setDrawDuration(Math.round((data.duration || 0) / 60));
+      setForm((prev) => ({
+        ...prev,
+        start_lng: String(start[0]),
+        start_lat: String(start[1]),
+        end_lng: String(end[0]),
+        end_lat: String(end[1]),
+        distance_km: (data.distance || 0).toFixed(2),
+        estimated_minutes: Math.round((data.duration || 0) / 60) || prev.estimated_minutes,
+        elevation_gain: data.eleGain ? String(data.eleGain) : prev.elevation_gain,
+      }));
+      setDrawMode(false); // user already walked the route; show manual fields with prefilled data
+      sessionStorage.removeItem("moru_walk_to_trail");
+    } catch {}
+  }, []);
+
   const handleDrawChange = useCallback(
     (data: {
       waypoints: [number, number][];
@@ -328,7 +358,7 @@ export default function NewTrailPage() {
         }
       });
       formData.append("status", "pending");
-      if (drawMode && pathCoords.length >= 2) {
+      if (pathCoords.length >= 2) {
         formData.append(
           "path_data",
           JSON.stringify({ type: "LineString", coordinates: pathCoords }),
@@ -389,7 +419,7 @@ export default function NewTrailPage() {
         }
       });
       formData.append("status", "draft");
-      if (drawMode && pathCoords.length >= 2) {
+      if (pathCoords.length >= 2) {
         formData.append(
           "path_data",
           JSON.stringify({ type: "LineString", coordinates: pathCoords }),
@@ -771,6 +801,26 @@ export default function NewTrailPage() {
             )}
 
             {!drawMode && (<>
+            {pathCoords.length >= 2 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-[24px]">{"\u2705"}</div>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-semibold text-emerald-900">방금 걸은 경로가 자동으로 입력되었습니다</p>
+                    <p className="text-[12px] text-emerald-700 mt-0.5">
+                      {drawDistance.toFixed(2)} km · {drawDuration}분 · {pathCoords.length}개 지점
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 h-[200px] rounded-xl overflow-hidden border border-emerald-200">
+                  <MapView
+                    pathCoordinates={pathCoords}
+                    theme="light"
+                    className="w-full h-full"
+                  />
+                </div>
+              </div>
+            )}
             <SectionCard title="출발지 좌표">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">

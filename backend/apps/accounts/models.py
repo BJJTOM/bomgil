@@ -166,6 +166,41 @@ class PhoneVerification(models.Model):
         verbose_name_plural = "휴대폰 인증"
 
 
+class PhoneAuthLog(models.Model):
+    """SMS authentication log via Firebase Phone Auth.
+
+    Tracks all SMS authentication attempts and signups for admin review.
+    """
+    EVENT_CHOICES = [
+        ('sms_sent', 'SMS 발송'),
+        ('verified', '인증 성공'),
+        ('login', '로그인'),
+        ('signup', '신규 가입'),
+        ('failed', '인증 실패'),
+    ]
+    phone_number = models.CharField(max_length=20, db_index=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_CHOICES, db_index=True)
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='phone_auth_logs',
+    )
+    firebase_uid = models.CharField(max_length=128, blank=True, default='')
+    nickname = models.CharField(max_length=50, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True, default='')
+    error_message = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = '전화번호 인증 기록'
+        verbose_name_plural = '전화번호 인증 기록'
+
+    def __str__(self):
+        return f"[{self.get_event_type_display()}] {self.phone_number} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
 class Notification(models.Model):
     NOTIFICATION_TYPE_CHOICES = [
         ('like', '좋아요'),

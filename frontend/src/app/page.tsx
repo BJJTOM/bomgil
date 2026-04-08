@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { usePopularTrails } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { TrailCardSkeleton } from "@/components/ui/Skeleton";
 import { useT, useLanguageStore, LANGUAGES } from "@/stores/language";
+import api from "@/lib/api";
 
 const DISCOVER_COUNTRIES = [
   { code: "KR", name: "Korea", nameKo: "한국", nameEn: "Korea", nameJa: "韓国", nameZh: "韩国", emoji: "🇰🇷", desc: { ko: "서울, 제주, 부산...", en: "Seoul, Jeju, Busan...", ja: "ソウル, 済州, 釜山...", zh: "首尔, 济州, 釜山..." } },
@@ -32,6 +34,23 @@ export default function Home() {
   const { t, language } = useT();
   const { setLanguage } = useLanguageStore();
   const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const { data: platformStats } = useQuery<{
+    countries: number;
+    trails: number;
+    stories: number;
+    users: number;
+  }>({
+    queryKey: ["platform-stats"],
+    queryFn: async () => (await api.get("/stats/")).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const formatNum = (n: number | undefined) => {
+    if (n == null) return "—";
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return String(n);
+  };
 
   const heroSubTexts: Record<string, string> = {
     ko: "전 세계 도보여행 코스를 발견하고, 나만의 길을 공유하세요.\n당신의 발걸음이 누군가의 여행이 됩니다.",
@@ -136,7 +155,8 @@ export default function Home() {
     },
   };
 
-  const countryStatsLabel = language === "ko" ? "8개국" : language === "ja" ? "8ヶ国" : language === "zh" ? "8国" : "8";
+  const countryUnit = language === "ko" ? "개국" : language === "ja" ? "ヶ国" : language === "zh" ? "国" : "";
+  const countryStatsLabel = platformStats ? `${platformStats.countries}${countryUnit}` : "—";
 
   return (
     <div className="bg-warm" style={{ backgroundColor: "#FAFAFA" }}>
@@ -205,9 +225,9 @@ export default function Home() {
           <div className="card shadow-card grid grid-cols-4 divide-x divide-border-light">
             {[
               { value: countryStatsLabel, label: statsTexts[language]?.countries ?? statsTexts.en.countries },
-              { value: "120+", label: statsTexts[language]?.trails ?? statsTexts.en.trails },
-              { value: "850+", label: statsTexts[language]?.stories ?? statsTexts.en.stories },
-              { value: "2.4K", label: statsTexts[language]?.travelers ?? statsTexts.en.travelers },
+              { value: formatNum(platformStats?.trails), label: statsTexts[language]?.trails ?? statsTexts.en.trails },
+              { value: formatNum(platformStats?.stories), label: statsTexts[language]?.stories ?? statsTexts.en.stories },
+              { value: formatNum(platformStats?.users), label: statsTexts[language]?.travelers ?? statsTexts.en.travelers },
             ].map((stat) => (
               <div key={stat.label} className="py-4 text-center">
                 <div className="text-[18px] md:text-[22px] font-bold font-en text-primary">{stat.value}</div>

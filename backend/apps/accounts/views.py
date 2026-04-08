@@ -13,7 +13,14 @@ from apps.reviews.serializers import ReviewSerializer
 from apps.trails.models import Trail, TrailLike
 from apps.trails.serializers import TrailListSerializer
 
-from .models import CustomUser, Notification, PhoneVerification, UserBadge
+from .models import CustomUser, Notification, PhoneAuthLog, PhoneVerification, UserBadge
+
+
+def _client_ip(request):
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
 from .serializers import NotificationSerializer, UserPublicSerializer, UserSerializer, UserXPDetailSerializer
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -211,6 +218,24 @@ class FirebasePhoneAuthThrottle(AnonRateThrottle):
     rate = '20/hour'
 
 
+class PhoneSmsSentLogView(APIView):
+    """Log when client sends SMS verification request via Firebase."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [FirebasePhoneAuthThrottle]
+
+    def post(self, request):
+        phone = request.data.get('phone_number', '').strip()
+        if not phone:
+            return Response({"error": "phone_number required"}, status=400)
+        PhoneAuthLog.objects.create(
+            phone_number=phone,
+            event_type='sms_sent',
+            ip_address=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
+        return Response({"logged": True})
+
+
 class FirebasePhoneAuthView(APIView):
     """Authenticate or register a user via Firebase phone ID token.
 
@@ -232,6 +257,12 @@ class FirebasePhoneAuthView(APIView):
 
         decoded = verify_id_token(id_token)
         if not decoded:
+            PhoneAuthLog.objects.create(
+                phone_number='', event_type='failed',
+                error_message='Invalid Firebase token',
+                ip_address=_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+            )
             return Response({"error": "유효하지 않은 인증 토큰입니다."}, status=401)
 
         firebase_uid = decoded.get('uid', '')
@@ -291,6 +322,18 @@ class FirebasePhoneAuthView(APIView):
                 updated_fields.append('phone_number')
             if updated_fields:
                 user.save(update_fields=updated_fields)
+
+        # Log the auth event
+        PhoneAuthLog.objects.create(
+            phone_number=phone_number,
+            event_type='signup' if is_new else 'login',
+            user=user,
+            firebase_uid=firebase_uid,
+            nickname=user.nickname,
+            email=user.email,
+            ip_address=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
 
         refresh = RefreshToken.for_user(user)
         return Response({

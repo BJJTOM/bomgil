@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import auth from '@react-native-firebase/auth';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+
+function formatKoreanPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('0')) return '+82' + digits.substring(1);
+  if (digits.startsWith('82')) return '+' + digits;
+  return raw.startsWith('+') ? raw : '+' + digits;
+}
 
 function getPasswordStrength(password: string): {
   level: number;
@@ -46,11 +54,63 @@ export default function RegisterScreen() {
     nickname: '',
     password1: '',
     password2: '',
+    phone: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw1, setShowPw1] = useState(false);
   const [showPw2, setShowPw2] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'sent' | 'verified'>('idle');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const confirmationRef = useRef<any>(null);
+  const idTokenRef = useRef<string | null>(null);
+
+  const sendPhoneCode = async () => {
+    if (!form.phone.trim()) {
+      setError('전화번호를 입력해주세요');
+      return;
+    }
+    setSendingCode(true);
+    setError('');
+    try {
+      const formatted = formatKoreanPhone(form.phone);
+      // Log SMS sent attempt to backend
+      api.post('/auth/phone/sms-log/', { phone_number: formatted }).catch(() => {});
+      const confirmation = await auth().signInWithPhoneNumber(formatted);
+      confirmationRef.current = confirmation;
+      setPhoneStep('sent');
+    } catch (e: any) {
+      setError(e?.message || '인증번호 전송에 실패했습니다');
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const verifyPhoneCode = async () => {
+    if (!phoneCode || phoneCode.length !== 6) {
+      setError('6자리 인증번호를 입력해주세요');
+      return;
+    }
+    if (!confirmationRef.current) {
+      setError('인증 세션이 만료되었습니다. 다시 시도해주세요');
+      setPhoneStep('idle');
+      return;
+    }
+    setVerifyingCode(true);
+    setError('');
+    try {
+      const userCred = await confirmationRef.current.confirm(phoneCode);
+      const idToken = await userCred.user.getIdToken();
+      idTokenRef.current = idToken;
+      setPhoneStep('verified');
+    } catch (e: any) {
+      setError('인증번호가 일치하지 않습니다');
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
 
   const updateField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -66,6 +126,10 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('');
 
+    if (phoneStep !== 'verified') {
+      setError('전화번호 인증을 완료해주세요');
+      return;
+    }
     if (!isValidEmail(form.email)) {
       setError('올바른 이메일 주소를 입력해주세요');
       return;
@@ -85,30 +149,27 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      const username = form.email.split('@')[0] + '_' + Date.now().toString(36);
-      await api.post('/auth/register/', { ...form, username });
-      // Login with the just-registered credentials to get full user data
-      const { data: loginData } = await api.post('/auth/email-login/', {
-        email: form.email,
-        password: form.password1,
+      // Use Firebase phone auth — backend creates user with phone verified
+      const { data } = await api.post('/auth/phone/firebase/', {
+        id_token: idTokenRef.current,
+        nickname: form.nickname.trim(),
       });
-      login(loginData.user, loginData.access, loginData.refresh);
-      navigation.popToTop();
+      // Update profile with email
+      try {
+        await api.patch('/auth/me/', { email: form.email });
+      } catch {}
+      login(data.user, data.access, data.refresh);
+      navigation.replace('Main');
     } catch (err: any) {
-      const errors = err.response?.data;
-      if (errors) {
-        const firstError = Object.values(errors).flat()[0] as string;
-        setError(firstError || '회원가입에 실패했습니다');
-      } else {
-        setError('회원가입에 실패했습니다');
-      }
+      const errMsg = err?.response?.data?.error || '회원가입에 실패했습니다';
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const isDisabled =
-    loading || !form.email || !form.nickname || !form.password1 || !form.password2;
+    loading || phoneStep !== 'verified' || !form.email || !form.nickname || !form.password1 || !form.password2;
 
   return (
     <KeyboardAvoidingView
@@ -146,6 +207,70 @@ export default function RegisterScreen() {
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
+
+            {/* Phone verification */}
+            <Text style={styles.label}>
+              전화번호 <Text style={styles.required}>*</Text>
+              {phoneStep === 'verified' && <Text style={{ color: '#22C55E', fontSize: 12 }}>  ✓ 인증완료</Text>}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }, phoneStep === 'verified' && { backgroundColor: '#F0FDF4' }]}
+                placeholder="010-1234-5678"
+                placeholderTextColor={colors.textTertiary}
+                value={form.phone}
+                onChangeText={(v) => updateField('phone', v)}
+                keyboardType="phone-pad"
+                editable={phoneStep !== 'verified'}
+                maxLength={13}
+              />
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10,
+                  backgroundColor: phoneStep === 'verified' ? '#E5E8EB' : colors.primary,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+                onPress={sendPhoneCode}
+                disabled={sendingCode || phoneStep === 'verified' || !form.phone}>
+                {sendingCode ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ color: phoneStep === 'verified' ? colors.textTertiary : '#fff', fontSize: 13, fontWeight: '700' }}>
+                    {phoneStep === 'idle' ? '인증번호' : '재전송'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {phoneStep === 'sent' && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0, fontSize: 18, letterSpacing: 4, textAlign: 'center' }]}
+                  placeholder="6자리 인증번호"
+                  placeholderTextColor={colors.textTertiary}
+                  value={phoneCode}
+                  onChangeText={setPhoneCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
+                <TouchableOpacity
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10,
+                    backgroundColor: colors.primary,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                  onPress={verifyPhoneCode}
+                  disabled={verifyingCode || phoneCode.length !== 6}>
+                  {verifyingCode ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>확인</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={{ height: 8 }} />
 
             {/* Email */}
             <Text style={styles.label}>{'이메일'}</Text>

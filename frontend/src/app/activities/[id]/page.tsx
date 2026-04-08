@@ -44,6 +44,68 @@ export default function ActivityDetailPage() {
   const [editTitle, setEditTitle] = useState("");
   const [mapFullscreen, setMapFullscreen] = useState(false);
 
+  // Merge state
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [sameDayActivities, setSameDayActivities] = useState<any[]>([]);
+  const [selectedMergeIds, setSelectedMergeIds] = useState<number[]>([]);
+  const [mergeLoading, setMergeLoading] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string>("");
+
+  const openMergeModal = async () => {
+    if (!activity) return;
+    if (!activity.started_at && !activity.created_at) {
+      alert("날짜 정보가 없어 합치기를 할 수 없습니다.");
+      return;
+    }
+    setShowMergeModal(true);
+    setMergeLoading(true);
+    setMergeError("");
+    try {
+      const dateStr = ((activity.started_at || activity.created_at) as string).split("T")[0];
+      const { data } = await api.get("/activities/", { params: { page_size: 50 } });
+      const results = data?.results ?? data ?? [];
+      const sameDay = results.filter((a: any) => {
+        if (a.id === activity.id) return false;
+        const aDate = ((a.started_at || a.created_at || "") as string).split("T")[0];
+        return aDate === dateStr;
+      });
+      setSameDayActivities(sameDay);
+      setSelectedMergeIds([]);
+    } catch {
+      setMergeError("활동 목록을 불러오지 못했습니다.");
+    } finally {
+      setMergeLoading(false);
+    }
+  };
+
+  const toggleMergeSelect = (mergeId: number) => {
+    setSelectedMergeIds((prev) =>
+      prev.includes(mergeId) ? prev.filter((x) => x !== mergeId) : [...prev, mergeId],
+    );
+  };
+
+  const executeMerge = async (deleteOriginals: boolean) => {
+    if (!activity || selectedMergeIds.length === 0) return;
+    if (deleteOriginals && !confirm("원본 기록도 함께 삭제됩니다. 계속하시겠어요?")) return;
+    setMerging(true);
+    setMergeError("");
+    try {
+      const { data } = await api.post("/activities/merge/", {
+        activity_ids: [activity.id, ...selectedMergeIds],
+        delete_originals: deleteOriginals,
+      });
+      setShowMergeModal(false);
+      qc.invalidateQueries({ queryKey: ["activity", id] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
+      router.push(`/activities/${data.id}`);
+    } catch (e: any) {
+      setMergeError(e?.response?.data?.error || "합치기에 실패했습니다.");
+    } finally {
+      setMerging(false);
+    }
+  };
+
   const handleSaveTitle = async () => {
     if (!editTitle.trim() || !id) return;
     try {
@@ -338,7 +400,7 @@ export default function ActivityDetailPage() {
 
             {/* Merge records */}
             <button
-              onClick={() => alert("기록 합치기는 준비 중입니다")}
+              onClick={openMergeModal}
               className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-blue-50 transition-colors"
             >
               <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center mb-2">
@@ -374,6 +436,123 @@ export default function ActivityDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Merge Modal */}
+      {showMergeModal && (
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => !merging && setShowMergeModal(false)}>
+          <div
+            className="bg-white w-full md:max-w-md rounded-t-[24px] md:rounded-[24px] max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[17px] font-bold">기록 합치기</h3>
+                <button
+                  onClick={() => !merging && setShowMergeModal(false)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-[12px] text-gray-500 mt-1">같은 날짜의 다른 활동을 선택하세요</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              {mergeLoading ? (
+                <div className="py-12 text-center text-gray-400 text-[14px]">불러오는 중...</div>
+              ) : mergeError ? (
+                <div className="py-8 text-center">
+                  <p className="text-[14px] text-red-500 mb-3">{mergeError}</p>
+                  <button onClick={openMergeModal} className="text-[13px] text-primary underline">
+                    다시 시도
+                  </button>
+                </div>
+              ) : sameDayActivities.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="text-[28px] mb-2">📭</div>
+                  <p className="text-[14px] text-gray-500">같은 날짜의 다른 기록이 없어요</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sameDayActivities.map((a) => {
+                    const checked = selectedMergeIds.includes(a.id);
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => toggleMergeSelect(a.id)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left ${
+                          checked ? "bg-emerald-50 border-emerald-400" : "bg-white border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
+                            checked ? "bg-emerald-500 border-emerald-500" : "border-gray-300"
+                          }`}
+                        >
+                          {checked && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-semibold text-gray-900 truncate">
+                            {a.title || "활동 기록"}
+                          </p>
+                          <div className="flex items-center gap-2 text-[12px] text-gray-500 mt-0.5">
+                            {a.distance_km && <span>{parseFloat(a.distance_km).toFixed(2)}km</span>}
+                            {a.duration_minutes != null && (
+                              <>
+                                <span>·</span>
+                                <span>{formatDuration(a.duration_minutes)}</span>
+                              </>
+                            )}
+                            {a.started_at && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  {new Date(a.started_at).toLocaleTimeString("ko-KR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {sameDayActivities.length > 0 && !mergeLoading && (
+              <div className="px-5 py-4 border-t border-gray-100 space-y-2">
+                <p className="text-[12px] text-gray-500 text-center">
+                  현재 기록 포함 <span className="font-semibold text-gray-700">{selectedMergeIds.length + 1}개</span> 합치기
+                </p>
+                <button
+                  onClick={() => executeMerge(false)}
+                  disabled={merging || selectedMergeIds.length === 0}
+                  className="w-full py-3 bg-emerald-600 text-white rounded-xl text-[14px] font-semibold disabled:opacity-40"
+                >
+                  {merging ? "합치는 중..." : "합치기 (원본 유지)"}
+                </button>
+                <button
+                  onClick={() => executeMerge(true)}
+                  disabled={merging || selectedMergeIds.length === 0}
+                  className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-[14px] font-semibold disabled:opacity-40"
+                >
+                  합치기 (원본 삭제)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

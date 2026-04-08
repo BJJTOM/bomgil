@@ -17,12 +17,61 @@ function WalkCompleteContent() {
   const duration = parseInt(searchParams.get("duration") || "0");
   const steps = parseInt(searchParams.get("steps") || "0");
   const calories = parseInt(searchParams.get("calories") || "0");
-  const points = JSON.parse(searchParams.get("points") || "[]");
+  const points: { lat: number; lng: number; ele?: number | null }[] = JSON.parse(searchParams.get("points") || "[]");
 
-  const pathCoords: [number, number][] = points.map((p: any) => [p.lng, p.lat]);
+  const pathCoords: [number, number][] = points.map((p) => [p.lng, p.lat]);
   const center = points.length > 0
     ? { lat: points[Math.floor(points.length / 2)].lat, lng: points[Math.floor(points.length / 2)].lng }
     : undefined;
+
+  // Compute KM splits using haversine
+  const splits = (() => {
+    if (points.length < 2 || distance < 1) return [] as { km: number; pace: string }[];
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const result: { km: number; pace: string }[] = [];
+    let cumDist = 0;
+    let cumTime = 0;
+    let lastSplitDist = 0;
+    let lastSplitTime = 0;
+    // We don't have per-point timestamps; distribute time evenly
+    const timePerPoint = duration / Math.max(1, points.length - 1);
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const dLat = toRad(b.lat - a.lat);
+      const dLng = toRad(b.lng - a.lng);
+      const x =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+      cumDist += 2 * R * Math.asin(Math.sqrt(x));
+      cumTime += timePerPoint;
+      while (cumDist - lastSplitDist >= 1) {
+        const splitTime = cumTime - lastSplitTime;
+        const splitMin = splitTime / 60;
+        const m = Math.floor(splitMin);
+        const s = Math.round((splitMin - m) * 60);
+        result.push({ km: result.length + 1, pace: `${m}'${String(s).padStart(2, "0")}"` });
+        lastSplitDist += 1;
+        lastSplitTime = cumTime;
+      }
+    }
+    return result;
+  })();
+
+  // Elevation summary
+  const elevations = points.map((p) => p.ele).filter((e): e is number => e != null);
+  const eleGain = (() => {
+    if (elevations.length < 2) return 0;
+    let total = 0;
+    for (let i = 1; i < elevations.length; i++) {
+      const diff = elevations[i] - elevations[i - 1];
+      if (diff > 0) total += diff;
+    }
+    return Math.round(total);
+  })();
+  const minEle = elevations.length ? Math.min(...elevations) : 0;
+  const maxEle = elevations.length ? Math.max(...elevations) : 0;
 
   // Format time
   const hours = Math.floor(duration / 3600);
@@ -141,6 +190,42 @@ function WalkCompleteContent() {
             </div>
           </div>
 
+          {/* Splits */}
+          {splits.length > 0 && (
+            <div className="mx-6 mb-5">
+              <p className="text-[11px] uppercase tracking-wider text-white/40 font-semibold mb-2">Splits</p>
+              <div className="space-y-1.5 max-h-[140px] overflow-y-auto">
+                {splits.slice(0, 6).map((s) => (
+                  <div key={s.km} className="flex items-center gap-2">
+                    <span className="text-[11px] text-white/40 w-8">{s.km}km</span>
+                    <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#A8E6CF]" style={{ width: "100%" }} />
+                    </div>
+                    <span className="text-[12px] text-white font-en font-semibold w-12 text-right">{s.pace}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Elevation summary */}
+          {elevations.length > 1 && (
+            <div className="mx-6 mb-5 grid grid-cols-3 gap-px bg-white/5 rounded-[12px] overflow-hidden">
+              <div className="bg-[#162416] p-3 text-center">
+                <div className="text-[15px] font-bold text-white font-en">+{eleGain}m</div>
+                <div className="text-[10px] text-white/40 mt-0.5">상승</div>
+              </div>
+              <div className="bg-[#162416] p-3 text-center">
+                <div className="text-[15px] font-bold text-white font-en">{Math.round(minEle)}m</div>
+                <div className="text-[10px] text-white/40 mt-0.5">최저</div>
+              </div>
+              <div className="bg-[#162416] p-3 text-center">
+                <div className="text-[15px] font-bold text-white font-en">{Math.round(maxEle)}m</div>
+                <div className="text-[10px] text-white/40 mt-0.5">최고</div>
+              </div>
+            </div>
+          )}
+
           {/* Steps + Date */}
           <div className="px-6 pb-5">
             <p className="text-white/80 text-[15px] font-semibold">{steps.toLocaleString()} {t("activities.steps")}</p>
@@ -165,12 +250,30 @@ function WalkCompleteContent() {
           {t("walk.shareWalk")}
         </button>
 
-        <Link
-          href="/trails/new"
-          className="w-full py-3.5 bg-white/10 text-white/80 rounded-[16px] text-[14px] font-medium text-center active:scale-[0.98] transition-transform block"
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              sessionStorage.setItem(
+                "moru_walk_to_trail",
+                JSON.stringify({
+                  distance,
+                  duration,
+                  steps,
+                  calories,
+                  eleGain,
+                  points,
+                  pathCoords,
+                  savedAt: Date.now(),
+                }),
+              );
+            } catch {}
+            router.push("/trails/new?from=walk");
+          }}
+          className="w-full py-3.5 bg-white/10 text-white/80 rounded-[16px] text-[14px] font-medium text-center active:scale-[0.98] transition-transform"
         >
           코스로 등록하기
-        </Link>
+        </button>
 
         <div className="grid grid-cols-2 gap-3">
           <Link

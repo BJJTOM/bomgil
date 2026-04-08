@@ -5,6 +5,7 @@ from .views import (
     EmailLoginView,
     FCMTokenView,
     FirebasePhoneAuthView,
+    PhoneSmsSentLogView,
     FollowersView,
     PasswordChangeView,
     FollowingView,
@@ -53,6 +54,7 @@ urlpatterns = [
     path("phone/verify/", PhoneVerifyView.as_view(), name="phone-verify"),
     # Firebase Phone Auth (new)
     path("phone/firebase/", FirebasePhoneAuthView.as_view(), name="firebase-phone-auth"),
+    path("phone/sms-log/", PhoneSmsSentLogView.as_view(), name="phone-sms-log"),
     # FCM token
     path("fcm-token/", FCMTokenView.as_view(), name="fcm-token"),
     # Notifications

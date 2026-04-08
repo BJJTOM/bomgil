@@ -57,14 +57,9 @@ export default function PhoneAuthScreen() {
     }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/phone/otp/send/', { phone_number: phone });
+      await api.post('/auth/phone/otp/send/', { phone_number: phone });
       setCode('');
       setStep('code');
-      // Test mode: show code in alert for easy testing
-      if (data?.test_code) {
-        Alert.alert('🧪 테스트 모드', `인증번호: ${data.test_code}`);
-        setCode(data.test_code);
-      }
     } catch (e: any) {
       const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다.';
       Alert.alert('전송 실패', msg);
@@ -80,22 +75,30 @@ export default function PhoneAuthScreen() {
     }
     setLoading(true);
     try {
+      // Step A: verify the OTP and obtain a single-use verification token.
+      // The server intentionally does NOT reveal whether the user exists
+      // here; we discover that on the /complete/ call below.
       const { data } = await api.post('/auth/phone/otp/verify/', {
         phone_number: phone,
         code,
       });
       verificationTokenRef.current = data.verification_token;
 
-      if (data.user_exists) {
-        // Existing user — login directly
+      // Step B: try to complete WITHOUT a nickname.
+      // - Existing user → login succeeds.
+      // - New user → 400 with code: "nickname_required" → show nickname step.
+      try {
         const { data: loginData } = await api.post('/auth/phone/otp/complete/', {
           verification_token: data.verification_token,
         });
         login(loginData.user, loginData.access, loginData.refresh);
         goToMain();
-      } else {
-        // New user — ask for nickname
-        setStep('nickname');
+      } catch (completeErr: any) {
+        if (completeErr?.response?.data?.code === 'nickname_required') {
+          setStep('nickname');
+        } else {
+          throw completeErr;
+        }
       }
     } catch (e: any) {
       Alert.alert('인증 실패', e?.response?.data?.error || '인증번호가 일치하지 않습니다.');

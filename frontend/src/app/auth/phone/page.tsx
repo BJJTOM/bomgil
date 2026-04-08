@@ -30,7 +30,6 @@ export default function PhoneAuthPage() {
   const [nickname, setNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const verificationTokenRef = useRef<string | null>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +53,6 @@ export default function PhoneAuthPage() {
 
   const handleSendCode = async () => {
     setError("");
-    setInfo("");
     if (!phone.trim()) {
       setError("전화번호를 입력해주세요.");
       return;
@@ -65,15 +63,10 @@ export default function PhoneAuthPage() {
     }
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/phone/otp/send/", { phone_number: phone });
+      await api.post("/auth/phone/otp/send/", { phone_number: phone });
       setCode("");
       setStep("code");
       setResendCooldown(30);
-      // Test mode: backend returns code when no SMS provider configured
-      if (data?.test_code) {
-        setCode(data.test_code);
-        setInfo(`🧪 테스트 모드 — 인증번호: ${data.test_code}`);
-      }
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.response?.data?.detail || "인증번호 전송에 실패했습니다.");
     } finally {
@@ -89,22 +82,29 @@ export default function PhoneAuthPage() {
     }
     setLoading(true);
     try {
+      // Step A: verify OTP, get single-use verification token.
+      // The server does not reveal user existence here (anti-enumeration).
       const { data } = await api.post("/auth/phone/otp/verify/", {
         phone_number: phone,
         code,
       });
       verificationTokenRef.current = data.verification_token;
 
-      if (data.user_exists) {
-        // Existing user — login directly
+      // Step B: try /complete/ without nickname.
+      // - Existing user → login succeeds.
+      // - New user → 400 with code: "nickname_required" → show nickname step.
+      try {
         const { data: loginData } = await api.post("/auth/phone/otp/complete/", {
           verification_token: data.verification_token,
         });
         login(loginData.user, loginData.access, loginData.refresh);
         router.push("/");
-      } else {
-        // New user — ask for nickname
-        setStep("nickname");
+      } catch (completeErr: any) {
+        if (completeErr?.response?.data?.code === "nickname_required") {
+          setStep("nickname");
+        } else {
+          throw completeErr;
+        }
       }
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.response?.data?.detail || "인증번호가 일치하지 않습니다.");
@@ -238,11 +238,6 @@ export default function PhoneAuthPage() {
               />
             </div>
 
-            {info && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                <p className="text-[12px] text-yellow-800">{info}</p>
-              </div>
-            )}
             {error && <p className="text-[13px] text-red-500 mb-3">{error}</p>}
 
             <button

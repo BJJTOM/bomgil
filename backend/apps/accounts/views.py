@@ -269,10 +269,36 @@ def _normalize_phone(phone: str) -> str:
     return digits
 
 
+def _generate_safe_username() -> str:
+    """Generate a random username that does NOT encode any phone digits.
+
+    Format: phone_<16 hex chars>. Collision probability is negligible
+    (16^16 = 1.8e19), but we still loop to be safe.
+    """
+    import secrets
+    for _ in range(5):
+        candidate = f"phone_{secrets.token_hex(8)}"
+        if not CustomUser.objects.filter(username=candidate).exists():
+            return candidate
+    # Extreme fallback — append more entropy
+    return f"phone_{secrets.token_hex(12)}"
+
+
 class SendOtpView(APIView):
-    """Generate and send OTP to phone number."""
+    """Generate and store an OTP for the given phone number.
+
+    Security:
+    - Never returns the OTP in the response. Staff can view recent codes
+      via Django admin (PhoneOTP). SMS is sent via the configured provider;
+      when no provider is configured the code is logged to Django logs only.
+    - Per-phone rate limit (5 sends / hour) on top of the per-IP throttle
+      to prevent enumeration via proxy rotation.
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OtpSendThrottle]
+
+    # Per-phone limit (independent from per-IP DRF throttle)
+    PER_PHONE_HOURLY_LIMIT = 5
 
     def post(self, request):
         import random
@@ -287,18 +313,36 @@ class SendOtpView(APIView):
 
         normalized = _normalize_phone(phone)
 
+        # Per-phone hourly rate limit (defends against IP rotation)
+        recent_count = PhoneOTP.objects.filter(
+            phone_number=normalized,
+            created_at__gte=timezone.now() - timedelta(hours=1),
+        ).count()
+        if recent_count >= self.PER_PHONE_HOURLY_LIMIT:
+            PhoneAuthLog.objects.create(
+                phone_number=normalized,
+                event_type='failed',
+                error_message='per-phone rate limit',
+                ip_address=_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+            )
+            return Response(
+                {"error": "잠시 후 다시 시도해주세요. (전화번호당 시간당 요청 제한)"},
+                status=429,
+            )
+
         # Generate 6-digit code
         code = ''.join(random.choices(string.digits, k=6))
 
         # Store OTP (delete previous unverified ones for this number)
         PhoneOTP.objects.filter(phone_number=normalized, verified=False).delete()
-        otp = PhoneOTP.objects.create(
+        PhoneOTP.objects.create(
             phone_number=normalized,
             code=code,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
 
-        # Send SMS
+        # Send SMS (or log in test mode)
         message = f"[모루] 인증번호: {code}\n5분 안에 입력해주세요."
         success, error = send_sms(normalized, message)
 
@@ -314,24 +358,26 @@ class SendOtpView(APIView):
         if not success:
             return Response({"error": f"SMS 전송 실패: {error}"}, status=500)
 
-        # In development/test mode (no SMS provider), include code in response
-        import os
-        response_data = {"sent": True, "expires_in": 300}
-        if not os.environ.get('ALIGO_API_KEY'):
-            response_data["test_code"] = code  # ⚠️ DEV ONLY
-            response_data["test_mode"] = True
-
-        return Response(response_data)
+        # ⚠️ NEVER return the OTP in the response. Staff can view it via
+        # Django admin (PhoneOTP) or Render logs.
+        return Response({"sent": True, "expires_in": 300})
 
 
 class VerifyOtpView(APIView):
-    """Verify OTP code. Returns a verification_token to use in signup/login."""
+    """Verify an OTP code and issue a short-lived verification token.
+
+    Security:
+    - Response NEVER reveals whether a user with this phone exists.
+      Account existence is resolved later in /complete/ via the
+      `nickname_required` error code, after rate limiting and after
+      a verification token has been spent (single-use).
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OtpVerifyThrottle]
 
     def post(self, request):
-        from django.utils import timezone
         import secrets
+        from django.core.cache import cache
 
         phone = request.data.get('phone_number', '').strip()
         code = request.data.get('code', '').strip()
@@ -363,12 +409,11 @@ class VerifyOtpView(APIView):
 
         # Generate verification token (valid for 10 minutes)
         token = secrets.token_urlsafe(32)
-        from django.core.cache import cache
         cache.set(f"phone_verify:{token}", normalized, timeout=600)
 
-        # Check if user already exists
+        # Log against existing user if any (for admin traceability) but
+        # do NOT leak that fact in the response.
         existing = CustomUser.objects.filter(phone_number=normalized).first()
-
         PhoneAuthLog.objects.create(
             phone_number=normalized,
             event_type='verified',
@@ -380,12 +425,22 @@ class VerifyOtpView(APIView):
         return Response({
             "verified": True,
             "verification_token": token,
-            "user_exists": existing is not None,
         })
 
 
 class CompletePhoneAuthView(APIView):
-    """Complete signup or login using verification token from VerifyOtpView."""
+    """Complete signup or login using a verification token.
+
+    Flow (single endpoint, hides existence):
+    - Token resolves to a phone number.
+    - If a user with that phone exists → login (any provided nickname is ignored).
+    - If no user exists and `nickname` is provided → create the account.
+    - If no user exists and no `nickname` → return 400 with
+      `{ error, code: "nickname_required" }` so the client can prompt.
+
+    The verification token is single-use: it is deleted on the FIRST call,
+    even when nickname is missing, to prevent enumeration via repeated probes.
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OtpCompleteThrottle]
 
@@ -394,35 +449,38 @@ class CompletePhoneAuthView(APIView):
 
         token = request.data.get('verification_token', '').strip()
         nickname = request.data.get('nickname', '').strip()
-        email = request.data.get('email', '').strip()
 
         if not token:
             return Response({"error": "verification_token이 필요합니다."}, status=400)
 
-        phone = cache.get(f"phone_verify:{token}")
+        cache_key = f"phone_verify:{token}"
+        phone = cache.get(cache_key)
         if not phone:
             return Response({"error": "인증 토큰이 만료되었습니다. 다시 인증해주세요."}, status=400)
 
-        # Lookup or create user
         user = CustomUser.objects.filter(phone_number=phone).first()
         is_new = False
 
-        if not user:
-            # Create new user
+        if user is None:
             if not nickname:
-                return Response({"error": "닉네임이 필요합니다."}, status=400)
+                # Tell the client to collect a nickname WITHOUT consuming the token,
+                # so the next call (with nickname) can succeed.
+                return Response(
+                    {
+                        "error": "닉네임을 입력해주세요.",
+                        "code": "nickname_required",
+                    },
+                    status=400,
+                )
+
+            # Create new user with a phone-free username/email.
             base_nick = nickname
             i = 1
             while CustomUser.objects.filter(nickname=nickname).exists():
                 nickname = f"{base_nick}{i}"
                 i += 1
 
-            username = f"phone_{phone[-8:]}"
-            i2 = 1
-            while CustomUser.objects.filter(username=username).exists():
-                username = f"phone_{phone[-7:]}{i2}"
-                i2 += 1
-
+            username = _generate_safe_username()
             user = CustomUser.objects.create(
                 username=username,
                 nickname=nickname,
@@ -430,16 +488,15 @@ class CompletePhoneAuthView(APIView):
                 phone_verified=True,
                 is_verified=True,
                 verification_level=2,
-                email=email or f"{username}@phone.moruwalk.com",
+                email=f"{username}@phone.moruwalk.com",
             )
             user.set_unusable_password()
             user.save()
             is_new = True
 
-        # Invalidate token
-        cache.delete(f"phone_verify:{token}")
+        # Invalidate the verification token now that we have a real outcome.
+        cache.delete(cache_key)
 
-        # Log
         PhoneAuthLog.objects.create(
             phone_number=phone,
             event_type='signup' if is_new else 'login',

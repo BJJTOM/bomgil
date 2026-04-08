@@ -190,6 +190,44 @@ export default function WalkPage() {
     setGpsStatus(e.code === 1 ? (ko ? "위치 권한 필요" : "Permission needed") : e.code === 2 ? (ko ? "GPS 신호 없음" : "No signal") : (ko ? "위치 오류" : "Location error"));
   }, [ko]);
 
+  // Check for resume on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("resume") === "local") {
+      try {
+        const data = localStorage.getItem("moru_paused_walk");
+        if (data) {
+          const parsed = JSON.parse(data);
+          // Restore state
+          distRef.current = parsed.distance || 0;
+          setDistance(parsed.distance || 0);
+          setSteps(parsed.steps || 0);
+          setCalories(parsed.calories || 0);
+          if (parsed.elapsed) setElapsed(parsed.elapsed);
+          if (parsed.trackPoints && Array.isArray(parsed.trackPoints)) trackPointsRef.current = parsed.trackPoints;
+          if (parsed.photos) setPhotos(parsed.photos);
+          if (parsed.spots) setSpots(parsed.spots);
+          // Skip idle, go directly to countdown
+          setTimeout(() => startCountdown(), 100);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Auto-save paused walk
+  useEffect(() => {
+    if (state !== "paused") return;
+    try {
+      localStorage.setItem("moru_paused_walk", JSON.stringify({
+        distance, steps, calories, elapsed,
+        trackPoints: trackPointsRef.current,
+        photos, spots,
+        savedAt: Date.now(),
+      }));
+    } catch {}
+  }, [state, distance, steps, calories, elapsed, photos, spots]);
+
   // ── Start Flow ──
   const startCountdown = () => {
     setState("countdown");
@@ -236,6 +274,9 @@ export default function WalkPage() {
   const complete = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
+
+    // Clear paused walk on complete
+    try { localStorage.removeItem("moru_paused_walk"); } catch {}
 
     // Warn if no GPS data was captured
     if (trackPointsRef.current.length < 2) {

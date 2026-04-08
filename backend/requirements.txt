@@ -31,6 +31,9 @@ django-modeltranslation==0.19.11
 requests==2.32.3
 cryptography==44.0.3
 
+# Firebase Admin (phone auth verification)
+firebase-admin==6.5.0
+
 # Dev / Utils
 django-extensions==3.2.3
 django-debug-toolbar==4.4.6

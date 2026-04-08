@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useActivities, useActivityStats } from "@/hooks/useActivities";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,31 @@ export default function ActivitiesPage() {
   const { data: stats, isLoading: statsLoading } = useActivityStats();
   const { data: activities = [], isLoading } = useActivities();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [pausedWalk, setPausedWalk] = useState<{ distance: number; duration: number; steps: number; savedAt: number } | null>(null);
+
+  // Load paused walk from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const data = localStorage.getItem("moru_paused_walk");
+      if (data) {
+        const parsed = JSON.parse(data);
+        const ageMinutes = (Date.now() - parsed.savedAt) / 60000;
+        if (ageMinutes < 120) setPausedWalk(parsed);
+        else localStorage.removeItem("moru_paused_walk");
+      }
+    } catch {}
+  }, []);
+
+  const handleResumeWalk = () => {
+    window.location.href = "/walk?resume=local";
+  };
+
+  const handleDeletePausedWalk = () => {
+    localStorage.removeItem("moru_paused_walk");
+    setPausedWalk(null);
+  };
 
   const hour = new Date().getHours();
   const greeting = language === "ko"
@@ -202,6 +227,27 @@ export default function ActivitiesPage() {
         </div>
       )}
 
+      {/* Paused walk resume card */}
+      {pausedWalk && (
+        <div className="px-5 pt-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-amber-50 border border-amber-200 rounded-[16px] p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="#D97706"/></svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-amber-900">일시정지된 걷기가 있어요</p>
+                <p className="text-[11px] text-amber-700">{pausedWalk.distance.toFixed(2)}km · {Math.floor(pausedWalk.duration / 60)}분 · {pausedWalk.steps.toLocaleString()}걸음 · 거리/걸음/칼로리 이어서 누적됩니다</p>
+              </div>
+              <button onClick={handleResumeWalk} className="text-[12px] font-bold bg-amber-600 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap">이어서 걷기</button>
+              <button onClick={handleDeletePausedWalk} className="text-amber-700 hover:text-amber-900 p-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Activity list */}
       <div className="px-5 pt-4 pb-24">
         <div className="max-w-3xl mx-auto">
@@ -224,7 +270,7 @@ export default function ActivitiesPage() {
                 </Link>
               </div>
             ) : (
-              activities.map((activity: ActivityTrack) => (
+              activities.slice(0, visibleCount).map((activity: ActivityTrack) => (
                 <div key={activity.id} className="bg-white rounded-[16px] border border-[#E5E8EB] p-4 hover:shadow-card transition-shadow">
                   <Link href={`/activities/${activity.id}`}>
                     <div className="flex items-start justify-between mb-2">
@@ -277,6 +323,15 @@ export default function ActivitiesPage() {
                   </div>
                 </div>
               ))
+            )}
+            {/* Load more button */}
+            {!isLoading && activities.length > visibleCount && (
+              <button
+                onClick={() => setVisibleCount(c => c + 10)}
+                className="w-full mt-3 py-3 bg-white border border-[#E5E8EB] rounded-[14px] text-[13px] font-semibold text-[#2D4A2E] hover:bg-[#F0F7F0] transition-colors"
+              >
+                {language === "ko" ? `더보기 (${activities.length - visibleCount}개)` : `Load more (${activities.length - visibleCount})`}
+              </button>
             )}
           </div>
         </div>

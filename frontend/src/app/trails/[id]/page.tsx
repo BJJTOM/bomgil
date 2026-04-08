@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,7 +39,53 @@ export default function TrailDetailPage() {
     content: "",
     visited_date: new Date().toISOString().split("T")[0],
   });
+  const [reviewImages, setReviewImages] = useState<File[]>([]);
+  const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
   const createReview = useCreateReview(trailId);
+
+  // Check saved status from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined" || !trailId) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("moru_saved_trails") || "[]");
+      setIsSaved(saved.some((t: any) => t.id === trailId));
+    } catch {}
+  }, [trailId]);
+
+  const handleToggleSave = () => {
+    if (typeof window === "undefined" || !trail) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("moru_saved_trails") || "[]");
+      if (isSaved) {
+        const filtered = saved.filter((t: any) => t.id !== trailId);
+        localStorage.setItem("moru_saved_trails", JSON.stringify(filtered));
+        setIsSaved(false);
+        alert("저장이 해제되었습니다");
+      } else {
+        const minimal = { id: trailId, title: trail.title, region: trail.region, distance_km: trail.distance_km, cover_image: trail.cover_image, savedAt: Date.now() };
+        saved.push(minimal);
+        localStorage.setItem("moru_saved_trails", JSON.stringify(saved));
+        setIsSaved(true);
+        alert("오프라인 저장 완료");
+      }
+    } catch {}
+  };
+
+  const handleReviewImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = 3 - reviewImages.length;
+    const newFiles = files.slice(0, remaining);
+    setReviewImages(prev => [...prev, ...newFiles]);
+    setReviewPreviews(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
+    e.target.value = "";
+  };
+
+  const removeReviewImage = (i: number) => {
+    URL.revokeObjectURL(reviewPreviews[i]);
+    setReviewImages(prev => prev.filter((_, idx) => idx !== i));
+    setReviewPreviews(prev => prev.filter((_, idx) => idx !== i));
+  };
 
   if (trailLoading) {
     return (
@@ -78,9 +124,29 @@ export default function TrailDetailPage() {
       : null;
 
   const handleSubmitReview = async () => {
-    await createReview.mutateAsync(reviewForm);
+    // If images, use FormData
+    if (reviewImages.length > 0) {
+      const formData = new FormData();
+      formData.append("trail", String(trailId));
+      formData.append("rating", String(reviewForm.rating));
+      formData.append("content", reviewForm.content);
+      formData.append("visited_date", reviewForm.visited_date);
+      reviewImages.forEach((img) => formData.append("images", img));
+      try {
+        const api = (await import("@/lib/api")).default;
+        await api.post("/reviews/", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      } catch (e: any) {
+        alert("리뷰 작성 실패");
+        return;
+      }
+    } else {
+      await createReview.mutateAsync(reviewForm);
+    }
     setShowReviewForm(false);
     setReviewForm({ rating: 5, content: "", visited_date: new Date().toISOString().split("T")[0] });
+    setReviewImages([]);
+    reviewPreviews.forEach(URL.revokeObjectURL);
+    setReviewPreviews([]);
   };
 
   function formatActivityDuration(minutes: number | null) {
@@ -163,8 +229,8 @@ export default function TrailDetailPage() {
             description={tr.description}
             url={typeof window !== "undefined" ? window.location.href : ""}
           />
-          <button className="flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium bg-white border border-border-default text-text-primary">
-            🔖 {saveLabel}
+          <button onClick={handleToggleSave} className={`flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium ${isSaved ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-white border border-border-default text-text-primary"}`}>
+            {isSaved ? "🔖 저장됨" : "🔖 " + saveLabel}
           </button>
           <Link
             href={`/walk?trail=${trailId}`}
@@ -311,6 +377,24 @@ export default function TrailDetailPage() {
                     placeholder={t("review.placeholder")}
                     className="input-field resize-none"
                   />
+                </div>
+                {/* Image upload (max 3) */}
+                <div>
+                  <label className="text-[13px] text-text-secondary block mb-1.5">사진 (최대 3장)</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <input id="review-img-input" type="file" accept="image/*" multiple className="hidden" onChange={handleReviewImagePick} />
+                    {reviewImages.length < 3 && (
+                      <label htmlFor="review-img-input" className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-primary">
+                        <span className="text-2xl text-gray-400">+</span>
+                      </label>
+                    )}
+                    {reviewPreviews.map((url, i) => (
+                      <div key={i} className="relative">
+                        <img src={url} alt="" className="w-[72px] h-[72px] rounded-xl object-cover" />
+                        <button onClick={() => removeReviewImage(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center">✕</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button

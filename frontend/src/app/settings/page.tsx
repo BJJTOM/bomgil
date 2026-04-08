@@ -41,6 +41,10 @@ export default function SettingsPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const handleLogout = () => setShowLogoutModal(true);
 
@@ -52,6 +56,23 @@ export default function SettingsPage() {
       setLoggingOut(false);
       router.push("/");
     }, 800);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirmText !== "탈퇴") {
+      setDeleteError(language === "ko" ? "'탈퇴'를 정확히 입력해주세요" : "Please type '탈퇴' exactly");
+      return;
+    }
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api.delete("/auth/me/delete/");
+      logout();
+      router.push("/");
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.detail || (language === "ko" ? "탈퇴 처리 중 오류가 발생했습니다" : "An error occurred"));
+      setDeleting(false);
+    }
   };
 
   const sections = [
@@ -133,6 +154,42 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* XP/Level Card */}
+        {isAuthenticated && user && (
+          <div className="mx-5 mb-4 bg-white rounded-card shadow-soft p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">LV.{(user as any).level || 1}</span>
+                <span className="text-[12px] text-text-secondary">{(user as any).xp || 0} XP</span>
+              </div>
+              <span className="text-[11px] text-text-tertiary">다음 레벨까지 {100 - (((user as any).xp || 0) % 100)} XP</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${((user as any).xp || 0) % 100}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Stats card */}
+        {isAuthenticated && user && (
+          <div className="mx-5 mb-4 bg-white rounded-card shadow-soft p-4">
+            <div className="grid grid-cols-3 gap-2">
+              <Link href={`/profile/${user.nickname}/followers`} className="text-center hover:bg-gray-50 rounded-lg py-2">
+                <p className="text-[16px] font-bold text-text-primary">{(user as any).follower_count || 0}</p>
+                <p className="text-[11px] text-text-tertiary">팔로워</p>
+              </Link>
+              <Link href={`/profile/${user.nickname}/followers`} className="text-center hover:bg-gray-50 rounded-lg py-2">
+                <p className="text-[16px] font-bold text-text-primary">{(user as any).following_count || 0}</p>
+                <p className="text-[11px] text-text-tertiary">팔로잉</p>
+              </Link>
+              <Link href={`/profile/${user.nickname}`} className="text-center hover:bg-gray-50 rounded-lg py-2">
+                <p className="text-[16px] font-bold text-text-primary">{(user as any).trail_count || 0}</p>
+                <p className="text-[11px] text-text-tertiary">코스</p>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Sections */}
         {sections.map((section) => (
           <div key={section.title} className="mb-4">
@@ -177,12 +234,24 @@ export default function SettingsPage() {
 
         {/* Logout */}
         {isAuthenticated && (
-          <div className="mx-5 mb-8">
+          <div className="mx-5 mb-3">
             <button
               onClick={handleLogout}
               className="w-full py-3.5 bg-white rounded-card shadow-soft text-danger text-[14px] font-medium hover:bg-red-50 transition-colors"
             >
               {language === "ko" ? "로그아웃" : "Logout"}
+            </button>
+          </div>
+        )}
+
+        {/* Delete account */}
+        {isAuthenticated && (
+          <div className="mx-5 mb-8">
+            <button
+              onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
+              className="w-full py-3 text-text-tertiary text-[12px] font-medium hover:text-danger transition-colors underline"
+            >
+              {language === "ko" ? "회원 탈퇴" : "Delete Account"}
             </button>
           </div>
         )}
@@ -214,6 +283,58 @@ export default function SettingsPage() {
                 {language === lang.code && <span className="text-primary font-bold">✓</span>}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center px-10">
+          <div className="bg-white rounded-[20px] p-7 w-full max-w-[340px]">
+            {deleting ? (
+              <div className="py-6 text-center">
+                <div className="w-8 h-8 border-3 border-danger border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-[15px] text-text-secondary">{language === "ko" ? "탈퇴 처리 중..." : "Deleting account..."}</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-[36px] mb-3 text-center">⚠️</div>
+                <h3 className="text-[18px] font-bold text-text-primary mb-2 text-center">
+                  {language === "ko" ? "정말 탈퇴하시겠습니까?" : "Delete account?"}
+                </h3>
+                <p className="text-[13px] text-text-tertiary mb-4 text-center leading-relaxed">
+                  {language === "ko"
+                    ? "탈퇴 시 모든 활동 기록, 코스, 사진, 좋아요 정보가 삭제되며 복구할 수 없습니다."
+                    : "All your activities, trails, photos, and likes will be permanently deleted and cannot be recovered."}
+                </p>
+                <div className="bg-red-50 rounded-lg p-3 mb-4">
+                  <p className="text-[12px] text-danger mb-2 font-medium">
+                    {language === "ko" ? "확인을 위해 아래에 '탈퇴'를 입력하세요" : "Type '탈퇴' below to confirm"}
+                  </p>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => { setDeleteConfirmText(e.target.value); setDeleteError(""); }}
+                    placeholder="탈퇴"
+                    className="w-full px-3 py-2 rounded-lg border border-red-200 text-[14px] focus:outline-none focus:border-danger bg-white"
+                  />
+                  {deleteError && <p className="text-[11px] text-danger mt-2">{deleteError}</p>}
+                </div>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleteConfirmText !== "탈퇴"}
+                  className="w-full py-3.5 bg-danger text-white rounded-[14px] text-[15px] font-semibold mb-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {language === "ko" ? "회원 탈퇴" : "Delete Account"}
+                </button>
+                <button
+                  onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                  className="w-full py-3 text-text-secondary text-[15px]"
+                >
+                  {language === "ko" ? "취소" : "Cancel"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

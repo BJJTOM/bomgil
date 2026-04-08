@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTrails } from "@/hooks/useTrails";
+import Link from "next/link";
+import { useTrails, usePopularTrails } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -106,6 +107,9 @@ function ExploreContent() {
 
   const { data, isLoading } = useTrails(queryParams);
   const allTrails: Trail[] = data?.results ?? data ?? [];
+
+  const { data: popularData } = usePopularTrails();
+  const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);
 
   const trails = useMemo(() => {
     if (!search.trim()) return allTrails;
@@ -241,18 +245,62 @@ function ExploreContent() {
             ))}
           </div>
         ) : trails.length === 0 ? (
-          <EmptyState
-            title={t("explore.noResults")}
-            description={t("explore.noResultsDesc")}
-            action={
-              <button
-                onClick={clearAllFilters}
-                className="px-5 py-2.5 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold"
-              >
-                {t("explore.resetFilters")}
-              </button>
-            }
-          />
+          <div>
+            <EmptyState
+              title={t("explore.noResults")}
+              description={t("explore.noResultsDesc")}
+              action={
+                <button
+                  onClick={clearAllFilters}
+                  className="px-5 py-2.5 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold"
+                >
+                  {t("explore.resetFilters")}
+                </button>
+              }
+            />
+            {popularTrails.length > 0 && (
+              <div className="mt-8 max-w-xl mx-auto">
+                <h3 className="text-[14px] font-bold text-gray-900 mb-3 px-1">
+                  이런 코스는 어떠세요?
+                </h3>
+                <div className="space-y-2">
+                  {popularTrails.map((trail) => (
+                    <Link
+                      key={trail.id}
+                      href={`/trails/${trail.id}`}
+                      className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-[#F2F4F6] hover:border-[#2D4A2E]/30 hover:shadow-sm transition-all"
+                    >
+                      {trail.cover_image ? (
+                        <img
+                          src={trail.cover_image}
+                          alt=""
+                          className="w-14 h-14 rounded-[10px] object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-[10px] bg-[#F7F8FA] flex items-center justify-center flex-shrink-0">
+                          <span className="text-[20px]">🥾</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-gray-900 truncate">
+                          {trail.title}
+                        </p>
+                        <p className="text-[12px] text-[#8B95A1] truncate">
+                          {trail.region || ""}
+                          {trail.distance_km
+                            ? ` · ${parseFloat(trail.distance_km).toFixed(1)}km`
+                            : ""}
+                        </p>
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {trails.map((trail) => (

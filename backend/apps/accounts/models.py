@@ -110,7 +110,9 @@ class CustomUser(AbstractUser):
     # Phase 11: 인증
     is_verified = models.BooleanField(default=False)
     verification_level = models.IntegerField(choices=VERIFICATION_LEVEL_CHOICES, default=0)
-    phone_number = models.CharField(max_length=20, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True, db_index=True)
+    phone_verified = models.BooleanField(default=False)
+    firebase_uid = models.CharField(max_length=128, blank=True, default='', db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

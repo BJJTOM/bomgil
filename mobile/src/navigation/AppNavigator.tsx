@@ -59,6 +59,7 @@ import PasswordChangeScreen from '../screens/PasswordChangeScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import FollowListScreen from '../screens/FollowListScreen';
 import PermissionsScreen from '../screens/PermissionsScreen';
+import PhoneAuthScreen from '../screens/PhoneAuthScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -245,6 +246,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
         <Stack.Screen name="FollowList" component={FollowListScreen} />
         <Stack.Screen name="Permissions" component={PermissionsScreen} />
+        <Stack.Screen name="PhoneAuth" component={PhoneAuthScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -155,11 +155,30 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: '#E5E8EB' }} />
+            <Text style={{ marginHorizontal: 12, fontSize: 12, color: colors.textTertiary }}>또는</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: '#E5E8EB' }} />
+          </View>
+
+          {/* Phone auth */}
+          <TouchableOpacity
+            style={{
+              borderWidth: 1.5, borderColor: colors.primary,
+              paddingVertical: 14, borderRadius: 14, alignItems: 'center',
+              flexDirection: 'row', justifyContent: 'center', gap: 8,
+            }}
+            onPress={() => navigation.navigate('PhoneAuth')}
+            activeOpacity={0.7}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>📱  전화번호로 시작하기</Text>
+          </TouchableOpacity>
+
           {/* Register link */}
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>계정이 없으신가요? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>회원가입</Text>
+              <Text style={styles.registerLink}>이메일 가입</Text>
             </TouchableOpacity>
           </View>
         </View>

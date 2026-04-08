@@ -4,6 +4,7 @@ from .views import (
     AccountDeleteView,
     EmailLoginView,
     FCMTokenView,
+    FirebasePhoneAuthView,
     FollowersView,
     PasswordChangeView,
     FollowingView,
@@ -47,9 +48,11 @@ urlpatterns = [
     path("guest-login/", GuestLoginView.as_view(), name="guest-login"),
     # Password change
     path("password-change/", PasswordChangeView.as_view(), name="password-change"),
-    # Phone verification
+    # Phone verification (legacy)
     path("phone/send/", PhoneSendView.as_view(), name="phone-send"),
     path("phone/verify/", PhoneVerifyView.as_view(), name="phone-verify"),
+    # Firebase Phone Auth (new)
+    path("phone/firebase/", FirebasePhoneAuthView.as_view(), name="firebase-phone-auth"),
     # FCM token
     path("fcm-token/", FCMTokenView.as_view(), name="fcm-token"),
     # Notifications

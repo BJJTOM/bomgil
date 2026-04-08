@@ -207,6 +207,100 @@ class PhoneVerifyView(APIView):
         return Response({"verified": True})
 
 
+class FirebasePhoneAuthThrottle(AnonRateThrottle):
+    rate = '20/hour'
+
+
+class FirebasePhoneAuthView(APIView):
+    """Authenticate or register a user via Firebase phone ID token.
+
+    Body: { id_token: "...", nickname: "..." (optional, only for new users) }
+
+    Returns: { access, refresh, user, is_new }
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [FirebasePhoneAuthThrottle]
+
+    def post(self, request):
+        from .firebase_auth import verify_id_token
+
+        id_token = request.data.get('id_token', '').strip()
+        nickname = request.data.get('nickname', '').strip()
+
+        if not id_token:
+            return Response({"error": "id_token이 필요합니다."}, status=400)
+
+        decoded = verify_id_token(id_token)
+        if not decoded:
+            return Response({"error": "유효하지 않은 인증 토큰입니다."}, status=401)
+
+        firebase_uid = decoded.get('uid', '')
+        phone_number = decoded.get('phone_number', '')
+
+        if not firebase_uid or not phone_number:
+            return Response({"error": "전화번호 정보를 찾을 수 없습니다."}, status=400)
+
+        # Lookup by firebase_uid first, then by phone_number
+        user = CustomUser.objects.filter(firebase_uid=firebase_uid).first()
+        if not user:
+            user = CustomUser.objects.filter(phone_number=phone_number).first()
+
+        is_new = False
+        if not user:
+            # Create new user
+            if not nickname:
+                # Auto-generate nickname from phone tail
+                nickname = f"user{phone_number[-4:]}"
+            # Ensure unique nickname
+            base = nickname
+            i = 1
+            while CustomUser.objects.filter(nickname=nickname).exists():
+                nickname = f"{base}{i}"
+                i += 1
+
+            username = f"phone_{firebase_uid[:20]}"
+            i2 = 1
+            while CustomUser.objects.filter(username=username).exists():
+                username = f"phone_{firebase_uid[:18]}{i2}"
+                i2 += 1
+
+            user = CustomUser.objects.create(
+                username=username,
+                nickname=nickname,
+                phone_number=phone_number,
+                phone_verified=True,
+                firebase_uid=firebase_uid,
+                is_verified=True,
+                verification_level=2,
+                email=f"{firebase_uid}@phone.moruwalk.com",
+            )
+            user.set_unusable_password()
+            user.save()
+            is_new = True
+        else:
+            # Update phone verification status
+            updated_fields = []
+            if not user.phone_verified:
+                user.phone_verified = True
+                updated_fields.append('phone_verified')
+            if not user.firebase_uid:
+                user.firebase_uid = firebase_uid
+                updated_fields.append('firebase_uid')
+            if user.phone_number != phone_number:
+                user.phone_number = phone_number
+                updated_fields.append('phone_number')
+            if updated_fields:
+                user.save(update_fields=updated_fields)
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data,
+            'is_new': is_new,
+        })
+
+
 class LoginRateThrottle(AnonRateThrottle):
     rate = '5/minute'
 

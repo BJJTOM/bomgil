@@ -125,11 +125,18 @@ export default function LoginPage() {
               <span className="text-[12px] text-text-tertiary">또는</span>
               <div className="flex-1 h-px bg-border-light" />
             </div>
+            <Link
+              href="/auth/phone"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 text-primary rounded-button text-[14px] font-bold hover:bg-primary/15 transition-colors"
+            >
+              <span className="text-[16px]">📱</span>
+              전화번호로 시작하기
+            </Link>
             <button
               type="button"
               onClick={handleGuestLogin}
               disabled={loading}
-              className="w-full py-2.5 border border-border-default rounded-button text-[14px] font-medium text-text-secondary hover:bg-bg-secondary transition-colors"
+              className="w-full mt-2 py-2.5 border border-border-default rounded-button text-[14px] font-medium text-text-secondary hover:bg-bg-secondary transition-colors"
             >
               게스트로 둘러보기
             </button>

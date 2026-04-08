@@ -56,6 +56,11 @@ class PostCommentSerializer(serializers.ModelSerializer):
             return obj.author_id == request.user.id
         return False
 
+    def validate_content(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError('내용을 입력하세요.')
+        return sanitize(value)
+
 
 class PostListSerializer(serializers.ModelSerializer):
     author_nickname = serializers.CharField(source='author.nickname', read_only=True)
@@ -252,6 +257,9 @@ class GroupMessageSerializer(serializers.ModelSerializer):
         model = GroupMessage
         fields = ['id', 'sender', 'sender_nickname', 'sender_image', 'content', 'image', 'created_at']
         read_only_fields = ['sender']
+
+    def validate_content(self, value):
+        return sanitize(value) if value else value
 
 
 # ──────────────────────────────────────

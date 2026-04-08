@@ -1,4 +1,5 @@
 import hashlib
+import re
 
 from django.core.cache import cache
 from rest_framework import serializers
@@ -6,6 +7,12 @@ from rest_framework import serializers
 from apps.accounts.serializers import UserPublicSerializer
 
 from .models import Tag, Trail, TrailLike
+
+
+def _strip_tags(value):
+    if not value:
+        return value
+    return re.sub(r'<[^>]+>', '', value).strip()
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -106,6 +113,24 @@ class TrailCreateSerializer(serializers.ModelSerializer):
             "path_data", "cover_image", "tag_ids", "tags", "best_season", "status",
         ]
         read_only_fields = ["id"]
+
+    def validate_title(self, value):
+        return _strip_tags(value)
+
+    def validate_description(self, value):
+        return _strip_tags(value)
+
+    def validate_title_en(self, value):
+        return _strip_tags(value)
+
+    def validate_title_ja(self, value):
+        return _strip_tags(value)
+
+    def validate_description_en(self, value):
+        return _strip_tags(value)
+
+    def validate_description_ja(self, value):
+        return _strip_tags(value)
 
     def create(self, validated_data):
         tag_ids = validated_data.pop("tag_ids", [])

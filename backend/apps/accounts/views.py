@@ -5,7 +5,7 @@ import string
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from apps.reviews.models import Review
@@ -21,9 +21,50 @@ from rest_framework_simplejwt.tokens import RefreshToken
 logger = logging.getLogger(__name__)
 
 
+class ProfileUpdateThrottle(UserRateThrottle):
+    scope = 'profile_update'
+    rate = '20/hour'
+
+
+class FollowThrottle(UserRateThrottle):
+    scope = 'follow'
+    rate = '200/hour'
+
+
+class PhoneSendThrottle(UserRateThrottle):
+    scope = 'phone_send'
+    rate = '5/hour'
+
+
+class PhoneVerifyThrottle(UserRateThrottle):
+    scope = 'phone_verify'
+    rate = '10/hour'
+
+
+class PasswordChangeThrottle(UserRateThrottle):
+    scope = 'password_change'
+    rate = '10/hour'
+
+
+class FCMTokenThrottle(UserRateThrottle):
+    scope = 'fcm_token'
+    rate = '60/hour'
+
+
+class AccountDeleteThrottle(UserRateThrottle):
+    scope = 'account_delete'
+    rate = '5/hour'
+
+
+class NotificationActionThrottle(UserRateThrottle):
+    scope = 'notification_action'
+    rate = '120/hour'
+
+
 class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ProfileUpdateThrottle]
 
     def get_object(self):
         return self.request.user
@@ -32,6 +73,7 @@ class MeView(generics.RetrieveUpdateAPIView):
 class AccountDeleteView(APIView):
     """Soft-delete the authenticated user (set is_active=False)."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AccountDeleteThrottle]
 
     def delete(self, request):
         user = request.user
@@ -114,6 +156,7 @@ class UserBadgesView(APIView):
 # Phase 11: 휴대폰 인증
 class PhoneSendView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PhoneSendThrottle]
 
     def post(self, request):
         phone = request.data.get("phone_number", "")
@@ -133,6 +176,7 @@ class PhoneSendView(APIView):
 
 class PhoneVerifyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PhoneVerifyThrottle]
 
     def post(self, request):
         phone = request.data.get("phone_number", "")
@@ -192,6 +236,7 @@ class EmailLoginView(APIView):
 
 class FollowView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [FollowThrottle]
 
     def post(self, request, nickname):
         target = get_object_or_404(CustomUser, nickname=nickname)
@@ -231,6 +276,7 @@ class FollowingView(generics.ListAPIView):
 
 class PasswordChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PasswordChangeThrottle]
 
     def post(self, request):
         old_password = request.data.get("old_password", "")
@@ -248,11 +294,12 @@ class PasswordChangeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(new_password) < 8:
-            return Response(
-                {"error": "새 비밀번호는 8자 이상이어야 합니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(new_password, user=request.user)
+        except DjangoValidationError as e:
+            return Response({"error": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
         request.user.set_password(new_password)
         request.user.save(update_fields=["password"])
@@ -260,7 +307,8 @@ class PasswordChangeView(APIView):
 
 
 class GuestLoginThrottle(AnonRateThrottle):
-    rate = '10/hour'
+    scope = 'guest_login'
+    rate = '20/hour'
 
 
 class GuestLoginView(APIView):
@@ -349,6 +397,7 @@ class ThrottledRegisterView(APIView):
 class FCMTokenView(APIView):
     """Save the FCM push token for the authenticated user."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [FCMTokenThrottle]
 
     def post(self, request):
         token = request.data.get('token', '').strip()
@@ -383,6 +432,7 @@ class NotificationUnreadCountView(APIView):
 class NotificationReadAllView(APIView):
     """Mark all notifications as read."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [NotificationActionThrottle]
 
     def post(self, request):
         updated = Notification.objects.filter(

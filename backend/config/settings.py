@@ -121,6 +121,16 @@ CACHES = {
 # ---------------------------------------------------------------------------
 AUTH_USER_MODEL = "accounts.CustomUser"
 
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
@@ -139,9 +149,10 @@ REST_AUTH = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
     "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
@@ -172,6 +183,35 @@ REST_FRAMEWORK = {
         "trail_create": "20/day",
         "login": "5/minute",
         "register": "3/minute",
+        # Per-action scopes
+        "post_create": "30/hour",
+        "post_update": "60/hour",
+        "comment_create": "60/hour",
+        "like_bookmark": "200/hour",
+        "image_upload": "30/hour",
+        "report": "30/hour",
+        "group_create": "20/hour",
+        "group_message": "120/hour",
+        "review_create": "20/hour",
+        "review_helpful": "200/hour",
+        "review_image_upload": "30/hour",
+        "spot_create": "50/hour",
+        "spot_update": "100/hour",
+        "spot_image_upload": "30/hour",
+        "trail_like": "200/hour",
+        "trail_update": "60/hour",
+        "activity_create": "50/hour",
+        "activity_update": "100/hour",
+        "activity_merge": "20/hour",
+        "profile_update": "20/hour",
+        "follow": "200/hour",
+        "phone_send": "5/hour",
+        "phone_verify": "10/hour",
+        "password_change": "10/hour",
+        "fcm_token": "60/hour",
+        "account_delete": "5/hour",
+        "notification_action": "120/hour",
+        "guest_login": "10/hour",
     },
     "DEFAULT_PAGINATION_CLASS": "config.pagination.DefaultCursorPagination",
 }

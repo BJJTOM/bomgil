@@ -4,13 +4,25 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from config.permissions import IsOwnerOrReadOnly
+from config.validators import validate_image_file
 
 from .models import Spot, SpotImage
 from .serializers import SpotCreateSerializer, SpotImageSerializer, SpotSerializer
 
 
 class SpotCreateThrottle(UserRateThrottle):
+    scope = "spot_create"
     rate = "50/hour"
+
+
+class SpotUpdateThrottle(UserRateThrottle):
+    scope = "spot_update"
+    rate = "100/hour"
+
+
+class SpotImageUploadThrottle(UserRateThrottle):
+    scope = "spot_image_upload"
+    rate = "30/hour"
 
 
 class SpotViewSet(viewsets.ModelViewSet):
@@ -21,7 +33,9 @@ class SpotViewSet(viewsets.ModelViewSet):
     def get_throttles(self):
         if self.action == "create":
             return [SpotCreateThrottle()]
-        return []
+        if self.action in ("update", "partial_update", "destroy"):
+            return [SpotUpdateThrottle()]
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
@@ -37,9 +51,16 @@ class SpotImageUploadView(viewsets.ModelViewSet):
     serializer_class = SpotImageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_throttles(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [SpotImageUploadThrottle()]
+        return super().get_throttles()
+
     def perform_create(self, serializer):
         spot = get_object_or_404(Spot, pk=self.request.data.get("spot"))
         if spot.author != self.request.user and not self.request.user.is_staff:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("이 경유지의 이미지를 업로드할 권한이 없습니다.")
+        image = self.request.FILES.get("image")
+        validate_image_file(image)
         serializer.save()

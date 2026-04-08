@@ -107,6 +107,13 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("HTML 태그는 사용할 수 없습니다.")
         return strip_html(value) if value else value
 
+    def validate_profile_image(self, value):
+        from config.validators import validate_image_file
+        if value is None:
+            return value
+        validate_image_file(value)
+        return value
+
 
 class UserPublicSerializer(serializers.ModelSerializer):
     badges = UserBadgeSerializer(many=True, read_only=True)

@@ -115,6 +115,10 @@ function ImageViewer({ images, initialIndex, visible, onClose }: {
   initialIndex: number; visible: boolean; onClose: () => void;
 }) {
   const [current, setCurrent] = useState(initialIndex);
+  // Reset current index when reopening with a new initial index
+  React.useEffect(() => {
+    if (visible) setCurrent(initialIndex);
+  }, [visible, initialIndex]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.viewerContainer}>
@@ -130,9 +134,10 @@ function ImageViewer({ images, initialIndex, visible, onClose }: {
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={(e) => setCurrent(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
           keyExtractor={(item) => String(item.id)}
+          style={{ flexGrow: 0 }}
           renderItem={({ item }) => (
-            <View style={{ width: SCREEN_WIDTH, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
-              <Image source={{ uri: item.image }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 0.8 }} resizeMode="contain" />
+            <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
+              <Image source={{ uri: item.image }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }} resizeMode="contain" />
             </View>
           )}
         />

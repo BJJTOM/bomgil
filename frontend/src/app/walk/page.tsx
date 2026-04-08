@@ -105,15 +105,17 @@ export default function WalkPage() {
     const L = (await import("leaflet")).default;
     LRef.current = L;
     const map = L.map(mapDiv.current, { center: [center.lat, center.lng], zoom: 16, zoomControl: true, attributionControl: false, fadeAnimation: false, preferCanvas: false });
-    // Light tile — better visibility, no black background
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    // Dark tile — matching mobile app
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       subdomains: "abcd",
       crossOrigin: true,
     }).addTo(map);
-    glowR.current = L.polyline([], { color: "#2D4A2E", weight: 12, opacity: 0.15, lineCap: "round", lineJoin: "round" }).addTo(map);
-    polyR.current = L.polyline([], { color: "#2D4A2E", weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round" }).addTo(map);
-    const icon = L.divIcon({ html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;background:#2D4A2E;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(45,74,46,0.6);z-index:2"></div><div style="position:absolute;inset:0;border-radius:50%;background:rgba(45,74,46,0.2);animation:mp 2s infinite"></div></div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
+    // Glow layer (wide soft line)
+    glowR.current = L.polyline([], { color: "#4ADE80", weight: 14, opacity: 0.2, lineCap: "round", lineJoin: "round" }).addTo(map);
+    // Main route line (bright green, visible on dark)
+    polyR.current = L.polyline([], { color: "#4ADE80", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(map);
+    const icon = L.divIcon({ html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;background:#4ADE80;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(74,222,128,0.8);z-index:2"></div><div style="position:absolute;inset:0;border-radius:50%;background:rgba(74,222,128,0.3);animation:mp 2s infinite"></div></div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
     posR.current = L.marker([center.lat, center.lng], { icon, interactive: false }).addTo(map);
     mapObj.current = map;
     // Multiple invalidateSize calls to ensure tiles fill container after layout settles
@@ -212,6 +214,21 @@ export default function WalkPage() {
       return () => clearTimeout(t);
     }
   }, [state, initMap]);
+
+  // Handle window resize and scroll — invalidate map size
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapObj.current) {
+        try { mapObj.current.invalidateSize(true); } catch {}
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
 
   const pause = () => { setState("paused"); pausedT.current += Date.now() - startT.current; if (timerRef.current) clearInterval(timerRef.current); if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current); };
   const resume = () => { setState("walking"); startT.current = Date.now(); timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startT.current + pausedT.current) / 1000)), 1000); watchRef.current = navigator.geolocation.watchPosition(onGPS, onGPSErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }); };
@@ -315,17 +332,27 @@ export default function WalkPage() {
 
   // ── WALKING / PAUSED ──
   return (
-    <div className="md:pt-[60px] min-h-screen flex flex-col" style={{ background: "#0a0a0a" }}>
+    <div className="fixed inset-0 md:pt-[60px] flex flex-col" style={{ background: "#0a0a0a" }}>
       <style jsx global>{`
         @keyframes mp{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.5);opacity:0}}
-        .wmap .leaflet-container { background: #e8edea !important; width: 100% !important; height: 100% !important; }
+        .wmap { contain: layout style; }
+        .wmap .leaflet-container { background: #0a0a0a !important; width: 100% !important; height: 100% !important; }
         .wmap .leaflet-tile { max-width: none !important; max-height: none !important; }
-        .wmap .leaflet-tile-pane { will-change: transform; }
+        .wmap .leaflet-tile-pane { will-change: transform; transform: translate3d(0,0,0); }
+        .wmap .leaflet-pane { will-change: transform; }
+        .wmap .leaflet-control-zoom { border: none !important; }
+        .wmap .leaflet-control-zoom a {
+          background: rgba(0,0,0,0.7) !important;
+          color: #fff !important;
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          backdrop-filter: blur(8px);
+        }
+        .wmap .leaflet-control-zoom a:hover { background: rgba(0,0,0,0.9) !important; }
       `}</style>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
 
       {/* Map — bigger, 45vh like mobile */}
-      <div className="wmap relative overflow-hidden flex-shrink-0" style={{ height: "45vh", minHeight: 320, background: "#e8edea" }}>
+      <div className="wmap relative overflow-hidden flex-shrink-0" style={{ height: "45vh", minHeight: 320, background: "#0a0a0a" }}>
         <div ref={mapDiv} className="absolute inset-0 w-full h-full" style={{ opacity: mapLoaded ? 1 : 0, transition: "opacity 0.3s ease" }} />
         {!mapLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">

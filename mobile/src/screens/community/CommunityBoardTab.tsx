@@ -95,18 +95,21 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
 
   const handleLike = useCallback((postId: number) => {
     if (!isAuthenticated) { navigation.navigate('Login'); return; }
-    queryClient.setQueryData(['community-posts', category, searchQuery], (old: any) => {
-      if (!Array.isArray(old)) return old;
-      return old.map((p: any) =>
+    // Snapshot previous state for rollback
+    let prevPosts: CommunityPost[] = [];
+    setPosts((old) => {
+      prevPosts = old;
+      return old.map((p) =>
         p.id === postId
-          ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 }
+          ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? Math.max(0, p.like_count - 1) : p.like_count + 1 }
           : p,
       );
     });
     api.post(`/community/posts/${postId}/like/`).catch(() => {
-      queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+      // Rollback on error
+      setPosts(prevPosts);
     });
-  }, [isAuthenticated, category, searchQuery]);
+  }, [isAuthenticated, navigation]);
 
   const renderPost = useCallback(({ item, index }: { item: CommunityPost; index: number }) => (
     <FadeInView delay={index * 30}>

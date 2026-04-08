@@ -289,13 +289,22 @@ export default function ActivityDetailScreen() {
         console.log(`[Moru] Extra data: spots=${extra.spots?.length || 0}, photos=${extra.taggedPhotos?.length || 0}, route=${extra.routeCoords?.length || 0}`);
         if (extra.taggedPhotos?.length && taggedPhotos.length === 0) setTaggedPhotos(extra.taggedPhotos);
         if (extra.spots?.length && walkSpots.length === 0) setWalkSpots(extra.spots);
-        if (extra.routeCoords?.length && (!activity.track_points || activity.track_points.length === 0)) {
-          activity.track_points = extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }));
-        }
-        // Also restore trackPoints if available
-        if (extra.trackPoints?.length && (!activity.track_points || activity.track_points.length === 0)) {
-          activity.track_points = extra.trackPoints;
-        }
+        // Restore track points via setActivity (immutable update so React re-renders)
+        setActivity((prev: any) => {
+          if (!prev) return prev;
+          const hasPts = Array.isArray(prev.track_points) && prev.track_points.length > 0;
+          if (hasPts) return prev;
+          if (extra.trackPoints?.length) {
+            return { ...prev, track_points: extra.trackPoints };
+          }
+          if (extra.routeCoords?.length) {
+            return {
+              ...prev,
+              track_points: extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] })),
+            };
+          }
+          return prev;
+        });
       }
     } catch (e) {
       console.log('Failed to load activity extra data:', e);

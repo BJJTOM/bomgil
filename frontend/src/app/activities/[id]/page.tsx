@@ -259,6 +259,102 @@ export default function ActivityDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Photos */}
+        {(activity as any).photos && (activity as any).photos.length > 0 && (
+          <div className="card shadow-card p-5 mb-4">
+            <h2 className="text-[15px] font-bold mb-3">사진 ({(activity as any).photos.length})</h2>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {(activity as any).photos.map((p: any, i: number) => (
+                <div key={i} className="flex-shrink-0 w-[120px]">
+                  <img src={p.uri || p.image} alt="" className="w-[120px] h-[120px] object-cover rounded-xl bg-gray-100" />
+                  {p.title && <p className="text-[11px] text-gray-500 mt-1 truncate">{p.title}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Spots */}
+        {(activity as any).spots && (activity as any).spots.length > 0 && (
+          <div className="card shadow-card p-5 mb-4">
+            <h2 className="text-[15px] font-bold mb-3">스팟 ({(activity as any).spots.length})</h2>
+            <div className="space-y-2">
+              {(activity as any).spots.map((spot: any, i: number) => {
+                const colors: Record<string, string> = { restaurant: "#FF6B6B", cafe: "#F59E0B", photo: "#4ADE80", rest: "#60A5FA", view: "#A78BFA", "맛집": "#D85A30", "카페": "#378ADD", "포토": "#7F77DD", "휴식": "#888780", "전망": "#EF9F27" };
+                const color = colors[spot.type] || "#888";
+                return (
+                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-gray-900 truncate">{spot.name}</p>
+                      {spot.description && <p className="text-[12px] text-gray-500 truncate">{spot.description}</p>}
+                    </div>
+                    <span className="text-[10px] text-gray-400 px-2 py-0.5 bg-white rounded">{spot.type}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* === Activity Management === */}
+        <div className="card shadow-card p-5 mb-4">
+          <h2 className="text-[15px] font-bold mb-4">활동 관리</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Resume walk */}
+            <button
+              onClick={() => {
+                if (!confirm("이 기록에 이어서 걷기를 시작하시겠어요?")) return;
+                const params = new URLSearchParams({ resume: String(id) });
+                router.push(`/walk?${params.toString()}`);
+              }}
+              className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-emerald-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2.5"><polygon points="5,3 19,12 5,21" fill="#2D4A2E"/></svg>
+              </div>
+              <p className="text-[13px] font-bold text-gray-900">이어서 걷기</p>
+              <p className="text-[11px] text-gray-500">이 기록에서 계속</p>
+            </button>
+
+            {/* Merge records */}
+            <button
+              onClick={() => alert("기록 합치기는 준비 중입니다")}
+              className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-blue-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center mb-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 009 9"/></svg>
+              </div>
+              <p className="text-[13px] font-bold text-gray-900">기록 합치기</p>
+              <p className="text-[11px] text-gray-500">다른 활동과 병합</p>
+            </button>
+
+            {/* Add spot */}
+            <button
+              onClick={() => alert("스팟 추가 기능은 곧 제공됩니다")}
+              className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-amber-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center mb-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <p className="text-[13px] font-bold text-gray-900">스팟 추가</p>
+              <p className="text-[11px] text-gray-500">장소 등록하기</p>
+            </button>
+
+            {/* Share course */}
+            <button
+              onClick={() => router.push(`/trails/new?fromActivity=${id}`)}
+              className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-green-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center mb-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </div>
+              <p className="text-[13px] font-bold text-gray-900">코스 공유</p>
+              <p className="text-[11px] text-gray-500">경로를 코스로</p>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -12,7 +12,11 @@ from .settings import *  # noqa: F401,F403
 # ---------------------------------------------------------------------------
 DEBUG = False
 SECRET_KEY = os.environ["SECRET_KEY"]  # No fallback — fail fast
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = [
+    h.strip() for h in
+    os.environ.get("ALLOWED_HOSTS", "moruwalk.com,www.moruwalk.com").split(",")
+    if h.strip()
+]
 
 # ---------------------------------------------------------------------------
 # Database — Render PostgreSQL
@@ -50,6 +54,7 @@ STORAGES = {
 STORAGES["default"] = {
     "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
 }
+# Cloudflare R2 credentials — fallback for Render deploy until env vars are set
 AWS_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "78673a73bb9b436de9003572ad5a0382")
 AWS_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "adfad506e5b56b62b147cdd8140e1cccc5f39423d30b3c28957411c27f66bca7")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "moru-media")
@@ -59,20 +64,15 @@ AWS_DEFAULT_ACL = None
 AWS_S3_SIGNATURE_VERSION = "s3v4"
 AWS_QUERYSTRING_AUTH = True
 AWS_QUERYSTRING_EXPIRE = 3600  # signed URLs valid for 1 hour
-MEDIA_URL = f"https://028d8e2de23582d1fc6235c2dd8fa760.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}/"
+MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
 
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     x.strip() for x in
-    os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com,https://frontend-chi-umber-93.vercel.app").split(",")
+    os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com").split(",")
     if x.strip()
-]
-# Allow localhost for development
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https?://localhost(:\d+)?$",
-    r"^https?://127\.0\.0\.1(:\d+)?$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -85,9 +85,10 @@ CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = False  # Render handles SSL
 
 # ---------------------------------------------------------------------------
-# Throttling — relax for personal use
+# Throttling — relax base anon/user limits but preserve per-action scopes
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+    **REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),
     "anon": "500/hour",
     "user": "5000/hour",
     "trail_create": "100/day",

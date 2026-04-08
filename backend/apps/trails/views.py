@@ -4,10 +4,12 @@ from django.db.models import F
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from apps.spots.serializers import SpotSerializer
 from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
+from config.validators import validate_image_file
 
 from .models import Tag, Trail, TrailLike
 from .serializers import (
@@ -16,6 +18,16 @@ from .serializers import (
     TrailDetailSerializer,
     TrailListSerializer,
 )
+
+
+class TrailLikeThrottle(UserRateThrottle):
+    scope = "trail_like"
+    rate = "200/hour"
+
+
+class TrailUpdateThrottle(UserRateThrottle):
+    scope = "trail_update"
+    rate = "60/hour"
 
 
 class TrailViewSet(viewsets.ModelViewSet):
@@ -28,6 +40,10 @@ class TrailViewSet(viewsets.ModelViewSet):
     def get_throttles(self):
         if self.action == "create":
             return [TrailCreateThrottle()]
+        if self.action in ("update", "partial_update", "destroy"):
+            return [TrailUpdateThrottle()]
+        if self.action == "like":
+            return [TrailLikeThrottle()]
         return super().get_throttles()
 
     def get_queryset(self):
@@ -55,7 +71,16 @@ class TrailViewSet(viewsets.ModelViewSet):
         return TrailDetailSerializer
 
     def perform_create(self, serializer):
+        cover = self.request.FILES.get("cover_image")
+        if cover is not None:
+            validate_image_file(cover)
         serializer.save(author=self.request.user)
+
+    def perform_update(self, serializer):
+        cover = self.request.FILES.get("cover_image")
+        if cover is not None:
+            validate_image_file(cover)
+        serializer.save()
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

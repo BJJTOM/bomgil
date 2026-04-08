@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
@@ -15,10 +15,11 @@ export default function PasswordChangePage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (!isAuthenticated) {
-    router.replace("/auth/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) router.replace("/auth/login");
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
 
   const canSubmit = currentPw.length >= 1 && newPw.length >= 8 && newPw === confirmPw;
 

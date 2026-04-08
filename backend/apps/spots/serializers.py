@@ -1,6 +1,14 @@
+import re
+
 from rest_framework import serializers
 
 from .models import Spot, SpotImage
+
+
+def _strip_tags(value):
+    if not value:
+        return value
+    return re.sub(r'<[^>]+>', '', value).strip()
 
 
 class SpotImageSerializer(serializers.ModelSerializer):
@@ -36,3 +44,15 @@ class SpotCreateSerializer(serializers.ModelSerializer):
             "menu_highlight", "price_range", "tip",
         ]
         read_only_fields = ["id"]
+
+    def validate_name(self, value):
+        return _strip_tags(value)
+
+    def validate_description(self, value):
+        return _strip_tags(value)
+
+    def validate_tip(self, value):
+        return _strip_tags(value)
+
+    def validate_menu_highlight(self, value):
+        return _strip_tags(value)

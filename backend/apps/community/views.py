@@ -4,6 +4,7 @@ from rest_framework import generics, status, permissions, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.accounts.notifications import create_notification
+from config.validators import validate_image_file
 from .models import (
     Post, PostComment, PostLike, CommentLike, PostImage, PostBookmark,
     Report, UserBlock,
@@ -83,7 +84,44 @@ class MyBookmarkedPostsView(generics.ListAPIView):
 
 
 class PostCreateThrottle(throttling.UserRateThrottle):
+    scope = 'post_create'
+    rate = '30/hour'
+
+
+class CommentCreateThrottle(throttling.UserRateThrottle):
+    scope = 'comment_create'
+    rate = '60/hour'
+
+
+class LikeBookmarkThrottle(throttling.UserRateThrottle):
+    scope = 'like_bookmark'
     rate = '200/hour'
+
+
+class ImageUploadThrottle(throttling.UserRateThrottle):
+    scope = 'image_upload'
+    rate = '30/hour'
+
+
+class PostUpdateThrottle(throttling.UserRateThrottle):
+    scope = 'post_update'
+    rate = '60/hour'
+
+
+class ReportThrottle(throttling.UserRateThrottle):
+    scope = 'report'
+    rate = '30/hour'
+
+
+class GroupCreateThrottle(throttling.UserRateThrottle):
+    scope = 'group_create'
+    rate = '20/hour'
+
+
+class GroupMessageThrottle(throttling.UserRateThrottle):
+    scope = 'group_message'
+    rate = '120/hour'
+
 
 class PostCreateView(generics.CreateAPIView):
     serializer_class = PostCreateSerializer
@@ -111,6 +149,7 @@ class PostDetailView(generics.RetrieveAPIView):
 class PostUpdateView(generics.UpdateAPIView):
     serializer_class = PostUpdateSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PostUpdateThrottle]
     http_method_names = ['patch']
 
     def get_queryset(self):
@@ -119,6 +158,7 @@ class PostUpdateView(generics.UpdateAPIView):
 
 class PostLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -144,6 +184,7 @@ class PostLikeView(APIView):
 
 class PostBookmarkView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -159,6 +200,7 @@ class PostBookmarkView(APIView):
 
 class PostDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PostUpdateThrottle]
 
     def get_queryset(self):
         return Post.objects.filter(author=self.request.user)
@@ -184,6 +226,7 @@ class PostCommentListView(generics.ListAPIView):
 class PostCommentCreateView(generics.CreateAPIView):
     serializer_class = PostCommentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CommentCreateThrottle]
 
     def perform_create(self, serializer):
         post = generics.get_object_or_404(Post, pk=self.kwargs['pk'])
@@ -204,12 +247,14 @@ class PostCommentCreateView(generics.CreateAPIView):
 class PostCommentUpdateView(APIView):
     """댓글 수정"""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CommentCreateThrottle]
 
     def patch(self, request, comment_id):
+        from .serializers import sanitize
         comment = generics.get_object_or_404(
             PostComment, pk=comment_id, author=request.user
         )
-        content = request.data.get('content', '').strip()
+        content = sanitize(request.data.get('content', '') or '').strip()
         if not content:
             return Response({'error': '내용을 입력하세요.'}, status=status.HTTP_400_BAD_REQUEST)
         comment.content = content
@@ -220,6 +265,7 @@ class PostCommentUpdateView(APIView):
 class PostCommentDeleteView(APIView):
     """댓글 삭제 (soft delete)"""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CommentCreateThrottle]
 
     def delete(self, request, comment_id):
         comment = generics.get_object_or_404(
@@ -234,6 +280,7 @@ class PostCommentDeleteView(APIView):
 
 class CommentLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
     def post(self, request, comment_id):
@@ -250,6 +297,7 @@ class CommentLikeView(APIView):
 class CommentReplyView(generics.CreateAPIView):
     serializer_class = PostCommentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CommentCreateThrottle]
 
     def perform_create(self, serializer):
         parent = generics.get_object_or_404(PostComment, pk=self.kwargs['comment_id'])
@@ -269,16 +317,16 @@ class CommentReplyView(generics.CreateAPIView):
 
 class PostImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
-    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+    throttle_classes = [ImageUploadThrottle]
 
     def post(self, request, pk):
+        from config.validators import is_valid_image_file
         post = generics.get_object_or_404(Post, pk=pk, author=request.user)
         images = request.FILES.getlist('images')
         created = []
         for i, img in enumerate(images[:10]):
-            if img.size > self.MAX_IMAGE_SIZE:
-                continue  # skip oversized files silently
+            if not is_valid_image_file(img):
+                continue  # skip invalid files silently
             obj = PostImage.objects.create(post=post, image=img, order=i)
             created.append({'id': obj.id, 'image': obj.image.url, 'order': obj.order})
         return Response(created, status=status.HTTP_201_CREATED)
@@ -286,6 +334,7 @@ class PostImageUploadView(APIView):
 
 class PostImageDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ImageUploadThrottle]
 
     def delete(self, request, pk, image_id):
         img = generics.get_object_or_404(PostImage, pk=image_id, post__pk=pk, post__author=request.user)
@@ -300,6 +349,7 @@ class PostImageDeleteView(APIView):
 class ReportCreateView(generics.CreateAPIView):
     serializer_class = ReportSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ReportThrottle]
 
     def perform_create(self, serializer):
         serializer.save(reporter=self.request.user)
@@ -307,6 +357,7 @@ class ReportCreateView(generics.CreateAPIView):
 
 class UserBlockView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request):
         blocked_id = request.data.get('user_id')
@@ -322,6 +373,7 @@ class UserBlockView(APIView):
 
 class UserUnblockView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request):
         blocked_id = request.data.get('user_id')
@@ -369,6 +421,7 @@ class GroupDetailView(generics.RetrieveAPIView):
 class GroupCreateView(generics.CreateAPIView):
     serializer_class = GroupCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [GroupCreateThrottle]
 
     def perform_create(self, serializer):
         group = serializer.save(owner=self.request.user)
@@ -377,6 +430,7 @@ class GroupCreateView(generics.CreateAPIView):
 
 class GroupJoinView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):
         group = generics.get_object_or_404(Group, pk=pk)
@@ -391,6 +445,7 @@ class GroupJoinView(APIView):
 
 class GroupLeaveView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):
         deleted, _ = GroupMember.objects.filter(
@@ -423,6 +478,7 @@ class GroupMessageListView(generics.ListAPIView):
 class GroupMessageCreateView(generics.CreateAPIView):
     serializer_class = GroupMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [GroupMessageThrottle]
 
     def perform_create(self, serializer):
         group = generics.get_object_or_404(Group, pk=self.kwargs['pk'])
@@ -456,6 +512,7 @@ class ChallengeDetailView(generics.RetrieveAPIView):
 
 class ChallengeJoinView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -474,6 +531,7 @@ class ChallengeJoinView(APIView):
 
 class ChallengeLeaveView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -488,6 +546,7 @@ class ChallengeLeaveView(APIView):
 class ChallengeProgressUpdateView(APIView):
     """Update the current user's progress for a challenge."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):
         value = request.data.get('value')

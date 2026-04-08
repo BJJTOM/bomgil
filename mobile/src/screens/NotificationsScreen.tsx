@@ -84,12 +84,21 @@ export default function NotificationsScreen() {
   const hasUnread = notifications?.some((n) => !n.is_read);
 
   const handleNotifPress = (item: Notification) => {
+    // Optimistically mark this notification as read in the local cache
+    if (!item.is_read) {
+      queryClient.setQueryData(['notifications'], (old: Notification[] | undefined) =>
+        old ? old.map((n) => (n.id === item.id ? { ...n, is_read: true } : n)) : old,
+      );
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+    }
     if (item.target_type === 'post' && item.target_id) {
-      navigation.navigate('PostDetail', { id: item.target_id });
+      navigation.navigate('PostDetail', { postId: item.target_id });
     } else if (item.target_type === 'trail' && item.target_id) {
-      navigation.navigate('TrailDetail', { id: item.target_id });
+      navigation.navigate('TrailDetail', { trailId: item.target_id });
+    } else if (item.target_type === 'activity' && item.target_id) {
+      navigation.navigate('ActivityDetail', { activity: { id: item.target_id } });
     } else if (item.notification_type === 'follow' && item.actor_nickname) {
-      navigation.navigate('UserProfile', { nickname: item.actor_nickname });
+      navigation.navigate('Profile', { nickname: item.actor_nickname });
     }
   };
 

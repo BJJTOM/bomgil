@@ -26,53 +26,65 @@ api.interceptors.request.use((config) => {
 
 // Token refresh lock to prevent race conditions
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: Array<{
+  resolve: (token: string) => void;
+  reject: (err: any) => void;
+}> = [];
 
 function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token));
+  const subs = refreshSubscribers;
   refreshSubscribers = [];
+  subs.forEach((s) => s.resolve(token));
 }
 
-function addRefreshSubscriber(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
+function onRefreshFailed(err: any) {
+  const subs = refreshSubscribers;
+  refreshSubscribers = [];
+  subs.forEach((s) => s.reject(err));
 }
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
         // Another request is already refreshing — queue this one
-        return new Promise((resolve) => {
-          addRefreshSubscriber((newToken: string) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            resolve(api(originalRequest));
+        return new Promise((resolve, reject) => {
+          refreshSubscribers.push({
+            resolve: (newToken: string) => {
+              originalRequest.headers = originalRequest.headers || {};
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              resolve(api(originalRequest));
+            },
+            reject,
           });
         });
       }
 
-      isRefreshing = true;
       const refreshToken = useAuthStore.getState().refreshToken;
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          useAuthStore.getState().setTokens(data.access, data.refresh);
-          isRefreshing = false;
-          onRefreshed(data.access);
-          originalRequest.headers.Authorization = `Bearer ${data.access}`;
-          return api(originalRequest);
-        } catch {
-          isRefreshing = false;
-          refreshSubscribers = [];
-          useAuthStore.getState().logout();
-        }
-      } else {
+      if (!refreshToken) {
+        return Promise.reject(error);
+      }
+
+      isRefreshing = true;
+      try {
+        const { data } = await axios.post(`${API_URL}/auth/token/refresh/`, {
+          refresh: refreshToken,
+        });
+        useAuthStore.getState().setTokens(data.access, data.refresh);
         isRefreshing = false;
+        onRefreshed(data.access);
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+        return api(originalRequest);
+      } catch (refreshErr) {
+        isRefreshing = false;
+        onRefreshFailed(refreshErr);
+        useAuthStore.getState().logout();
+        return Promise.reject(refreshErr);
       }
     }
     return Promise.reject(error);

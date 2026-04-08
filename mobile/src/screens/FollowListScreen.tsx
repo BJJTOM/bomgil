@@ -57,6 +57,14 @@ export default function FollowListScreen() {
       queryClient.invalidateQueries({ queryKey: ['followers', nickname] });
       queryClient.invalidateQueries({ queryKey: ['following', nickname] });
       queryClient.invalidateQueries({ queryKey: ['profile', nickname] });
+      // Also refresh the target user's profile and the current user's own profile
+      queryClient.invalidateQueries({ queryKey: ['profile', targetNickname] });
+      queryClient.invalidateQueries({ queryKey: ['followers', targetNickname] });
+      queryClient.invalidateQueries({ queryKey: ['following', targetNickname] });
+      if (user?.nickname && user.nickname !== nickname) {
+        queryClient.invalidateQueries({ queryKey: ['profile', user.nickname] });
+        queryClient.invalidateQueries({ queryKey: ['following', user.nickname] });
+      }
     } catch {
       Alert.alert('오류', '요청에 실패했습니다.');
     }

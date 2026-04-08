@@ -18,7 +18,18 @@ from .serializers import (
 
 
 class ActivityCreateThrottle(UserRateThrottle):
+    scope = "activity_create"
     rate = "50/hour"
+
+
+class ActivityUpdateThrottle(UserRateThrottle):
+    scope = "activity_update"
+    rate = "100/hour"
+
+
+class ActivityMergeThrottle(UserRateThrottle):
+    scope = "activity_merge"
+    rate = "20/hour"
 
 
 class ActivityTrackViewSet(viewsets.ModelViewSet):
@@ -27,7 +38,9 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
     def get_throttles(self):
         if self.action == "create":
             return [ActivityCreateThrottle()]
-        return []
+        if self.action in ("update", "partial_update", "destroy"):
+            return [ActivityUpdateThrottle()]
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -129,6 +142,7 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
 class ActivityMergeView(APIView):
     """POST /activities/merge/ — merge multiple activities into one."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ActivityMergeThrottle]
 
     def post(self, request):
         activity_ids = request.data.get('activity_ids', [])

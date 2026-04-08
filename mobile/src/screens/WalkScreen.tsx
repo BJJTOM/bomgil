@@ -120,6 +120,8 @@ export default function WalkScreen() {
 
   const periodicSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bgSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const photoBusyRef = useRef(false);
+  const spotBusyRef = useRef(false);
 
   const countdownScale = useRef(new Animated.Value(1)).current;
   const countdownOpacity = useRef(new Animated.Value(1)).current;
@@ -330,6 +332,8 @@ export default function WalkScreen() {
 
   const handleTakePhoto = useCallback(async () => {
     if (!currentPos) return;
+    if (photoBusyRef.current) return; // prevent rapid double-tap
+    photoBusyRef.current = true;
     try {
       const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
       if (photo) {
@@ -338,8 +342,21 @@ export default function WalkScreen() {
         setPhotoDesc('');
         setShowPhotoModal(true);
       }
-    } catch {}
+    } catch {} finally {
+      photoBusyRef.current = false;
+    }
   }, [currentPos]);
+
+  const openSpotModal = useCallback(() => {
+    if (spotBusyRef.current) return;
+    spotBusyRef.current = true;
+    setShowSpotModal(true);
+    setTimeout(() => { spotBusyRef.current = false; }, 400);
+  }, []);
+
+  const openRecordSummary = useCallback(() => {
+    setShowRecordSummary(true);
+  }, []);
 
   const confirmPhoto = useCallback(() => {
     if (pendingPhoto) {
@@ -445,8 +462,9 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
     if (bgSaveRef.current) clearInterval(bgSaveRef.current);
-    // Clear crash recovery data — walk completed successfully
+    // Clear crash recovery + paused-walk data — walk completed successfully
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
+    AsyncStorage.removeItem('walk_paused').catch(() => {});
     const finalStats = engineRef.current.getStats();
     const trackPoints = engineRef.current.getTrackPoints();
 
@@ -800,7 +818,7 @@ export default function WalkScreen() {
             <Feather name="camera" size={18} color="#fff" />
             {taggedPhotos.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{taggedPhotos.length}</Text></View>}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => setShowSpotModal(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.quickBtn} onPress={openSpotModal} activeOpacity={0.8}>
             <Feather name="map-pin" size={18} color="#fff" />
             {spots.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{spots.length}</Text></View>}
           </TouchableOpacity>

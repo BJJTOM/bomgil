@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useActivityStats, useActivities } from "@/hooks/useActivities";
 import { useAuthStore } from "@/stores/auth";
@@ -10,7 +11,11 @@ export default function WalkStatsPage() {
   const { data: stats } = useActivityStats();
   const { data: activities = [] } = useActivities();
 
-  if (!isAuthenticated) { router.replace("/auth/login"); return null; }
+  useEffect(() => {
+    if (!isAuthenticated) router.replace("/auth/login");
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
 
   const totalDays = Array.from(new Set(activities.map((a: any) => a.started_at?.split("T")[0]).filter(Boolean))).length;
   const avgDistance = stats && stats.track_count > 0 ? (stats.total_distance_km / stats.track_count).toFixed(1) : "0";

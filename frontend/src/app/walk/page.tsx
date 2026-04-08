@@ -7,6 +7,42 @@ import { useAuthStore } from "@/stores/auth";
 import { useT } from "@/stores/language";
 import { useCreateActivityJSON } from "@/hooks/useActivities";
 
+// ⚠️ TEMPORARY: Web activity recording is disabled. Remove `WalkPage` wrapper
+// and the ComingSoon component below to re-enable. Mobile app is unaffected.
+function ComingSoonGate() {
+  const router = useRouter();
+  const { language } = useT();
+  const ko = language === "ko";
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-6">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl">
+        <div className="mb-4 text-5xl">🚧</div>
+        <h2 className="mb-2 text-xl font-bold text-[#1A1A1A]">
+          {ko ? "준비 중인 서비스입니다" : "Coming Soon"}
+        </h2>
+        <p className="mb-6 text-sm leading-relaxed text-[#6B7280]">
+          {ko
+            ? "웹에서 활동 기록 측정 기능은 현재 개선 작업 중입니다.\n모바일 앱을 이용해주세요."
+            : "Activity recording on web is under maintenance.\nPlease use the mobile app."}
+        </p>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-full rounded-xl bg-[#2D4A2E] py-3 text-sm font-semibold text-white active:scale-[0.98] transition-transform"
+        >
+          {ko ? "돌아가기" : "Go back"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function WalkPage() {
+  return <ComingSoonGate />;
+}
+
+// Original implementation kept below for easy restoration.
+// To re-enable: rename `WalkPageImpl` to `WalkPage` and delete the wrapper above.
 type WalkState = "idle" | "countdown" | "walking" | "paused";
 
 interface TrackPoint { lat: number; lng: number; ele: number | null; time: string; speed: number | null; }
@@ -17,7 +53,8 @@ class SimpleKalman {
   filter(m: number) { const p = this.est; const pe = this.ec + this.pn; const g = pe / (pe + this.mn); this.est = p + g * (m - p); this.ec = (1 - g) * pe; return this.est; }
 }
 
-export default function WalkPage() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function WalkPageImpl() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const { language } = useT();

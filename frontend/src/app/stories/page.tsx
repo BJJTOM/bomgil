@@ -59,7 +59,7 @@ export default function StoriesPage() {
       ) : (
         <div className="space-y-6">
           {stories.map((story) => (
-            <div key={story.id} className="bg-white rounded-card shadow-soft overflow-hidden">
+            <Link key={story.id} href={`/stories/${story.id}`} className="block bg-white rounded-card shadow-soft overflow-hidden hover:shadow-md transition-shadow">
               {/* Photos carousel */}
               {story.photos.length > 0 && (
                 <div className="flex overflow-x-auto scrollbar-hide">
@@ -96,9 +96,9 @@ export default function StoriesPage() {
                       )}
                     </p>
                     <p className="text-xs text-text-secondary">
-                      <Link href={`/trails/${story.trail_id}`} className="hover:text-primary">
+                      <span className="hover:text-primary">
                         {story.trail_region} · {story.trail_title}
-                      </Link>
+                      </span>
                       {" "}· {new Date(story.created_at).toLocaleDateString("ko")}
                     </p>
                   </div>
@@ -115,15 +115,20 @@ export default function StoriesPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-4 mt-4 pt-3 border-t">
                   <button
-                    onClick={() => likeMutation.mutate(story.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      likeMutation.mutate(story.id);
+                    }}
                     className={`text-sm ${story.is_liked ? "text-danger" : "text-text-secondary"}`}
                   >
                     {story.is_liked ? "❤️" : "🤍"} {story.like_count}
                   </button>
-                  <button className="text-sm text-text-secondary">🔗 공유</button>
+                  <span className="text-sm text-text-secondary">💬 {story.comment_count}</span>
+                  <span className="text-sm text-text-secondary ml-auto">자세히 보기 →</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

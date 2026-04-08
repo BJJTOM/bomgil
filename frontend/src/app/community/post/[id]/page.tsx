@@ -271,16 +271,30 @@ export default function PostDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 md:pb-0 pb-safe">
         <div className="max-w-2xl mx-auto px-4 py-2.5">
           {replyTo && (
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-emerald-700 font-medium">{replyTo.name}에게 답글</span>
-              <button onClick={() => setReplyTo(null)} className="text-xs text-gray-400">✕</button>
+            <div className="flex items-center justify-between mb-2 -mx-4 px-4 py-2 bg-emerald-50 border-y border-emerald-100">
+              <span className="text-[12px] text-emerald-800">
+                <span className="font-semibold text-emerald-700">@{replyTo.name}</span>
+                에게 답글 작성 중
+              </span>
+              <button
+                onClick={() => setReplyTo(null)}
+                className="text-[12px] text-emerald-700 hover:text-emerald-900 font-medium"
+              >
+                취소
+              </button>
             </div>
           )}
           <div className="flex items-end gap-2">
             <input
               ref={inputRef}
               className="flex-1 bg-gray-50 rounded-full px-4 py-2.5 text-sm outline-none text-gray-900 placeholder-[#B0B8C1]"
-              placeholder={isAuthenticated ? "댓글을 입력하세요..." : "로그인 후 댓글을 작성할 수 있어요"}
+              placeholder={
+                !isAuthenticated
+                  ? "로그인 후 댓글을 작성할 수 있어요"
+                  : replyTo
+                  ? `@${replyTo.name}에게 답글`
+                  : "댓글을 입력하세요..."
+              }
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}

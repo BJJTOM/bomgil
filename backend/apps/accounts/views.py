@@ -236,8 +236,23 @@ class PhoneSmsSentLogView(APIView):
         return Response({"logged": True})
 
 
-class CustomOtpThrottle(AnonRateThrottle):
-    rate = '20/hour'
+class OtpSendThrottle(AnonRateThrottle):
+    scope = 'otp_send'
+    rate = '10/hour'
+
+
+class OtpVerifyThrottle(AnonRateThrottle):
+    scope = 'otp_verify'
+    rate = '60/hour'
+
+
+class OtpCompleteThrottle(AnonRateThrottle):
+    scope = 'otp_complete'
+    rate = '60/hour'
+
+
+# Backwards compat alias
+CustomOtpThrottle = OtpSendThrottle
 
 
 def _normalize_phone(phone: str) -> str:
@@ -257,7 +272,7 @@ def _normalize_phone(phone: str) -> str:
 class SendOtpView(APIView):
     """Generate and send OTP to phone number."""
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [CustomOtpThrottle]
+    throttle_classes = [OtpSendThrottle]
 
     def post(self, request):
         import random
@@ -312,7 +327,7 @@ class SendOtpView(APIView):
 class VerifyOtpView(APIView):
     """Verify OTP code. Returns a verification_token to use in signup/login."""
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [CustomOtpThrottle]
+    throttle_classes = [OtpVerifyThrottle]
 
     def post(self, request):
         from django.utils import timezone
@@ -372,7 +387,7 @@ class VerifyOtpView(APIView):
 class CompletePhoneAuthView(APIView):
     """Complete signup or login using verification token from VerifyOtpView."""
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [CustomOtpThrottle]
+    throttle_classes = [OtpCompleteThrottle]
 
     def post(self, request):
         from django.core.cache import cache

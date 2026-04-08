@@ -12,7 +12,7 @@ python manage.py collectstatic --no-input
 echo "=== Running migrations ==="
 python manage.py migrate --run-syncdb
 
-echo "=== Adding OTP notice ==="
-python manage.py add_otp_notice
+echo "=== Creating cache table (idempotent) ==="
+python manage.py createcachetable
 
 echo "=== Build complete ==="

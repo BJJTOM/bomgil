@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
@@ -11,10 +11,23 @@ import { useAuthStore } from '../stores/auth';
 
 type Step = 'phone' | 'code' | 'nickname';
 
+// Format phone as user types: 01012345678 → 010-1234-5678
+function formatPhoneInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (digits.length < 4) return digits;
+  if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
+function isValidKoreanPhone(raw: string): boolean {
+  const digits = raw.replace(/\D/g, '');
+  return /^01[016789]\d{7,8}$/.test(digits);
+}
+
 export default function PhoneAuthScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { setTokens, setUser } = useAuthStore();
+  const login = useAuthStore((s) => s.login);
 
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
@@ -22,16 +35,30 @@ export default function PhoneAuthScreen() {
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const verificationTokenRef = useRef<string | null>(null);
-  const [userExists, setUserExists] = useState(false);
+
+  // Reset navigation to Main so back button can't return to Login/PhoneAuth
+  const goToMain = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      }),
+    );
+  };
 
   const handleSendCode = async () => {
     if (!phone.trim()) {
       Alert.alert('알림', '전화번호를 입력해주세요.');
       return;
     }
+    if (!isValidKoreanPhone(phone)) {
+      Alert.alert('알림', '올바른 휴대폰 번호를 입력해주세요.\n예: 010-1234-5678');
+      return;
+    }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/phone/otp/send/', { phone_number: phone });
+      setCode('');
       setStep('code');
       // Test mode: show code in alert for easy testing
       if (data?.test_code) {
@@ -58,16 +85,14 @@ export default function PhoneAuthScreen() {
         code,
       });
       verificationTokenRef.current = data.verification_token;
-      setUserExists(data.user_exists);
 
       if (data.user_exists) {
         // Existing user — login directly
         const { data: loginData } = await api.post('/auth/phone/otp/complete/', {
           verification_token: data.verification_token,
         });
-        setTokens(loginData.access, loginData.refresh);
-        setUser(loginData.user);
-        navigation.replace('Main');
+        login(loginData.user, loginData.access, loginData.refresh);
+        goToMain();
       } else {
         // New user — ask for nickname
         setStep('nickname');
@@ -80,19 +105,28 @@ export default function PhoneAuthScreen() {
   };
 
   const handleSetNickname = async () => {
-    if (!nickname.trim() || nickname.length < 2) {
+    const trimmed = nickname.trim();
+    if (trimmed.length < 2) {
       Alert.alert('알림', '닉네임은 2자 이상이어야 합니다.');
+      return;
+    }
+    if (trimmed.length > 20) {
+      Alert.alert('알림', '닉네임은 20자 이하여야 합니다.');
+      return;
+    }
+    if (!verificationTokenRef.current) {
+      Alert.alert('오류', '인증이 만료되었습니다. 처음부터 다시 시도해주세요.');
+      setStep('phone');
       return;
     }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/phone/otp/complete/', {
         verification_token: verificationTokenRef.current,
-        nickname: nickname.trim(),
+        nickname: trimmed,
       });
-      setTokens(data.access, data.refresh);
-      setUser(data.user);
-      navigation.replace('Main');
+      login(data.user, data.access, data.refresh);
+      goToMain();
     } catch (e: any) {
       Alert.alert('오류', e?.response?.data?.error || '가입에 실패했습니다.');
     } finally {
@@ -120,7 +154,7 @@ export default function PhoneAuthScreen() {
               <TextInput
                 style={styles.input}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(t) => setPhone(formatPhoneInput(t))}
                 placeholder="010-1234-5678"
                 placeholderTextColor={colors.textTertiary}
                 keyboardType="phone-pad"

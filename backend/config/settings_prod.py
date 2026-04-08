@@ -30,11 +30,13 @@ DATABASES = {
 }
 
 # ---------------------------------------------------------------------------
-# Cache — use local memory (free tier, no Redis)
+# Cache — use database backend so all gunicorn workers share state
+# (LocMemCache is per-process and breaks OTP verification across workers)
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache_table",
     }
 }
 

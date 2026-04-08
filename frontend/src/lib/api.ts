@@ -1,8 +1,15 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
 
+// In dev, route through Next.js rewrite (`/api/v1/*`) to bypass CORS.
+// In prod, talk directly to the configured API host.
+const baseURL =
+  process.env.NODE_ENV === "development"
+    ? "/api/v1"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1";
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

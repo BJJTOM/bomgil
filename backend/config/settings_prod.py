@@ -66,7 +66,7 @@ MEDIA_URL = f"https://028d8e2de23582d1fc6235c2dd8fa760.r2.cloudflarestorage.com/
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     x.strip() for x in
-    os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com").split(",")
+    os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com,https://frontend-chi-umber-93.vercel.app").split(",")
     if x.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True

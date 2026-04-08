@@ -76,6 +76,36 @@ export default function ActivityDetailScreen() {
 
   // Spot add modal state
   const [showSpotModal, setShowSpotModal] = useState(false);
+  const [showResumeConfirm, setShowResumeConfirm] = useState(false);
+
+  const handleResumeWalk = () => {
+    setShowResumeConfirm(false);
+    try {
+      const tp = activity.track_points || [];
+      const rc: [number, number][] = tp.map((p: any) => {
+        if (Array.isArray(p)) return p as [number, number];
+        const lng = p.lng ?? p.longitude ?? 0;
+        const lat = p.lat ?? p.latitude ?? 0;
+        return [lng, lat] as [number, number];
+      }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
+      const resumeData = {
+        segments: [{
+          routeCoords: rc, trackPoints: tp,
+          distance: parseFloat(activity.distance_km || '0'),
+          duration: (activity.duration_minutes || 0) * 60,
+          steps: activity.total_steps || 0,
+          calories: activity.calories_burned || 0,
+          elevationGain: activity.elevation_gain_m || 0,
+        }],
+        spots: walkSpots || [],
+        taggedPhotos: taggedPhotos || [],
+        trailId: activity.trail || null,
+      };
+      navigation.replace('Walk', { resumeData });
+    } catch (e: any) {
+      Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
+    }
+  };
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotType, setNewSpotType] = useState('rest');
   const [newSpotDesc, setNewSpotDesc] = useState('');
@@ -702,33 +732,7 @@ export default function ActivityDetailScreen() {
               <TouchableOpacity
                 style={styles.actionCard}
                 activeOpacity={0.7}
-                onPress={() => {
-                  try {
-                    const tp = activity.track_points || [];
-                    const rc: [number, number][] = tp.map((p: any) => {
-                      if (Array.isArray(p)) return p as [number, number];
-                      const lng = p.lng ?? p.longitude ?? 0;
-                      const lat = p.lat ?? p.latitude ?? 0;
-                      return [lng, lat] as [number, number];
-                    }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
-                    const resumeData = {
-                      segments: [{
-                        routeCoords: rc, trackPoints: tp,
-                        distance: parseFloat(activity.distance_km || '0'),
-                        duration: (activity.duration_minutes || 0) * 60,
-                        steps: activity.total_steps || 0,
-                        calories: activity.calories_burned || 0,
-                        elevationGain: activity.elevation_gain_m || 0,
-                      }],
-                      spots: walkSpots || [],
-                      taggedPhotos: taggedPhotos || [],
-                      trailId: activity.trail || null,
-                    };
-                    navigation.replace('Walk', { resumeData });
-                  } catch (e: any) {
-                    Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
-                  }
-                }}>
+                onPress={() => setShowResumeConfirm(true)}>
                 <View style={[styles.actionIconCircle, { backgroundColor: colors.primary + '15' }]}>
                   <Feather name="play-circle" size={20} color={colors.primary} />
                 </View>
@@ -773,16 +777,7 @@ export default function ActivityDetailScreen() {
 
           {/* 5. Course draft section — always visible */}
           <View style={styles.section}>
-              {!courseExpanded ? (
-                <TouchableOpacity
-                  style={styles.courseToggleBtn}
-                  activeOpacity={0.8}
-                  onPress={() => setCourseExpanded(true)}
-                >
-                  <Text style={styles.courseToggleText}>코스로 등록하기</Text>
-                  <Text style={styles.courseToggleArrow}>{'>'}</Text>
-                </TouchableOpacity>
-              ) : (
+              {!courseExpanded ? null : (
                 <View>
                   <TouchableOpacity
                     style={styles.courseHeaderRow}
@@ -1009,6 +1004,45 @@ export default function ActivityDetailScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Resume Walk Confirm Modal */}
+      <Modal visible={showResumeConfirm} transparent animationType="fade" onRequestClose={() => setShowResumeConfirm(false)}>
+        <TouchableOpacity style={styles.confirmOverlay} activeOpacity={1} onPress={() => setShowResumeConfirm(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.confirmCard}>
+            <View style={styles.confirmIconWrap}>
+              <Feather name="play-circle" size={32} color={colors.primary} />
+            </View>
+            <Text style={styles.confirmTitle}>이어서 걷기</Text>
+            <Text style={styles.confirmDesc}>
+              이 기록의 경로와 통계를 가지고{'\n'}새로운 걷기를 시작합니다.
+            </Text>
+            <View style={styles.confirmStatsRow}>
+              <View style={styles.confirmStat}>
+                <Text style={styles.confirmStatVal}>{parseFloat(activity?.distance_km || '0').toFixed(1)}</Text>
+                <Text style={styles.confirmStatLabel}>km</Text>
+              </View>
+              <View style={styles.confirmStatDivider} />
+              <View style={styles.confirmStat}>
+                <Text style={styles.confirmStatVal}>{Math.round(activity?.duration_minutes || 0)}</Text>
+                <Text style={styles.confirmStatLabel}>분</Text>
+              </View>
+              <View style={styles.confirmStatDivider} />
+              <View style={styles.confirmStat}>
+                <Text style={styles.confirmStatVal}>{activity?.total_steps?.toLocaleString() || '0'}</Text>
+                <Text style={styles.confirmStatLabel}>걸음</Text>
+              </View>
+            </View>
+            <View style={styles.confirmBtnRow}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setShowResumeConfirm(false)}>
+                <Text style={styles.confirmCancelText}>아니요</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmOkBtn} onPress={handleResumeWalk}>
+                <Text style={styles.confirmOkText}>이어서 걷기</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Spot Add Modal */}
@@ -1418,6 +1452,106 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  // ── Confirm Modal ──
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  confirmCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 28,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  confirmIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  confirmDesc: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  confirmStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
+  confirmStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  confirmStatVal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  confirmStatLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  confirmStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E5E8EB',
+  },
+  confirmBtnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    backgroundColor: '#F2F4F6',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  confirmOkBtn: {
+    flex: 1.5,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  confirmOkText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
   actionGroup: {
     paddingHorizontal: 20,

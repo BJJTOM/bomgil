@@ -69,6 +69,11 @@ CORS_ALLOWED_ORIGINS = [
     os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com,https://frontend-chi-umber-93.vercel.app").split(",")
     if x.strip()
 ]
+# Allow localhost for development
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://localhost(:\d+)?$",
+    r"^https?://127\.0\.0\.1(:\d+)?$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ---------------------------------------------------------------------------

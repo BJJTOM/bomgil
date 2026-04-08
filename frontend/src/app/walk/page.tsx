@@ -48,6 +48,7 @@ export default function WalkPage() {
   const [mapLoaded, setMapLoaded] = useState(false);
 
   const trackPointsRef = useRef<TrackPoint[]>([]);
+  const walkStartedAtRef = useRef<Date | null>(null);
   const distRef = useRef(0);
   const lastAltRef = useRef<number | null>(null);
   const elevRef = useRef(0);
@@ -137,8 +138,10 @@ export default function WalkPage() {
   const onGPS = useCallback((pos: GeolocationPosition) => {
     const acc = pos.coords.accuracy;
     setGpsAccuracy(Math.round(acc));
-    if (acc > 30) { setGpsStatus(ko ? `GPS 부정확 (${Math.round(acc)}m)` : `GPS inaccurate (${Math.round(acc)}m)`); return; }
-    setGpsStatus(ko ? "GPS 연결됨" : "GPS connected");
+    // Reject only when accuracy is very poor (>100m). Browsers on desktop or
+    // weak signal often return 30-80m which is still useful for path tracing.
+    if (acc > 100) { setGpsStatus(ko ? `GPS 부정확 (${Math.round(acc)}m)` : `GPS inaccurate (${Math.round(acc)}m)`); return; }
+    setGpsStatus(acc > 30 ? (ko ? `GPS 약함 (${Math.round(acc)}m)` : `GPS weak (${Math.round(acc)}m)`) : (ko ? "GPS 연결됨" : "GPS connected"));
 
     const lat = kLat.current.filter(pos.coords.latitude);
     const lng = kLng.current.filter(pos.coords.longitude);
@@ -238,6 +241,7 @@ export default function WalkPage() {
 
   const doStart = () => {
     setState("walking"); startT.current = Date.now();
+    if (!walkStartedAtRef.current) walkStartedAtRef.current = new Date();
     timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startT.current + pausedT.current) / 1000)), 1000);
     watchRef.current = navigator.geolocation.watchPosition(onGPS, onGPSErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 });
   };
@@ -281,25 +285,46 @@ export default function WalkPage() {
     // Warn if no GPS data was captured
     if (trackPointsRef.current.length < 2) {
       const proceed = confirm(ko
-        ? "GPS 기록이 부족합니다. 경로가 저장되지 않을 수 있어요. 계속할까요?"
-        : "Not enough GPS data. Route may not be saved. Continue?");
+        ? "GPS 기록이 부족합니다. 경로 없이 시간/거리만 저장됩니다. 계속할까요?"
+        : "Not enough GPS data. Activity will be saved with time/distance only. Continue?");
       if (!proceed) return;
     }
 
-    if (isAuthenticated && trackPointsRef.current.length >= 2) {
-      try {
-        await createActivity.mutateAsync({
-          track_points: trackPointsRef.current,
-          source: "phone_gps",
-          title: `${new Date().toLocaleDateString(language, { month: "long", day: "numeric" })} ${ko ? "도보" : "Walk"}`,
-          total_steps: steps,
-          calories_burned: calories,
-        });
-      } catch (e: any) {
-        console.error("Failed to save activity:", e);
-        alert(ko ? "활동 저장 실패: " + (e?.response?.data?.detail || e?.message || "알 수 없는 오류") : "Failed to save activity");
-      }
+    if (!isAuthenticated) {
+      alert(ko ? "로그인이 필요합니다" : "Login required");
+      router.push("/auth/login");
+      return;
     }
+
+    // Compute time range. If walkStartedAtRef wasn't set (edge case), back-fill from elapsed.
+    const finishedAt = new Date();
+    const startedAt = walkStartedAtRef.current || new Date(finishedAt.getTime() - elapsed * 1000);
+
+    try {
+      await createActivity.mutateAsync({
+        track_points: trackPointsRef.current,
+        source: "phone_gps",
+        title: `${finishedAt.toLocaleDateString(language, { month: "long", day: "numeric" })} ${ko ? "도보" : "Walk"}`,
+        total_steps: steps,
+        calories_burned: calories,
+        distance_km: distance > 0 ? distance.toFixed(2) : undefined,
+        duration_minutes: elapsed > 0 ? Math.max(1, Math.round(elapsed / 60)) : undefined,
+        started_at: startedAt.toISOString(),
+        finished_at: finishedAt.toISOString(),
+        elevation_gain_m: elevGain > 0 ? elevGain : undefined,
+      });
+    } catch (e: any) {
+      console.error("Failed to save activity:", e);
+      const detail = e?.response?.data?.detail
+        || (typeof e?.response?.data === "object" ? JSON.stringify(e.response.data) : null)
+        || e?.message
+        || (ko ? "알 수 없는 오류" : "Unknown error");
+      alert((ko ? "활동 저장 실패: " : "Failed to save activity: ") + detail);
+      // Still navigate to complete page so user can retry / see stats
+    }
+
+    walkStartedAtRef.current = null;
+
     const p = new URLSearchParams({
       distance: distance.toFixed(2),
       duration: String(elapsed),

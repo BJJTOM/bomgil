@@ -71,6 +71,11 @@ export function useCreateActivityJSON() {
       story?: number;
       total_steps?: number;
       calories_burned?: number;
+      distance_km?: string;
+      duration_minutes?: number;
+      started_at?: string;
+      finished_at?: string;
+      elevation_gain_m?: number;
     }) => {
       const { data: result } = await api.post("/activities/", data);
       return result;

@@ -313,9 +313,13 @@ class SendOtpView(APIView):
 
         normalized = _normalize_phone(phone)
 
-        # Per-phone hourly rate limit (defends against IP rotation)
-        recent_count = PhoneOTP.objects.filter(
+        # Per-phone hourly rate limit (defends against IP rotation).
+        # Count sms_sent events from PhoneAuthLog — unlike PhoneOTP, these
+        # rows are never deleted, so the throttle can't be reset by the
+        # delete-old-OTP step below.
+        recent_count = PhoneAuthLog.objects.filter(
             phone_number=normalized,
+            event_type='sms_sent',
             created_at__gte=timezone.now() - timedelta(hours=1),
         ).count()
         if recent_count >= self.PER_PHONE_HOURLY_LIMIT:

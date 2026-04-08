@@ -77,13 +77,14 @@ class UserSerializer(serializers.ModelSerializer):
             "xp", "level", "level_name",
             # Phase 11
             "is_verified", "verification_level", "badges",
+            "phone_number", "phone_verified",
             "created_at",
         ]
         read_only_fields = [
             "id", "username", "email", "is_guide",
             "companion_rating", "total_walks", "companion_count",
             "xp", "level",
-            "is_verified", "verification_level", "created_at",
+            "is_verified", "verification_level", "phone_verified", "created_at",
         ]
 
     def get_level_name(self, obj):

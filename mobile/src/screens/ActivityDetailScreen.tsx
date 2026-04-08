@@ -693,25 +693,82 @@ export default function ActivityDetailScreen() {
                 </View>
               </View>
             ))}
-            <TouchableOpacity
-              style={styles.addSpotBtn}
-              onPress={() => setShowSpotModal(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.addSpotBtnText}>+ 스팟 추가</Text>
-            </TouchableOpacity>
           </View>
 
-          {/* 4b. Walk merge button */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.mergeBtn}
-              activeOpacity={0.7}
-              onPress={openMergeModal}
-            >
-              <Feather name="git-merge" size={18} color={colors.primary} />
-              <Text style={styles.mergeBtnText}>다른 기록과 합치기</Text>
-            </TouchableOpacity>
+          {/* === Action buttons (unified) === */}
+          <View style={styles.actionGroup}>
+            <Text style={styles.actionGroupTitle}>활동 관리</Text>
+            <View style={styles.actionGrid}>
+              <TouchableOpacity
+                style={styles.actionCard}
+                activeOpacity={0.7}
+                onPress={() => {
+                  try {
+                    const tp = activity.track_points || [];
+                    const rc: [number, number][] = tp.map((p: any) => {
+                      if (Array.isArray(p)) return p as [number, number];
+                      const lng = p.lng ?? p.longitude ?? 0;
+                      const lat = p.lat ?? p.latitude ?? 0;
+                      return [lng, lat] as [number, number];
+                    }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
+                    const resumeData = {
+                      segments: [{
+                        routeCoords: rc, trackPoints: tp,
+                        distance: parseFloat(activity.distance_km || '0'),
+                        duration: (activity.duration_minutes || 0) * 60,
+                        steps: activity.total_steps || 0,
+                        calories: activity.calories_burned || 0,
+                        elevationGain: activity.elevation_gain_m || 0,
+                      }],
+                      spots: walkSpots || [],
+                      taggedPhotos: taggedPhotos || [],
+                      trailId: activity.trail || null,
+                    };
+                    navigation.replace('Walk', { resumeData });
+                  } catch (e: any) {
+                    Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
+                  }
+                }}>
+                <View style={[styles.actionIconCircle, { backgroundColor: colors.primary + '15' }]}>
+                  <Feather name="play-circle" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.actionCardTitle}>이어서 걷기</Text>
+                <Text style={styles.actionCardDesc}>이 기록에서 계속</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                activeOpacity={0.7}
+                onPress={openMergeModal}>
+                <View style={[styles.actionIconCircle, { backgroundColor: '#60A5FA15' }]}>
+                  <Feather name="git-merge" size={20} color="#60A5FA" />
+                </View>
+                <Text style={styles.actionCardTitle}>기록 합치기</Text>
+                <Text style={styles.actionCardDesc}>다른 활동과 병합</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                activeOpacity={0.7}
+                onPress={() => setShowSpotModal(true)}>
+                <View style={[styles.actionIconCircle, { backgroundColor: '#F59E0B15' }]}>
+                  <Feather name="map-pin" size={20} color="#F59E0B" />
+                </View>
+                <Text style={styles.actionCardTitle}>스팟 추가</Text>
+                <Text style={styles.actionCardDesc}>장소 등록하기</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                activeOpacity={0.7}
+                onPress={() => setCourseExpanded(true)}>
+                <View style={[styles.actionIconCircle, { backgroundColor: '#22C55E15' }]}>
+                  <Feather name="share-2" size={20} color="#22C55E" />
+                </View>
+                <Text style={styles.actionCardTitle}>코스 공유</Text>
+                <Text style={styles.actionCardDesc}>경로를 코스로</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* 5. Course draft section — always visible */}
@@ -874,42 +931,6 @@ export default function ActivityDetailScreen() {
                 </View>
               )}
 
-              {/* Resume / Continue walking from this activity */}
-              <TouchableOpacity
-                style={styles.resumeFromActivityBtn}
-                activeOpacity={0.8}
-                onPress={() => {
-                  try {
-                    const tp = activity.track_points || [];
-                    const rc: [number, number][] = tp.map((p: any) => {
-                      if (Array.isArray(p)) return p as [number, number];
-                      const lng = p.lng ?? p.longitude ?? 0;
-                      const lat = p.lat ?? p.latitude ?? 0;
-                      return [lng, lat] as [number, number];
-                    }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
-
-                    const resumeData = {
-                      segments: [{
-                        routeCoords: rc,
-                        trackPoints: tp,
-                        distance: parseFloat(activity.distance_km || '0'),
-                        duration: (activity.duration_minutes || 0) * 60,
-                        steps: activity.total_steps || 0,
-                        calories: activity.calories_burned || 0,
-                        elevationGain: activity.elevation_gain_m || 0,
-                      }],
-                      spots: walkSpots || [],
-                      taggedPhotos: taggedPhotos || [],
-                      trailId: activity.trail || null,
-                    };
-                    navigation.replace('Walk', { resumeData });
-                  } catch (e: any) {
-                    Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
-                  }
-                }}>
-                <Feather name="play-circle" size={18} color={colors.primary} />
-                <Text style={styles.resumeFromActivityText}>이 기록에서 이어서 걷기</Text>
-              </TouchableOpacity>
             </View>
         </ScrollView>
       </View>
@@ -1397,6 +1418,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  actionGroup: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  actionGroupTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  actionCard: {
+    width: '47%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+  },
+  actionIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  actionCardDesc: {
+    fontSize: 11,
+    color: colors.textTertiary,
   },
   shareBtn: {
     flex: 1,

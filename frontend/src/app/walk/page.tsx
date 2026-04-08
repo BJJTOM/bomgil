@@ -38,6 +38,7 @@ export default function WalkPage() {
   const [isAutoPaused, setIsAutoPaused] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [showSpotModal, setShowSpotModal] = useState(false);
+  const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [spotName, setSpotName] = useState("");
   const [spotType, setSpotType] = useState("photo");
   const [photos, setPhotos] = useState<{ uri: string; lat: number; lng: number }[]>([]);
@@ -262,70 +263,57 @@ export default function WalkPage() {
       <style jsx global>{`@keyframes mp{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.5);opacity:0}}.wmap .leaflet-container{background:#0a0a0a!important;width:100%!important;height:100%!important}`}</style>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
 
-      {/* Map */}
-      <div className="wmap relative overflow-hidden" style={{ height: 280 }}>
+      {/* Map — bigger, 45vh like mobile */}
+      <div className="wmap relative overflow-hidden flex-shrink-0" style={{ height: "45vh", minHeight: 320 }}>
         <div ref={mapDiv} className="absolute inset-0" style={{ opacity: mapLoaded ? 1 : 0, transition: "opacity 0.4s" }} />
-        {/* Status bar */}
-        <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between">
-          <div className="flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}>
-            <div className="w-2 h-2 rounded-full" style={{ background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15" }} />
-            <span className="text-white/85 text-[12px] font-semibold">
-              {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시정지" : "Auto-paused") : "REC") : (ko ? "일시정지" : "Paused")}
-            </span>
-          </div>
-          <div className="rounded-full px-3 py-1.5 text-white/50 text-[12px] font-mono" style={{ background: "rgba(0,0,0,0.6)" }}>
-            {fmtTime(elapsed)}
-          </div>
+        {/* Status pill — top left only (no time here) */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: state === "walking" ? (isAutoPaused ? "#F97316" : "#4ADE80") : "#FACC15" }} />
+          <span className="text-white/90 text-[12px] font-semibold">
+            {state === "walking" ? (isAutoPaused ? (ko ? "자동 일시정지" : "Auto-paused") : (ko ? "기록 중" : "REC")) : (ko ? "일시정지" : "Paused")}
+          </span>
         </div>
         {/* GPS accuracy */}
         {gpsAccuracy !== null && (
           <div className="absolute bottom-2 right-2 z-10 text-[10px] text-white/30">GPS ±{gpsAccuracy}m</div>
         )}
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-8 z-[5] pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent, #0a0a0a)" }} />
       </div>
 
-      {/* Stats */}
-      <div className="flex-1 overflow-auto px-5 py-4">
-        {/* Big distance */}
-        <div className="text-center mb-4">
-          <div className="flex items-baseline justify-center">
-            <span className="text-[52px] font-extrabold text-white tracking-tighter leading-none">{distance.toFixed(2)}</span>
-            <span className="text-[14px] text-white/30 ml-1.5">km</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <span className="text-[11px] text-white/30">PACE</span>
-            <span className="text-[18px] font-bold text-[#4ADE80]">{fmtPace(currentPace)}</span>
-            <span className="text-[11px] text-white/20">/km</span>
-          </div>
+      {/* Stats panel — matching mobile */}
+      <div className="flex-1 overflow-auto px-5 pt-5 pb-2">
+        {/* Time label + value */}
+        <p className="text-[11px] text-white/30 uppercase tracking-widest text-center mb-1">{ko ? "시간" : "Time"}</p>
+        <p className="text-[26px] font-bold text-white text-center tabular-nums mb-3">{fmtTime(elapsed)}</p>
+
+        {/* Distance */}
+        <div className="flex items-baseline justify-center mb-2">
+          <span className="text-[56px] font-extrabold text-white tracking-tighter leading-none">{distance.toFixed(2)}</span>
+          <span className="text-[16px] text-white/35 ml-2">km</span>
+        </div>
+
+        {/* Pace */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="text-[11px] text-white/35">{ko ? "현재 페이스" : "Current Pace"}</span>
+          <span className="text-[20px] font-bold text-[#4ADE80]">{fmtPace(currentPace)}</span>
+          <span className="text-[11px] text-white/25">/km</span>
         </div>
 
         {/* 4-grid */}
-        <div className="grid grid-cols-4 gap-1 rounded-2xl py-3 mb-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+        <div className="flex rounded-2xl py-3 mb-3" style={{ background: "rgba(255,255,255,0.04)" }}>
           {[
             { v: steps.toLocaleString(), l: ko ? "걸음" : "Steps" },
             { v: String(calories), l: "kcal" },
             { v: speed.toFixed(1), l: "km/h" },
-            { v: elevGain > 0 ? `+${elevGain}` : "0", l: ko ? "고도(m)" : "Elev(m)" },
+            { v: elevGain > 0 ? `+${elevGain}m` : "0m", l: ko ? "고도" : "Elev" },
           ].map((s, i) => (
-            <div key={i} className="text-center">
-              <div className="text-[15px] font-bold text-white">{s.v}</div>
-              <div className="text-[9px] text-white/30 uppercase">{s.l}</div>
+            <div key={i} className="flex-1 text-center" style={{ borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+              <div className="text-[16px] font-bold text-white">{s.v}</div>
+              <div className="text-[10px] text-white/35 uppercase">{s.l}</div>
             </div>
           ))}
         </div>
-
-        {/* Avg pace */}
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <span className="text-[11px] text-white/25">{ko ? "평균" : "Avg"}</span>
-          <span className="text-[13px] font-semibold text-white/50">{fmtPace(avgPace)}</span>
-        </div>
-
-        {/* Photo/Spot badges */}
-        {(photos.length > 0 || spots.length > 0) && (
-          <div className="flex gap-3 justify-center mb-3">
-            {photos.length > 0 && <span className="text-[11px] text-white/40 bg-white/[0.04] px-3 py-1 rounded-full">📷 {photos.length}</span>}
-            {spots.length > 0 && <span className="text-[11px] text-white/40 bg-white/[0.04] px-3 py-1 rounded-full">📍 {spots.length}</span>}
-          </div>
-        )}
 
         {/* Splits */}
         {splits.length > 0 && (
@@ -341,26 +329,35 @@ export default function WalkPage() {
         )}
       </div>
 
-      {/* Controls */}
-      <div className="flex-shrink-0 flex items-center justify-center gap-5 py-4 pb-6" style={{ background: "rgba(0,0,0,0.3)" }}>
+      {/* Quick actions — camera/spot/list (only when walking) */}
+      {state === "walking" && (
+        <div className="flex-shrink-0 flex items-center justify-center gap-3 pb-2">
+          <button onClick={() => photoRef.current?.click()} className="relative w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            {photos.length > 0 && <span className="absolute -top-1 -right-1 bg-[#4ADE80] text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{photos.length}</span>}
+          </button>
+          <button onClick={() => setShowSpotModal(true)} className="relative w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {spots.length > 0 && <span className="absolute -top-1 -right-1 bg-[#4ADE80] text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{spots.length}</span>}
+          </button>
+          <button onClick={() => setShowRecordSummary(true)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+      )}
+
+      {/* Controls — pause/resume/stop */}
+      <div className="flex-shrink-0 flex items-center justify-center gap-5 py-3 pb-6">
         {state === "walking" ? (
-          <>
-            <button onClick={() => photoRef.current?.click()} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            </button>
-            <button onClick={pause} className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="#111"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-            </button>
-            <button onClick={() => setShowSpotModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            </button>
-          </>
+          <button onClick={pause} className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#111"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          </button>
         ) : (
           <>
-            <button onClick={() => setShowStopModal(true)} className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center">
+            <button onClick={() => setShowStopModal(true)} className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
             </button>
-            <button onClick={resume} className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#2D4A2E" }}>
+            <button onClick={resume} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: "#2D4A2E" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21"/></svg>
             </button>
           </>
@@ -401,6 +398,88 @@ export default function WalkPage() {
             </div>
             <input className="w-full bg-white/[0.06] rounded-lg px-3 py-2.5 text-[13px] text-white placeholder-white/25 outline-none mb-3" placeholder={ko ? "스팟 이름" : "Spot name"} value={spotName} onChange={e => setSpotName(e.target.value)} autoFocus />
             <button onClick={handleAddSpot} disabled={!spotName.trim()} className={`w-full py-3 rounded-lg text-[14px] font-bold ${spotName.trim() ? "bg-[#4ADE80] text-black" : "bg-white/[0.06] text-white/25"}`}>{ko ? "추가" : "Add"}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Record summary modal (list icon) */}
+      {showRecordSummary && (
+        <div className="fixed inset-0 z-[70] bg-black/80 flex items-end justify-center">
+          <div className="bg-[#1a1a1a] rounded-t-3xl p-5 w-full max-w-[400px] max-h-[70vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[16px] font-bold text-white">{ko ? "기록 보기" : "Records"}</h3>
+              <button onClick={() => setShowRecordSummary(false)} className="text-white/40 text-lg">✕</button>
+            </div>
+
+            {/* Current stats */}
+            <div className="bg-white/[0.04] rounded-2xl p-4 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="text-center">
+                  <div className="text-[18px] font-bold text-white">{distance.toFixed(2)}</div>
+                  <div className="text-[10px] text-white/40">km</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[18px] font-bold text-white">{fmtTime(elapsed)}</div>
+                  <div className="text-[10px] text-white/40">{ko ? "시간" : "Time"}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[18px] font-bold text-white">{steps.toLocaleString()}</div>
+                  <div className="text-[10px] text-white/40">{ko ? "걸음" : "Steps"}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Splits */}
+            {splits.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] text-white/40 uppercase tracking-wider mb-2">{ko ? "구간 기록" : "Splits"}</p>
+                <div className="bg-white/[0.04] rounded-xl p-3">
+                  {splits.map(s => (
+                    <div key={s.km} className="flex items-center justify-between py-1">
+                      <span className="text-[12px] text-white/50">{s.km}km</span>
+                      <span className="text-[14px] font-bold text-[#4ADE80]">{s.pace}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Photos */}
+            {photos.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] text-white/40 uppercase tracking-wider mb-2">{ko ? "사진" : "Photos"} ({photos.length})</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {photos.map((p, i) => (
+                    <div key={i} className="aspect-square rounded-lg overflow-hidden bg-white/[0.04]">
+                      <img src={p.uri} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Spots */}
+            {spots.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[11px] text-white/40 uppercase tracking-wider mb-2">{ko ? "스팟" : "Spots"} ({spots.length})</p>
+                <div className="space-y-1.5">
+                  {spots.map((s, i) => {
+                    const color = SPOTS.find(x => x.key === s.type)?.color || "#4ADE80";
+                    return (
+                      <div key={i} className="flex items-center gap-2.5 bg-white/[0.04] rounded-lg p-2.5">
+                        <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                        <span className="text-[13px] text-white flex-1">{s.name}</span>
+                        <span className="text-[10px] text-white/40">{SPOTS.find(x => x.key === s.type)?.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {photos.length === 0 && spots.length === 0 && splits.length === 0 && (
+              <p className="text-center text-[13px] text-white/30 py-8">{ko ? "아직 기록이 없어요" : "No records yet"}</p>
+            )}
           </div>
         </div>
       )}

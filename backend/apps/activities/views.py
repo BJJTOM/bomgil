@@ -45,9 +45,10 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         started_at = serializer.validated_data.get("started_at")
+        # Only check duplicates if started_at is explicitly provided (not inferred from track_points later)
         if started_at:
-            window_start = started_at - timezone.timedelta(minutes=5)
-            window_end = started_at + timezone.timedelta(minutes=5)
+            window_start = started_at - timezone.timedelta(seconds=30)
+            window_end = started_at + timezone.timedelta(seconds=30)
             duplicate = ActivityTrack.objects.filter(
                 user=self.request.user,
                 started_at__gte=window_start,
@@ -56,7 +57,7 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             if duplicate:
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError(
-                    {"detail": "A similar activity was already recorded within 5 minutes."}
+                    {"detail": "A similar activity was already recorded within 30 seconds."}
                 )
         instance = serializer.save(user=self.request.user)
         if instance.gpx_file:

@@ -905,8 +905,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 140,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    height: 90,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   diffBadgeBottom: {
     paddingHorizontal: 12,
@@ -929,10 +929,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 6,
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   coverRegion: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.95)',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 
   // ── Quick Stats ────────────────────────────────────────

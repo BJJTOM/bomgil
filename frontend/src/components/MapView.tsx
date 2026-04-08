@@ -229,8 +229,17 @@ export function MapView({
   }, [pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden ${className}`} style={{ background: isDark ? "#1a1a2e" : "#f0f4f0" }}>
       <div ref={mapRef} className="w-full h-full" />
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: isDark ? "#4ADE80" : "#2D4A2E", animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      )}
       <style jsx global>{`
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }

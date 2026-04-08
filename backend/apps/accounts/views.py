@@ -238,17 +238,17 @@ class PhoneSmsSentLogView(APIView):
 
 class OtpSendThrottle(AnonRateThrottle):
     scope = 'otp_send'
-    rate = '10/hour'
+    rate = '30/hour'
 
 
 class OtpVerifyThrottle(AnonRateThrottle):
     scope = 'otp_verify'
-    rate = '60/hour'
+    rate = '120/hour'
 
 
 class OtpCompleteThrottle(AnonRateThrottle):
     scope = 'otp_complete'
-    rate = '60/hour'
+    rate = '120/hour'
 
 
 # Backwards compat alias

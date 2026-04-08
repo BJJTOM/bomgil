@@ -392,7 +392,15 @@ export default function ActivityDetailScreen() {
     };
 
     if (elevation > 0) payload.elevation_gain = Math.round(elevation);
-    if (seasons.length > 0) payload.best_season = seasons[0];
+    if (seasons.length > 0) {
+      const seasonMap: Record<string, string> = { '봄': 'spring', '여름': 'summer', '가을': 'fall', '겨울': 'winter' };
+      payload.best_season = seasonMap[seasons[0]] || 'all';
+    }
+    const trailTypeMap: Record<string, string> = { '편도': 'one_way', '왕복': 'round_trip', '순환': 'loop' };
+    payload.trail_type = trailTypeMap[courseType] || 'one_way';
+    if (tags.trim()) payload.tags = tags.split('#').map(t => t.trim()).filter(Boolean);
+    if (transport.trim()) payload.transport_access = transport.trim();
+    if (timeSlot.trim()) payload.recommended_time = timeSlot.trim();
 
     return payload;
   };
@@ -1097,28 +1105,33 @@ export default function ActivityDetailScreen() {
                 </View>
               </View>
 
-              <Text style={styles.fieldLabel}>난이도</Text>
-              <View style={styles.chipRow}>
-                {DIFFICULTY_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[styles.chip, difficulty === opt && styles.chipSelected]}
-                    onPress={() => setDifficulty(opt)}>
-                    <Text style={[styles.chipText, difficulty === opt && styles.chipTextSelected]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={styles.fieldLabel}>코스 유형</Text>
-              <View style={styles.chipRow}>
-                {COURSE_TYPE_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[styles.chip, courseType === opt && styles.chipSelected]}
-                    onPress={() => setCourseType(opt)}>
-                    <Text style={[styles.chipText, courseType === opt && styles.chipTextSelected]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.fieldRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>난이도</Text>
+                  <View style={styles.chipRow}>
+                    {DIFFICULTY_OPTIONS.map((opt) => (
+                      <TouchableOpacity
+                        key={opt}
+                        style={[styles.chipSm, difficulty === opt && styles.chipSelected]}
+                        onPress={() => setDifficulty(opt)}>
+                        <Text style={[styles.chipTextSm, difficulty === opt && styles.chipTextSelected]}>{opt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>코스 유형</Text>
+                  <View style={styles.chipRow}>
+                    {COURSE_TYPE_OPTIONS.map((opt) => (
+                      <TouchableOpacity
+                        key={opt}
+                        style={[styles.chipSm, courseType === opt && styles.chipSelected]}
+                        onPress={() => setCourseType(opt)}>
+                        <Text style={[styles.chipTextSm, courseType === opt && styles.chipTextSelected]}>{opt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
 
               <Text style={styles.fieldLabel}>추천 계절</Text>
@@ -1126,14 +1139,23 @@ export default function ActivityDetailScreen() {
                 {SEASON_OPTIONS.map((opt) => (
                   <TouchableOpacity
                     key={opt}
-                    style={[styles.chip, seasons.includes(opt) && styles.chipSelected]}
+                    style={[styles.chipSm, seasons.includes(opt) && styles.chipSelected]}
                     onPress={() => toggleSeason(opt)}>
-                    <Text style={[styles.chipText, seasons.includes(opt) && styles.chipTextSelected]}>{opt}</Text>
+                    <Text style={[styles.chipTextSm, seasons.includes(opt) && styles.chipTextSelected]}>{opt}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>추천 시간대</Text>
+              <Text style={styles.fieldLabel}>태그 (선택)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={tags}
+                onChangeText={setTags}
+                placeholder="#맛집투어 #역사탐방"
+                placeholderTextColor={colors.textTertiary}
+              />
+
+              <Text style={styles.fieldLabel}>추천 시간대 (선택)</Text>
               <TextInput
                 style={styles.textInput}
                 value={timeSlot}
@@ -1142,16 +1164,7 @@ export default function ActivityDetailScreen() {
                 placeholderTextColor={colors.textTertiary}
               />
 
-              <Text style={styles.fieldLabel}>태그</Text>
-              <TextInput
-                style={styles.textInput}
-                value={tags}
-                onChangeText={setTags}
-                placeholder="예: #맛집투어 #역사탐방"
-                placeholderTextColor={colors.textTertiary}
-              />
-
-              <Text style={styles.fieldLabel}>교통편 안내</Text>
+              <Text style={styles.fieldLabel}>교통편 안내 (선택)</Text>
               <TextInput
                 style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
                 value={transport}
@@ -1588,6 +1601,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  chipSm: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#F2F4F6',
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  chipTextSm: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   // ── Course Modal ──
   courseModalOverlay: {

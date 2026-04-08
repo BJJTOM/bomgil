@@ -47,6 +47,12 @@ credentials.json
 secrets.json
 .env.prod
 .env.production
+# Firebase service account
+firebase-service-account*.json
+firebase-adminsdk*.json
+serviceAccountKey*.json
+# Google service account
+google-cloud-key*.json
 
 # Media uploads (not backend/apps/media Django app)
 /media/

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useActivity } from "@/hooks/useActivities";
 import { useQueryClient } from "@tanstack/react-query";
 import { MapView } from "@/components/MapView";
+import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
 import api from "@/lib/api";
 import type { TrackPoint } from "@/types";
 
@@ -41,6 +42,7 @@ export default function ActivityDetailPage() {
   const { data: activity, isLoading } = useActivity(id as string);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   const handleSaveTitle = async () => {
     if (!editTitle.trim() || !id) return;
@@ -87,20 +89,36 @@ export default function ActivityDetailPage() {
       <div className="relative">
         <div className="h-[300px] md:h-[400px]">
           {pathCoordinates.length > 0 ? (
-            <MapView
-              center={center}
-              pathCoordinates={pathCoordinates}
-              zoom={13}
-              theme="light"
-              showStats
-              distance={activity.distance_km || undefined}
-              duration={activity.duration_minutes ? String(activity.duration_minutes) : undefined}
-              className="w-full h-full"
-              markers={[
-                { id: 1, lat: trackPoints[0].lat, lng: trackPoints[0].lng, title: "출발", emoji: "🟢" },
-                { id: 2, lat: trackPoints[trackPoints.length - 1].lat, lng: trackPoints[trackPoints.length - 1].lng, title: "도착", emoji: "🔴" },
-              ]}
-            />
+            <>
+              <MapView
+                center={center}
+                pathCoordinates={pathCoordinates}
+                zoom={13}
+                theme="light"
+                showStats
+                distance={activity.distance_km || undefined}
+                duration={activity.duration_minutes ? String(activity.duration_minutes) : undefined}
+                className="w-full h-full"
+                markers={[
+                  { id: 1, lat: trackPoints[0].lat, lng: trackPoints[0].lng, title: "출발", emoji: "🟢" },
+                  { id: 2, lat: trackPoints[trackPoints.length - 1].lat, lng: trackPoints[trackPoints.length - 1].lng, title: "도착", emoji: "🔴" },
+                ]}
+              />
+              <MapExpandButton onClick={() => setMapFullscreen(true)} />
+              <MapFullscreen
+                open={mapFullscreen}
+                onClose={() => setMapFullscreen(false)}
+                title={activity.title || "활동 기록"}
+                pathCoordinates={pathCoordinates}
+                markers={[
+                  { id: 1, lat: trackPoints[0].lat, lng: trackPoints[0].lng, title: "출발", emoji: "🟢" },
+                  { id: 2, lat: trackPoints[trackPoints.length - 1].lat, lng: trackPoints[trackPoints.length - 1].lng, title: "도착", emoji: "🔴" },
+                ]}
+                distance={activity.distance_km || undefined}
+                duration={activity.duration_minutes ? String(activity.duration_minutes) : undefined}
+                theme="dark"
+              />
+            </>
           ) : (
             <div className="w-full h-full bg-gray-50 flex items-center justify-center">
               <div className="text-center">

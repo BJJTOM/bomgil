@@ -12,6 +12,7 @@ import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { SpotTimeline } from "@/components/SpotTimeline";
 import { ReviewCard } from "@/components/ReviewCard";
 import { MapView } from "@/components/MapView";
+import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
 import { ShareButton } from "@/components/ShareButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDistance, formatDuration, SEASON_LABELS, SPOT_TYPE_LABELS } from "@/lib/utils";
@@ -42,6 +43,7 @@ export default function TrailDetailPage() {
   const [reviewImages, setReviewImages] = useState<File[]>([]);
   const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const createReview = useCreateReview(trailId);
 
   // Check saved status from localStorage
@@ -280,8 +282,20 @@ export default function TrailDetailPage() {
               distance={tr.distance_km}
               duration={String(tr.estimated_minutes)}
             />
+            <MapExpandButton onClick={() => setMapFullscreen(true)} />
           </div>
         </div>
+
+        <MapFullscreen
+          open={mapFullscreen}
+          onClose={() => setMapFullscreen(false)}
+          title={tr.title}
+          pathCoordinates={pathCoords}
+          markers={mapMarkers}
+          distance={tr.distance_km}
+          duration={String(tr.estimated_minutes)}
+          theme="dark"
+        />
 
         {/* Spots — max 3, then "more" */}
         {spots.length > 0 && (

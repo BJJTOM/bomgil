@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { StepForm } from "@/components/StepForm";
 import { ImageUploader } from "@/components/ImageUploader";
 import { MapView } from "@/components/MapView";
+import { TrailDrawMap } from "@/components/TrailDrawMap";
 import { useAuthStore } from "@/stores/auth";
 import api from "@/lib/api";
 
@@ -132,6 +133,39 @@ export default function NewTrailPage() {
   });
 
   const [spots, setSpots] = useState<SpotForm[]>([]);
+
+  // Trail drawing state
+  const [drawMode, setDrawMode] = useState(true); // true = draw on map, false = manual coordinates
+  const [pathCoords, setPathCoords] = useState<[number, number][]>([]); // [lng, lat]
+  const [drawDistance, setDrawDistance] = useState(0);
+  const [drawDuration, setDrawDuration] = useState(0);
+
+  const handleDrawChange = useCallback(
+    (data: {
+      waypoints: [number, number][];
+      routeCoords: [number, number][];
+      distanceKm: number;
+      durationMin: number;
+    }) => {
+      setPathCoords(data.routeCoords);
+      setDrawDistance(data.distanceKm);
+      setDrawDuration(data.durationMin);
+      if (data.routeCoords.length >= 2) {
+        const start = data.routeCoords[0];
+        const end = data.routeCoords[data.routeCoords.length - 1];
+        setForm((prev) => ({
+          ...prev,
+          start_lng: String(start[0]),
+          start_lat: String(start[1]),
+          end_lng: String(end[0]),
+          end_lat: String(end[1]),
+          distance_km: data.distanceKm.toFixed(2),
+          estimated_minutes: data.durationMin || prev.estimated_minutes,
+        }));
+      }
+    },
+    [],
+  );
 
   // Auto-calculate distance when coordinates change
   useEffect(() => {
@@ -294,6 +328,12 @@ export default function NewTrailPage() {
         }
       });
       formData.append("status", "pending");
+      if (drawMode && pathCoords.length >= 2) {
+        formData.append(
+          "path_data",
+          JSON.stringify({ type: "LineString", coordinates: pathCoords }),
+        );
+      }
       if (images[0]) formData.append("cover_image", images[0]);
 
       const { data: trail } = await api.post("/trails/", formData, {
@@ -349,6 +389,12 @@ export default function NewTrailPage() {
         }
       });
       formData.append("status", "draft");
+      if (drawMode && pathCoords.length >= 2) {
+        formData.append(
+          "path_data",
+          JSON.stringify({ type: "LineString", coordinates: pathCoords }),
+        );
+      }
       if (images[0]) formData.append("cover_image", images[0]);
       await api.post("/trails/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -654,6 +700,77 @@ export default function NewTrailPage() {
         {/* Step 2: Route Drawing */}
         {currentStep === 1 && (
           <div className="space-y-6">
+            {/* Mode toggle */}
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setDrawMode(true)}
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                  drawMode ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+                }`}
+              >
+                {"\uD83D\uDDFA\uFE0F"} 지도에서 그리기
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrawMode(false)}
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                  !drawMode ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+                }`}
+              >
+                {"\u270F\uFE0F"} 좌표 직접 입력
+              </button>
+            </div>
+
+            {drawMode && (
+              <>
+                <SectionCard title="경로 그리기">
+                  <p className="text-xs text-text-secondary mb-3">
+                    지도를 탭하여 경유지를 추가하세요. 두 점 이상이면 OSRM 도보 경로로 자동 보정됩니다.
+                  </p>
+                  <div className="h-[480px] rounded-card overflow-hidden border border-gray-200">
+                    <TrailDrawMap
+                      initialCenter={
+                        form.start_lat && form.start_lng
+                          ? { lat: parseFloat(form.start_lat), lng: parseFloat(form.start_lng) }
+                          : undefined
+                      }
+                      onChange={handleDrawChange}
+                    />
+                  </div>
+                  {pathCoords.length >= 2 && (
+                    <div className="mt-3 p-3 bg-emerald-50 rounded-xl flex items-center justify-between text-[13px]">
+                      <div className="flex items-center gap-3">
+                        <span className="text-emerald-700 font-semibold">{drawDistance.toFixed(2)} km</span>
+                        <span className="text-emerald-700/60">·</span>
+                        <span className="text-emerald-700 font-semibold">
+                          {drawDuration >= 60
+                            ? `${Math.floor(drawDuration / 60)}시간 ${drawDuration % 60}분`
+                            : `${drawDuration}분`}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-emerald-600">자동 계산됨</span>
+                    </div>
+                  )}
+                </SectionCard>
+
+                {pathCoords.length >= 2 && (
+                  <SectionCard title="고도 (선택)">
+                    <Field label="고도 변화 (m)">
+                      <input
+                        type="text"
+                        value={form.elevation_gain}
+                        onChange={(e) => updateForm("elevation_gain", e.target.value)}
+                        placeholder="50"
+                        className="input-field"
+                      />
+                    </Field>
+                  </SectionCard>
+                )}
+              </>
+            )}
+
+            {!drawMode && (<>
             <SectionCard title="출발지 좌표">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -838,6 +955,7 @@ export default function NewTrailPage() {
                 }
               />
             </div>
+            </>)}
           </div>
         )}
 

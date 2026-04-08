@@ -250,6 +250,7 @@ export interface CommunityPost {
   author: number;
   author_nickname: string;
   author_image: string | null;
+  author_level?: number;
   category: PostCategory;
   category_display: string;
   title: string;

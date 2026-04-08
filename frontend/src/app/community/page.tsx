@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Icon } from "@/components/Icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
@@ -67,32 +67,81 @@ function FeedTab() {
   const { isAuthenticated } = useAuthStore();
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const nextUrlRef = useRef<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const { data: posts = [], isLoading } = useQuery<CommunityPost[]>({
+  const { isLoading } = useQuery<CommunityPost[]>({
     queryKey: ["community-posts", category, search],
     queryFn: async () => {
       let p = "?";
       if (category) p += `category=${category}&`;
       if (search) p += `q=${encodeURIComponent(search)}&`;
       const { data } = await api.get(`/community/posts/${p}`);
-      return data.results ?? data;
+      const results = data.results ?? data;
+      setPosts(results);
+      nextUrlRef.current = data.next || null;
+      setHasMore(!!data.next);
+      return results;
     },
   });
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || !nextUrlRef.current) return;
+    setLoadingMore(true);
+    try {
+      const path = nextUrlRef.current.replace(/^https?:\/\/[^/]+\/api\/v1/, "");
+      const { data } = await api.get(path);
+      const results = data.results ?? data;
+      if (Array.isArray(results) && results.length > 0) {
+        setPosts((prev) => {
+          const ids = new Set(prev.map((p) => p.id));
+          return [...prev, ...results.filter((p: CommunityPost) => !ids.has(p.id))];
+        });
+        nextUrlRef.current = data.next || null;
+        setHasMore(!!data.next);
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "200px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadMore]);
+
   const handleLike = useCallback(
-    async (e: React.MouseEvent, postId: number) => {
+    (e: React.MouseEvent, postId: number) => {
       e.stopPropagation();
       if (!isAuthenticated) { router.push("/auth/login"); return; }
-      qc.setQueryData(["community-posts", category, search], (old: any) =>
-        Array.isArray(old)
-          ? old.map((p: any) =>
-              p.id === postId ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1 } : p,
-            )
-          : old,
-      );
-      api.post(`/community/posts/${postId}/like/`).catch(() => qc.invalidateQueries({ queryKey: ["community-posts"] }));
+      let prev: CommunityPost[] = [];
+      setPosts((old) => {
+        prev = old;
+        return old.map((p) =>
+          p.id === postId
+            ? { ...p, is_liked: !p.is_liked, like_count: p.is_liked ? Math.max(0, p.like_count - 1) : p.like_count + 1 }
+            : p,
+        );
+      });
+      api.post(`/community/posts/${postId}/like/`).catch(() => setPosts(prev));
     },
-    [isAuthenticated, category, search],
+    [isAuthenticated, router],
   );
 
   return (
@@ -184,6 +233,9 @@ function FeedTab() {
                     )}
                   </div>
                   <span className="text-[12px] text-gray-500">{post.author_nickname}</span>
+                  {post.author_level != null && post.author_level > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-[1px] rounded">Lv.{post.author_level}</span>
+                  )}
                   <span className="text-[11px] text-gray-300">·</span>
                   <span className="text-[12px] text-gray-400">{timeAgo(post.created_at)}</span>
                 </div>
@@ -213,6 +265,12 @@ function FeedTab() {
               )}
             </div>
           ))}
+          {hasMore && <div ref={sentinelRef} className="h-8" />}
+          {loadingMore && (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
         </div>
       )}
     </>

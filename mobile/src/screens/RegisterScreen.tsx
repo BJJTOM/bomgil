@@ -13,17 +13,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import auth from '@react-native-firebase/auth';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
-
-function formatKoreanPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('0')) return '+82' + digits.substring(1);
-  if (digits.startsWith('82')) return '+' + digits;
-  return raw.startsWith('+') ? raw : '+' + digits;
-}
 
 function getPasswordStrength(password: string): {
   level: number;
@@ -64,8 +56,7 @@ export default function RegisterScreen() {
   const [phoneCode, setPhoneCode] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
-  const confirmationRef = useRef<any>(null);
-  const idTokenRef = useRef<string | null>(null);
+  const verificationTokenRef = useRef<string | null>(null);
 
   const sendPhoneCode = async () => {
     if (!form.phone.trim()) {
@@ -75,14 +66,11 @@ export default function RegisterScreen() {
     setSendingCode(true);
     setError('');
     try {
-      const formatted = formatKoreanPhone(form.phone);
-      // Log SMS sent attempt to backend
-      api.post('/auth/phone/sms-log/', { phone_number: formatted }).catch(() => {});
-      const confirmation = await auth().signInWithPhoneNumber(formatted);
-      confirmationRef.current = confirmation;
+      await api.post('/auth/phone/otp/send/', { phone_number: form.phone });
       setPhoneStep('sent');
     } catch (e: any) {
-      setError(e?.message || '인증번호 전송에 실패했습니다');
+      const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다';
+      setError(msg);
     } finally {
       setSendingCode(false);
     }
@@ -93,20 +81,17 @@ export default function RegisterScreen() {
       setError('6자리 인증번호를 입력해주세요');
       return;
     }
-    if (!confirmationRef.current) {
-      setError('인증 세션이 만료되었습니다. 다시 시도해주세요');
-      setPhoneStep('idle');
-      return;
-    }
     setVerifyingCode(true);
     setError('');
     try {
-      const userCred = await confirmationRef.current.confirm(phoneCode);
-      const idToken = await userCred.user.getIdToken();
-      idTokenRef.current = idToken;
+      const { data } = await api.post('/auth/phone/otp/verify/', {
+        phone_number: form.phone,
+        code: phoneCode,
+      });
+      verificationTokenRef.current = data.verification_token;
       setPhoneStep('verified');
     } catch (e: any) {
-      setError('인증번호가 일치하지 않습니다');
+      setError(e?.response?.data?.error || '인증번호가 일치하지 않습니다');
     } finally {
       setVerifyingCode(false);
     }
@@ -149,15 +134,11 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Use Firebase phone auth — backend creates user with phone verified
-      const { data } = await api.post('/auth/phone/firebase/', {
-        id_token: idTokenRef.current,
+      const { data } = await api.post('/auth/phone/otp/complete/', {
+        verification_token: verificationTokenRef.current,
         nickname: form.nickname.trim(),
+        email: form.email,
       });
-      // Update profile with email
-      try {
-        await api.patch('/auth/me/', { email: form.email });
-      } catch {}
       login(data.user, data.access, data.refresh);
       navigation.replace('Main');
     } catch (err: any) {

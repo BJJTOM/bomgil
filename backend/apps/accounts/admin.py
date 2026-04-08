@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, Notification, PhoneAuthLog, XPLog
+from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, XPLog
 
 
 @admin.register(CustomUser)
@@ -51,6 +51,14 @@ class XPLogAdmin(admin.ModelAdmin):
     list_display = ["user", "amount", "reason", "created_at"]
     list_filter = ["reason", "created_at"]
     search_fields = ["user__nickname", "reason"]
+
+
+@admin.register(PhoneOTP)
+class PhoneOTPAdmin(admin.ModelAdmin):
+    list_display = ["phone_number", "code", "verified", "attempts", "expires_at", "created_at"]
+    list_filter = ["verified", "created_at"]
+    search_fields = ["phone_number"]
+    readonly_fields = ["created_at"]
 
 
 @admin.register(PhoneAuthLog)

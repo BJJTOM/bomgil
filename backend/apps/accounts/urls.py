@@ -6,6 +6,9 @@ from .views import (
     FCMTokenView,
     FirebasePhoneAuthView,
     PhoneSmsSentLogView,
+    SendOtpView,
+    VerifyOtpView,
+    CompletePhoneAuthView,
     FollowersView,
     PasswordChangeView,
     FollowingView,
@@ -52,9 +55,13 @@ urlpatterns = [
     # Phone verification (legacy)
     path("phone/send/", PhoneSendView.as_view(), name="phone-send"),
     path("phone/verify/", PhoneVerifyView.as_view(), name="phone-verify"),
-    # Firebase Phone Auth (new)
+    # Firebase Phone Auth (legacy)
     path("phone/firebase/", FirebasePhoneAuthView.as_view(), name="firebase-phone-auth"),
     path("phone/sms-log/", PhoneSmsSentLogView.as_view(), name="phone-sms-log"),
+    # Custom OTP (new)
+    path("phone/otp/send/", SendOtpView.as_view(), name="otp-send"),
+    path("phone/otp/verify/", VerifyOtpView.as_view(), name="otp-verify"),
+    path("phone/otp/complete/", CompletePhoneAuthView.as_view(), name="otp-complete"),
     # FCM token
     path("fcm-token/", FCMTokenView.as_view(), name="fcm-token"),
     # Notifications

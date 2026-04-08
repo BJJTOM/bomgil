@@ -166,6 +166,25 @@ class PhoneVerification(models.Model):
         verbose_name_plural = "휴대폰 인증"
 
 
+class PhoneOTP(models.Model):
+    """6-digit OTP for phone verification (custom, no Firebase)."""
+    phone_number = models.CharField(max_length=20, db_index=True)
+    code = models.CharField(max_length=6)
+    expires_at = models.DateTimeField(db_index=True)
+    verified = models.BooleanField(default=False)
+    attempts = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = '전화번호 OTP'
+        verbose_name_plural = '전화번호 OTP'
+
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.verified and self.expires_at > timezone.now() and self.attempts < 5
+
+
 class PhoneAuthLog(models.Model):
     """SMS authentication log via Firebase Phone Auth.
 

@@ -13,7 +13,7 @@ from apps.reviews.serializers import ReviewSerializer
 from apps.trails.models import Trail, TrailLike
 from apps.trails.serializers import TrailListSerializer
 
-from .models import CustomUser, Notification, PhoneAuthLog, PhoneVerification, UserBadge
+from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, PhoneVerification, UserBadge
 
 
 def _client_ip(request):
@@ -234,6 +234,207 @@ class PhoneSmsSentLogView(APIView):
             user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
         )
         return Response({"logged": True})
+
+
+class CustomOtpThrottle(AnonRateThrottle):
+    rate = '20/hour'
+
+
+def _normalize_phone(phone: str) -> str:
+    """Normalize phone to E.164 Korean format."""
+    digits = ''.join(c for c in phone if c.isdigit() or c == '+')
+    if digits.startswith('+82'):
+        return digits
+    if digits.startswith('82'):
+        return '+' + digits
+    if digits.startswith('010'):
+        return '+82' + digits[1:]
+    if digits.startswith('0'):
+        return '+82' + digits[1:]
+    return digits
+
+
+class SendOtpView(APIView):
+    """Generate and send OTP to phone number."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [CustomOtpThrottle]
+
+    def post(self, request):
+        import random
+        import string
+        from datetime import timedelta
+        from django.utils import timezone
+        from .sms import send_sms
+
+        phone = request.data.get('phone_number', '').strip()
+        if not phone:
+            return Response({"error": "phone_number가 필요합니다."}, status=400)
+
+        normalized = _normalize_phone(phone)
+
+        # Generate 6-digit code
+        code = ''.join(random.choices(string.digits, k=6))
+
+        # Store OTP (delete previous unverified ones for this number)
+        PhoneOTP.objects.filter(phone_number=normalized, verified=False).delete()
+        otp = PhoneOTP.objects.create(
+            phone_number=normalized,
+            code=code,
+            expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        # Send SMS
+        message = f"[모루] 인증번호: {code}\n5분 안에 입력해주세요."
+        success, error = send_sms(normalized, message)
+
+        # Log
+        PhoneAuthLog.objects.create(
+            phone_number=normalized,
+            event_type='sms_sent' if success else 'failed',
+            error_message='' if success else error[:300],
+            ip_address=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
+
+        if not success:
+            return Response({"error": f"SMS 전송 실패: {error}"}, status=500)
+
+        return Response({"sent": True, "expires_in": 300})
+
+
+class VerifyOtpView(APIView):
+    """Verify OTP code. Returns a verification_token to use in signup/login."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [CustomOtpThrottle]
+
+    def post(self, request):
+        from django.utils import timezone
+        import secrets
+
+        phone = request.data.get('phone_number', '').strip()
+        code = request.data.get('code', '').strip()
+
+        if not phone or not code:
+            return Response({"error": "phone_number와 code가 필요합니다."}, status=400)
+
+        normalized = _normalize_phone(phone)
+
+        try:
+            otp = PhoneOTP.objects.filter(
+                phone_number=normalized,
+                verified=False,
+            ).latest('created_at')
+        except PhoneOTP.DoesNotExist:
+            return Response({"error": "인증번호를 먼저 요청해주세요."}, status=400)
+
+        otp.attempts += 1
+        otp.save(update_fields=['attempts'])
+
+        if not otp.is_valid():
+            return Response({"error": "인증번호가 만료되었거나 시도 횟수를 초과했습니다."}, status=400)
+
+        if otp.code != code:
+            return Response({"error": "인증번호가 일치하지 않습니다."}, status=400)
+
+        otp.verified = True
+        otp.save(update_fields=['verified'])
+
+        # Generate verification token (valid for 10 minutes)
+        token = secrets.token_urlsafe(32)
+        from django.core.cache import cache
+        cache.set(f"phone_verify:{token}", normalized, timeout=600)
+
+        # Check if user already exists
+        existing = CustomUser.objects.filter(phone_number=normalized).first()
+
+        PhoneAuthLog.objects.create(
+            phone_number=normalized,
+            event_type='verified',
+            user=existing,
+            ip_address=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
+
+        return Response({
+            "verified": True,
+            "verification_token": token,
+            "user_exists": existing is not None,
+        })
+
+
+class CompletePhoneAuthView(APIView):
+    """Complete signup or login using verification token from VerifyOtpView."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [CustomOtpThrottle]
+
+    def post(self, request):
+        from django.core.cache import cache
+
+        token = request.data.get('verification_token', '').strip()
+        nickname = request.data.get('nickname', '').strip()
+        email = request.data.get('email', '').strip()
+
+        if not token:
+            return Response({"error": "verification_token이 필요합니다."}, status=400)
+
+        phone = cache.get(f"phone_verify:{token}")
+        if not phone:
+            return Response({"error": "인증 토큰이 만료되었습니다. 다시 인증해주세요."}, status=400)
+
+        # Lookup or create user
+        user = CustomUser.objects.filter(phone_number=phone).first()
+        is_new = False
+
+        if not user:
+            # Create new user
+            if not nickname:
+                return Response({"error": "닉네임이 필요합니다."}, status=400)
+            base_nick = nickname
+            i = 1
+            while CustomUser.objects.filter(nickname=nickname).exists():
+                nickname = f"{base_nick}{i}"
+                i += 1
+
+            username = f"phone_{phone[-8:]}"
+            i2 = 1
+            while CustomUser.objects.filter(username=username).exists():
+                username = f"phone_{phone[-7:]}{i2}"
+                i2 += 1
+
+            user = CustomUser.objects.create(
+                username=username,
+                nickname=nickname,
+                phone_number=phone,
+                phone_verified=True,
+                is_verified=True,
+                verification_level=2,
+                email=email or f"{username}@phone.moruwalk.com",
+            )
+            user.set_unusable_password()
+            user.save()
+            is_new = True
+
+        # Invalidate token
+        cache.delete(f"phone_verify:{token}")
+
+        # Log
+        PhoneAuthLog.objects.create(
+            phone_number=phone,
+            event_type='signup' if is_new else 'login',
+            user=user,
+            nickname=user.nickname,
+            email=user.email,
+            ip_address=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data,
+            'is_new': is_new,
+        })
 
 
 class FirebasePhoneAuthView(APIView):

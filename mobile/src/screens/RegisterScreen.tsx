@@ -66,8 +66,12 @@ export default function RegisterScreen() {
     setSendingCode(true);
     setError('');
     try {
-      await api.post('/auth/phone/otp/send/', { phone_number: form.phone });
+      const { data } = await api.post('/auth/phone/otp/send/', { phone_number: form.phone });
       setPhoneStep('sent');
+      if (data?.test_code) {
+        Alert.alert('🧪 테스트 모드', `인증번호: ${data.test_code}`);
+        setPhoneCode(data.test_code);
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다';
       setError(msg);

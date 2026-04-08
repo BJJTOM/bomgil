@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import type { Review } from "@/types";
 
 interface ReviewCardProps {
@@ -9,6 +11,8 @@ interface ReviewCardProps {
 }
 
 export function ReviewCard({ review, onHelpful }: ReviewCardProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   return (
     <div className="bg-white rounded-card shadow-soft p-4">
       {/* Author & Rating */}
@@ -51,21 +55,35 @@ export function ReviewCard({ review, onHelpful }: ReviewCardProps) {
 
       {/* Images */}
       {review.images.length > 0 && (
-        <div className="flex gap-2 mt-3 overflow-x-auto">
-          {review.images.map((img) => (
-            <div
-              key={img.id}
-              className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden"
-            >
-              <Image
-                src={img.image}
-                alt="리뷰 사진"
-                fill
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="flex gap-2 mt-3 overflow-x-auto">
+            {review.images.map((img, i) => (
+              <button
+                key={img.id}
+                type="button"
+                onClick={() => {
+                  setLightboxIndex(i);
+                  setLightboxOpen(true);
+                }}
+                className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden active:opacity-80 transition-opacity"
+              >
+                <Image
+                  src={img.image}
+                  alt="리뷰 사진"
+                  fill
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+          <PhotoLightbox
+            open={lightboxOpen}
+            onClose={() => setLightboxOpen(false)}
+            index={lightboxIndex}
+            onIndexChange={setLightboxIndex}
+            images={review.images.map((img) => ({ src: img.image }))}
+          />
+        </>
       )}
 
       {/* Helpful */}

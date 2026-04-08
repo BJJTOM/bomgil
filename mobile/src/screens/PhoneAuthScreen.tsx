@@ -31,8 +31,13 @@ export default function PhoneAuthScreen() {
     }
     setLoading(true);
     try {
-      await api.post('/auth/phone/otp/send/', { phone_number: phone });
+      const { data } = await api.post('/auth/phone/otp/send/', { phone_number: phone });
       setStep('code');
+      // Test mode: show code in alert for easy testing
+      if (data?.test_code) {
+        Alert.alert('🧪 테스트 모드', `인증번호: ${data.test_code}`);
+        setCode(data.test_code);
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다.';
       Alert.alert('전송 실패', msg);

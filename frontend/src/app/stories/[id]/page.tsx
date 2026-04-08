@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import type { WalkStory, StoryComment } from "@/types";
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
@@ -39,6 +40,8 @@ export default function StoryDetailPage() {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: number; nickname: string } | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const { data: story, isLoading } = useQuery<WalkStory>({
     queryKey: ["story", storyId],
@@ -211,19 +214,35 @@ export default function StoryDetailPage() {
         {photos.length > 0 && (
           <div className="-mx-5 mb-5">
             <div className="flex overflow-x-auto scrollbar-hide gap-2 px-5">
-              {photos.map((p) => (
-                <div key={p.id} className="relative w-[280px] h-[280px] flex-shrink-0 rounded-2xl overflow-hidden bg-gray-100">
+              {photos.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setLightboxIndex(i);
+                    setLightboxOpen(true);
+                  }}
+                  className="relative w-[280px] h-[280px] flex-shrink-0 rounded-2xl overflow-hidden bg-gray-100 active:opacity-80 transition-opacity"
+                >
                   <Image src={p.image} alt={p.caption || ""} fill className="object-cover" sizes="280px" />
                   {p.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 text-left">
                       <p className="text-white text-[12px]">{p.caption}</p>
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           </div>
         )}
+
+        <PhotoLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          images={photos.map((p) => ({ src: p.image, caption: p.caption }))}
+        />
 
         {/* Actions */}
         <div className="flex items-center gap-5 py-3 border-y border-gray-100">

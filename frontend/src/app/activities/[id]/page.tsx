@@ -6,6 +6,7 @@ import { useActivity } from "@/hooks/useActivities";
 import { useQueryClient } from "@tanstack/react-query";
 import { MapView } from "@/components/MapView";
 import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import api from "@/lib/api";
 import type { TrackPoint } from "@/types";
 
@@ -43,6 +44,8 @@ export default function ActivityDetailPage() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Merge state
   const [showMergeModal, setShowMergeModal] = useState(false);
@@ -346,10 +349,18 @@ export default function ActivityDetailPage() {
             <h2 className="text-[15px] font-bold mb-3">사진 ({(activity as any).photos.length})</h2>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {(activity as any).photos.map((p: any, i: number) => (
-                <div key={i} className="flex-shrink-0 w-[120px]">
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setLightboxIndex(i);
+                    setLightboxOpen(true);
+                  }}
+                  className="flex-shrink-0 w-[120px] text-left active:opacity-70 transition-opacity"
+                >
                   <img src={p.uri || p.image} alt="" className="w-[120px] h-[120px] object-cover rounded-xl bg-gray-100" />
                   {p.title && <p className="text-[11px] text-gray-500 mt-1 truncate">{p.title}</p>}
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -436,6 +447,18 @@ export default function ActivityDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Photo Lightbox */}
+      <PhotoLightbox
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        images={((activity as any).photos || []).map((p: any) => ({
+          src: p.uri || p.image,
+          caption: p.title || p.caption,
+        }))}
+      />
 
       {/* Merge Modal */}
       {showMergeModal && (

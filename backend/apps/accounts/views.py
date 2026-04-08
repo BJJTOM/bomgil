@@ -299,7 +299,14 @@ class SendOtpView(APIView):
         if not success:
             return Response({"error": f"SMS 전송 실패: {error}"}, status=500)
 
-        return Response({"sent": True, "expires_in": 300})
+        # In development/test mode (no SMS provider), include code in response
+        import os
+        response_data = {"sent": True, "expires_in": 300}
+        if not os.environ.get('ALIGO_API_KEY'):
+            response_data["test_code"] = code  # ⚠️ DEV ONLY
+            response_data["test_mode"] = True
+
+        return Response(response_data)
 
 
 class VerifyOtpView(APIView):

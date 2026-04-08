@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import type { CommunityPost, PostComment } from "@/types";
 
 function timeAgo(dateStr: string) {
@@ -116,6 +117,8 @@ export default function PostDetailPage() {
   const [showMenu, setShowMenu] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: post, isLoading } = useQuery<CommunityPost>({
@@ -153,6 +156,19 @@ export default function PostDetailPage() {
     setShowReport(false);
     setReportReason("");
     alert("신고가 접수되었습니다.");
+  };
+
+  const handleBlock = async () => {
+    if (!post) return;
+    if (!isAuthenticated) { router.push("/auth/login"); return; }
+    if (!confirm(`${post.author_nickname}님을 차단하시겠어요?\n차단한 사용자의 게시글과 댓글이 더 이상 보이지 않습니다.`)) return;
+    try {
+      await api.post("/community/block/", { user_id: post.author });
+      alert("사용자를 차단했습니다.");
+      router.push("/community");
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "차단에 실패했습니다.");
+    }
   };
 
   const handleSubmitComment = async () => {
@@ -198,6 +214,7 @@ export default function PostDetailPage() {
                   {isMine && <button onClick={() => { setShowMenu(false); router.push(`/community/post/new?edit=${postId}`); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50">수정하기</button>}
                   {isMine && <button onClick={() => { setShowMenu(false); handleDelete(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50">삭제하기</button>}
                   {!isMine && <button onClick={() => { setShowMenu(false); setShowReport(true); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50">신고하기</button>}
+                  {!isMine && <button onClick={() => { setShowMenu(false); handleBlock(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50">사용자 차단</button>}
                 </div>
               )}
             </div>
@@ -232,13 +249,29 @@ export default function PostDetailPage() {
         {/* Images */}
         {post.images && post.images.length > 0 && (
           <div className="px-5 space-y-2 pb-3">
-            {post.images.map((img) => (
-              <div key={img.id} className="rounded-xl overflow-hidden bg-gray-50">
+            {post.images.map((img, i) => (
+              <button
+                key={img.id}
+                type="button"
+                onClick={() => {
+                  setLightboxIndex(i);
+                  setLightboxOpen(true);
+                }}
+                className="block w-full rounded-xl overflow-hidden bg-gray-50 active:opacity-80 transition-opacity"
+              >
                 <Image src={img.image} alt="" width={600} height={400} className="w-full object-cover" />
-              </div>
+              </button>
             ))}
           </div>
         )}
+
+        <PhotoLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          images={(post.images || []).map((img) => ({ src: img.image }))}
+        />
 
         {/* Actions */}
         <div className="flex items-center gap-5 px-5 py-3 border-t border-b border-gray-100">

@@ -6,8 +6,9 @@ from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, XPLog
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
+    ordering = ["-date_joined"]
     list_display = [
-        "nickname", "phone_number", "phone_verified", "email",
+        "id", "nickname", "phone_number", "phone_verified", "email",
         "level", "xp", "is_active", "date_joined",
     ]
     list_filter = [

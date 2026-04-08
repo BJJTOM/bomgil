@@ -23,6 +23,7 @@ import RankingsInline from './RankingsInline';
 import { Trail, PaginatedResponse } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
+import { useThemeStore } from '../stores/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -89,6 +90,15 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { isDark } = useThemeStore();
+
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#191F28';
+  const textSecColor = isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6';
+  const chipBg = isDark ? '#2a2a2a' : '#F7F8FA';
 
   const [search, setSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
@@ -215,21 +225,21 @@ export default function ExploreScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
 
       {/* Header — Tabs */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: cardBg }]}>
         <View style={styles.tabRow}>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'courses' && styles.tabBtnActive]}
             onPress={() => setActiveTab('courses')}>
-            <Text style={[styles.tabBtnText, activeTab === 'courses' && styles.tabBtnTextActive]}>코스</Text>
+            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'courses' && { color: textColor }]}>코스</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'rankings' && styles.tabBtnActive]}
             onPress={() => setActiveTab('rankings')}>
-            <Text style={[styles.tabBtnText, activeTab === 'rankings' && styles.tabBtnTextActive]}>랭킹</Text>
+            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'rankings' && { color: textColor }]}>랭킹</Text>
           </TouchableOpacity>
         </View>
 
@@ -237,12 +247,12 @@ export default function ExploreScreen() {
         {activeTab === 'courses' && (
           <>
             {searchVisible && (
-              <View style={styles.searchBar}>
-                <Feather name="search" size={16} color={colors.textTertiary} style={{ marginRight: 8 }} />
+              <View style={[styles.searchBar, { backgroundColor: chipBg }]}>
+                <Feather name="search" size={16} color={textTertColor} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { color: textColor }]}
                   placeholder="코스, 지역, 키워드 검색..."
-                  placeholderTextColor={colors.textTertiary}
+                  placeholderTextColor={textTertColor}
                   value={search}
                   onChangeText={setSearch}
                   returnKeyType="search"
@@ -250,14 +260,14 @@ export default function ExploreScreen() {
                 />
                 {search ? (
                   <TouchableOpacity onPress={() => setSearch('')} style={styles.clearBtn}>
-                    <Feather name="x" size={16} color={colors.textTertiary} />
+                    <Feather name="x" size={16} color={textTertColor} />
                   </TouchableOpacity>
                 ) : null}
               </View>
             )}
 
         {/* Filter Row */}
-        <View style={styles.filterRow}>
+        <View style={[styles.filterRow, { borderTopColor: borderColor }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -272,7 +282,7 @@ export default function ExploreScreen() {
               return (
                 <TouchableOpacity
                   key={filter.key}
-                  style={[styles.chip, isActive && styles.chipActive]}
+                  style={[styles.chip, { backgroundColor: chipBg }, isActive && styles.chipActive]}
                   onPress={() =>
                     setExpandedFilter(
                       expandedFilter === filter.key ? null : filter.key,
@@ -282,6 +292,7 @@ export default function ExploreScreen() {
                   <Text
                     style={[
                       styles.chipText,
+                      { color: textSecColor },
                       isActive && styles.chipTextActive,
                     ]}>
                     {activeLabel || filter.label}
@@ -289,6 +300,7 @@ export default function ExploreScreen() {
                   <Text
                     style={[
                       styles.chipArrow,
+                      { color: textTertColor },
                       isActive && styles.chipTextActive,
                     ]}>
                     {' ▾'}
@@ -302,13 +314,13 @@ export default function ExploreScreen() {
               </TouchableOpacity>
             )}
           </ScrollView>
-          <TouchableOpacity onPress={() => setShowSortModal(true)} style={styles.sortBtn} activeOpacity={0.7}>
-            <Text style={styles.sortBtnText}>
+          <TouchableOpacity onPress={() => setShowSortModal(true)} style={[styles.sortBtn, { backgroundColor: chipBg }]} activeOpacity={0.7}>
+            <Text style={[styles.sortBtnText, { color: textSecColor }]}>
               {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' ▾'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setSearchVisible(!searchVisible)} style={styles.searchToggleSmall}>
-            <Feather name="search" size={16} color={searchVisible ? colors.primary : colors.textTertiary} />
+            <Feather name="search" size={16} color={searchVisible ? colors.primary : textTertColor} />
           </TouchableOpacity>
         </View>
 
@@ -326,6 +338,7 @@ export default function ExploreScreen() {
                     key={opt.value}
                     style={[
                       styles.filterOption,
+                      { backgroundColor: chipBg },
                       selected && styles.filterOptionActive,
                     ]}
                     onPress={() => handleFilterChange(expandedFilter, opt.value)}
@@ -333,6 +346,7 @@ export default function ExploreScreen() {
                     <Text
                       style={[
                         styles.filterOptionText,
+                        { color: textSecColor },
                         selected && styles.filterOptionTextActive,
                       ]}>
                       {opt.label}
@@ -350,13 +364,13 @@ export default function ExploreScreen() {
             style={styles.modalOverlay}
             onPress={() => setShowSortModal(false)}
             activeOpacity={1}>
-            <View style={styles.sortModal}>
+            <View style={[styles.sortModal, { backgroundColor: cardBg }]}>
               {SORT_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[styles.sortItem, sortBy === opt.value && styles.sortItemActive]}
                   onPress={() => { setSortBy(opt.value); setShowSortModal(false); }}>
-                  <Text style={[styles.sortItemText, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
+                  <Text style={[styles.sortItemText, { color: textColor }, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
                     {opt.label}
                   </Text>
                   {sortBy === opt.value && <Text style={{ color: colors.primary }}>✓</Text>}
@@ -376,7 +390,7 @@ export default function ExploreScreen() {
       <>
       {/* Result Count */}
       <View style={styles.resultHeader}>
-        <Text style={styles.resultCount}>
+        <Text style={[styles.resultCount, { color: textTertColor }]}>
           {isLoading ? '검색 중...' : `${trails.length}개 코스`}
         </Text>
       </View>
@@ -401,8 +415,8 @@ export default function ExploreScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>검색 결과가 없습니다</Text>
-              <Text style={styles.emptyDesc}>
+              <Text style={[styles.emptyTitle, { color: textColor }]}>검색 결과가 없습니다</Text>
+              <Text style={[styles.emptyDesc, { color: textTertColor }]}>
                 다른 키워드나 필터로 검색해보세요
               </Text>
               <TouchableOpacity
@@ -411,6 +425,33 @@ export default function ExploreScreen() {
                 activeOpacity={0.85}>
                 <Text style={styles.emptyResetText}>필터 초기화</Text>
               </TouchableOpacity>
+
+              {/* Popular trail suggestions */}
+              {(() => {
+                const popularSuggestions = (allData?.results ?? (Array.isArray(allData) ? allData : []))
+                  .slice(0, 3) as Trail[];
+                if (popularSuggestions.length === 0) return null;
+                return (
+                  <View style={styles.suggestSection}>
+                    <Text style={[styles.suggestTitle, { color: textColor }]}>이런 코스는 어떠세요?</Text>
+                    {popularSuggestions.map((trail) => (
+                      <TouchableOpacity
+                        key={trail.id}
+                        style={[styles.suggestCard, { backgroundColor: cardBg, borderColor: borderColor }]}
+                        activeOpacity={0.7}
+                        onPress={() => navigation.navigate('TrailDetail', { id: trail.id })}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.suggestCardTitle, { color: textColor }]} numberOfLines={1}>{trail.title}</Text>
+                          <Text style={[styles.suggestCardMeta, { color: textTertColor }]} numberOfLines={1}>
+                            {trail.region ? trail.region : ''}{trail.distance_km ? ` · ${parseFloat(trail.distance_km).toFixed(1)}km` : ''}
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={16} color={textTertColor} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                );
+              })()}
             </View>
           }
         />
@@ -699,5 +740,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  suggestSection: {
+    width: '100%',
+    marginTop: 32,
+  },
+  suggestTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#191F28',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  suggestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+    marginBottom: 8,
+  },
+  suggestCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#191F28',
+    marginBottom: 2,
+  },
+  suggestCardMeta: {
+    fontSize: 12,
+    color: '#B0B8C1',
   },
 });

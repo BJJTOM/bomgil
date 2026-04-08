@@ -269,22 +269,31 @@ class GuestLoginView(APIView):
     authentication_classes = []
     throttle_classes = [GuestLoginThrottle]
 
+    # Guest email domain — must match cleanup_guests management command
+    GUEST_EMAIL_DOMAIN = "roami.guest"
+
     def post(self, request):
         import uuid
+        from datetime import timedelta
 
+        from django.core.cache import cache
+        from django.utils import timezone
         from rest_framework_simplejwt.tokens import RefreshToken
 
+        # --- Periodic cleanup: delete expired guests every ~10 logins ---
+        self._maybe_cleanup_expired_guests(cache, timezone, timedelta)
+
         guest_id = uuid.uuid4().hex[:8]
-        nickname = f"게스트_{guest_id}"
+        nickname = f"\uAC8C\uC2A4\uD2B8_{guest_id}"
         username = f"guest_{guest_id}"
-        email = f"guest_{guest_id}@roami.guest"
+        email = f"guest_{guest_id}@{self.GUEST_EMAIL_DOMAIN}"
 
         user = CustomUser.objects.create_user(
             username=username,
             email=email,
             nickname=nickname,
             password=None,
-            bio="게스트 사용자입니다 (24시간 후 자동 삭제)",
+            bio="\uAC8C\uC2A4\uD2B8 \uC0AC\uC6A9\uC790\uC785\uB2C8\uB2E4 (7\uC77C \uD6C4 \uC790\uB3D9 \uC0AD\uC81C)",
         )
         user.set_unusable_password()
         user.save()
@@ -301,6 +310,30 @@ class GuestLoginView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+    @staticmethod
+    def _maybe_cleanup_expired_guests(cache, timezone, timedelta):
+        """Run guest cleanup roughly once per day using a cache flag.
+
+        On every guest login we check a cache key. If absent (or expired),
+        we delete guest accounts older than 7 days and set the key for 24 h.
+        This avoids needing Celery or external cron for basic hygiene.
+        """
+        cache_key = "guest_cleanup_done"
+        if cache.get(cache_key):
+            return  # already ran today
+        try:
+            cutoff = timezone.now() - timedelta(days=7)
+            deleted, _ = CustomUser.objects.filter(
+                email__endswith=f"@{GuestLoginView.GUEST_EMAIL_DOMAIN}",
+                created_at__lt=cutoff,
+            ).delete()
+            if deleted:
+                logger.info("Guest cleanup: deleted %d expired guest account(s)", deleted)
+        except Exception:
+            logger.exception("Guest cleanup failed")
+        # Set flag for 24 hours regardless of success/failure to avoid retry storms
+        cache.set(cache_key, True, timeout=86400)
 
 
 class ThrottledRegisterView(APIView):

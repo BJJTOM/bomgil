@@ -1,3 +1,6 @@
+import hashlib
+
+from django.core.cache import cache
 from rest_framework import serializers
 
 from apps.accounts.serializers import UserPublicSerializer
@@ -11,10 +14,41 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "name_en", "name_ja"]
 
 
+def _get_cached_cover_image_url(trail):
+    """Return a cached signed URL for the trail's cover_image (1-hour TTL).
+
+    Avoids calling R2/S3 to generate a new signed URL on every request.
+    """
+    if not trail.cover_image:
+        return None
+    # Build a stable cache key from the image name
+    image_name = trail.cover_image.name
+    key = f"trail_cover_url:{hashlib.md5(image_name.encode()).hexdigest()}"
+    url = cache.get(key)
+    if url is None:
+        url = trail.cover_image.url  # generates a signed R2 URL
+        cache.set(key, url, timeout=3600)  # cache for 1 hour
+    return url
+
+
+def _bulk_liked_set(context):
+    """Return a set of trail IDs liked by the current user (cached on context)."""
+    if "_liked_ids" not in context:
+        request = context.get("request")
+        if request and request.user.is_authenticated:
+            context["_liked_ids"] = set(
+                TrailLike.objects.filter(user=request.user).values_list("trail_id", flat=True)
+            )
+        else:
+            context["_liked_ids"] = set()
+    return context["_liked_ids"]
+
+
 class TrailListSerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Trail
@@ -25,22 +59,26 @@ class TrailListSerializer(serializers.ModelSerializer):
             "view_count", "like_count", "is_liked", "created_at",
         ]
 
+    def get_cover_image(self, obj):
+        return _get_cached_cover_image_url(obj)
+
     def get_is_liked(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return TrailLike.objects.filter(user=request.user, trail=obj).exists()
-        return False
+        return obj.pk in _bulk_liked_set(self.context)
 
 
 class TrailDetailSerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Trail
         fields = "__all__"
         read_only_fields = ["author", "view_count", "like_count", "status", "rejection_reason"]
+
+    def get_cover_image(self, obj):
+        return _get_cached_cover_image_url(obj)
 
     def get_is_liked(self, obj):
         request = self.context.get("request")

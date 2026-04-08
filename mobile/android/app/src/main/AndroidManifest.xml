@@ -59,5 +59,14 @@
               <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
           </intent-filter>
       </activity-alias>
+      <!-- Health Connect permissions rationale (required for Android 14+) -->
+      <activity-alias
+          android:name="PermissionsRationaleActivity"
+          android:exported="true"
+          android:targetActivity=".MainActivity">
+          <intent-filter>
+              <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+          </intent-filter>
+      </activity-alias>
     </application>
 </manifest>

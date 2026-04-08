@@ -5,6 +5,7 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+from rest_framework.views import APIView
 
 from .gpx_parser import compute_summary, parse_gpx, simplify_track
 from .models import ActivityTrack, DailyActivitySummary
@@ -122,6 +123,82 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             "track_count": agg["total_tracks"] or 0,
             "weekly": DailyActivitySummarySerializer(daily, many=True).data,
         })
+
+
+class ActivityMergeView(APIView):
+    """POST /activities/merge/ — merge multiple activities into one."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        activity_ids = request.data.get('activity_ids', [])
+        delete_originals = request.data.get('delete_originals', False)
+
+        if not activity_ids or len(activity_ids) < 2:
+            return Response(
+                {'error': '최소 2개의 활동을 선택해주세요.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        activities = list(
+            ActivityTrack.objects.filter(
+                id__in=activity_ids, user=request.user
+            ).order_by('started_at', 'created_at')
+        )
+
+        if len(activities) != len(activity_ids):
+            return Response(
+                {'error': '일부 활동을 찾을 수 없거나 권한이 없습니다.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Merge stats
+        total_distance = sum(float(a.distance_km or 0) for a in activities)
+        total_steps = sum(a.total_steps or 0 for a in activities)
+        total_calories = sum(a.calories_burned or 0 for a in activities)
+        total_duration = sum(a.duration_minutes or 0 for a in activities)
+        total_elevation = sum(a.elevation_gain_m or 0 for a in activities)
+
+        # Concatenate track points
+        merged_points = []
+        for a in activities:
+            if a.track_points:
+                merged_points.extend(a.track_points)
+
+        # Use earliest started_at and latest finished_at
+        started_at = None
+        finished_at = None
+        for a in activities:
+            if a.started_at:
+                if started_at is None or a.started_at < started_at:
+                    started_at = a.started_at
+            if a.finished_at:
+                if finished_at is None or a.finished_at > finished_at:
+                    finished_at = a.finished_at
+
+        first = activities[0]
+        merged = ActivityTrack.objects.create(
+            user=request.user,
+            trail=first.trail,
+            source=first.source,
+            title=first.title or '합친 기록',
+            started_at=started_at,
+            finished_at=finished_at,
+            total_steps=total_steps if total_steps > 0 else None,
+            distance_km=round(total_distance, 2) if total_distance > 0 else None,
+            duration_minutes=total_duration if total_duration > 0 else None,
+            calories_burned=total_calories if total_calories > 0 else None,
+            elevation_gain_m=total_elevation if total_elevation > 0 else None,
+            track_points=merged_points,
+            is_public=first.is_public,
+        )
+
+        if delete_originals:
+            ActivityTrack.objects.filter(id__in=activity_ids, user=request.user).delete()
+
+        return Response(
+            ActivityTrackDetailSerializer(merged).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class TrailActivitiesView(generics.ListAPIView):

@@ -301,26 +301,44 @@ export default function HealthImportScreen() {
           <Text style={styles.emptyIcon}>{'⌚'}</Text>
           <Text style={styles.emptyTitle}>Health Connect를 사용할 수 없습니다</Text>
           <Text style={styles.emptyDesc}>
-            Health Connect 앱을 설치하면 갤럭시 워치 걷기 기록을 가져올 수 있습니다.
+            {Platform.Version >= 34
+              ? 'Health Connect 설정에서 모루 앱의 권한을 확인해주세요.'
+              : 'Health Connect 앱을 설치하면 갤럭시 워치 걷기 기록을 가져올 수 있습니다.'}
           </Text>
           {errorMsg ? <Text style={[styles.emptyDesc, { color: '#FF6B6B', marginTop: 8, fontSize: 12 }]}>{errorMsg}</Text> : null}
-          {Platform.OS === 'android' && (
+          {Platform.OS === 'android' && Platform.Version >= 34 ? (
+            <TouchableOpacity
+              style={styles.permissionBtn}
+              onPress={() => {
+                // Try Health Connect settings intent (Android 14+)
+                Linking.sendIntent('android.health.connect.action.MANAGE_HEALTH_PERMISSIONS').catch(() => {
+                  // Fallback: try the healthconnect:// scheme
+                  Linking.openURL('healthconnect://settings').catch(() => {
+                    // Final fallback: open device settings
+                    Linking.openSettings();
+                  });
+                });
+              }}
+              activeOpacity={0.85}>
+              <Text style={styles.permissionBtnText}>Health Connect 설정 열기</Text>
+            </TouchableOpacity>
+          ) : Platform.OS === 'android' ? (
             <TouchableOpacity
               style={styles.permissionBtn}
               onPress={() => {
                 Linking.openURL('https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata').catch(() => {
-                  Alert.alert('\uC624\uB958', 'Play Store\uB97C \uC5F4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.');
+                  Alert.alert('오류', 'Play Store를 열 수 없습니다.');
                 });
               }}
               activeOpacity={0.85}>
-              <Text style={styles.permissionBtnText}>Play Store{'\uC5D0\uC11C'} {'\uC124\uCE58'}</Text>
+              <Text style={styles.permissionBtnText}>Play Store에서 설치</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
           <TouchableOpacity
             style={[styles.permissionBtn, { backgroundColor: '#E8E8E8', marginTop: 10 }]}
             onPress={() => initialize()}
             activeOpacity={0.85}>
-            <Text style={[styles.permissionBtnText, { color: colors.textPrimary }]}>{'\uB2E4\uC2DC'} {'\uD655\uC778'}</Text>
+            <Text style={[styles.permissionBtnText, { color: colors.textPrimary }]}>다시 확인</Text>
           </TouchableOpacity>
         </View>
       ) : !permissionGranted ? (

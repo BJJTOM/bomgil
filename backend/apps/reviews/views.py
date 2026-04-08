@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 from apps.trails.models import Trail
 from config.permissions import IsOwnerOrReadOnly
 
-from .models import Review, ReviewHelpful
-from .serializers import ReviewCreateSerializer, ReviewSerializer
+from .models import Review, ReviewHelpful, ReviewImage
+from .serializers import ReviewCreateSerializer, ReviewImageSerializer, ReviewSerializer
 
 
 class TrailReviewListCreateView(generics.ListCreateAPIView):
@@ -67,3 +67,24 @@ class ReviewHelpfulView(APIView):
             return Response({"helpful": False}, status=status.HTTP_200_OK)
         Review.objects.filter(pk=pk).update(helpful_count=F("helpful_count") + 1)
         return Response({"helpful": True}, status=status.HTTP_201_CREATED)
+
+
+class ReviewImageUploadView(APIView):
+    """Upload images to a review (max 3)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+
+    def post(self, request, pk):
+        review = get_object_or_404(Review, pk=pk, author=request.user)
+        existing_count = review.images.count()
+        images = request.FILES.getlist("images")
+        created = []
+        for i, img in enumerate(images[:3 - existing_count]):
+            if img.size > self.MAX_IMAGE_SIZE:
+                continue
+            obj = ReviewImage.objects.create(
+                review=review, image=img, order=existing_count + i
+            )
+            created.append(ReviewImageSerializer(obj).data)
+        return Response(created, status=status.HTTP_201_CREATED)

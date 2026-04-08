@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
+import { useThemeStore } from '../stores/theme';
 
 interface Notification {
   id: number;
@@ -53,6 +54,14 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
+  const { isDark } = useThemeStore();
+
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1e1e1e' : '#fff';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : colors.borderLight;
 
   const { data: notifications, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['notifications'],
@@ -89,20 +98,26 @@ export default function NotificationsScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.notifItem, !item.is_read && styles.notifUnread]}
+        style={[
+          styles.notifItem,
+          { backgroundColor: cardBg, borderColor: borderColor },
+          !item.is_read && (isDark
+            ? { backgroundColor: 'rgba(45,74,46,0.15)', borderColor: 'rgba(45,74,46,0.3)' }
+            : styles.notifUnread),
+        ]}
         activeOpacity={0.7}
         onPress={() => handleNotifPress(item)}>
-        <View style={[styles.notifIcon, { backgroundColor: iconInfo.bg }]}>
+        <View style={[styles.notifIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : iconInfo.bg }]}>
           <Feather name={iconInfo.name} size={20} color={iconInfo.color} />
         </View>
         <View style={styles.notifContent}>
-          <Text style={styles.notifTitle} numberOfLines={1}>
+          <Text style={[styles.notifTitle, { color: textColor }]} numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={styles.notifBody} numberOfLines={2}>
+          <Text style={[styles.notifBody, { color: textSecColor }]} numberOfLines={2}>
             {item.body}
           </Text>
-          <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
+          <Text style={[styles.notifTime, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
         </View>
         {!item.is_read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -110,13 +125,13 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={18} color={colors.textPrimary} />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: cardBg, borderColor: borderColor }]} onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={18} color={textColor} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{'\uC54C\uB9BC'}</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>{'\uC54C\uB9BC'}</Text>
         {hasUnread ? (
           <TouchableOpacity
             style={styles.markAllBtn}
@@ -134,9 +149,9 @@ export default function NotificationsScreen() {
         </View>
       ) : !notifications || notifications.length === 0 ? (
         <View style={styles.center}>
-          <Feather name="bell-off" size={48} color={colors.textTertiary} style={{ marginBottom: 16 }} />
-          <Text style={styles.emptyTitle}>{'\uC54C\uB9BC\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
-          <Text style={styles.emptyDesc}>{'\uC0C8\uB85C\uC6B4 \uC18C\uC2DD\uC774 \uC788\uC73C\uBA74 \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694'}</Text>
+          <Feather name="bell-off" size={48} color={textTertColor} style={{ marginBottom: 16 }} />
+          <Text style={[styles.emptyTitle, { color: textColor }]}>{'\uC54C\uB9BC\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
+          <Text style={[styles.emptyDesc, { color: textSecColor }]}>{'\uC0C8\uB85C\uC6B4 \uC18C\uC2DD\uC774 \uC788\uC73C\uBA74 \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694'}</Text>
         </View>
       ) : (
         <FlatList

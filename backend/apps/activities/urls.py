@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register("", views.ActivityTrackViewSet, basename="activity")
 
 urlpatterns = [
+    path("merge/", views.ActivityMergeView.as_view(), name="activity-merge"),
     path("trail/<int:trail_id>/", views.TrailActivitiesView.as_view()),
     path("users/<str:nickname>/", views.UserActivitiesView.as_view()),
 ] + router.urls

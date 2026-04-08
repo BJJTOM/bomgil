@@ -14,6 +14,7 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -78,6 +79,86 @@ export default function ActivityDetailScreen() {
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotType, setNewSpotType] = useState('rest');
   const [newSpotDesc, setNewSpotDesc] = useState('');
+
+  // Walk merge state
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [sameDayActivities, setSameDayActivities] = useState<any[]>([]);
+  const [selectedMergeIds, setSelectedMergeIds] = useState<number[]>([]);
+  const [merging, setMerging] = useState(false);
+  const [loadingMerge, setLoadingMerge] = useState(false);
+
+  const openMergeModal = async () => {
+    if (!activity?.started_at && !activity?.created_at) {
+      Alert.alert('오류', '날짜 정보가 없어 합치기를 할 수 없습니다.');
+      return;
+    }
+    setLoadingMerge(true);
+    setShowMergeModal(true);
+    try {
+      const dateStr = (activity.started_at || activity.created_at).split('T')[0];
+      const { data } = await api.get('/activities/', { params: { page_size: 50 } });
+      const results = data?.results ?? data ?? [];
+      const sameDay = results.filter((a: any) => {
+        if (a.id === activity.id) return false;
+        const aDate = (a.started_at || a.created_at || '').split('T')[0];
+        return aDate === dateStr;
+      });
+      setSameDayActivities(sameDay);
+      setSelectedMergeIds([]);
+    } catch {
+      Alert.alert('오류', '활동 목록을 불러오지 못했습니다.');
+      setShowMergeModal(false);
+    } finally {
+      setLoadingMerge(false);
+    }
+  };
+
+  const toggleMergeSelect = (id: number) => {
+    setSelectedMergeIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const executeMerge = async (deleteOriginals: boolean) => {
+    const allIds = [activity.id, ...selectedMergeIds];
+    setMerging(true);
+    try {
+      const { data } = await api.post('/activities/merge/', {
+        activity_ids: allIds,
+        delete_originals: deleteOriginals,
+      });
+      setShowMergeModal(false);
+      Alert.alert('합치기 완료', '기록이 성공적으로 합쳐졌습니다.', [
+        {
+          text: '확인',
+          onPress: () => {
+            setActivity(data);
+          },
+        },
+      ]);
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || '합치기에 실패했습니다.';
+      Alert.alert('오류', msg);
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const confirmMerge = () => {
+    if (selectedMergeIds.length === 0) {
+      Alert.alert('선택 필요', '합칠 기록을 1개 이상 선택해주세요.');
+      return;
+    }
+    Alert.alert(
+      '기록 합치기',
+      `현재 기록 포함 ${selectedMergeIds.length + 1}개의 기록을 합칩니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '합치기 (원본 유지)', onPress: () => executeMerge(false) },
+        { text: '합치기 (원본 삭제)', style: 'destructive', onPress: () => executeMerge(true) },
+      ],
+    );
+  };
 
   const saveTitle = async () => {
     setEditingTitle(false);
@@ -621,6 +702,18 @@ export default function ActivityDetailScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* 4b. Walk merge button */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.mergeBtn}
+              activeOpacity={0.7}
+              onPress={openMergeModal}
+            >
+              <Feather name="git-merge" size={18} color={colors.primary} />
+              <Text style={styles.mergeBtnText}>다른 기록과 합치기</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* 5. Course draft section — always visible */}
           <View style={styles.section}>
               {!courseExpanded ? (
@@ -820,6 +913,82 @@ export default function ActivityDetailScreen() {
             </View>
         </ScrollView>
       </View>
+
+      {/* Walk Merge Modal */}
+      <Modal visible={showMergeModal} transparent animationType="slide">
+        <View style={styles.mergeModalOverlay}>
+          <View style={styles.mergeModal}>
+            <View style={styles.mergeModalHeader}>
+              <Text style={styles.mergeModalTitle}>기록 합치기</Text>
+              <TouchableOpacity onPress={() => setShowMergeModal(false)}>
+                <Feather name="x" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.mergeModalSubtitle}>
+              같은 날의 기록을 선택하세요 (현재 기록은 자동 포함)
+            </Text>
+
+            {loadingMerge ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : sameDayActivities.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, color: colors.textTertiary }}>같은 날의 다른 기록이 없습니다</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={sameDayActivities}
+                keyExtractor={(item) => String(item.id)}
+                style={{ maxHeight: 300 }}
+                renderItem={({ item }) => {
+                  const selected = selectedMergeIds.includes(item.id);
+                  const time = item.started_at
+                    ? new Date(item.started_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <TouchableOpacity
+                      style={[styles.mergeItem, selected && styles.mergeItemSelected]}
+                      activeOpacity={0.7}
+                      onPress={() => toggleMergeSelect(item.id)}
+                    >
+                      <View style={[styles.mergeCheckbox, selected && styles.mergeCheckboxChecked]}>
+                        {selected && <Feather name="check" size={14} color="#fff" />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.mergeItemTitle}>{item.title || '걷기 기록'}</Text>
+                        <Text style={styles.mergeItemMeta}>
+                          {time ? `${time} · ` : ''}
+                          {item.distance_km ? `${parseFloat(item.distance_km).toFixed(2)}km` : ''}
+                          {item.duration_minutes ? ` · ${item.duration_minutes}분` : ''}
+                          {item.total_steps ? ` · ${item.total_steps}걸음` : ''}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+
+            <TouchableOpacity
+              style={[styles.mergeConfirmBtn, selectedMergeIds.length === 0 && { opacity: 0.4 }]}
+              activeOpacity={0.7}
+              onPress={confirmMerge}
+              disabled={selectedMergeIds.length === 0 || merging}
+            >
+              {merging ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.mergeConfirmText}>
+                  {selectedMergeIds.length > 0
+                    ? `${selectedMergeIds.length + 1}개 기록 합치기`
+                    : '기록을 선택해주세요'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Spot Add Modal */}
       <Modal visible={showSpotModal} transparent animationType="fade">
@@ -1326,6 +1495,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   spotModalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // Walk merge
+  mergeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '30',
+    backgroundColor: colors.primary + '08',
+  },
+  mergeBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  mergeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  mergeModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  mergeModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  mergeModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  mergeModalSubtitle: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    marginBottom: 16,
+  },
+  mergeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F7F8FA',
+    gap: 12,
+  },
+  mergeItemSelected: {
+    backgroundColor: colors.primary + '10',
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  mergeCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mergeCheckboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  mergeItemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  mergeItemMeta: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  mergeConfirmBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  mergeConfirmText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',

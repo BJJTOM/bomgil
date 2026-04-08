@@ -177,7 +177,7 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: recommendedTrails } = useQuery({
+  const { data: recommendedTrails, isLoading: isLoadingRecommended } = useQuery({
     queryKey: ['trails', 'recommended'],
     queryFn: async () => {
       const { data } = await api.get('/trails/', {
@@ -188,7 +188,7 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
-  const { data: recentPosts } = useQuery({
+  const { data: recentPosts, isLoading: isLoadingCommunity } = useQuery({
     queryKey: ['community', 'recent'],
     queryFn: async () => {
       const { data } = await api.get('/community/posts/', {
@@ -345,7 +345,7 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* Recommended Trails */}
-        {recommendedTrails && recommendedTrails.length > 0 && (
+        {(isLoadingRecommended || (recommendedTrails && recommendedTrails.length > 0)) && (
           <FadeInView delay={300}>
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
@@ -359,11 +359,27 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
+              {isLoadingRecommended ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 12, paddingTop: 16 }}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={[styles.recCardSkeleton, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}>
+                      <View style={[styles.recCardSkeletonImage, { backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                      <View style={{ padding: 12 }}>
+                        <View style={[styles.skeletonLine, { width: 120, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                        <View style={[styles.skeletonLine, { width: 80, marginTop: 8, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 12, paddingTop: 16 }}>
-                {recommendedTrails.slice(0, 3).map((trail) => (
+                {(recommendedTrails || []).slice(0, 3).map((trail) => (
                   <TouchableOpacity
                     key={trail.id}
                     style={[styles.recCard, { backgroundColor: cardBg }]}
@@ -401,12 +417,13 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              )}
             </View>
           </FadeInView>
         )}
 
         {/* Recent Community Posts */}
-        {recentPosts && recentPosts.length > 0 && (
+        {(isLoadingCommunity || (recentPosts && recentPosts.length > 0)) && (
           <FadeInView delay={400}>
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
@@ -423,8 +440,22 @@ export default function HomeScreen() {
                   <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
                 </TouchableOpacity>
               </View>
+              {isLoadingCommunity ? (
+                <View style={{ gap: 10, marginTop: 16 }}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={[styles.communityCardSkeleton, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <View style={[styles.skeletonCircle, { backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                        <View style={[styles.skeletonLine, { width: 80, marginLeft: 8, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                      </View>
+                      <View style={[styles.skeletonLine, { width: '90%', backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                      <View style={[styles.skeletonLine, { width: '60%', marginTop: 6, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
+                    </View>
+                  ))}
+                </View>
+              ) : (
               <View style={{ gap: 10, marginTop: 16 }}>
-                {recentPosts.slice(0, 3).map((post: any) => (
+                {(recentPosts || []).slice(0, 3).map((post: any) => (
                   <TouchableOpacity
                     key={post.id}
                     style={[styles.communityCard, { backgroundColor: cardBg }]}
@@ -463,6 +494,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              )}
             </View>
           </FadeInView>
         )}
@@ -711,6 +743,28 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 16,
     backgroundColor: '#F7F8FA',
+  },
+  recCardSkeleton: {
+    width: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  recCardSkeletonImage: {
+    width: '100%',
+    height: 120,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
+  },
+  skeletonCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  communityCardSkeleton: {
+    borderRadius: 14,
+    padding: 14,
   },
 
   // UGC — single compact row

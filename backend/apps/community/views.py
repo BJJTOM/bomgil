@@ -472,6 +472,47 @@ class ChallengeJoinView(APIView):
         return Response({'joined': True}, status=status.HTTP_201_CREATED)
 
 
+class ChallengeLeaveView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        deleted, _ = ChallengeParticipant.objects.filter(
+            challenge_id=pk, user=request.user
+        ).delete()
+        if deleted:
+            Challenge.objects.filter(pk=pk).update(participant_count=F('participant_count') - 1)
+        return Response({'left': True})
+
+
+class ChallengeProgressUpdateView(APIView):
+    """Update the current user's progress for a challenge."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        value = request.data.get('value')
+        if value is None:
+            return Response({'error': '값을 입력하세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return Response({'error': '올바른 숫자를 입력하세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        participant = ChallengeParticipant.objects.filter(
+            challenge_id=pk, user=request.user
+        ).select_related('challenge').first()
+        if not participant:
+            return Response({'error': '참여하지 않은 챌린지입니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        participant.current_value = value
+        if value >= participant.challenge.goal_value and not participant.completed:
+            from django.utils import timezone as tz
+            participant.completed = True
+            participant.completed_at = tz.now()
+        participant.save(update_fields=['current_value', 'completed', 'completed_at'])
+        return Response(ChallengeParticipantSerializer(participant).data)
+
+
 class ChallengeLeaderboardView(generics.ListAPIView):
     serializer_class = ChallengeParticipantSerializer
     permission_classes = [permissions.AllowAny]

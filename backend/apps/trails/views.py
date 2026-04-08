@@ -116,7 +116,8 @@ class RecommendedTrailsView(generics.ListAPIView):
 
     def get_queryset(self):
         from .recommendations import get_recommendations
-        return get_recommendations(self.request.user)
+        qs = get_recommendations(self.request.user)
+        return qs.select_related("author").prefetch_related("tags")
 
 
 class TagListView(generics.ListAPIView):

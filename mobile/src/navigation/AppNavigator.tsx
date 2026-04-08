@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
+import { useT } from '../i18n';
 
 import HomeScreen from '../screens/HomeScreen';
 import ExploreScreen from '../screens/ExploreScreen';
@@ -98,8 +99,17 @@ function AnimatedTabIcon({ icon, isFocused }: { icon: string; isFocused: boolean
   );
 }
 
+const TAB_I18N_KEYS: Record<string, keyof typeof import('../i18n/ko').default['tabs']> = {
+  Home: 'home',
+  Explore: 'explore',
+  Activity: 'activity',
+  Community: 'community',
+  Settings: 'my',
+};
+
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const t = useT();
 
   return (
     <View
@@ -109,8 +119,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       ]}>
       <View style={styles.tabBarPill}>
         {state.routes.map((route: any, index: number) => {
-          const config = TAB_CONFIG.find((t) => t.name === route.name);
+          const config = TAB_CONFIG.find((tc) => tc.name === route.name);
           const isFocused = state.index === index;
+          const i18nKey = TAB_I18N_KEYS[route.name];
+          const label = i18nKey ? t.tabs[i18nKey] : (config?.label || route.name);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -138,7 +150,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                     fontWeight: isFocused ? '600' : '400',
                   },
                 ]}>
-                {config?.label || route.name}
+                {label}
               </Text>
               {isFocused && <View style={styles.activeIndicator} />}
             </TouchableOpacity>

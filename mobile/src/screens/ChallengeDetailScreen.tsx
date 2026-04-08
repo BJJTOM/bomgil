@@ -51,6 +51,29 @@ export default function ChallengeDetailScreen() {
     }
   };
 
+  const handleLeave = () => {
+    Alert.alert(
+      '챌린지 탈퇴',
+      '정말 이 챌린지에서 탈퇴하시겠습니까? 진행 상황이 초기화됩니다.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '탈퇴',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post(`/community/challenges/${challengeId}/leave/`);
+              queryClient.invalidateQueries({ queryKey: ['challenge-detail', challengeId] });
+              queryClient.invalidateQueries({ queryKey: ['community-challenges'] });
+            } catch (e: any) {
+              Alert.alert('오류', e.response?.data?.error || '탈퇴에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (!challenge) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -141,6 +164,9 @@ export default function ChallengeDetailScreen() {
             <View style={styles.joinedBanner}>
               <Text style={styles.joinedBannerText}>✓ 참여 중인 챌린지입니다</Text>
             </View>
+            <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave} activeOpacity={0.7}>
+              <Text style={styles.leaveBtnText}>챌린지 탈퇴</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -241,6 +267,8 @@ const styles = StyleSheet.create({
   joinBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
   joinedBanner: { backgroundColor: '#F0F7F0', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   joinedBannerText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  leaveBtn: { marginTop: 8, borderRadius: 14, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E5E8EB' },
+  leaveBtnText: { fontSize: 13, fontWeight: '500', color: '#8B95A1' },
 
   // Leaderboard
   leaderboardSection: { margin: 16, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20 },

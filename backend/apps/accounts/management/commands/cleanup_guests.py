@@ -7,7 +7,7 @@ from apps.accounts.models import CustomUser
 
 
 class Command(BaseCommand):
-    help = "Delete guest accounts (email ending with @guest.moru) older than 7 days."
+    help = "Delete guest accounts (email ending with @roami.guest) older than 7 days."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -25,7 +25,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         cutoff = timezone.now() - timedelta(days=options["days"])
         guests = CustomUser.objects.filter(
-            email__endswith="@guest.moru",
+            email__endswith="@roami.guest",
             created_at__lt=cutoff,
         )
         count = guests.count()

@@ -41,6 +41,8 @@ urlpatterns = [
     path('challenges/', views.ChallengeListView.as_view(), name='challenge-list'),
     path('challenges/<int:pk>/', views.ChallengeDetailView.as_view(), name='challenge-detail'),
     path('challenges/<int:pk>/join/', views.ChallengeJoinView.as_view(), name='challenge-join'),
+    path('challenges/<int:pk>/leave/', views.ChallengeLeaveView.as_view(), name='challenge-leave'),
+    path('challenges/<int:pk>/progress/', views.ChallengeProgressUpdateView.as_view(), name='challenge-progress'),
     path('challenges/<int:pk>/leaderboard/', views.ChallengeLeaderboardView.as_view(), name='challenge-leaderboard'),
 
     # 공지사항

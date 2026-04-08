@@ -18,6 +18,7 @@ import {
   Modal,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 class TrailDetailErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -48,6 +49,7 @@ import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
 import { saveTrailOffline, isSaved, getSavedTrail } from '../utils/offlineStorage';
 import SafeMapView from '../components/SafeMapView';
+import { useThemeStore } from '../stores/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -114,6 +116,15 @@ function TrailDetailScreenInner() {
   const queryClient = useQueryClient();
   const scrollRef = useRef<ScrollView>(null);
   const trailId = route.params?.id ?? route.params?.trailId;
+  const { isDark } = useThemeStore();
+
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#191F28';
+  const textSecColor = isDark ? 'rgba(255,255,255,0.6)' : '#8B95A1';
+  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : '#B0B8C1';
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6';
+  const sectionBg = isDark ? '#1a1a1a' : '#F7F8FA';
 
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -121,6 +132,7 @@ function TrailDetailScreenInner() {
     content: '',
     visited_date: new Date().toISOString().split('T')[0],
   });
+  const [reviewImages, setReviewImages] = useState<any[]>([]);
   const [savedOffline, setSavedOffline] = useState(false);
   const [savingOffline, setSavingOffline] = useState(false);
   const [showAllSpots, setShowAllSpots] = useState(false);
@@ -202,13 +214,53 @@ function TrailDetailScreenInner() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trail', trailId] }),
   });
 
+  const pickReviewImages = () => {
+    if (reviewImages.length >= 3) {
+      Alert.alert('최대 3장', '리뷰 사진은 최대 3장까지 첨부할 수 있습니다.');
+      return;
+    }
+    launchImageLibrary(
+      { mediaType: 'photo', quality: 0.8, selectionLimit: 3 - reviewImages.length },
+      (res) => {
+        if (!res.didCancel && res.assets) {
+          setReviewImages(prev => [...prev, ...res.assets!].slice(0, 3));
+        }
+      },
+    );
+  };
+
+  const removeReviewImage = (idx: number) => {
+    setReviewImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const createReview = useMutation({
-    mutationFn: async (form: typeof reviewForm) =>
-      (await api.post(`/reviews/trails/${trailId}/`, form)).data,
+    mutationFn: async (form: typeof reviewForm) => {
+      const { data } = await api.post(`/reviews/trails/${trailId}/`, form);
+      // Upload images if any
+      if (reviewImages.length > 0 && data?.id) {
+        try {
+          const formData = new FormData();
+          reviewImages.forEach((img) => {
+            formData.append('images', {
+              uri: img.uri,
+              type: img.type || 'image/jpeg',
+              name: img.fileName || `review_${Date.now()}.jpg`,
+            } as any);
+          });
+          await api.post(`/reviews/${data.id}/images/`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        } catch (imgErr) {
+          console.log('Review image upload failed:', imgErr);
+        }
+      }
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', trailId] });
       setShowReviewForm(false);
       setReviewForm({ rating: 5, content: '', visited_date: new Date().toISOString().split('T')[0] });
+      setReviewImages([]);
     },
   });
 
@@ -286,7 +338,7 @@ function TrailDetailScreenInner() {
   return (
     <>
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -331,14 +383,14 @@ function TrailDetailScreenInner() {
         </View>
 
         {/* ===== 2. Quick Stats Line ===== */}
-        <View style={styles.statsLine}>
-          <Text style={styles.statsText}>
+        <View style={[styles.statsLine, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
+          <Text style={[styles.statsText, { color: textSecColor }]}>
             {statsItems.join('  ·  ')}
           </Text>
         </View>
 
         {/* ===== 3. Action Bar ===== */}
-        <View style={styles.actionBar}>
+        <View style={[styles.actionBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
               <Feather name="heart" size={20} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
@@ -365,13 +417,13 @@ function TrailDetailScreenInner() {
 
         {/* ===== 4. Description ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{'소개'}</Text>
-          <Text style={styles.descText}>{trail?.description || ''}</Text>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>{'소개'}</Text>
+          <Text style={[styles.descText, { color: textColor }]}>{trail?.description || ''}</Text>
           {(trail?.tags || []).length > 0 && (
             <View style={styles.tagsRow}>
               {(trail?.tags || []).map((tag) => (
-                <View key={tag.id} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag.name}</Text>
+                <View key={tag.id} style={[styles.tag, { backgroundColor: sectionBg }]}>
+                  <Text style={[styles.tagText, { color: textSecColor }]}>#{tag.name}</Text>
                 </View>
               ))}
             </View>
@@ -380,47 +432,47 @@ function TrailDetailScreenInner() {
 
         {/* ===== 4b. Course Details ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>코스 정보</Text>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>코스 정보</Text>
           <View style={styles.detailGrid}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>거리</Text>
-              <Text style={styles.detailValue}>{formatDistance(trail.distance_km)}</Text>
+            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+              <Text style={[styles.detailLabel, { color: textTertColor }]}>거리</Text>
+              <Text style={[styles.detailValue, { color: textColor }]}>{formatDistance(trail.distance_km)}</Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>소요시간</Text>
-              <Text style={styles.detailValue}>{formatDuration(trail.estimated_minutes)}</Text>
+            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+              <Text style={[styles.detailLabel, { color: textTertColor }]}>소요시간</Text>
+              <Text style={[styles.detailValue, { color: textColor }]}>{formatDuration(trail.estimated_minutes)}</Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>난이도</Text>
+            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+              <Text style={[styles.detailLabel, { color: textTertColor }]}>난이도</Text>
               <View style={[styles.detailBadge, { backgroundColor: diff.bg }]}>
                 <Text style={[styles.detailBadgeText, { color: diff.text }]}>{diff.label}</Text>
               </View>
             </View>
             {trail.elevation_gain != null && trail.elevation_gain > 0 && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>고도 상승</Text>
-                <Text style={styles.detailValue}>+{Math.round(trail.elevation_gain)}m</Text>
+              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+                <Text style={[styles.detailLabel, { color: textTertColor }]}>고도 상승</Text>
+                <Text style={[styles.detailValue, { color: textColor }]}>+{Math.round(trail.elevation_gain)}m</Text>
               </View>
             )}
             {trail.best_season && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>추천 계절</Text>
-                <Text style={styles.detailValue}>{SEASON_LABELS[trail.best_season] || trail.best_season}</Text>
+              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+                <Text style={[styles.detailLabel, { color: textTertColor }]}>추천 계절</Text>
+                <Text style={[styles.detailValue, { color: textColor }]}>{SEASON_LABELS[trail.best_season] || trail.best_season}</Text>
               </View>
             )}
             {(trail as any).trail_type && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>코스 유형</Text>
-                <Text style={styles.detailValue}>
+              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
+                <Text style={[styles.detailLabel, { color: textTertColor }]}>코스 유형</Text>
+                <Text style={[styles.detailValue, { color: textColor }]}>
                   {(trail as any).trail_type === 'one_way' ? '편도' : (trail as any).trail_type === 'round_trip' ? '왕복' : '순환'}
                 </Text>
               </View>
             )}
           </View>
           {(trail as any).transport_access && (
-            <View style={styles.transportBox}>
+            <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
               <Text style={styles.transportLabel}>교통편 안내</Text>
-              <Text style={styles.transportText}>{(trail as any).transport_access}</Text>
+              <Text style={[styles.transportText, { color: textColor }]}>{(trail as any).transport_access}</Text>
             </View>
           )}
         </View>
@@ -428,9 +480,9 @@ function TrailDetailScreenInner() {
         {/* ===== 4c. Author ===== */}
         {trail.author && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>작성자</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>작성자</Text>
             <TouchableOpacity
-              style={styles.authorCard}
+              style={[styles.authorCard, { backgroundColor: sectionBg }]}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
               <View style={styles.authorAvatar}>
@@ -441,17 +493,17 @@ function TrailDetailScreenInner() {
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.authorName}>{trail.author.nickname}</Text>
-                {trail.author.bio ? <Text style={styles.authorBio} numberOfLines={1}>{trail.author.bio}</Text> : null}
+                <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
+                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
               </View>
-              <Text style={{ color: colors.textTertiary, fontSize: 18 }}>{'›'}</Text>
+              <Text style={{ color: textTertColor, fontSize: 18 }}>{'›'}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* ===== 5. Map ===== */}
         <TouchableOpacity
-          style={styles.mapSection}
+          style={[styles.mapSection, { backgroundColor: sectionBg }]}
           activeOpacity={0.95}
           onPress={() => navigation.navigate('MapDetail', {
             pathCoordinates: (trail.path_data?.coordinates || trail.path_coordinates) || [],
@@ -490,28 +542,28 @@ function TrailDetailScreenInner() {
         {/* ===== 6. Spots ===== */}
         {(spots || []).length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {'경유지'} <Text style={styles.sectionCount}>{spots.length}</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
+              {'경유지'} <Text style={[styles.sectionCount, { color: textSecColor }]}>{spots.length}</Text>
             </Text>
             {(showAllSpots ? spots : (spots || []).slice(0, 3)).map((spot, index) => (
               <View key={spot.id} style={styles.spotItem}>
                 <View style={styles.spotDotColumn}>
-                  <View style={styles.spotDot}>
+                  <View style={[styles.spotDot, { backgroundColor: sectionBg }]}>
                     <Text style={styles.spotDotIcon}>
                       {SPOT_ICONS[spot.spot_type] || '\u{1F4CD}'}
                     </Text>
                   </View>
-                  {index < spots.length - 1 && <View style={styles.spotConnector} />}
+                  {index < spots.length - 1 && <View style={[styles.spotConnector, { backgroundColor: borderColor }]} />}
                 </View>
                 <View style={styles.spotContent}>
-                  <Text style={styles.spotName}>{spot?.name || ''}</Text>
+                  <Text style={[styles.spotName, { color: textColor }]}>{spot?.name || ''}</Text>
                   {spot.description ? (
-                    <Text style={styles.spotDesc} numberOfLines={2}>
+                    <Text style={[styles.spotDesc, { color: textSecColor }]} numberOfLines={2}>
                       {spot.description}
                     </Text>
                   ) : null}
                   {spot.tip ? (
-                    <View style={styles.tipBox}>
+                    <View style={[styles.tipBox, { backgroundColor: sectionBg }]}>
                       <Text style={styles.tipText}>{spot.tip}</Text>
                     </View>
                   ) : null}
@@ -555,7 +607,7 @@ function TrailDetailScreenInner() {
         <View style={styles.section}>
           <View style={styles.reviewsHeader}>
             <View style={styles.reviewsTitleRow}>
-              <Text style={styles.sectionTitle}>{'리뷰'}</Text>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>{'리뷰'}</Text>
               {avgRating && (
                 <Text style={styles.ratingInline}>
                   {'★'} {avgRating} ({safeReviews.length})
@@ -574,7 +626,7 @@ function TrailDetailScreenInner() {
 
           {/* Review Form (collapsible) */}
           {showReviewForm && (
-            <View style={styles.reviewForm}>
+            <View style={[styles.reviewForm, { backgroundColor: sectionBg }]}>
               <View style={styles.starRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
@@ -592,12 +644,12 @@ function TrailDetailScreenInner() {
                 ))}
               </View>
               <TextInput
-                style={styles.reviewInput}
+                style={[styles.reviewInput, { backgroundColor: cardBg, color: textColor }]}
                 multiline
                 numberOfLines={4}
                 maxLength={1000}
                 placeholder={'리뷰를 작성해주세요'}
-                placeholderTextColor="#B0B8C1"
+                placeholderTextColor={textTertColor}
                 value={reviewForm.content}
                 onChangeText={(text) => setReviewForm((p) => ({ ...p, content: text }))}
                 textAlignVertical="top"
@@ -605,6 +657,29 @@ function TrailDetailScreenInner() {
                   setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
                 }}
               />
+              {/* Review Image Picker */}
+              <View style={styles.reviewImageSection}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {reviewImages.map((img, idx) => (
+                    <View key={idx} style={styles.reviewImageThumbWrap}>
+                      <Image source={{ uri: img.uri }} style={styles.reviewImageThumb} resizeMode="cover" />
+                      <TouchableOpacity
+                        style={styles.reviewImageRemove}
+                        onPress={() => removeReviewImage(idx)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={styles.reviewImageRemoveText}>{'✕'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {reviewImages.length < 3 && (
+                    <TouchableOpacity style={styles.reviewImageAddBtn} onPress={pickReviewImages} activeOpacity={0.7}>
+                      <Feather name="camera" size={20} color="#8B95A1" />
+                      <Text style={styles.reviewImageAddText}>{reviewImages.length}/3</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </View>
+
               <TouchableOpacity
                 style={[
                   styles.reviewSubmitBtn,
@@ -628,17 +703,17 @@ function TrailDetailScreenInner() {
             </View>
           )}
           {safeReviews.slice(0, 5).map((review: Review) => (
-            <View key={review.id} style={styles.reviewItem}>
+            <View key={review.id} style={[styles.reviewItem, { borderBottomColor: borderColor }]}>
               <View style={styles.reviewTop}>
-                <View style={styles.reviewAvatarSmall}>
+                <View style={[styles.reviewAvatarSmall, { backgroundColor: sectionBg }]}>
                   {review.author?.profile_image ? (
                     <Image source={{ uri: review.author.profile_image }} style={styles.reviewAvatarImg} />
                   ) : (
-                    <Text style={styles.reviewAvatarFallback}>{(review.author?.nickname || '?')[0]}</Text>
+                    <Text style={[styles.reviewAvatarFallback, { color: textSecColor }]}>{(review.author?.nickname || '?')[0]}</Text>
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.reviewAuthor}>{review.author?.nickname || ''}</Text>
+                  <Text style={[styles.reviewAuthor, { color: textColor }]}>{review.author?.nickname || ''}</Text>
                   <Text style={styles.reviewStars}>
                     {Array.from({ length: 5 }, (_, i) =>
                       i < review.rating ? '★' : '☆'
@@ -649,17 +724,37 @@ function TrailDetailScreenInner() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.reviewContent} numberOfLines={4}>
+              <Text style={[styles.reviewContent, { color: textColor }]} numberOfLines={4}>
                 {review.content}
               </Text>
+              {review.images && review.images.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                  {review.images.map((img, imgIdx) => (
+                    <TouchableOpacity
+                      key={img.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setViewerImages(review.images.map((i) => i.image));
+                        setViewerIndex(imgIdx);
+                        setViewerVisible(true);
+                      }}>
+                      <Image
+                        source={{ uri: img.image }}
+                        style={styles.reviewPhoto}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           ))}
         </View>
 
         {/* ===== 8. Author ===== */}
         {trail.author && (
-          <View style={styles.authorRow}>
-            <View style={styles.authorAvatar}>
+          <View style={[styles.authorRow, { borderTopColor: borderColor }]}>
+            <View style={[styles.authorAvatar, { backgroundColor: sectionBg }]}>
               {trail.author.profile_image ? (
                 <Image source={{ uri: trail.author.profile_image }} style={styles.authorAvatarImg} />
               ) : (
@@ -668,7 +763,7 @@ function TrailDetailScreenInner() {
                 </Text>
               )}
             </View>
-            <Text style={styles.authorName}>{trail.author.nickname || ''}</Text>
+            <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname || ''}</Text>
             {trail.author.is_guide && (
               <View style={styles.guideBadge}>
                 <Text style={styles.guideBadgeText}>{'인증 가이드'}</Text>
@@ -680,9 +775,9 @@ function TrailDetailScreenInner() {
         {/* ===== 9. Users who walked this trail ===== */}
         {trailWalkers.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
               {'이 코스를 걸은 사람'}{' '}
-              <Text style={styles.sectionCount}>{trailWalkers.length}</Text>
+              <Text style={[styles.sectionCount, { color: textSecColor }]}>{trailWalkers.length}</Text>
             </Text>
             <View style={styles.walkersRow}>
               {trailWalkers.slice(0, 5).map((walker: any, index: number) => (
@@ -1148,6 +1243,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#191F28',
     lineHeight: 22,
+  },
+  reviewPhoto: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  reviewImageSection: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  reviewImageThumbWrap: {
+    position: 'relative',
+    marginRight: 8,
+  },
+  reviewImageThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+  },
+  reviewImageRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewImageRemoveText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  reviewImageAddBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  reviewImageAddText: {
+    fontSize: 10,
+    color: '#8B95A1',
   },
 
   // ── Author ─────────────────────────────────────────────

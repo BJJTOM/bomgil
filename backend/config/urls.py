@@ -17,7 +17,8 @@ def _platform_stats(request):
     countries = Trail.objects.filter(status="approved").values_list("country", flat=True).distinct().count()
     trails = Trail.objects.filter(status="approved").count()
     stories = WalkStory.objects.filter(is_public=True).count()
-    users = CustomUser.objects.filter(is_active=True).count()
+    # Exclude guest accounts from public stats
+    users = CustomUser.objects.filter(is_active=True).exclude(email__endswith="@roami.guest").count()
     return JsonResponse({"countries": countries, "trails": trails, "stories": stories, "users": users})
 
 urlpatterns = [

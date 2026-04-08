@@ -91,9 +91,20 @@ export default function WalkPage() {
   // ── Init Map ──
   const initMap = useCallback(async (center: { lat: number; lng: number }) => {
     if (!mapDiv.current || mapObj.current) return;
+    // Wait until container has proper size
+    const waitForSize = () => new Promise<void>((resolve) => {
+      const check = () => {
+        const el = mapDiv.current;
+        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) resolve();
+        else requestAnimationFrame(check);
+      };
+      check();
+    });
+    await waitForSize();
+    if (!mapDiv.current || mapObj.current) return;
     const L = (await import("leaflet")).default;
     LRef.current = L;
-    const map = L.map(mapDiv.current, { center: [center.lat, center.lng], zoom: 16, zoomControl: false, attributionControl: false, fadeAnimation: false, preferCanvas: false });
+    const map = L.map(mapDiv.current, { center: [center.lat, center.lng], zoom: 16, zoomControl: true, attributionControl: false, fadeAnimation: false, preferCanvas: false });
     // Light tile — better visibility, no black background
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,

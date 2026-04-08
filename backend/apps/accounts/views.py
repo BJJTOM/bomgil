@@ -313,17 +313,15 @@ class GuestLoginView(APIView):
 
     @staticmethod
     def _maybe_cleanup_expired_guests(cache, timezone, timedelta):
-        """Run guest cleanup roughly once per day using a cache flag.
+        """Run guest cleanup once per hour using a cache flag.
 
-        On every guest login we check a cache key. If absent (or expired),
-        we delete guest accounts older than 7 days and set the key for 24 h.
-        This avoids needing Celery or external cron for basic hygiene.
+        Deletes guest accounts older than 1 day to prevent stat inflation.
         """
         cache_key = "guest_cleanup_done"
         if cache.get(cache_key):
-            return  # already ran today
+            return  # already ran this hour
         try:
-            cutoff = timezone.now() - timedelta(days=7)
+            cutoff = timezone.now() - timedelta(days=1)
             deleted, _ = CustomUser.objects.filter(
                 email__endswith=f"@{GuestLoginView.GUEST_EMAIL_DOMAIN}",
                 created_at__lt=cutoff,
@@ -332,8 +330,8 @@ class GuestLoginView(APIView):
                 logger.info("Guest cleanup: deleted %d expired guest account(s)", deleted)
         except Exception:
             logger.exception("Guest cleanup failed")
-        # Set flag for 24 hours regardless of success/failure to avoid retry storms
-        cache.set(cache_key, True, timeout=86400)
+        # Set flag for 1 hour
+        cache.set(cache_key, True, timeout=3600)
 
 
 class ThrottledRegisterView(APIView):

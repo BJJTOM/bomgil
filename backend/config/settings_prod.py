@@ -76,6 +76,12 @@ CORS_ALLOWED_ORIGINS = [
     os.environ.get("CORS_ALLOWED_ORIGINS", "https://moruwalk.com,https://www.moruwalk.com").split(",")
     if x.strip()
 ]
+# Always allow any localhost / 127.0.0.1 port for local development
+# regardless of CORS_ALLOWED_ORIGINS env var.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost(:\d+)?$",
+    r"^http://127\.0\.0\.1(:\d+)?$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ---------------------------------------------------------------------------

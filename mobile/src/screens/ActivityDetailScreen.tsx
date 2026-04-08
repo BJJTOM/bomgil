@@ -775,9 +775,9 @@ export default function ActivityDetailScreen() {
             </View>
           </View>
 
-          {/* 5. Course draft section — always visible */}
-          <View style={styles.section}>
-              {!courseExpanded ? null : (
+          {/* 5. Course form moved to Modal — see CourseModal at bottom */}
+          {false && (
+            <View style={styles.section}>
                 <View>
                   <TouchableOpacity
                     style={styles.courseHeaderRow}
@@ -924,9 +924,9 @@ export default function ActivityDetailScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              )}
 
             </View>
+          )}
         </ScrollView>
       </View>
 
@@ -1043,6 +1043,142 @@ export default function ActivityDetailScreen() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Course Registration Modal */}
+      <Modal visible={courseExpanded} transparent animationType="slide" onRequestClose={() => setCourseExpanded(false)}>
+        <View style={styles.courseModalOverlay}>
+          <View style={styles.courseModal}>
+            <View style={styles.courseModalHandle} />
+            <View style={styles.courseModalHeader}>
+              <Text style={styles.courseModalTitle}>코스로 등록하기</Text>
+              <TouchableOpacity onPress={() => setCourseExpanded(false)}>
+                <Feather name="x" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ maxHeight: '85%' }} contentContainerStyle={{ paddingBottom: 20 }}>
+              <Text style={styles.fieldLabel}>코스 이름</Text>
+              <TextInput
+                style={styles.textInput}
+                value={courseName}
+                onChangeText={setCourseName}
+                placeholder={activity?.title || '코스 이름을 입력하세요'}
+                placeholderTextColor={colors.textTertiary}
+              />
+
+              <Text style={styles.fieldLabel}>코스 설명</Text>
+              <TextInput
+                style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
+                value={courseDesc}
+                onChangeText={setCourseDesc}
+                placeholder="코스에 대한 설명을 입력하세요"
+                placeholderTextColor={colors.textTertiary}
+                multiline
+              />
+
+              <Text style={styles.fieldLabel}>커버 사진</Text>
+              <View style={styles.coverRow}>
+                {coverImage ? (
+                  <Image source={{ uri: coverImage.uri }} style={styles.coverPreview} resizeMode="cover" />
+                ) : (
+                  <View style={styles.coverPlaceholder}>
+                    <Feather name="image" size={20} color={colors.textTertiary} />
+                  </View>
+                )}
+                <View style={styles.coverButtons}>
+                  <TouchableOpacity style={styles.coverBtn} onPress={pickCoverFromCamera}>
+                    <Feather name="camera" size={14} color={colors.textPrimary} />
+                    <Text style={styles.coverBtnText}>카메라</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.coverBtn} onPress={pickCoverFromGallery}>
+                    <Feather name="image" size={14} color={colors.textPrimary} />
+                    <Text style={styles.coverBtnText}>갤러리</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={styles.fieldLabel}>난이도</Text>
+              <View style={styles.chipRow}>
+                {DIFFICULTY_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[styles.chip, difficulty === opt && styles.chipSelected]}
+                    onPress={() => setDifficulty(opt)}>
+                    <Text style={[styles.chipText, difficulty === opt && styles.chipTextSelected]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>코스 유형</Text>
+              <View style={styles.chipRow}>
+                {COURSE_TYPE_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[styles.chip, courseType === opt && styles.chipSelected]}
+                    onPress={() => setCourseType(opt)}>
+                    <Text style={[styles.chipText, courseType === opt && styles.chipTextSelected]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>추천 계절</Text>
+              <View style={styles.chipRow}>
+                {SEASON_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[styles.chip, seasons.includes(opt) && styles.chipSelected]}
+                    onPress={() => toggleSeason(opt)}>
+                    <Text style={[styles.chipText, seasons.includes(opt) && styles.chipTextSelected]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>추천 시간대</Text>
+              <TextInput
+                style={styles.textInput}
+                value={timeSlot}
+                onChangeText={setTimeSlot}
+                placeholder="예: 오전 9시~12시"
+                placeholderTextColor={colors.textTertiary}
+              />
+
+              <Text style={styles.fieldLabel}>태그</Text>
+              <TextInput
+                style={styles.textInput}
+                value={tags}
+                onChangeText={setTags}
+                placeholder="예: #맛집투어 #역사탐방"
+                placeholderTextColor={colors.textTertiary}
+              />
+
+              <Text style={styles.fieldLabel}>교통편 안내</Text>
+              <TextInput
+                style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
+                value={transport}
+                onChangeText={setTransport}
+                placeholder="대중교통, 주차 정보 등"
+                placeholderTextColor={colors.textTertiary}
+                multiline
+              />
+            </ScrollView>
+
+            <View style={styles.courseModalActions}>
+              <TouchableOpacity style={styles.draftBtn} onPress={saveDraft} disabled={submitting}>
+                <Text style={styles.draftBtnText}>임시 저장</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.shareBtn, submitting && { opacity: 0.6 }]}
+                onPress={shareCourse}
+                disabled={submitting}>
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.shareBtnText}>코스 공유하기</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Spot Add Modal */}
@@ -1453,6 +1589,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
+  // ── Course Modal ──
+  courseModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  courseModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 24,
+    maxHeight: '92%',
+  },
+  courseModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E8EB',
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  courseModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  courseModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  courseModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F2F4F6',
+  },
+
   // ── Confirm Modal ──
   confirmOverlay: {
     flex: 1,

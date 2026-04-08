@@ -44,34 +44,53 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry = options["dry_run"]
 
-        # Only consider users that actually have a phone number AND match the
-        # legacy pattern. We do NOT touch users created with random hex names.
-        candidates = CustomUser.objects.exclude(phone_number="").exclude(phone_number__isnull=True)
+        # Defensive: this command runs from build.sh, so it must NEVER crash
+        # the deploy. Any unexpected error is logged and swallowed.
+        try:
+            self._run(dry)
+        except Exception as exc:  # noqa: BLE001
+            self.stdout.write(self.style.ERROR(
+                f"sanitize_phone_usernames failed: {exc!r} — continuing"
+            ))
+
+    def _run(self, dry: bool) -> None:
+        # Only consider users that match the legacy pattern. We do NOT touch
+        # users created with random hex names. Filtering by username at the DB
+        # level avoids loading the entire user table.
+        candidates = CustomUser.objects.filter(
+            username__regex=r"^phone_\d{7,9}$"
+        ).exclude(phone_number="").exclude(phone_number__isnull=True)
+
+        total = candidates.count()
+        self.stdout.write(f"Found {total} candidate user(s) to rotate")
 
         rotated = 0
-        skipped = 0
-        for user in candidates.iterator():
+        errors = 0
+        for user in candidates.iterator(chunk_size=200):
+            # Re-check with full regex (DB regex flavor varies across backends)
             if not LEGACY_USERNAME.match(user.username or ""):
-                skipped += 1
                 continue
             new_user = _new_username()
             new_email = f"{new_user}{SAFE_DOMAIN}"
             self.stdout.write(
-                f"  {user.username:30s} -> {new_user}    "
-                f"(id={user.id}, nick={user.nickname})"
+                f"  {user.username:30s} -> {new_user}  (id={user.id})"
             )
             if not dry:
-                with transaction.atomic():
-                    user.username = new_user
-                    user.email = new_email
-                    user.save(update_fields=["username", "email"])
+                try:
+                    with transaction.atomic():
+                        user.username = new_user
+                        user.email = new_email
+                        user.save(update_fields=["username", "email"])
+                except Exception as exc:  # noqa: BLE001
+                    errors += 1
+                    self.stdout.write(self.style.WARNING(
+                        f"    skipped (id={user.id}): {exc!r}"
+                    ))
+                    continue
             rotated += 1
 
+        msg = f"Rotated {rotated} users, errors {errors}"
         if dry:
-            self.stdout.write(self.style.WARNING(
-                f"DRY RUN — would rotate {rotated} users, skipped {skipped}"
-            ))
+            self.stdout.write(self.style.WARNING(f"DRY RUN — {msg}"))
         else:
-            self.stdout.write(self.style.SUCCESS(
-                f"Rotated {rotated} users, skipped {skipped}"
-            ))
+            self.stdout.write(self.style.SUCCESS(msg))

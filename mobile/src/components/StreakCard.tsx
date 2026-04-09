@@ -40,12 +40,31 @@ export default function StreakCard({ stats, isDark = false }: Props) {
   const textTert = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
   const trackBg = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
 
-  const streak = stats.current_streak || 0;
-  const longest = stats.longest_streak || 0;
-  const weeklyDist = stats.weekly_distance_km || 0;
-  const weeklyGoal = stats.weekly_goal_km || 20;
-  const weeklyPct = stats.weekly_progress_pct || 0;
+  // Defensive coercion — backend returns 0 for new users but the field
+  // could also be undefined while a stale cache hydrates the query.
+  const totalKm = Number(stats.total_distance_km) || 0;
+  const trackCount = Number(stats.track_count) || 0;
+  const streak = Number(stats.current_streak) || 0;
+  const longest = Number(stats.longest_streak) || 0;
+  const weeklyDist = Number(stats.weekly_distance_km) || 0;
+  const weeklyGoal = Number(stats.weekly_goal_km) || 20;
+  const weeklyPct = Number(stats.weekly_progress_pct) || 0;
   const badges = stats.earned_badges || [];
+
+  // Empty-state for users who haven't recorded a single walk yet.
+  if (trackCount === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: cardBg, alignItems: 'center', paddingVertical: 26 }]}>
+        <Text style={{ fontSize: 32, marginBottom: 8 }}>🚶</Text>
+        <Text style={[styles.streakLabel, { color: textPrimary, fontSize: 14, marginBottom: 4 }]}>
+          첫 걷기를 시작해보세요
+        </Text>
+        <Text style={[styles.streakSub, { color: textTert, fontSize: 12 }]}>
+          기록을 남기면 연속 일수와 뱃지가 쌓여요
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: cardBg }]}>
@@ -64,7 +83,7 @@ export default function StreakCard({ stats, isDark = false }: Props) {
         </View>
         <View style={styles.totalBlock}>
           <Text style={[styles.totalNumber, { color: textPrimary }]}>
-            {stats.total_distance_km.toFixed(1)}
+            {totalKm.toFixed(1)}
           </Text>
           <Text style={[styles.totalLabel, { color: textTert }]}>총 km</Text>
         </View>

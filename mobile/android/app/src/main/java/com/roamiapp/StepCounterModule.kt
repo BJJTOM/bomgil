@@ -106,16 +106,19 @@ class StepCounterModule(private val reactCtx: ReactApplicationContext) :
         if (sensorManager == null || stepSensor == null) {
             val out: WritableMap = Arguments.createMap()
             out.putBoolean("available", false)
-            out.putInt("steps", 0)
+            out.putDouble("steps", 0.0)
             promise.resolve(out)
             return
         }
         // One-shot listener: register, capture first value, unregister.
+        // Guarded by `resolved` so we never call promise.resolve twice
+        // (which would crash the RN bridge with "promise already resolved").
+        val resolved = java.util.concurrent.atomic.AtomicBoolean(false)
         val oneShot = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
+                if (event.sensor.type == Sensor.TYPE_STEP_COUNTER && resolved.compareAndSet(false, true)) {
                     val value = event.values[0].toLong()
-                    sensorManager.unregisterListener(this)
+                    try { sensorManager.unregisterListener(this) } catch (_: Exception) {}
                     val out: WritableMap = Arguments.createMap()
                     out.putBoolean("available", true)
                     out.putDouble("steps", value.toDouble())
@@ -125,11 +128,17 @@ class StepCounterModule(private val reactCtx: ReactApplicationContext) :
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
         sensorManager.registerListener(oneShot, stepSensor, SensorManager.SENSOR_DELAY_FASTEST)
-        // Safety: if no event arrives in 3 seconds, fail.
+        // Safety net: if no event arrives in 3 seconds (e.g. user has
+        // never walked since reboot), unregister AND resolve the promise
+        // so the JS caller doesn't hang. Previously the promise leaked.
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            try {
-                sensorManager.unregisterListener(oneShot)
-            } catch (_: Exception) {}
+            if (resolved.compareAndSet(false, true)) {
+                try { sensorManager.unregisterListener(oneShot) } catch (_: Exception) {}
+                val out: WritableMap = Arguments.createMap()
+                out.putBoolean("available", false)
+                out.putDouble("steps", 0.0)
+                promise.resolve(out)
+            }
         }, 3000)
     }
 

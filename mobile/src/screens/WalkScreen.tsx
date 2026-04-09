@@ -16,6 +16,7 @@ import {
   BackHandler,
   ScrollView,
   Image,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -52,7 +53,6 @@ import {
 import { WalkAudioFeedback } from '../utils/audioFeedback';
 import { fetchWeatherAt, CurrentWeather } from '../utils/weather';
 import { startLiveShare, pushLiveUpdate, endLiveShare } from '../utils/liveShare';
-import { Share as RNShare } from 'react-native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -148,10 +148,18 @@ export default function WalkScreen() {
   const audioFeedbackRef = useRef(new WalkAudioFeedback('ko'));
   const lastAnnouncedKmRef = useRef(0);
   const weatherRef = useRef<CurrentWeather | null>(null);
+  // Set true once we successfully kick off the weather fetch so the
+  // GPS watch callback below knows not to fire it again.
+  const weatherFetchedRef = useRef(false);
   // Live walk sharing — token populated when user enables "안전 공유"
   const [liveToken, setLiveToken] = useState<string | null>(null);
   const liveTokenRef = useRef<string | null>(null);
   const liveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs that mirror state so the live-share interval (which captures
+  // values once at creation) always pushes the LATEST GPS fix instead
+  // of the value that was current when the user tapped the button.
+  const currentPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const gpsAccuracyRef = useRef<number | null>(null);
   const photoBusyRef = useRef(false);
   const spotBusyRef = useRef(false);
 
@@ -479,6 +487,7 @@ export default function WalkScreen() {
           // rejects the fix — the user needs to see "GPS is bad" as the
           // reason nothing is accumulating.
           setGpsAccuracy(pos.coords.accuracy ?? null);
+          gpsAccuracyRef.current = pos.coords.accuracy ?? null;
           setGpsLastFixAt(Date.now());
 
           const point = engineRef.current.addPoint(
@@ -488,7 +497,17 @@ export default function WalkScreen() {
           );
           if (point) {
             setCurrentPos({ lat: point.lat, lng: point.lng });
+            currentPosRef.current = { lat: point.lat, lng: point.lng };
             setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
+            // Late weather fetch — runs once on the first valid fix if
+            // startWalk() couldn't fire it (e.g. cold-start indoor walks
+            // where the countdown's getCurrentPosition timed out).
+            if (!weatherFetchedRef.current) {
+              weatherFetchedRef.current = true;
+              fetchWeatherAt(point.lat, point.lng, 'ko')
+                .then((w) => { weatherRef.current = w; })
+                .catch(() => {});
+            }
           }
           setStats(engineRef.current.getStats());
         },
@@ -561,10 +580,16 @@ export default function WalkScreen() {
       }
     }).catch(() => {});
 
-    // Capture weather conditions at the start of the walk so the
-    // post-walk summary can show "오늘 12°C 맑음에서 걸었음".
-    if (currentPos) {
-      fetchWeatherAt(currentPos.lat, currentPos.lng, 'ko')
+    // Capture weather conditions at the start of the walk. We try
+    // immediately if we already have a fix (countdown's getCurrentPosition
+    // succeeded), otherwise the GPS watch callback below will trigger
+    // the fetch on first fix via weatherFetchedRef. Without this fallback
+    // weather was silently dropped on cold-start indoor walks.
+    weatherFetchedRef.current = false;
+    if (currentPosRef.current || currentPos) {
+      const pos = currentPosRef.current || currentPos!;
+      weatherFetchedRef.current = true;
+      fetchWeatherAt(pos.lat, pos.lng, 'ko')
         .then((w) => { weatherRef.current = w; })
         .catch(() => {});
     }
@@ -797,15 +822,18 @@ export default function WalkScreen() {
       const session = await startLiveShare();
       liveTokenRef.current = session.token;
       setLiveToken(session.token);
-      // Push an update every 15s so viewers see fresh position
+      // Push an update every 15s so viewers see fresh position.
+      // Use refs (currentPosRef / gpsAccuracyRef / engineRef) so we
+      // always read the LATEST values — the previous version captured
+      // currentPos in the closure once and pinned it to the start.
       liveTimerRef.current = setInterval(async () => {
-        const cur = currentPos;
+        const cur = currentPosRef.current;
         if (!cur || !liveTokenRef.current) return;
         const s = engineRef.current.getStats();
         await pushLiveUpdate(liveTokenRef.current, {
           lat: cur.lat,
           lng: cur.lng,
-          accuracy: gpsAccuracy ?? null,
+          accuracy: gpsAccuracyRef.current,
           speedKmh: s.speed,
           distanceKm: s.distance,
           durationSeconds: s.duration,
@@ -813,7 +841,7 @@ export default function WalkScreen() {
       }, 15000);
       // Immediately share the URL via system share sheet
       try {
-        await RNShare.share({
+        await Share.share({
           message: `모루 실시간 위치 공유\n지금 어디 있는지 볼 수 있어요:\n${session.share_url}`,
           title: '안전 공유',
         });
@@ -821,7 +849,7 @@ export default function WalkScreen() {
     } catch (e: any) {
       Alert.alert('공유 시작 실패', e?.response?.data?.error || '나중에 다시 시도해주세요.');
     }
-  }, [currentPos, gpsAccuracy]);
+  }, []);
 
   useEffect(() => {
     return () => {

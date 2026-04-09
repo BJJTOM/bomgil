@@ -42,6 +42,7 @@ import {
   stopBackgroundWalkService,
   updateBackgroundWalkNotification,
 } from '../utils/backgroundWalkService';
+import GpsSignalIndicator from '../components/GpsSignalIndicator';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -95,6 +96,10 @@ export default function WalkScreen() {
     elevationGain: 0, elevationLoss: 0, maxElevation: 0, minElevation: 0,
     maxSpeed: 0, splits: [], isAutoPaused: false,
   });
+  // GPS signal tracking — latest accuracy (meters) + staleness timestamp.
+  // Used to render the top-of-map signal bars.
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsLastFixAt, setGpsLastFixAt] = useState<number>(0);
   const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
   const [isBackground, setIsBackground] = useState(false);
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
@@ -436,6 +441,12 @@ export default function WalkScreen() {
     try {
       watchIdRef.current = Geolocation.watchPosition(
         (pos) => {
+          // Always update the GPS signal indicator, even when the engine
+          // rejects the fix — the user needs to see "GPS is bad" as the
+          // reason nothing is accumulating.
+          setGpsAccuracy(pos.coords.accuracy ?? null);
+          setGpsLastFixAt(Date.now());
+
           const point = engineRef.current.addPoint(
             pos.coords.latitude, pos.coords.longitude,
             pos.coords.altitude, pos.coords.accuracy,
@@ -803,18 +814,21 @@ export default function WalkScreen() {
           })}
         </Mapbox.MapView>
 
-        {/* Map top-left: status pill */}
-        <View style={[styles.mapStatusPill, { top: insets.top + 12 }]}>
-          <View style={[styles.dot, state === 'walking'
-            ? (stats.isAutoPaused ? styles.dotOrange : styles.dotGreen)
-            : styles.dotYellow
-          ]} />
-          <Text style={styles.mapStatusText}>
-            {resumeData
-              ? (state === 'walking' ? '이어서 기록 중' : '이어하기 일시정지')
-              : (state === 'walking' ? (stats.isAutoPaused ? '자동 일시정지' : '기록 중') : '일시정지')
-            }
-          </Text>
+        {/* Map top-left: status pill + GPS signal indicator */}
+        <View style={[styles.mapTopBar, { top: insets.top + 12 }]}>
+          <View style={styles.mapStatusPill}>
+            <View style={[styles.dot, state === 'walking'
+              ? (stats.isAutoPaused ? styles.dotOrange : styles.dotGreen)
+              : styles.dotYellow
+            ]} />
+            <Text style={styles.mapStatusText}>
+              {resumeData
+                ? (state === 'walking' ? '이어서 기록 중' : '이어하기 일시정지')
+                : (state === 'walking' ? (stats.isAutoPaused ? '자동 일시정지' : '기록 중') : '일시정지')
+              }
+            </Text>
+          </View>
+          <GpsSignalIndicator accuracy={gpsAccuracy} lastFixAt={gpsLastFixAt} />
         </View>
 
         {/* Map overlay buttons removed — using bottom quick actions instead */}
@@ -1331,9 +1345,17 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: 'transparent',
   },
-  mapStatusPill: {
+  mapTopBar: {
     position: 'absolute',
     left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+    gap: 10,
+  },
+  mapStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -1341,7 +1363,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     gap: 8,
-    zIndex: 10,
   },
   mapStatusText: {
     fontSize: 13,

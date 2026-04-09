@@ -78,6 +78,8 @@ class UserSerializer(serializers.ModelSerializer):
             # Phase 11
             "is_verified", "verification_level", "badges",
             "phone_number", "phone_verified",
+            # Phase 12 — physical profile (drives walk engine accuracy)
+            "weight_kg", "height_cm", "birth_year", "gender", "weekly_goal_km",
             "created_at",
         ]
         read_only_fields = [

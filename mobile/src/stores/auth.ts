@@ -15,6 +15,12 @@ interface User {
   age_range?: string | null;
   walking_style?: string | null;
   companion_rating?: string | null;
+  // Phase 12 — physical profile (drives walk engine accuracy)
+  weight_kg?: number | null;
+  height_cm?: number | null;
+  birth_year?: number | null;
+  gender?: string | null;
+  weekly_goal_km?: number | null;
 }
 
 interface AuthState {

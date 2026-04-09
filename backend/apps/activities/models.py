@@ -42,6 +42,11 @@ class ActivityTrack(models.Model):
     min_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     max_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
+    # Phase 12 — weather captured at walk start (via OpenWeatherMap)
+    weather_temp_c = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, help_text="기온 (°C)")
+    weather_condition = models.CharField(max_length=40, blank=True, default="", help_text="날씨 상태 (Clear/Rain/Snow 등)")
+    weather_icon = models.CharField(max_length=10, blank=True, default="", help_text="OpenWeatherMap 아이콘 코드")
+
     is_public = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

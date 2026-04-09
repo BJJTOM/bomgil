@@ -9,53 +9,105 @@
  *   accuracy <= 15m   → good      (3 bars, green)
  *   accuracy <= 25m   → fair      (2 bars, yellow)
  *   accuracy > 25m    → poor      (1 bar, red)
- *   null / stale > 8s → no fix    (0 bars, gray)
+ *   no fix yet, but screen opened < 60s ago → acquiring (blue pulse)
+ *   no fix after 60s / fix > 10s stale → lost (red)
  *
  * The component is purely presentational — the parent passes the latest
- * accuracy and last-fix timestamp, and we re-derive the rendering from
- * those on every render.
+ * accuracy and last-fix timestamp plus the walk start time, and we
+ * re-derive the rendering from those on every render.
  */
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 
 interface Props {
   accuracy: number | null;
   lastFixAt: number; // epoch ms of last fix callback; 0 = never
+  startedAt?: number; // epoch ms when the walk screen mounted (for "acquiring" grace period)
 }
 
+export type SignalState = 'acquiring' | 'excellent' | 'good' | 'fair' | 'poor' | 'lost';
+
 interface SignalLevel {
+  state: SignalState;
   bars: number; // 0..4
   color: string;
   label: string;
 }
 
+// How long we treat "no fix yet" as "still acquiring" vs "truly lost".
+// Cold start GPS can take 30-90s indoors, so we give it a minute before
+// flipping from blue "찾는 중" to red "없음".
+const ACQUIRING_GRACE_MS = 60_000;
+// After we HAVE had a fix, anything older than this is a lost signal.
+const STALE_MS = 10_000;
+
 export function getGpsSignalLevel(
   accuracy: number | null,
   lastFixAt: number,
+  startedAt: number = 0,
 ): SignalLevel {
-  // Consider the fix stale if we haven't received an update in ~8 seconds.
-  // That covers the case where the service is alive but GPS reception died.
-  const STALE_MS = 8000;
-  const stale = lastFixAt === 0 || Date.now() - lastFixAt > STALE_MS;
-  if (stale || accuracy == null) {
-    return { bars: 0, color: '#6B7280', label: 'GPS 없음' };
+  const now = Date.now();
+  if (lastFixAt === 0 || accuracy == null) {
+    // Never received a fix. Acquiring if within grace period.
+    const elapsed = startedAt > 0 ? now - startedAt : 0;
+    if (elapsed < ACQUIRING_GRACE_MS) {
+      return {
+        state: 'acquiring',
+        bars: 0,
+        color: '#60A5FA',
+        label: 'GPS 찾는 중',
+      };
+    }
+    return { state: 'lost', bars: 0, color: '#EF4444', label: 'GPS 없음' };
+  }
+  // Had a fix at some point — check staleness.
+  if (now - lastFixAt > STALE_MS) {
+    return { state: 'lost', bars: 0, color: '#EF4444', label: 'GPS 끊김' };
   }
   if (accuracy <= 8) {
-    return { bars: 4, color: '#22C55E', label: '최고' };
+    return { state: 'excellent', bars: 4, color: '#22C55E', label: '최고' };
   }
   if (accuracy <= 15) {
-    return { bars: 3, color: '#4ADE80', label: '좋음' };
+    return { state: 'good', bars: 3, color: '#4ADE80', label: '좋음' };
   }
   if (accuracy <= 25) {
-    return { bars: 2, color: '#FACC15', label: '보통' };
+    return { state: 'fair', bars: 2, color: '#FACC15', label: '보통' };
   }
-  return { bars: 1, color: '#EF4444', label: '약함' };
+  return { state: 'poor', bars: 1, color: '#F97316', label: '약함' };
 }
 
-export default function GpsSignalIndicator({ accuracy, lastFixAt }: Props) {
-  const { bars, color, label } = getGpsSignalLevel(accuracy, lastFixAt);
+export default function GpsSignalIndicator({ accuracy, lastFixAt, startedAt = 0 }: Props) {
+  const { state, bars, color, label } = getGpsSignalLevel(accuracy, lastFixAt, startedAt);
+
+  // Pulse the whole row while acquiring so the user can tell the app is
+  // actively trying to get a fix (vs. permanently broken).
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (state === 'acquiring') {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, {
+            toValue: 0.4,
+            duration: 700,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulse, {
+            toValue: 1,
+            duration: 700,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+    pulse.setValue(1);
+  }, [state, pulse]);
+
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: pulse }]}>
       <View style={styles.barsRow}>
         {[1, 2, 3, 4].map((b) => (
           <View
@@ -74,7 +126,7 @@ export default function GpsSignalIndicator({ accuracy, lastFixAt }: Props) {
         {label}
         {accuracy != null && bars > 0 ? ` · ${Math.round(accuracy)}m` : ''}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 

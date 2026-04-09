@@ -43,6 +43,13 @@ import {
   updateBackgroundWalkNotification,
 } from '../utils/backgroundWalkService';
 import GpsSignalIndicator from '../components/GpsSignalIndicator';
+import {
+  startStepCounter,
+  stopStepCounter,
+  subscribeToSteps,
+  StepSubscription,
+} from '../utils/nativeStepCounter';
+import { WalkAudioFeedback } from '../utils/audioFeedback';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -97,9 +104,13 @@ export default function WalkScreen() {
     maxSpeed: 0, splits: [], isAutoPaused: false,
   });
   // GPS signal tracking — latest accuracy (meters) + staleness timestamp.
-  // Used to render the top-of-map signal bars.
+  // Used to render the top-of-map signal bars. gpsStartedAt marks when
+  // the GPS subscription was kicked off so the indicator can show a
+  // blue "찾는 중" pulse during the initial cold-start grace window
+  // instead of jumping straight to red "GPS 없음".
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsLastFixAt, setGpsLastFixAt] = useState<number>(0);
+  const [gpsStartedAt, setGpsStartedAt] = useState<number>(0);
   const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
   const [isBackground, setIsBackground] = useState(false);
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
@@ -130,6 +141,9 @@ export default function WalkScreen() {
 
   const periodicSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bgSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stepSubRef = useRef<StepSubscription | null>(null);
+  const audioFeedbackRef = useRef(new WalkAudioFeedback('ko'));
+  const lastAnnouncedKmRef = useRef(0);
   const photoBusyRef = useRef(false);
   const spotBusyRef = useRef(false);
 
@@ -188,6 +202,14 @@ export default function WalkScreen() {
       // Start FGS before GPS so background tracking works on the resumed segment too
       startBackgroundWalkService().catch(() => {});
       startGps();
+      // Step counter for indoor fallback
+      startStepCounter().then((ok) => {
+        if (ok) {
+          stepSubRef.current = subscribeToSteps((steps) => {
+            engineRef.current.updateFromSensorSteps(steps);
+          });
+        }
+      }).catch(() => {});
 
       // Clean up paused data
       AsyncStorage.removeItem('walk_paused').catch(() => {});
@@ -438,6 +460,10 @@ export default function WalkScreen() {
   }, [spotName, spotType, spotDesc, currentPos, editingSpotIdx]);
 
   const startGps = useCallback(() => {
+    // Mark the start time so the GPS signal indicator can show a pulsing
+    // "acquiring" state until the first fix arrives or the 60s cold-start
+    // grace period expires.
+    setGpsStartedAt(Date.now());
     try {
       watchIdRef.current = Geolocation.watchPosition(
         (pos) => {
@@ -482,20 +508,40 @@ export default function WalkScreen() {
 
   const startWalk = () => {
     engineRef.current.start();
+    lastAnnouncedKmRef.current = 0;
     setState('walking');
     timerRef.current = setInterval(() => {
       const s = engineRef.current.getStats();
       setStats(s);
-      // Keep the foreground-service notification in sync with current stats
-      // so the user always sees accurate distance/time on the lock screen.
       updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+      // Detect new km split and announce with TTS + haptic vibration.
+      // This gives the NRC/Strava "km alert" that users rely on when
+      // the phone is in their pocket.
+      const currentKm = Math.floor(s.distance);
+      if (currentKm > lastAnnouncedKmRef.current && s.splits.length > 0) {
+        const latestSplit = s.splits[s.splits.length - 1];
+        lastAnnouncedKmRef.current = currentKm;
+        audioFeedbackRef.current.announceSplit(
+          currentKm,
+          latestSplit.avgPace || latestSplit.pace,
+          s.distance,
+          s.duration,
+        );
+      }
     }, 1000);
-    // Start the Android foreground service BEFORE the GPS watch. This keeps
-    // the JS process alive (and therefore watchPosition) even when the
-    // screen is off or the user switches apps. Without it, Android 12+
-    // kills background GPS within a minute.
     startBackgroundWalkService().catch(() => {});
     startGps();
+    // Start the hardware step counter in parallel with GPS.
+    // When GPS is available, step counter provides accurate step count.
+    // When GPS is unavailable (indoors), step counter drives distance
+    // via stride × steps — matching Galaxy Watch / Nike Run behavior.
+    startStepCounter().then((ok) => {
+      if (ok) {
+        stepSubRef.current = subscribeToSteps((steps) => {
+          engineRef.current.updateFromSensorSteps(steps);
+        });
+      }
+    }).catch(() => {});
   };
 
   const pauseWalk = () => {
@@ -535,13 +581,18 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
     if (bgSaveRef.current) clearInterval(bgSaveRef.current);
-    // Stop the foreground service — walk is finished, release the
-    // persistent notification and let Android schedule us normally.
+    if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; }
+    stopStepCounter();
     stopBackgroundWalkService().catch(() => {});
     // Clear crash recovery + paused-walk data — walk completed successfully
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
     AsyncStorage.removeItem('walk_paused').catch(() => {});
     const finalStats = engineRef.current.getStats();
+    // TTS finish announcement (distance, time, steps, calories)
+    audioFeedbackRef.current.announceFinish(
+      finalStats.distance, finalStats.duration,
+      finalStats.steps, finalStats.calories,
+    );
     const trackPoints = engineRef.current.getTrackPoints();
 
     // Always save locally first (before API call), including trackPoints
@@ -686,28 +737,21 @@ export default function WalkScreen() {
       if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
       if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
       if (bgSaveRef.current) clearInterval(bgSaveRef.current);
-      // Final safety net: if the screen unmounts mid-walk, kill the service.
+      if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; }
+      stopStepCounter();
       stopBackgroundWalkService().catch(() => {});
+      audioFeedbackRef.current.destroy();
     };
   }, []);
 
-  // Prevent accidental back navigation during walk
+  // Prevent accidental back navigation during walk — show the unified stop
+  // modal instead of a separate system Alert. This way the user always sees
+  // the same three choices (종료 / 일시 저장 / 계속 걷기) regardless of
+  // whether they tap "stop" or the hardware back button.
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (state === 'walking' || state === 'paused') {
-        Alert.alert(
-          '걸기 종료',
-          '걸기를 종료하고 나가시겠습니까?\n기록된 데이터가 저장되지 않을 수 있습니다.',
-          [
-            { text: '계속 걸기', style: 'cancel' },
-            { text: '종료', style: 'destructive', onPress: () => {
-              if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
-              if (timerRef.current) clearInterval(timerRef.current);
-              stopBackgroundWalkService().catch(() => {});
-              navigation.goBack();
-            }},
-          ],
-        );
+        setShowStopModal(true);
         return true;
       }
       if (state === 'countdown') {
@@ -828,7 +872,11 @@ export default function WalkScreen() {
               }
             </Text>
           </View>
-          <GpsSignalIndicator accuracy={gpsAccuracy} lastFixAt={gpsLastFixAt} />
+          <GpsSignalIndicator
+            accuracy={gpsAccuracy}
+            lastFixAt={gpsLastFixAt}
+            startedAt={gpsStartedAt}
+          />
         </View>
 
         {/* Map overlay buttons removed — using bottom quick actions instead */}
@@ -957,25 +1005,26 @@ export default function WalkScreen() {
                 <Text style={styles.modalStatLabel}>걸음</Text>
               </View>
             </View>
+            {/* 3 buttons in unified pill style — primary action on top */}
             <TouchableOpacity
-              style={styles.modalStopBtn}
+              style={styles.modalBtnPrimary}
               onPress={() => { setShowStopModal(false); completeWalk(); }}
               activeOpacity={0.85}>
-              <Feather name="check-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.modalStopBtnText}>완전 종료</Text>
+              <Feather name="flag" size={16} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.modalBtnPrimaryText}>걷기 종료</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.modalPauseBtn}
+              style={styles.modalBtnSecondary}
               onPress={() => { setShowStopModal(false); handlePauseSave(); }}
               activeOpacity={0.85}>
-              <Feather name="pause-circle" size={18} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.modalPauseBtnText}>일시 저장 (나중에 이어하기)</Text>
+              <Feather name="save" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.modalBtnSecondaryText}>일시 저장</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.modalCancelBtn}
+              style={styles.modalBtnGhost}
               onPress={() => setShowStopModal(false)}
               activeOpacity={0.85}>
-              <Text style={styles.modalCancelBtnText}>계속 걷기</Text>
+              <Text style={styles.modalBtnGhostText}>계속 걷기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1677,6 +1726,8 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
+  // Unified stop-modal button styles (primary / secondary / ghost).
+  // Also reused by photo modal for its CTA.
   modalStopBtn: {
     width: '100%',
     backgroundColor: '#EF4444',
@@ -1692,9 +1743,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  modalPauseBtn: {
+  modalBtnPrimary: {
     width: '100%',
-    backgroundColor: colors.primary + '12',
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  modalBtnPrimaryText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalBtnSecondary: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
@@ -1702,7 +1768,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
     borderWidth: 1.5,
-    borderColor: colors.primary + '30',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  modalBtnSecondaryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalBtnGhost: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  modalBtnGhostText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  // Keep legacy names for photo modal that still references them
+  modalPauseBtn: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   modalPauseBtnText: {
     fontSize: 15,

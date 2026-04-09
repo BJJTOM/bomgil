@@ -13,6 +13,7 @@ import api from '../../api/client';
 import { colors } from '../../theme/colors';
 import { Challenge } from '../../types';
 import { FadeInView } from '../../components/FadeInView';
+import LeaderboardCard from '../../components/LeaderboardCard';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   upcoming: { bg: '#EFF6FF', text: '#1D4ED8', label: '예정' },
@@ -120,6 +121,14 @@ export default function CommunityChallengeTab() {
       showsVerticalScrollIndicator={false}
       ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+      // Weekly leaderboard at the top of the challenge tab — moved out of
+      // ActivityScreen to keep that screen focused on the user's own
+      // activity history. Challenges + ranking belong together.
+      ListHeaderComponent={
+        <View style={{ marginBottom: 16 }}>
+          <LeaderboardCard isDark={false} limit={5} />
+        </View>
+      }
     />
   );
 }

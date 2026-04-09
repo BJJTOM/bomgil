@@ -52,7 +52,7 @@ class CompanionRequestAdmin(admin.ModelAdmin):
 class CompanionReviewAdmin(admin.ModelAdmin):
     list_display = ["id", "reviewer_display", "reviewed_user_display", "rating", "created_at"]
     list_filter = ["rating", "created_at"]
-    search_fields = ["reviewer__nickname", "reviewed_user__nickname", "comment"]
+    search_fields = ["reviewer__nickname", "reviewed_user__nickname", "content"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
 
@@ -69,7 +69,7 @@ class CompanionReviewAdmin(admin.ModelAdmin):
 class SafetyReportAdmin(admin.ModelAdmin):
     list_display = ["id", "reporter_display", "reported_user_display", "reason", "is_resolved", "created_at"]
     list_filter = ["reason", "is_resolved", "created_at"]
-    search_fields = ["reporter__nickname", "reported_user__nickname", "description"]
+    search_fields = ["reporter__nickname", "reported_user__nickname", "detail"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
     list_editable = ["is_resolved"]

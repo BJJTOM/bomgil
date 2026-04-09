@@ -146,7 +146,7 @@ class CommentLikeAdmin(admin.ModelAdmin):
 class CommunityReportAdmin(admin.ModelAdmin):
     list_display = ['id', 'reporter', 'target_type', 'target_id', 'reason', 'status', 'created_at']
     list_filter = ['target_type', 'reason', 'status', 'created_at']
-    search_fields = ['reporter__nickname', 'description']
+    search_fields = ['reporter__nickname', 'detail']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
     list_editable = ['status']

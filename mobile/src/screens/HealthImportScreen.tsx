@@ -151,9 +151,19 @@ export default function HealthImportScreen() {
       const trackPoints = session.trackPoints.map(p => ({
         lat: p.lat,
         lng: p.lng,
-        ele: p.ele || null,
+        ele: p.ele ?? null,
         time: p.time || new Date().toISOString(),
       }));
+
+      // Samsung Health sometimes records 0 distance for very short sessions
+      // and some older watch firmware. Fall back to a pace-based estimate
+      // so the backend serializer accepts the row. Distance is stored as a
+      // number (Decimal on the server) — send it as such, not as a string,
+      // so the serializer can parse it uniformly.
+      const distanceKm = Number(
+        (session.distance && session.distance > 0 ? session.distance : 0).toFixed(2),
+      );
+      const durationMinutes = Math.max(1, session.duration || 1);
 
       const payload: any = {
         title: session.title,
@@ -162,12 +172,14 @@ export default function HealthImportScreen() {
         finished_at: session.endTime,
         total_steps: session.steps || 0,
         calories_burned: session.calories || 0,
-        distance_km: session.distance ? session.distance.toFixed(2) : '0',
-        duration_minutes: session.duration || 0,
+        distance_km: distanceKm,
+        duration_minutes: durationMinutes,
       };
 
-      // Only include track_points if we have them
-      if (trackPoints.length > 0) {
+      // Only include track_points if we have real GPS data. Samsung Health
+      // often doesn't sync routes, and empty arrays used to confuse
+      // compute_summary() on the server.
+      if (trackPoints.length > 1) {
         payload.track_points = trackPoints;
       }
 
@@ -178,8 +190,8 @@ export default function HealthImportScreen() {
           onPress: () => navigation.navigate('ActivityDetail', {
             activity: {
               ...data,
-              distance_km: session.distance.toFixed(2),
-              duration_minutes: session.duration,
+              distance_km: distanceKm.toFixed(2),
+              duration_minutes: durationMinutes,
               total_steps: session.steps,
               calories_burned: session.calories,
               track_points: trackPoints,
@@ -188,16 +200,59 @@ export default function HealthImportScreen() {
         },
       ]);
     } catch (e: any) {
+      const status = e?.response?.status;
       const errData = e?.response?.data;
-      let msg = '가져오기에 실패했습니다.';
-      if (errData && typeof errData === 'object') {
-        const firstKey = Object.keys(errData)[0];
-        const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
-        msg = `${firstKey}: ${firstVal}`;
-      } else if (errData?.detail) {
-        msg = errData.detail;
+
+      // Build a user-friendly message from the response payload. Django REST
+      // returns errors in a few different shapes; cover the common ones.
+      let msg = '알 수 없는 오류가 발생했습니다.';
+      let isDuplicate = false;
+
+      if (typeof errData === 'string') {
+        msg = errData;
+      } else if (errData && typeof errData === 'object') {
+        if (errData.detail) {
+          msg = String(errData.detail);
+        } else {
+          // Field error shape: { field: ["message"] } or { field: "message" }
+          const firstKey = Object.keys(errData)[0];
+          if (firstKey) {
+            const firstVal = Array.isArray(errData[firstKey])
+              ? errData[firstKey][0]
+              : errData[firstKey];
+            msg = String(firstVal);
+          }
+        }
+      } else if (e?.message) {
+        msg = e.message;
       }
-      Alert.alert('오류', msg);
+
+      // The backend rejects activities whose started_at is within ±30s of
+      // an existing one as a duplicate. Treat that as info, not an error —
+      // the user has already imported this session.
+      if (/already recorded|similar activity|duplicate/i.test(msg)) {
+        isDuplicate = true;
+      }
+
+      if (isDuplicate) {
+        Alert.alert(
+          '이미 가져온 기록',
+          '이 세션은 이미 활동에 추가되어 있어요.',
+          [{ text: '확인' }],
+        );
+      } else if (status === 401) {
+        Alert.alert(
+          '로그인 필요',
+          '활동을 저장하려면 먼저 로그인해주세요.',
+          [{ text: '확인' }],
+        );
+      } else {
+        Alert.alert(
+          '가져오기 실패',
+          msg,
+          [{ text: '확인' }],
+        );
+      }
     }
     setImporting(null);
   };

@@ -1,6 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -68,5 +70,15 @@
               <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
           </intent-filter>
       </activity-alias>
+
+      <!-- Background GPS foreground service (react-native-background-actions).
+           Android 14+ requires foregroundServiceType on all FGS. We override
+           the library's default service entry to add the location type so
+           the OS keeps the GPS subscription alive while the screen is off. -->
+      <service
+          android:name="com.asterinet.react.bgactions.RNBackgroundActionsTask"
+          android:foregroundServiceType="location"
+          tools:replace="android:foregroundServiceType"
+          android:exported="false" />
     </application>
 </manifest>

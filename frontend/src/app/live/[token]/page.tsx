@@ -44,11 +44,11 @@ function formatDuration(seconds: number): string {
 }
 
 export default function LiveWalkPage() {
-  const params = useParams<{ token: string }>();
-  const token = params?.token;
+  const params = useParams();
+  const token = (params?.token as string) || '';
   const [data, setData] = useState<LiveData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!token) return;

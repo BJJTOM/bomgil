@@ -1,0 +1,46 @@
+name: Keep Render Backend Warm
+
+# Render Free tier spins services down after 15 minutes of inactivity.
+# This workflow hits /api/v1/health/ every 5 minutes so the timer never
+# reaches 15 min and the service stays warm 24/7 at zero cost.
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub may delay scheduled runs during heavy load;
+    # in the worst case we get ~10 min gap which is still under the 15 min
+    # spin-down threshold.
+    - cron: '*/5 * * * *'
+  # Manual trigger from Actions tab if needed
+  workflow_dispatch: {}
+  # Run once on push to this file so changes take effect immediately
+  push:
+    paths:
+      - '.github/workflows/keep-alive.yml'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint (wake up if spun down)
+        run: |
+          # Retry up to 6 times over ~2 minutes. Render cold start can
+          # take 50+ seconds and Cloudflare returns 521 during that window;
+          # we keep poking until the service responds 200 OK.
+          for i in 1 2 3 4 5 6; do
+            STATUS=$(curl -s -o /tmp/body -m 30 -w "%{http_code}" \
+              https://api.moruwalk.com/api/v1/health/ || echo "timeout")
+            echo "[attempt $i] status=$STATUS"
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "503" ]; then
+              # 200 = healthy, 503 = degraded but gunicorn responding (still warm)
+              echo "Service is awake."
+              cat /tmp/body 2>/dev/null || true
+              exit 0
+            fi
+            sleep 20
+          done
+          # If we never got a real response, exit 0 anyway — we don't want
+          # the workflow to spam "failed" notifications every 5 min during
+          # a real outage. Logs will still show the failed attempts.
+          echo "All attempts failed — service may be in a bad state."
+          exit 0

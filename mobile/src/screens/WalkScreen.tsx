@@ -37,6 +37,11 @@ import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
+import {
+  startBackgroundWalkService,
+  stopBackgroundWalkService,
+  updateBackgroundWalkNotification,
+} from '../utils/backgroundWalkService';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -170,7 +175,13 @@ export default function WalkScreen() {
       // Skip countdown, start immediately
       setState('walking');
       engineRef.current.start();
-      timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
+      timerRef.current = setInterval(() => {
+        const s = engineRef.current.getStats();
+        setStats(s);
+        updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+      }, 1000);
+      // Start FGS before GPS so background tracking works on the resumed segment too
+      startBackgroundWalkService().catch(() => {});
       startGps();
 
       // Clean up paused data
@@ -418,23 +429,43 @@ export default function WalkScreen() {
           }
           setStats(engineRef.current.getStats());
         },
-        () => {},
+        (err) => {
+          // Surface GPS errors to logs so we can diagnose background drops.
+          console.log('[Moru] GPS watch error:', err?.code, err?.message || String(err));
+        },
         {
           enableHighAccuracy: true,
-          distanceFilter: 3,
-          timeout: 15000,
+          // distanceFilter is handled in software by WalkEngine (MIN_DISTANCE_FILTER)
+          // and a 0 here lets us see more raw fixes for smoother path drawing.
+          distanceFilter: 0,
+          timeout: 30000,
           maximumAge: 0,
-          interval: 2000,
-          fastestInterval: 1000,
+          // Android-specific high-frequency updates. The FusedLocationProvider
+          // will pick the best native provider (GPS + Wi-Fi + sensors).
+          interval: 1000,
+          fastestInterval: 500,
         } as any,
       );
-    } catch {}
+    } catch (e) {
+      console.log('[Moru] startGps threw:', e);
+    }
   }, []);
 
   const startWalk = () => {
     engineRef.current.start();
     setState('walking');
-    timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
+    timerRef.current = setInterval(() => {
+      const s = engineRef.current.getStats();
+      setStats(s);
+      // Keep the foreground-service notification in sync with current stats
+      // so the user always sees accurate distance/time on the lock screen.
+      updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+    }, 1000);
+    // Start the Android foreground service BEFORE the GPS watch. This keeps
+    // the JS process alive (and therefore watchPosition) even when the
+    // screen is off or the user switches apps. Without it, Android 12+
+    // kills background GPS within a minute.
+    startBackgroundWalkService().catch(() => {});
     startGps();
   };
 
@@ -444,17 +475,30 @@ export default function WalkScreen() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} watchIdRef.current = null; }
     setStats(engineRef.current.getStats()); // update stats with paused time
+    // Keep the foreground service running so the user can resume without
+    // losing GPS lock — we just stop charging distance while paused.
+    updateBackgroundWalkNotification({
+      distance: engineRef.current.getStats().distance,
+      duration: engineRef.current.getStats().duration,
+    }).catch(() => {});
   };
 
   const resumeWalk = () => {
     setState('walking');
     engineRef.current.resume();
     if (!timerRef.current) {
-      timerRef.current = setInterval(() => setStats(engineRef.current.getStats()), 1000);
+      timerRef.current = setInterval(() => {
+        const s = engineRef.current.getStats();
+        setStats(s);
+        updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+      }, 1000);
     }
     if (watchIdRef.current === null) {
       startGps();
     }
+    // Make sure the foreground service is alive — re-entering the screen
+    // after a long pause sometimes finds it stopped.
+    startBackgroundWalkService().catch(() => {});
   };
 
   const completeWalk = async () => {
@@ -462,6 +506,9 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
     if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+    // Stop the foreground service — walk is finished, release the
+    // persistent notification and let Android schedule us normally.
+    stopBackgroundWalkService().catch(() => {});
     // Clear crash recovery + paused-walk data — walk completed successfully
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
     AsyncStorage.removeItem('walk_paused').catch(() => {});
@@ -567,6 +614,8 @@ export default function WalkScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
     if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+    // Release the foreground service — the walk is being stored, not active.
+    stopBackgroundWalkService().catch(() => {});
 
     const finalStats = engineRef.current.getStats();
     const trackPoints = engineRef.current.getTrackPoints();
@@ -608,6 +657,8 @@ export default function WalkScreen() {
       if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
       if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
       if (bgSaveRef.current) clearInterval(bgSaveRef.current);
+      // Final safety net: if the screen unmounts mid-walk, kill the service.
+      stopBackgroundWalkService().catch(() => {});
     };
   }, []);
 
@@ -623,6 +674,7 @@ export default function WalkScreen() {
             { text: '종료', style: 'destructive', onPress: () => {
               if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
               if (timerRef.current) clearInterval(timerRef.current);
+              stopBackgroundWalkService().catch(() => {});
               navigation.goBack();
             }},
           ],

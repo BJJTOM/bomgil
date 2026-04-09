@@ -181,10 +181,17 @@ export class WalkEngine {
   private smoothedElevation: number | null = null;
   private readonly ELE_SMOOTHING_ALPHA = 0.3; // lower = smoother
 
-  // Constants
+  // Constants (tuned for walking accuracy on Android)
   private readonly DEFAULT_WEIGHT_KG = 65;
-  private readonly MIN_DISTANCE_FILTER = 0.001; // 1 meter — reduced for accuracy
+  private readonly MIN_DISTANCE_FILTER = 0.0025; // 2.5 meters — block GPS jitter under walking resolution
   private readonly ELE_NOISE_FILTER = 2; // meters — GPS elevation is noisy
+  private readonly MAX_ACCURACY_METERS = 25; // hard reject points beyond this (was implicit)
+  private readonly MAX_SEGMENT_SPEED_KMH = 18; // cap per-segment speed at "fast jog" to reject jumps
+  private readonly MIN_TIME_BETWEEN_POINTS_MS = 400; // ignore sub-400ms bursts
+  private readonly WARMUP_POINTS = 3; // first N points are stored but don't add distance
+
+  private warmupCount = 0;
+  private rejectedPoints = 0;
 
   private pausedAt = 0; // timestamp when paused
   private totalPausedTime = 0; // accumulated pause duration in ms
@@ -196,6 +203,8 @@ export class WalkEngine {
     this.currentSplitStart = Date.now();
     this.pausedAt = 0;
     this.totalPausedTime = 0;
+    this.warmupCount = 0;
+    this.rejectedPoints = 0;
   }
 
   pause() {
@@ -229,6 +238,31 @@ export class WalkEngine {
     accuracy: number | null,
     timestamp: number,
   ): TrackPoint | null {
+    // ---- Pre-filter stage (before Kalman): hard rejects for obviously bad data ----
+
+    // Require an accuracy estimate. Unknown accuracy is common on weak GPS
+    // and these points were the main source of distance inflation.
+    if (accuracy == null || accuracy <= 0) {
+      this.rejectedPoints += 1;
+      return null;
+    }
+    // Hard-reject low-accuracy points. 25m is a generous threshold for
+    // urban walking and drops GPS drift spikes that happen when buildings
+    // momentarily block satellites.
+    if (accuracy > this.MAX_ACCURACY_METERS) {
+      this.rejectedPoints += 1;
+      return null;
+    }
+    // Minimum time gap between points — bursts inside 400ms are almost
+    // always duplicate fixes from the OS
+    if (this.trackPoints.length > 0) {
+      const prevTs = new Date(this.trackPoints[this.trackPoints.length - 1].time).getTime();
+      if (timestamp - prevTs < this.MIN_TIME_BETWEEN_POINTS_MS) {
+        this.rejectedPoints += 1;
+        return null;
+      }
+    }
+
     // Estimate current speed for Kalman filter
     let estimatedSpeedKmh = 0;
     if (this.lastSpeedSamples.length > 0) {
@@ -241,7 +275,7 @@ export class WalkEngine {
     const filtered = this.kalman.update(
       lat,
       lng,
-      accuracy || 10,
+      accuracy,
       estimatedSpeedKmh,
     );
 
@@ -258,9 +292,23 @@ export class WalkEngine {
       const prev = this.trackPoints[this.trackPoints.length - 1];
       const d = haversine(prev.lat, prev.lng, filtered.lat, filtered.lng);
 
-      // Filter out GPS jitter — minimum 1m between accepted points
+      // Filter out GPS jitter — minimum distance between accepted points.
+      // At 2.5m this is just above GPS noise floor for consumer phones.
       if (d < this.MIN_DISTANCE_FILTER) {
-        return null; // Skip this point
+        return null;
+      }
+
+      // Per-segment speed sanity check. If the implied instantaneous speed
+      // is over the walking/jogging cap, this is almost certainly a GPS
+      // jump (multipath in cities, tunnel exit, etc.) — drop it.
+      const timeDiffPrecheck =
+        (timestamp - new Date(prev.time).getTime()) / 1000;
+      if (timeDiffPrecheck > 0) {
+        const impliedKmh = (d / timeDiffPrecheck) * 3600;
+        if (impliedKmh > this.MAX_SEGMENT_SPEED_KMH) {
+          this.rejectedPoints += 1;
+          return null;
+        }
       }
 
       // Heading consistency check: reject points requiring 180-degree turn at walking speed
@@ -281,6 +329,16 @@ export class WalkEngine {
         ) {
           return null; // Skip this point — likely GPS noise
         }
+      }
+
+      // GPS warm-up: store the first few points but don't count them toward
+      // distance. Initial fixes after a walk starts are often meters off
+      // from the true location, which used to add phantom distance.
+      if (this.warmupCount < this.WARMUP_POINTS) {
+        this.warmupCount += 1;
+        this.trackPoints.push(point);
+        this.lastBearing = bearing(prev.lat, prev.lng, filtered.lat, filtered.lng);
+        return point;
       }
 
       // Calculate speed
@@ -522,5 +580,15 @@ export class WalkEngine {
     this.currentSplitActiveTime = 0;
     this.currentSplitEleGain = 0;
     this.currentSplitEleLoss = 0;
+    this.warmupCount = 0;
+    this.rejectedPoints = 0;
+    this.pausedAt = 0;
+    this.totalPausedTime = 0;
+    this.durationOffset = 0;
+  }
+
+  /** Diagnostics — number of GPS points rejected by pre-filters this session */
+  getRejectedCount(): number {
+    return this.rejectedPoints;
   }
 }

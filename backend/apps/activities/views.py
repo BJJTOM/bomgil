@@ -50,7 +50,11 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
         return ActivityTrackListSerializer
 
     def get_queryset(self):
-        qs = ActivityTrack.objects.filter(user=self.request.user).select_related("user", "trail", "story")
+        # Hide admin-moderated activities from the user's own list as well —
+        # if an admin hid a record, the user shouldn't see it either.
+        qs = ActivityTrack.objects.filter(
+            user=self.request.user, is_hidden=False,
+        ).select_related("user", "trail", "story")
         source = self.request.query_params.get("source")
         if source:
             qs = qs.filter(source=source)
@@ -322,7 +326,7 @@ class TrailActivitiesView(generics.ListAPIView):
 
     def get_queryset(self):
         return ActivityTrack.objects.filter(
-            trail_id=self.kwargs["trail_id"], is_public=True
+            trail_id=self.kwargs["trail_id"], is_public=True, is_hidden=False,
         ).select_related("user")
 
 
@@ -333,5 +337,5 @@ class UserActivitiesView(generics.ListAPIView):
         from apps.accounts.models import CustomUser
         user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
         return ActivityTrack.objects.filter(
-            user=user, is_public=True
+            user=user, is_public=True, is_hidden=False,
         ).select_related("user")

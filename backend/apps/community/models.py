@@ -33,6 +33,12 @@ class Post(models.Model):
     bookmark_count = models.PositiveIntegerField(default=0)
     is_pinned = models.BooleanField(default=False)
 
+    # Moderation — hidden posts disappear from public feeds but remain in DB
+    # for audit/restoration. Separate from is_pinned; admins toggle this.
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -63,6 +69,10 @@ class PostComment(models.Model):
     content = models.TextField(max_length=1000)
     like_count = models.PositiveIntegerField(default=0)
     is_deleted = models.BooleanField(default=False)
+    # Admin-side moderation flag (separate from user-triggered is_deleted).
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -178,6 +188,10 @@ class Group(models.Model):
     max_members = models.PositiveIntegerField(default=50)
     member_count = models.PositiveIntegerField(default=1)
     is_public = models.BooleanField(default=True)
+    # Admin-only moderation
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -215,6 +229,8 @@ class GroupMessage(models.Model):
     )
     content = models.TextField(max_length=2000)
     image = models.ImageField(upload_to='community/chat/', null=True, blank=True)
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

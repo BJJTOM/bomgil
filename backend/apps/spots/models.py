@@ -54,6 +54,9 @@ class Spot(models.Model):
     day_number = models.PositiveIntegerField(default=1)
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

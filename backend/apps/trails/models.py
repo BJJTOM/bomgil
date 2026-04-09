@@ -85,6 +85,13 @@ class Trail(models.Model):
     transport_access = models.TextField(max_length=200, blank=True)
     walking_surface = models.CharField(max_length=10, choices=SURFACE_CHOICES, default="paved")
 
+    # Phase 12: admin moderation — separate from user-owned `status`.
+    # Hidden trails disappear from public feeds immediately regardless
+    # of their approval status. Admins can restore by unchecking.
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

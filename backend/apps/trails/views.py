@@ -48,13 +48,21 @@ class TrailViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Trail.objects.select_related("author").prefetch_related("tags")
+        is_staff = self.request.user.is_authenticated and self.request.user.is_staff
+
+        # Admin moderation: hidden trails are invisible to everyone except staff.
+        if not is_staff:
+            qs = qs.filter(is_hidden=False)
+
         if self.action == "list":
             # 일반 유저는 approved만, 관리자는 status 필터 가능
-            if not (self.request.user.is_authenticated and self.request.user.is_staff):
+            if not is_staff:
                 qs = qs.filter(status="approved")
         elif self.action == "retrieve":
-            # 상세 보기는 approved이거나 작성자 본인
-            if self.request.user.is_authenticated:
+            # 상세 보기는 approved이거나 작성자 본인 (또는 staff)
+            if is_staff:
+                pass
+            elif self.request.user.is_authenticated:
                 from django.db.models import Q
                 qs = qs.filter(
                     Q(status="approved") | Q(author=self.request.user)
@@ -109,7 +117,7 @@ class TrailViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def popular(self, request):
-        qs = Trail.objects.filter(status="approved").select_related("author").prefetch_related("tags")
+        qs = Trail.objects.filter(status="approved", is_hidden=False).select_related("author").prefetch_related("tags")
         qs = qs.order_by("-like_count")[:20]
         serializer = TrailListSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
@@ -128,6 +136,7 @@ class TrailViewSet(viewsets.ModelViewSet):
         degree_approx = radius / Decimal("111")
         qs = Trail.objects.filter(
             status="approved",
+            is_hidden=False,
             start_lat__range=(lat - degree_approx, lat + degree_approx),
             start_lng__range=(lng - degree_approx, lng + degree_approx),
         ).select_related("author").prefetch_related("tags")

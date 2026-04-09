@@ -183,10 +183,13 @@ export class WalkEngine {
 
   // Constants (tuned for walking accuracy on Android)
   private readonly DEFAULT_WEIGHT_KG = 65;
-  private readonly MIN_DISTANCE_FILTER = 0.0025; // 2.5 meters — block GPS jitter under walking resolution
+  // 1.2m min distance keeps resolution high enough for slow walking (5 km/h
+  // ≈ 1.4m per 1-second GPS fix) while still dropping sub-meter jitter.
+  // Anything larger would silently drop alternating fixes at walking speed.
+  private readonly MIN_DISTANCE_FILTER = 0.0012;
   private readonly ELE_NOISE_FILTER = 2; // meters — GPS elevation is noisy
-  private readonly MAX_ACCURACY_METERS = 25; // hard reject points beyond this (was implicit)
-  private readonly MAX_SEGMENT_SPEED_KMH = 18; // cap per-segment speed at "fast jog" to reject jumps
+  private readonly MAX_ACCURACY_METERS = 25; // hard reject points beyond this
+  private readonly MAX_SEGMENT_SPEED_KMH = 18; // cap per-segment speed at "fast jog"
   private readonly MIN_TIME_BETWEEN_POINTS_MS = 400; // ignore sub-400ms bursts
   private readonly WARMUP_POINTS = 3; // first N points are stored but don't add distance
 

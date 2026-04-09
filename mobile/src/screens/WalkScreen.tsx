@@ -50,6 +50,9 @@ import {
   StepSubscription,
 } from '../utils/nativeStepCounter';
 import { WalkAudioFeedback } from '../utils/audioFeedback';
+import { fetchWeatherAt, CurrentWeather } from '../utils/weather';
+import { startLiveShare, pushLiveUpdate, endLiveShare } from '../utils/liveShare';
+import { Share as RNShare } from 'react-native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -144,6 +147,11 @@ export default function WalkScreen() {
   const stepSubRef = useRef<StepSubscription | null>(null);
   const audioFeedbackRef = useRef(new WalkAudioFeedback('ko'));
   const lastAnnouncedKmRef = useRef(0);
+  const weatherRef = useRef<CurrentWeather | null>(null);
+  // Live walk sharing — token populated when user enables "안전 공유"
+  const [liveToken, setLiveToken] = useState<string | null>(null);
+  const liveTokenRef = useRef<string | null>(null);
+  const liveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const photoBusyRef = useRef(false);
   const spotBusyRef = useRef(false);
 
@@ -507,6 +515,16 @@ export default function WalkScreen() {
   }, []);
 
   const startWalk = () => {
+    // Apply the user's body profile to the engine BEFORE start() so all
+    // calorie and stride-based calculations use real numbers instead of
+    // the "average adult" defaults (65 kg, 0.75 m stride).
+    const profile = useAuthStore.getState().user as any;
+    if (profile) {
+      engineRef.current.setUserProfile({
+        weightKg: profile.weight_kg ?? null,
+        heightCm: profile.height_cm ?? null,
+      });
+    }
     engineRef.current.start();
     lastAnnouncedKmRef.current = 0;
     setState('walking');
@@ -542,6 +560,14 @@ export default function WalkScreen() {
         });
       }
     }).catch(() => {});
+
+    // Capture weather conditions at the start of the walk so the
+    // post-walk summary can show "오늘 12°C 맑음에서 걸었음".
+    if (currentPos) {
+      fetchWeatherAt(currentPos.lat, currentPos.lng, 'ko')
+        .then((w) => { weatherRef.current = w; })
+        .catch(() => {});
+    }
   };
 
   const pauseWalk = () => {
@@ -584,6 +610,8 @@ export default function WalkScreen() {
     if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; }
     stopStepCounter();
     stopBackgroundWalkService().catch(() => {});
+    if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
+    if (liveTokenRef.current) { endLiveShare(liveTokenRef.current); liveTokenRef.current = null; setLiveToken(null); }
     // Clear crash recovery + paused-walk data — walk completed successfully
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
     AsyncStorage.removeItem('walk_paused').catch(() => {});
@@ -614,6 +642,7 @@ export default function WalkScreen() {
     const apiSave = isAuthenticated ? (async () => {
       try {
         const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+        const weather = weatherRef.current;
         const actRes = await api.post('/activities/', {
           trail: trailId || null,
           track_points: trackPoints.length > 0 ? trackPoints : [],
@@ -625,6 +654,11 @@ export default function WalkScreen() {
           distance_km: finalStats.distance.toFixed(2),
           duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
           elevation_gain_m: finalStats.elevationGain,
+          elevation_loss_m: finalStats.elevationLoss,
+          // Weather captured at start (may be null if API key absent)
+          weather_temp_c: weather ? weather.tempC : null,
+          weather_condition: weather ? weather.condition : '',
+          weather_icon: weather ? weather.icon : '',
         });
         activityId = actRes?.data?.id;
         if (activityId) {
@@ -731,6 +765,64 @@ export default function WalkScreen() {
 
   const handleStop = () => setShowStopModal(true);
 
+  /**
+   * Start a Strava-Beacon-style live share — POST to /live-walks/, get
+   * a public URL, kick off a 15s push loop, and open the system share
+   * sheet so the user can text the link to a contact.
+   */
+  const toggleLiveShare = useCallback(async () => {
+    if (liveTokenRef.current) {
+      // Already sharing — confirm cancel
+      Alert.alert(
+        '안전 공유 종료',
+        '실시간 위치 공유를 중단할까요?',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '종료',
+            style: 'destructive',
+            onPress: async () => {
+              const t = liveTokenRef.current;
+              if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
+              if (t) await endLiveShare(t);
+              liveTokenRef.current = null;
+              setLiveToken(null);
+            },
+          },
+        ],
+      );
+      return;
+    }
+    try {
+      const session = await startLiveShare();
+      liveTokenRef.current = session.token;
+      setLiveToken(session.token);
+      // Push an update every 15s so viewers see fresh position
+      liveTimerRef.current = setInterval(async () => {
+        const cur = currentPos;
+        if (!cur || !liveTokenRef.current) return;
+        const s = engineRef.current.getStats();
+        await pushLiveUpdate(liveTokenRef.current, {
+          lat: cur.lat,
+          lng: cur.lng,
+          accuracy: gpsAccuracy ?? null,
+          speedKmh: s.speed,
+          distanceKm: s.distance,
+          durationSeconds: s.duration,
+        });
+      }, 15000);
+      // Immediately share the URL via system share sheet
+      try {
+        await RNShare.share({
+          message: `모루 실시간 위치 공유\n지금 어디 있는지 볼 수 있어요:\n${session.share_url}`,
+          title: '안전 공유',
+        });
+      } catch {}
+    } catch (e: any) {
+      Alert.alert('공유 시작 실패', e?.response?.data?.error || '나중에 다시 시도해주세요.');
+    }
+  }, [currentPos, gpsAccuracy]);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -741,6 +833,8 @@ export default function WalkScreen() {
       stopStepCounter();
       stopBackgroundWalkService().catch(() => {});
       audioFeedbackRef.current.destroy();
+      if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
+      if (liveTokenRef.current) { endLiveShare(liveTokenRef.current); }
     };
   }, []);
 
@@ -872,11 +966,29 @@ export default function WalkScreen() {
               }
             </Text>
           </View>
-          <GpsSignalIndicator
-            accuracy={gpsAccuracy}
-            lastFixAt={gpsLastFixAt}
-            startedAt={gpsStartedAt}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={[
+                styles.liveShareBtn,
+                liveToken && styles.liveShareBtnActive,
+              ]}
+              onPress={toggleLiveShare}
+              activeOpacity={0.8}>
+              <Feather
+                name={liveToken ? 'radio' : 'shield'}
+                size={14}
+                color={liveToken ? '#fff' : 'rgba(255,255,255,0.8)'}
+              />
+              <Text style={[styles.liveShareBtnText, liveToken && { color: '#fff' }]}>
+                {liveToken ? 'LIVE' : '안전'}
+              </Text>
+            </TouchableOpacity>
+            <GpsSignalIndicator
+              accuracy={gpsAccuracy}
+              lastFixAt={gpsLastFixAt}
+              startedAt={gpsStartedAt}
+            />
+          </View>
         </View>
 
         {/* Map overlay buttons removed — using bottom quick actions instead */}
@@ -912,14 +1024,45 @@ export default function WalkScreen() {
           <Text style={styles.distUnit}>km</Text>
         </View>
 
-        {/* Pace */}
+        {/* Pace — current vs avg with delta arrow */}
         <View style={styles.paceRow}>
-          <Text style={styles.paceLabel}>현재 페이스</Text>
-          <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
-          <Text style={styles.paceUnit}>/km</Text>
+          <View style={styles.paceMain}>
+            <Text style={styles.paceLabel}>현재 페이스</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
+              <Text style={styles.paceUnit}>/km</Text>
+            </View>
+          </View>
+          {/* Avg pace + delta indicator */}
+          {stats.distance > 0.1 && stats.pace > 0 && (
+            <View style={styles.paceAvg}>
+              <Text style={styles.paceAvgLabel}>평균</Text>
+              <Text style={styles.paceAvgValue}>{formatPace(stats.pace)}</Text>
+              {stats.currentPace > 0 && (
+                <Text
+                  style={[
+                    styles.paceDelta,
+                    {
+                      color:
+                        stats.currentPace < stats.pace - 0.1
+                          ? '#22C55E'
+                          : stats.currentPace > stats.pace + 0.1
+                          ? '#EF4444'
+                          : 'rgba(255,255,255,0.4)',
+                    },
+                  ]}>
+                  {stats.currentPace < stats.pace - 0.1
+                    ? '▲ 빨라짐'
+                    : stats.currentPace > stats.pace + 0.1
+                    ? '▼ 느려짐'
+                    : '— 평균'}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* 4-stat grid */}
+        {/* Primary 4-stat grid */}
         <View style={styles.grid}>
           <View style={styles.gridItem}>
             <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
@@ -927,13 +1070,13 @@ export default function WalkScreen() {
           </View>
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.calories}</Text>
-            <Text style={styles.gridLabel}>kcal</Text>
+            <Text style={styles.gridVal}>{stats.cadence > 0 ? stats.cadence : '—'}</Text>
+            <Text style={styles.gridLabel}>spm</Text>
           </View>
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.speed.toFixed(1)}</Text>
-            <Text style={styles.gridLabel}>km/h</Text>
+            <Text style={styles.gridVal}>{stats.calories}</Text>
+            <Text style={styles.gridLabel}>kcal</Text>
           </View>
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
@@ -1394,6 +1537,24 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: 'transparent',
   },
+  liveShareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  liveShareBtnActive: {
+    backgroundColor: '#EF4444',
+  },
+  liveShareBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    color: 'rgba(255,255,255,0.8)',
+  },
   mapTopBar: {
     position: 'absolute',
     left: 16,
@@ -1555,13 +1716,18 @@ const styles = StyleSheet.create({
   },
   paceRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     marginBottom: 16,
-    gap: 5,
+    width: '100%',
+  },
+  paceMain: {
+    flex: 1,
   },
   paceLabel: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.35)',
+    marginBottom: 2,
   },
   paceValue: {
     fontSize: 22,
@@ -1571,6 +1737,25 @@ const styles = StyleSheet.create({
   paceUnit: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.25)',
+    marginLeft: 3,
+  },
+  paceAvg: {
+    alignItems: 'flex-end',
+  },
+  paceAvgLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  paceAvgValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  paceDelta: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
   grid: {
     flexDirection: 'row',

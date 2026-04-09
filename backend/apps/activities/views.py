@@ -114,6 +114,47 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
         summary.track_count = agg["count"] or 0
         summary.save()
 
+    @action(detail=False, methods=["get"], permission_classes=[permissions.AllowAny])
+    def leaderboard(self, request):
+        """Top walkers this week (sum of distance over the last 7 days).
+
+        Returns up to 30 entries — the friends UI shows the top 10 by
+        default and the rest can be expanded. No auth required so the
+        community tab can show it to logged-out visitors too.
+        """
+        from datetime import timedelta
+        from django.contrib.auth import get_user_model
+        from django.db.models import Sum
+
+        User = get_user_model()
+        week_ago = timezone.now().date() - timedelta(days=7)
+
+        rows = (
+            DailyActivitySummary.objects.filter(date__gte=week_ago)
+            .values("user_id")
+            .annotate(week_km=Sum("total_distance_km"), week_steps=Sum("total_steps"))
+            .order_by("-week_km")[:30]
+        )
+        user_ids = [r["user_id"] for r in rows]
+        users = {u.id: u for u in User.objects.filter(id__in=user_ids)}
+
+        out = []
+        for rank, r in enumerate(rows, start=1):
+            u = users.get(r["user_id"])
+            if not u:
+                continue
+            out.append({
+                "rank": rank,
+                "user_id": u.id,
+                "nickname": u.nickname,
+                "profile_image": u.profile_image.url if u.profile_image else None,
+                "level": getattr(u, "level", 1),
+                "week_distance_km": float(r["week_km"] or 0),
+                "week_steps": int(r["week_steps"] or 0),
+                "is_me": request.user.is_authenticated and request.user.id == u.id,
+            })
+        return Response({"leaderboard": out, "period": "week"})
+
     @action(detail=False, methods=["get"])
     def my_stats(self, request):
         tracks = ActivityTrack.objects.filter(user=request.user)
@@ -129,13 +170,73 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
         daily = DailyActivitySummary.objects.filter(
             user=request.user, date__gte=week_ago
         ).order_by("date")
+
+        # Streak calculation: walk through DailyActivitySummary records
+        # backwards from today and count consecutive days with at least
+        # one track. This is what Nike Run Club / Apple Activity show.
+        from datetime import timedelta
+        all_summaries = (
+            DailyActivitySummary.objects.filter(user=request.user, track_count__gt=0)
+            .order_by("-date")
+            .values_list("date", flat=True)
+        )
+        summary_set = set(all_summaries)
+        current_streak = 0
+        cursor = today
+        while cursor in summary_set:
+            current_streak += 1
+            cursor = cursor - timedelta(days=1)
+        # Longest streak — single pass through sorted dates
+        longest_streak = 0
+        run = 0
+        prev = None
+        for d in sorted(summary_set):
+            if prev is not None and (d - prev).days == 1:
+                run += 1
+            else:
+                run = 1
+            longest_streak = max(longest_streak, run)
+            prev = d
+
+        # Weekly progress towards user's weekly goal
+        weekly_goal_km = float(getattr(request.user, "weekly_goal_km", 20) or 20)
+        week_distance = sum(float(d.total_distance_km or 0) for d in daily)
+
+        # Earned badges based on cumulative distance milestones.
+        # Idempotent — using get_or_create.
+        from apps.accounts.models import UserBadge
+        total_km = float(agg["total_distance"] or 0)
+        earned_badges = []
+        for threshold, code in [
+            (1, "first_walk"),
+            (10, "walker_10km"),
+            (50, "walker_50km"),
+            (100, "walker_100km"),
+        ]:
+            if total_km >= threshold:
+                badge, created = UserBadge.objects.get_or_create(
+                    user=request.user, badge_type=code,
+                )
+                earned_badges.append({
+                    "code": code,
+                    "earned_at": badge.earned_at.isoformat(),
+                    "newly_earned": created,
+                })
+
         return Response({
-            "total_distance_km": float(agg["total_distance"] or 0),
+            "total_distance_km": total_km,
             "total_steps": agg["total_steps"] or 0,
             "total_duration_minutes": agg["total_duration"] or 0,
             "total_calories": agg["total_calories"] or 0,
             "track_count": agg["total_tracks"] or 0,
             "weekly": DailyActivitySummarySerializer(daily, many=True).data,
+            # Phase 12 additions
+            "current_streak": current_streak,
+            "longest_streak": longest_streak,
+            "weekly_goal_km": weekly_goal_km,
+            "weekly_distance_km": week_distance,
+            "weekly_progress_pct": min(100, round((week_distance / weekly_goal_km) * 100)) if weekly_goal_km > 0 else 0,
+            "earned_badges": earned_badges,
         })
 
 

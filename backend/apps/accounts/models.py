@@ -100,6 +100,18 @@ class CustomUser(AbstractUser):
     companion_count = models.PositiveIntegerField(default=0)
     one_liner = models.CharField(max_length=100, blank=True)
 
+    # Phase 12: physical profile (used by walk engine for calorie/stride accuracy)
+    GENDER_CHOICES = [
+        ("male", "남성"),
+        ("female", "여성"),
+        ("other", "기타"),
+    ]
+    weight_kg = models.PositiveSmallIntegerField(null=True, blank=True, help_text="체중 (kg)")
+    height_cm = models.PositiveSmallIntegerField(null=True, blank=True, help_text="키 (cm)")
+    birth_year = models.PositiveSmallIntegerField(null=True, blank=True, help_text="태어난 해 (예: 1990)")
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, default="")
+    weekly_goal_km = models.DecimalField(max_digits=5, decimal_places=1, default=20, help_text="주간 목표 거리 (km)")
+
     # Push notifications
     fcm_token = models.CharField(max_length=500, blank=True, default='')
 

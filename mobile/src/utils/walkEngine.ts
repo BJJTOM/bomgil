@@ -169,9 +169,7 @@ export class WalkEngine {
   // Distance contributed by the step-counter fallback. Tracked separately
   // so we can show the user how much of their total came from GPS vs. steps.
   private sensorDistance: number = 0;
-  // Average adult stride length. Can be refined later from user height
-  // (stride ≈ height × 0.415 for walking).
-  private readonly STRIDE_LENGTH_M = 0.75;
+  // (Stride length is now stored on `strideLengthM` and updated by setUserProfile.)
   // How long GPS can be silent before we start trusting the step counter.
   // GPS normally fires every 1s, so 5s gives room for a couple of dropped
   // fixes before we decide we're "indoors".
@@ -200,17 +198,22 @@ export class WalkEngine {
   private smoothedElevation: number | null = null;
   private readonly ELE_SMOOTHING_ALPHA = 0.3; // lower = smoother
 
+  // User profile — set via setUserProfile() before calling start().
+  // Defaults are an "average adult" so the engine still works for users
+  // who haven't filled in their profile yet, but accurate calorie and
+  // step-based distance estimates require the real values.
+  private weightKg = 65;
+  private strideLengthM = 0.75;
+
   // Constants (tuned for walking accuracy on Android)
-  private readonly DEFAULT_WEIGHT_KG = 65;
   // 1.2m min distance keeps resolution high enough for slow walking (5 km/h
   // ≈ 1.4m per 1-second GPS fix) while still dropping sub-meter jitter.
-  // Anything larger would silently drop alternating fixes at walking speed.
   private readonly MIN_DISTANCE_FILTER = 0.0012;
-  private readonly ELE_NOISE_FILTER = 2; // meters — GPS elevation is noisy
-  private readonly MAX_ACCURACY_METERS = 25; // hard reject points beyond this
-  private readonly MAX_SEGMENT_SPEED_KMH = 18; // cap per-segment speed at "fast jog"
-  private readonly MIN_TIME_BETWEEN_POINTS_MS = 400; // ignore sub-400ms bursts
-  private readonly WARMUP_POINTS = 3; // first N points are stored but don't add distance
+  private readonly ELE_NOISE_FILTER = 2;
+  private readonly MAX_ACCURACY_METERS = 25;
+  private readonly MAX_SEGMENT_SPEED_KMH = 18;
+  private readonly MIN_TIME_BETWEEN_POINTS_MS = 400;
+  private readonly WARMUP_POINTS = 3;
 
   private warmupCount = 0;
   private rejectedPoints = 0;
@@ -402,7 +405,7 @@ export class WalkEngine {
           const met = getMET(speedKmh);
           const durationHours = timeDiff / 3600;
           this.totalCalories +=
-            met * this.DEFAULT_WEIGHT_KG * durationHours;
+            met * this.weightKg * durationHours;
 
           // Track max speed
           if (speedKmh > this.maxSpeed && speedKmh < 20) {
@@ -660,18 +663,40 @@ export class WalkEngine {
     // This is the critical path for indoor walking.
     if (this.pausedAt > 0) return; // user manually paused
 
-    const stepDistance = (newSteps * this.STRIDE_LENGTH_M) / 1000; // km
+    const stepDistance = (newSteps * this.strideLengthM) / 1000; // km
     this.distance += stepDistance;
     this.sensorDistance += stepDistance;
     this.activeTime += Math.max(0, dtSeconds);
 
     // Also accumulate calories using the same MET approach.
     // Approximate speed from steps per second × stride length.
-    const speedMps = (newSteps / Math.max(dtSeconds, 0.5)) * this.STRIDE_LENGTH_M;
+    const speedMps = (newSteps / Math.max(dtSeconds, 0.5)) * this.strideLengthM;
     const speedKmh = speedMps * 3.6;
     const met = getMET(speedKmh);
     const durationHours = Math.max(dtSeconds, 0) / 3600;
-    this.totalCalories += met * this.DEFAULT_WEIGHT_KG * durationHours;
+    this.totalCalories += met * this.weightKg * durationHours;
+  }
+
+  /**
+   * Apply the user's physical profile so calorie + step-based distance
+   * estimates use real values instead of the "average adult" defaults.
+   *
+   *   weight (kg): used in MET formula `kcal = MET × weight × hours`
+   *   height (cm): converted to stride length via `height × 0.415` m
+   *                (commonly cited walking-stride coefficient)
+   *
+   * Call this BEFORE start() or any time the user updates their profile.
+   * Missing/zero values are ignored — defaults remain in place.
+   */
+  setUserProfile(opts: { weightKg?: number | null; heightCm?: number | null }): void {
+    if (opts.weightKg && opts.weightKg > 20 && opts.weightKg < 300) {
+      this.weightKg = opts.weightKg;
+    }
+    if (opts.heightCm && opts.heightCm > 100 && opts.heightCm < 250) {
+      // Walking-stride coefficient. For running it'd be ~0.45, but we
+      // optimize for the dominant use case (walking).
+      this.strideLengthM = (opts.heightCm * 0.415) / 100;
+    }
   }
 
   /** True when the sensor fallback is actively providing distance (GPS is stale). */

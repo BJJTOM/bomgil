@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getTodayPassiveSteps } from '../utils/nativeStepCounter';
 import {
   View,
   Text,
@@ -142,6 +143,23 @@ export default function HomeScreen() {
   const { isAuthenticated } = useAuthStore();
   const { isDark } = useThemeStore();
   const [showLangModal, setShowLangModal] = useState(false);
+  // Today's passive step count from the device's hardware step counter.
+  // This is what shows on HomeScreen even if the user never opened a walk
+  // recording session — we read TYPE_STEP_COUNTER's cumulative-since-boot
+  // value and subtract a "start of day" baseline stored in AsyncStorage.
+  const [todaySteps, setTodaySteps] = useState<number>(0);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const s = await getTodayPassiveSteps();
+      if (!cancelled) setTodaySteps(s);
+    };
+    refresh();
+    // Refresh every 30 seconds while the screen is mounted so the user
+    // sees the count climbing in close-to-real-time.
+    const id = setInterval(refresh, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
@@ -249,6 +267,22 @@ export default function HomeScreen() {
 
           </LinearGradient>
         </FadeInView>
+
+        {/* Today's passive steps — read continuously from the OS step counter */}
+        {todaySteps > 0 && (
+          <View style={[styles.todayStepsCard, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.08)' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.todayStepsLabel, { color: textTertColor }]}>오늘 걸음</Text>
+              <Text style={[styles.todayStepsValue, { color: textColor }]}>
+                {todaySteps.toLocaleString()}
+                <Text style={[styles.todayStepsUnit, { color: textTertColor }]}>  걸음</Text>
+              </Text>
+            </View>
+            <View style={styles.todayStepsBadge}>
+              <Text style={styles.todayStepsBadgeText}>🚶</Text>
+            </View>
+          </View>
+        )}
 
         {/* Stats bar — overlapping hero bottom */}
         <View style={[styles.statsBar, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}>
@@ -634,6 +668,50 @@ const styles = StyleSheet.create({
   },
 
   // Stats bar — white card overlapping hero bottom
+  todayStepsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginHorizontal: 16,
+    marginTop: -10,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  todayStepsLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    marginBottom: 4,
+  },
+  todayStepsValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  todayStepsUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  todayStepsBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(45,74,46,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayStepsBadgeText: {
+    fontSize: 22,
+  },
   statsBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',

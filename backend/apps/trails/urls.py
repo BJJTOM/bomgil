@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .gpx_import import GpxImportView
 from .og_image import generate_og_image
 from .rankings import (
     CollectionDetailView,
@@ -29,6 +30,8 @@ urlpatterns = [
     path("collections/<int:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
     # Recommendations
     path("recommended/", RecommendedTrailsView.as_view(), name="trail-recommended"),
+    # GPX import
+    path("import-gpx/", GpxImportView.as_view(), name="trail-import-gpx"),
     # OG Image
     path("<int:pk>/og-image/", generate_og_image, name="trail-og-image"),
     # Router

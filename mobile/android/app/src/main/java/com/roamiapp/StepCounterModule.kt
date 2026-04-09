@@ -93,6 +93,46 @@ class StepCounterModule(private val reactCtx: ReactApplicationContext) :
         promise.resolve(sessionSteps)
     }
 
+    /**
+     * Read the device's cumulative step count since last reboot WITHOUT
+     * starting a long-lived subscription. Used by the home-screen
+     * "today's steps" indicator: it reads this value, compares against
+     * a baseline stored in AsyncStorage at the start of the day, and
+     * computes the delta. Cheap and battery-free because the value lives
+     * on the sensor hub.
+     */
+    @ReactMethod
+    fun getCumulativeSteps(promise: Promise) {
+        if (sensorManager == null || stepSensor == null) {
+            val out: WritableMap = Arguments.createMap()
+            out.putBoolean("available", false)
+            out.putInt("steps", 0)
+            promise.resolve(out)
+            return
+        }
+        // One-shot listener: register, capture first value, unregister.
+        val oneShot = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
+                    val value = event.values[0].toLong()
+                    sensorManager.unregisterListener(this)
+                    val out: WritableMap = Arguments.createMap()
+                    out.putBoolean("available", true)
+                    out.putDouble("steps", value.toDouble())
+                    promise.resolve(out)
+                }
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        sensorManager.registerListener(oneShot, stepSensor, SensorManager.SENSOR_DELAY_FASTEST)
+        // Safety: if no event arrives in 3 seconds, fail.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try {
+                sensorManager.unregisterListener(oneShot)
+            } catch (_: Exception) {}
+        }, 3000)
+    }
+
     // Required on newer React Native versions to avoid
     // "NativeEventEmitter warnings" when subscribing from JS.
     @ReactMethod

@@ -19,6 +19,7 @@ import { KmSplit } from '../utils/walkEngine';
 import SplitChart from '../components/SplitChart';
 import ElevationChart from '../components/ElevationChart';
 import { shareGpxFile } from '../utils/gpxExporter';
+import { weatherEmoji } from '../utils/weather';
 
 const { width } = Dimensions.get('window');
 

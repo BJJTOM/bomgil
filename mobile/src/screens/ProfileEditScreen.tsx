@@ -43,15 +43,41 @@ export default function ProfileEditScreen() {
   const [bio, setBio] = useState(user?.bio || '');
   const [walkingStyle, setWalkingStyle] = useState(user?.walking_style || '');
   const [selectedLang, setSelectedLang] = useState<Language>(language);
+  const [weightStr, setWeightStr] = useState(
+    (user as any)?.weight_kg ? String((user as any).weight_kg) : '',
+  );
+  const [heightStr, setHeightStr] = useState(
+    (user as any)?.height_cm ? String((user as any).height_cm) : '',
+  );
+  const [birthYearStr, setBirthYearStr] = useState(
+    (user as any)?.birth_year ? String((user as any).birth_year) : '',
+  );
+  const [gender, setGender] = useState<string>((user as any)?.gender || '');
+  const [weeklyGoalStr, setWeeklyGoalStr] = useState(
+    (user as any)?.weekly_goal_km ? String((user as any).weekly_goal_km) : '20',
+  );
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.patch('/auth/me/', {
+      const payload: any = {
         nickname,
         bio,
         walking_style: walkingStyle || null,
         preferred_language: selectedLang,
-      });
+      };
+      // Only send physical fields if user actually entered something — empty
+      // string would otherwise hit the PositiveSmallIntegerField validator.
+      const w = parseInt(weightStr, 10);
+      const h = parseInt(heightStr, 10);
+      const by = parseInt(birthYearStr, 10);
+      const wg = parseFloat(weeklyGoalStr);
+      if (!isNaN(w) && w > 20 && w < 300) payload.weight_kg = w;
+      if (!isNaN(h) && h > 100 && h < 250) payload.height_cm = h;
+      if (!isNaN(by) && by > 1900 && by < new Date().getFullYear()) payload.birth_year = by;
+      if (gender) payload.gender = gender;
+      if (!isNaN(wg) && wg > 0 && wg < 999) payload.weekly_goal_km = wg;
+
+      const { data } = await api.patch('/auth/me/', payload);
       return data;
     },
     onSuccess: (data) => {
@@ -152,6 +178,109 @@ export default function ProfileEditScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        {/* Physical profile (drives walk-engine accuracy) */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>신체 정보</Text>
+          <Text style={styles.fieldHint}>
+            정확한 칼로리·거리 계산을 위해 입력해주세요. (선택)
+          </Text>
+
+          <View style={styles.physRow}>
+            <View style={styles.physCol}>
+              <Text style={styles.physLabel}>체중</Text>
+              <View style={styles.physInputRow}>
+                <TextInput
+                  style={styles.physInput}
+                  value={weightStr}
+                  onChangeText={(t) => setWeightStr(t.replace(/[^0-9]/g, ''))}
+                  placeholder="65"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <Text style={styles.physUnit}>kg</Text>
+              </View>
+            </View>
+            <View style={styles.physCol}>
+              <Text style={styles.physLabel}>키</Text>
+              <View style={styles.physInputRow}>
+                <TextInput
+                  style={styles.physInput}
+                  value={heightStr}
+                  onChangeText={(t) => setHeightStr(t.replace(/[^0-9]/g, ''))}
+                  placeholder="170"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <Text style={styles.physUnit}>cm</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.physRow}>
+            <View style={styles.physCol}>
+              <Text style={styles.physLabel}>출생연도</Text>
+              <View style={styles.physInputRow}>
+                <TextInput
+                  style={styles.physInput}
+                  value={birthYearStr}
+                  onChangeText={(t) => setBirthYearStr(t.replace(/[^0-9]/g, ''))}
+                  placeholder="1990"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                />
+                <Text style={styles.physUnit}>년</Text>
+              </View>
+            </View>
+            <View style={styles.physCol}>
+              <Text style={styles.physLabel}>주간 목표</Text>
+              <View style={styles.physInputRow}>
+                <TextInput
+                  style={styles.physInput}
+                  value={weeklyGoalStr}
+                  onChangeText={(t) => setWeeklyGoalStr(t.replace(/[^0-9.]/g, ''))}
+                  placeholder="20"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  maxLength={5}
+                />
+                <Text style={styles.physUnit}>km</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={[styles.physRow, { marginTop: 4 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.physLabel}>성별</Text>
+              <View style={styles.genderRow}>
+                {[
+                  { v: 'male', label: '남성' },
+                  { v: 'female', label: '여성' },
+                  { v: 'other', label: '기타' },
+                ].map((g) => (
+                  <TouchableOpacity
+                    key={g.v}
+                    style={[
+                      styles.genderChip,
+                      gender === g.v && styles.genderChipActive,
+                    ]}
+                    onPress={() => setGender(gender === g.v ? '' : g.v)}>
+                    <Text
+                      style={[
+                        styles.genderChipText,
+                        gender === g.v && styles.genderChipTextActive,
+                      ]}>
+                      {g.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
 
@@ -279,6 +408,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: 10,
+  },
+  fieldHint: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: -6,
+    marginBottom: 12,
+  },
+  physRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  physCol: {
+    flex: 1,
+  },
+  physLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    marginBottom: 6,
+  },
+  physInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    paddingHorizontal: 14,
+    height: 46,
+  },
+  physInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  physUnit: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textTertiary,
+    marginLeft: 6,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genderChip: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  genderChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  genderChipTextActive: {
+    color: '#fff',
   },
   textInput: {
     backgroundColor: '#fff',

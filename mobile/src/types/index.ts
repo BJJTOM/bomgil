@@ -212,6 +212,12 @@ export interface TrackPoint {
   time: string | null;
 }
 
+export interface EarnedBadge {
+  code: string;
+  earned_at: string;
+  newly_earned: boolean;
+}
+
 export interface ActivityStats {
   total_distance_km: number;
   total_steps: number;
@@ -226,6 +232,13 @@ export interface ActivityStats {
     total_calories: number;
     track_count: number;
   }[];
+  // Phase 12 — gamification
+  current_streak?: number;
+  longest_streak?: number;
+  weekly_goal_km?: number;
+  weekly_distance_km?: number;
+  weekly_progress_pct?: number;
+  earned_badges?: EarnedBadge[];
 }
 
 export interface PaginatedResponse<T> {

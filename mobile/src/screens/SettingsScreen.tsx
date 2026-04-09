@@ -22,6 +22,7 @@ import { useThemeStore } from '../stores/theme';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { launchImageLibrary } from 'react-native-image-picker';
 import api from '../api/client';
+import { pickAndImportGpx } from '../utils/gpxImport';
 
 const { width } = Dimensions.get('window');
 
@@ -81,6 +82,28 @@ export default function SettingsScreen() {
       Alert.alert('완료', '프로필 사진이 삭제되었습니다.');
     } catch {
       Alert.alert('오류', '삭제에 실패했습니다.');
+    }
+  };
+
+  const handleGpxImport = async () => {
+    try {
+      const result = await pickAndImportGpx();
+      Alert.alert(
+        'GPX 가져오기 완료',
+        `${result.title}\n` +
+          `거리: ${result.distance_km.toFixed(2)} km\n` +
+          `포인트: ${result.point_count}개\n\n` +
+          `임시저장 상태로 추가됐어요. 코스 관리에서 편집하세요.`,
+        [
+          { text: '확인' },
+          { text: '코스 관리', onPress: () => navigation.navigate('MyTrails') },
+        ],
+      );
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || '알 수 없는 오류';
+      // Don't show an alert if the user simply cancelled the picker
+      if (/cancel/i.test(msg) || /취소/.test(msg)) return;
+      Alert.alert('GPX 가져오기 실패', msg);
     }
   };
 
@@ -165,6 +188,7 @@ export default function SettingsScreen() {
             { icon: 'map', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
             { icon: 'heart', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
             { icon: 'download', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
+            { icon: 'upload', label: 'GPX 코스 가져오기', onPress: handleGpxImport },
             ...(!isGuestUser ? [{ icon: 'lock', label: '\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD', onPress: () => navigation.navigate('PasswordChange') }] : []),
             { icon: 'user-x', label: '\uD68C\uC6D0 \uD0C8\uD1F4', onPress: () => {
               Alert.alert(

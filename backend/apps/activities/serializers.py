@@ -30,6 +30,7 @@ class ActivityTrackDetailSerializer(serializers.ModelSerializer):
             "max_elevation_m", "min_elevation_m",
             "avg_speed_kmh", "max_speed_kmh", "avg_pace_min_km",
             "min_lat", "max_lat", "min_lng", "max_lng",
+            "weather_temp_c", "weather_condition", "weather_icon",
             "is_public", "created_at", "updated_at",
         ]
 
@@ -43,7 +44,8 @@ class ActivityTrackCreateSerializer(serializers.ModelSerializer):
             "trail", "story", "source", "gpx_file", "track_points",
             "title", "total_steps", "calories_burned", "is_public",
             "distance_km", "duration_minutes", "started_at", "finished_at",
-            "elevation_gain_m",
+            "elevation_gain_m", "elevation_loss_m",
+            "weather_temp_c", "weather_condition", "weather_icon",
         ]
         extra_kwargs = {
             "trail": {"required": False},
@@ -54,6 +56,10 @@ class ActivityTrackCreateSerializer(serializers.ModelSerializer):
             "started_at": {"required": False},
             "finished_at": {"required": False},
             "elevation_gain_m": {"required": False},
+            "elevation_loss_m": {"required": False},
+            "weather_temp_c": {"required": False},
+            "weather_condition": {"required": False},
+            "weather_icon": {"required": False},
         }
 
     def validate_gpx_file(self, value):

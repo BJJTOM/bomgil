@@ -16,6 +16,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { KmSplit } from '../utils/walkEngine';
+import SplitChart from '../components/SplitChart';
 
 const { width } = Dimensions.get('window');
 
@@ -210,24 +211,14 @@ export default function WalkCompleteScreen() {
           <StatCard icon="flame" value={`${caloriesNum}kcal`} label={'\uCE7C\uB85C\uB9AC'} isDark={isDark} />
         </View>
 
-        {/* Splits Table */}
+        {/* Splits — interactive pace chart */}
         {splits.length > 0 && (
           <View style={[styles.splitsSection, { backgroundColor: cardBg }]}>
             <View style={styles.splitsTitleRow}>
               <Feather name="bar-chart-2" size={16} color={textSecColor} />
-              <Text style={[styles.splitsTitle, { color: textSecColor }]}>{'\uAD6C\uAC04 \uAE30\uB85D'}</Text>
+              <Text style={[styles.splitsTitle, { color: textSecColor }]}>구간 기록</Text>
             </View>
-            {splits.map((split: KmSplit, index: number) => (
-              <View
-                key={split.km}
-                style={[
-                  styles.splitRow,
-                  index < splits.length - 1 && [styles.splitRowBorder, { borderBottomColor: borderColor }],
-                ]}>
-                <Text style={[styles.splitKm, { color: textSecColor }]}>{split.km} km</Text>
-                <Text style={styles.splitPace}>{formatPace(split.pace)}</Text>
-              </View>
-            ))}
+            <SplitChart splits={splits} isDark={isDark} />
           </View>
         )}
 

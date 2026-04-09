@@ -196,9 +196,27 @@ export default function WalkScreen() {
     if (state !== 'countdown') return;
     if (resumeData) return; // skip countdown if resuming
     if (Platform.OS === 'android') {
-      PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ).catch(() => {});
+      (async () => {
+        try {
+          // Step 1: foreground fine location (blocking request)
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          );
+          // Step 2: background location. Android 11+ surfaces a separate
+          // system dialog ("Allow all the time") that the user has to
+          // accept for FGS location tracking to continue while the screen
+          // is off. Without this the foreground service starts fine but
+          // GPS updates go silent the moment the user locks the phone.
+          const bgPerm = (PermissionsAndroid.PERMISSIONS as any)
+            .ACCESS_BACKGROUND_LOCATION;
+          if (bgPerm) {
+            const already = await PermissionsAndroid.check(bgPerm);
+            if (!already) {
+              await PermissionsAndroid.request(bgPerm);
+            }
+          }
+        } catch {}
+      })();
     }
     Geolocation.getCurrentPosition(
       (pos) => {

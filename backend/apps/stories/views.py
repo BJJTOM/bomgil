@@ -18,7 +18,7 @@ class StoryFeedView(generics.ListAPIView):
     serializer_class = WalkStorySerializer
 
     def get_queryset(self):
-        qs = WalkStory.objects.filter(is_public=True).select_related(
+        qs = WalkStory.objects.filter(is_public=True, is_hidden=False).select_related(
             "author", "trail", "walk_plan__trail"
         ).prefetch_related("photos", "companions_tagged", "comments__author")
 
@@ -42,7 +42,7 @@ class StoryDetailView(generics.RetrieveAPIView):
     serializer_class = WalkStorySerializer
 
     def get_queryset(self):
-        qs = WalkStory.objects.select_related(
+        qs = WalkStory.objects.filter(is_hidden=False).select_related(
             "author", "walk_plan__trail"
         ).prefetch_related("photos", "companions_tagged")
         if self.request.user.is_authenticated:
@@ -76,6 +76,7 @@ class TrailStoriesView(generics.ListAPIView):
         return WalkStory.objects.filter(
             walk_plan__trail_id=self.kwargs["trail_id"],
             is_public=True,
+            is_hidden=False,
         ).select_related("author", "walk_plan__trail").prefetch_related("photos")
 
 
@@ -85,7 +86,7 @@ class UserStoriesView(generics.ListAPIView):
     def get_queryset(self):
         from apps.accounts.models import CustomUser
         user = get_object_or_404(CustomUser, nickname=self.kwargs["nickname"])
-        return WalkStory.objects.filter(author=user, is_public=True).select_related(
+        return WalkStory.objects.filter(author=user, is_public=True, is_hidden=False).select_related(
             "author", "walk_plan__trail"
         ).prefetch_related("photos")
 
@@ -153,7 +154,7 @@ class StoryCommentListView(generics.ListAPIView):
 
     def get_queryset(self):
         return StoryComment.objects.filter(
-            story_id=self.kwargs["pk"], parent__isnull=True
+            story_id=self.kwargs["pk"], parent__isnull=True, is_hidden=False,
         ).select_related("author").prefetch_related("replies__author")
 
 

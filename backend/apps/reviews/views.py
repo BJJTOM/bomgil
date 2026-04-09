@@ -39,7 +39,9 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return (
             Review.objects.filter(
-                trail_id=self.kwargs["trail_id"], status="approved"
+                trail_id=self.kwargs["trail_id"],
+                status="approved",
+                is_hidden=False,
             )
             .select_related("author")
             .prefetch_related("images")
@@ -70,7 +72,7 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
 
 
 class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Review.objects.select_related("author").prefetch_related("images")
+    queryset = Review.objects.filter(is_hidden=False).select_related("author").prefetch_related("images")
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 

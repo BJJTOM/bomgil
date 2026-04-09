@@ -32,7 +32,13 @@ class PostListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        qs = Post.objects.select_related('author').prefetch_related('post_images')
+        # Hide admin-moderated posts from public lists. Authors still see
+        # their own hidden posts via the dedicated my-posts endpoint.
+        qs = (
+            Post.objects.filter(is_hidden=False)
+            .select_related('author')
+            .prefetch_related('post_images')
+        )
 
         # 차단된 유저 필터링
         if self.request.user.is_authenticated:
@@ -65,7 +71,8 @@ class PopularPostListView(generics.ListAPIView):
         from datetime import timedelta
         week_ago = timezone.now() - timedelta(days=7)
         return Post.objects.filter(
-            created_at__gte=week_ago
+            created_at__gte=week_ago,
+            is_hidden=False,
         ).select_related('author').prefetch_related('post_images').order_by('-like_count')[:20]
 
 
@@ -212,7 +219,10 @@ class PostCommentListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = PostComment.objects.filter(
-            post_id=self.kwargs['pk'], parent__isnull=True, is_deleted=False
+            post_id=self.kwargs['pk'],
+            parent__isnull=True,
+            is_deleted=False,
+            is_hidden=False,
         ).select_related('author')
 
         if self.request.user.is_authenticated:
@@ -402,7 +412,7 @@ class GroupListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        qs = Group.objects.select_related('owner')
+        qs = Group.objects.filter(is_hidden=False).select_related('owner')
         category = self.request.query_params.get('category')
         if category:
             qs = qs.filter(category=category)
@@ -415,7 +425,7 @@ class GroupListView(generics.ListAPIView):
 class GroupDetailView(generics.RetrieveAPIView):
     serializer_class = GroupDetailSerializer
     permission_classes = [permissions.AllowAny]
-    queryset = Group.objects.select_related('owner').prefetch_related('members__user')
+    queryset = Group.objects.filter(is_hidden=False).select_related('owner').prefetch_related('members__user')
 
 
 class GroupCreateView(generics.CreateAPIView):
@@ -471,7 +481,8 @@ class GroupMessageListView(generics.ListAPIView):
 
     def get_queryset(self):
         return GroupMessage.objects.filter(
-            group_id=self.kwargs['pk']
+            group_id=self.kwargs['pk'],
+            is_hidden=False,
         ).select_related('sender').order_by('-created_at')[:100]
 
 

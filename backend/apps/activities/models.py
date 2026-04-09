@@ -48,6 +48,10 @@ class ActivityTrack(models.Model):
     weather_icon = models.CharField(max_length=10, blank=True, default="", help_text="OpenWeatherMap 아이콘 코드")
 
     is_public = models.BooleanField(default=True)
+    # Admin moderation — hide without deleting
+    is_hidden = models.BooleanField(default=False, db_index=True)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    hidden_reason = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -26,7 +26,7 @@ class SpotImageUploadThrottle(UserRateThrottle):
 
 
 class SpotViewSet(viewsets.ModelViewSet):
-    queryset = Spot.objects.select_related("trail", "author").prefetch_related("images")
+    queryset = Spot.objects.filter(is_hidden=False).select_related("trail", "author").prefetch_related("images")
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     filterset_fields = ["trail"]
 

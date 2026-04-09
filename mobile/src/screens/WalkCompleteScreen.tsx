@@ -17,6 +17,8 @@ import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { KmSplit } from '../utils/walkEngine';
 import SplitChart from '../components/SplitChart';
+import ElevationChart from '../components/ElevationChart';
+import { shareGpxFile } from '../utils/gpxExporter';
 
 const { width } = Dimensions.get('window');
 
@@ -222,6 +224,23 @@ export default function WalkCompleteScreen() {
           </View>
         )}
 
+        {/* Elevation profile — only shown when we have actual altitude data */}
+        {Array.isArray(trackPoints) &&
+          trackPoints.some((p: any) => typeof p?.ele === 'number') && (
+          <View style={[styles.splitsSection, { backgroundColor: cardBg }]}>
+            <View style={styles.splitsTitleRow}>
+              <Feather name="trending-up" size={16} color={textSecColor} />
+              <Text style={[styles.splitsTitle, { color: textSecColor }]}>고도</Text>
+            </View>
+            <ElevationChart
+              trackPoints={trackPoints}
+              isDark={isDark}
+              elevationGain={parseFloat(elevationGain) || 0}
+              elevationLoss={parseFloat(elevationLoss) || 0}
+            />
+          </View>
+        )}
+
         {/* Tagged Photos */}
         {taggedPhotos.length > 0 && (
           <View style={styles.photosSection}>
@@ -283,16 +302,31 @@ export default function WalkCompleteScreen() {
               })}
               activeOpacity={0.85}>
               <Feather name="file-text" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{'\uD65C\uB3D9 \uC0C1\uC138'}</Text>
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>활동 상세</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
-              onPress={() => navigation.popToTop()}
+              onPress={() => {
+                const pts = Array.isArray(trackPoints) ? trackPoints : [];
+                shareGpxFile(pts, {
+                  name: `${dateStr} 도보`,
+                  startTime: new Date(Date.now() - totalSeconds * 1000).toISOString(),
+                  distanceKm: distNum,
+                  durationMinutes: totalMinutes,
+                });
+              }}
               activeOpacity={0.85}>
-              <Feather name="home" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{'\uD648\uC73C\uB85C'}</Text>
+              <Feather name="download" size={16} color={textSecColor} style={{ marginRight: 6 }} />
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>GPX 내보내기</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6', marginTop: 8, alignSelf: 'center', width: '100%' }]}
+            onPress={() => navigation.popToTop()}
+            activeOpacity={0.85}>
+            <Feather name="home" size={16} color={textSecColor} style={{ marginRight: 6 }} />
+            <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>홈으로</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>

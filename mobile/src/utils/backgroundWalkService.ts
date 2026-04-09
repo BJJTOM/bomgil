@@ -60,6 +60,14 @@ const baseOptions = {
   },
   color: '#2D4A2E',
   linkingURI: 'moru://walk',
+  // Android 14+ (targetSdkVersion 34+) requires every foreground service
+  // to be started with an explicit type. Without this the library calls
+  // Service.startForeground with type=NONE and the OS throws
+  // InvalidForegroundServiceTypeException. Passing "location" here tells
+  // the library to forward FOREGROUND_SERVICE_TYPE_LOCATION, which the
+  // manifest override at android/app/src/main/AndroidManifest.xml also
+  // declares.
+  foregroundServiceType: ['location'],
   parameters: {
     delay: 5000,
   },

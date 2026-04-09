@@ -157,6 +157,25 @@ export class WalkEngine {
   private activeTime = 0; // seconds
   private startTime = 0;
   private lastActiveTime = 0;
+
+  // --- Sensor-based step counting (for indoor / no-GPS fallback) ---
+  // The native StepCounterModule feeds us the cumulative step count for
+  // the current walk session. We track the previous value so we can
+  // convert deltas into distance when GPS is unavailable.
+  private sensorStepsPrev: number = -1;
+  private sensorStepsTotal: number = 0;
+  private lastGpsAcceptedAt: number = 0;
+  private lastSensorTickAt: number = 0;
+  // Distance contributed by the step-counter fallback. Tracked separately
+  // so we can show the user how much of their total came from GPS vs. steps.
+  private sensorDistance: number = 0;
+  // Average adult stride length. Can be refined later from user height
+  // (stride ≈ height × 0.415 for walking).
+  private readonly STRIDE_LENGTH_M = 0.75;
+  // How long GPS can be silent before we start trusting the step counter.
+  // GPS normally fires every 1s, so 5s gives room for a couple of dropped
+  // fixes before we decide we're "indoors".
+  private readonly GPS_STALE_MS = 5000;
   private elevationGain = 0;
   private elevationLoss = 0;
   private maxElevation = -Infinity;
@@ -341,8 +360,12 @@ export class WalkEngine {
         this.warmupCount += 1;
         this.trackPoints.push(point);
         this.lastBearing = bearing(prev.lat, prev.lng, filtered.lat, filtered.lng);
+        this.lastGpsAcceptedAt = timestamp;
         return point;
       }
+
+      // Mark GPS as active for sensor fusion decisions.
+      this.lastGpsAcceptedAt = timestamp;
 
       // Calculate speed
       const timeDiff =
@@ -588,10 +611,83 @@ export class WalkEngine {
     this.pausedAt = 0;
     this.totalPausedTime = 0;
     this.durationOffset = 0;
+    this.sensorStepsPrev = -1;
+    this.sensorStepsTotal = 0;
+    this.lastGpsAcceptedAt = 0;
+    this.lastSensorTickAt = 0;
+    this.sensorDistance = 0;
+  }
+
+  /**
+   * Called by WalkScreen every time the native StepCounter fires.
+   * `sensorSteps` is the session-relative count (0 at walk start, monotonic).
+   *
+   * When GPS is healthy, this only overrides the step count (more accurate
+   * than the pace-derived estimate). When GPS has been stale for over 5
+   * seconds, this ALSO contributes distance via stride × steps — which is
+   * how Galaxy Watch / Nike Run keep tracking indoors.
+   */
+  updateFromSensorSteps(sensorSteps: number, now: number = Date.now()): void {
+    // Always use real sensor steps instead of the pace-based estimate.
+    // The hardware counter is accurate to ±2% for walking.
+    this.sensorStepsTotal = sensorSteps;
+    this.totalSteps = sensorSteps;
+
+    if (this.sensorStepsPrev < 0) {
+      // First event — just record and return.
+      this.sensorStepsPrev = sensorSteps;
+      this.lastSensorTickAt = now;
+      return;
+    }
+
+    const newSteps = sensorSteps - this.sensorStepsPrev;
+    this.sensorStepsPrev = sensorSteps;
+    if (newSteps <= 0) return;
+
+    // Compute time delta for active-time tracking.
+    const dtSeconds = this.lastSensorTickAt > 0
+      ? (now - this.lastSensorTickAt) / 1000
+      : 0;
+    this.lastSensorTickAt = now;
+
+    // If GPS is still alive, we trust GPS for distance and only use sensor
+    // for step count. "Alive" means we accepted a GPS fix recently.
+    const gpsAlive = this.lastGpsAcceptedAt > 0 &&
+      (now - this.lastGpsAcceptedAt) < this.GPS_STALE_MS;
+    if (gpsAlive) return;
+
+    // --- GPS is stale → fall back to step-based distance ---
+    // This is the critical path for indoor walking.
+    if (this.pausedAt > 0) return; // user manually paused
+
+    const stepDistance = (newSteps * this.STRIDE_LENGTH_M) / 1000; // km
+    this.distance += stepDistance;
+    this.sensorDistance += stepDistance;
+    this.activeTime += Math.max(0, dtSeconds);
+
+    // Also accumulate calories using the same MET approach.
+    // Approximate speed from steps per second × stride length.
+    const speedMps = (newSteps / Math.max(dtSeconds, 0.5)) * this.STRIDE_LENGTH_M;
+    const speedKmh = speedMps * 3.6;
+    const met = getMET(speedKmh);
+    const durationHours = Math.max(dtSeconds, 0) / 3600;
+    this.totalCalories += met * this.DEFAULT_WEIGHT_KG * durationHours;
+  }
+
+  /** True when the sensor fallback is actively providing distance (GPS is stale). */
+  isUsingSensorFallback(): boolean {
+    const now = Date.now();
+    return this.lastGpsAcceptedAt === 0 ||
+      (now - this.lastGpsAcceptedAt) >= this.GPS_STALE_MS;
   }
 
   /** Diagnostics — number of GPS points rejected by pre-filters this session */
   getRejectedCount(): number {
     return this.rejectedPoints;
+  }
+
+  /** Distance contributed by the step-counter fallback (km). */
+  getSensorDistance(): number {
+    return this.sensorDistance;
   }
 }

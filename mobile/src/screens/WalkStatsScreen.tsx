@@ -14,6 +14,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { FadeInView } from '../components/FadeInView';
+import StreakCard from '../components/StreakCard';
 import { ActivityStats, PaginatedResponse, ActivityTrack } from '../types';
 
 const DAILY_GOAL_KM = 5;
@@ -158,6 +159,13 @@ export default function WalkStatsScreen() {
             <Text style={styles.bigCardLabel}>이번 달 거리</Text>
             <Text style={styles.bigCardValue}>{monthlyKm.toFixed(1)}</Text>
             <Text style={styles.bigCardUnit}>km</Text>
+          </View>
+        </FadeInView>
+
+        {/* Streak / weekly goal / badges (moved out of ActivityScreen) */}
+        <FadeInView delay={50}>
+          <View style={{ marginHorizontal: 16 }}>
+            <StreakCard stats={stats} isDark={false} />
           </View>
         </FadeInView>
 

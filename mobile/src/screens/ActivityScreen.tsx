@@ -21,8 +21,6 @@ import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useThemeStore } from '../stores/theme';
 import { FadeInView } from '../components/FadeInView';
-import StreakCard from '../components/StreakCard';
-import LeaderboardCard from '../components/LeaderboardCard';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -263,15 +261,6 @@ export default function ActivityScreen() {
           </View>
         </FadeInView>
 
-        {/* ===== STREAK / GAMIFICATION CARD ===== */}
-        <FadeInView delay={75}>
-          <StreakCard stats={stats} isDark={isDark} />
-        </FadeInView>
-
-        {/* ===== WEEKLY LEADERBOARD ===== */}
-        <FadeInView delay={100}>
-          <LeaderboardCard isDark={isDark} limit={5} />
-        </FadeInView>
 
         {/* ===== PAUSED WALK RESUME ===== */}
         {pausedWalk && (

@@ -189,6 +189,20 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Featured series for home screen "시리즈 도전" section.
+  const { data: featuredSeries } = useQuery({
+    queryKey: ['trail-series', 'featured'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get('/trails/series/featured/');
+        return (data ?? []) as any[];
+      } catch {
+        return [] as any[];
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar barStyle="light-content" translucent={true} />
@@ -286,6 +300,72 @@ export default function HomeScreen() {
             </View>
           </View>
         </FadeInView>
+
+        {/* Series Challenges — multi-segment progression */}
+        {featuredSeries && featuredSeries.length > 0 && (
+          <FadeInView delay={140}>
+            <View style={styles.trailSection}>
+              <View style={styles.trailHeader}>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    {language === 'ko' ? '시리즈 도전' : language === 'ja' ? 'シリーズチャレンジ' : language === 'zh' ? '系列挑战' : 'Series Challenges'}
+                  </Text>
+                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                    {language === 'ko' ? '장거리 코스를 구간별로 완주' : language === 'ja' ? '長距離コースを区間ごとに踏破' : language === 'zh' ? '分段完成长距离路线' : 'Multi-segment completion'}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('TrailSeriesList')}>
+                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={featuredSeries}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.trailScroll}
+                keyExtractor={(item: any) => String(item.id)}
+                renderItem={({ item }: any) => {
+                  const pct = Math.min(100, item.progress_pct || 0);
+                  return (
+                    <TouchableOpacity
+                      style={[styles.seriesHomeCard, { backgroundColor: cardBg }]}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        navigation.navigate('TrailSeriesDetail', { slug: item.slug })
+                      }>
+                      <View style={styles.seriesHomeEmojiWrap}>
+                        <Text style={styles.seriesHomeEmoji}>
+                          {item.accent_emoji || '🚶'}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[styles.seriesHomeTitle, { color: textColor }]}
+                        numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text
+                        style={[styles.seriesHomeSub, { color: textTertColor }]}
+                        numberOfLines={1}>
+                        {item.subtitle || item.region || ''}
+                      </Text>
+                      <View style={styles.seriesHomeProgressTrack}>
+                        <View
+                          style={[
+                            styles.seriesHomeProgressFill,
+                            { width: `${pct}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.seriesHomeProgressLabel, { color: textTertColor }]}>
+                        {item.progress_completed}/{item.progress_total} · {pct}%
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          </FadeInView>
+        )}
 
         {/* Today's Courses — curated official trails */}
         {todayTrails && todayTrails.length > 0 && (
@@ -694,6 +774,54 @@ const styles = StyleSheet.create({
   },
   trailCardWrap: {
     width: 260,
+  },
+  seriesHomeCard: {
+    width: 240,
+    padding: 16,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginRight: 12,
+  },
+  seriesHomeEmojiWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F0F7F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  seriesHomeEmoji: {
+    fontSize: 22,
+  },
+  seriesHomeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  seriesHomeSub: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  seriesHomeProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EEF1F4',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  seriesHomeProgressFill: {
+    height: '100%',
+    backgroundColor: '#2D4A2E',
+  },
+  seriesHomeProgressLabel: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   skeletonCard: {
     width: 260,

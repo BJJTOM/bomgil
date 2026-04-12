@@ -173,10 +173,24 @@ function WalkCompleteInner() {
 
   const handleShare = async () => {
     try {
-      const shareText = `\uC624\uB298 \uBAA8\uB8E8\uC5D0\uC11C ${distNum.toFixed(2)}km\uB97C \uAC78\uC5C8\uC5B4\uC694! \uD83D\uDEB6 ${totalMinutes}\uBD84 | ${stepsNum.toLocaleString()}\uAC78\uC74C | ${caloriesNum}kcal #\uBAA8\uB8E8 #\uAC77\uAE30`;
-      await Share.share({
-        message: shareText,
-      });
+      const base = `오늘 모루에서 ${distNum.toFixed(2)}km를 걸었어요! 🚶 ${totalMinutes}분 | ${stepsNum.toLocaleString()}걸음 | ${caloriesNum}kcal`;
+      const tags = '#모루 #걷기';
+      const shareText = base + ' ' + tags;
+      await Share.share({ message: shareText });
+    } catch {}
+  };
+
+  // Completion share — includes matched trail title + stats so
+  // social posts carry real context, not just numbers.
+  const handleShareCompletion = async (match: any) => {
+    try {
+      const stamp = match.already_completed ? '또 완주했어요' : '코스 완주 성공';
+      const text =
+        `✅ ${stamp}: ${match.title}\n` +
+        `📏 ${distNum.toFixed(2)}km · ⏱ ${totalMinutes}분 · 🔥 ${caloriesNum}kcal\n` +
+        `📅 ${dateStr}\n` +
+        `#모루 #걷기 #${(match.title || '').replace(/\s/g, '')}`;
+      await Share.share({ message: text });
     } catch {}
   };
 
@@ -242,37 +256,49 @@ function WalkCompleteInner() {
         </View>
 
         {/* Completion Card — only shown if the backend matched this walk
-            to one or more curated trails. Tapping opens the trail detail. */}
+            to one or more curated trails. Tapping opens the trail detail;
+            the share button sends a text card so users can flex on
+            Instagram / Kakao without waiting on image generation. */}
         {matchedTrails.length > 0 && (
           <View style={styles.completionCardWrap}>
             {matchedTrails.map((m: any, idx: number) => (
-              <TouchableOpacity
+              <View
                 key={`${m.trail_id}-${idx}`}
-                style={[styles.completionCard, { backgroundColor: cardBg }]}
-                activeOpacity={0.85}
-                onPress={() => {
-                  try {
-                    (navigation as any).navigate('TrailDetail', { id: m.trail_id });
-                  } catch {}
-                }}>
-                <View style={styles.completionIconCircle}>
-                  <Feather name="award" size={24} color="#fff" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.completionTitle, { color: textColor }]} numberOfLines={1}>
-                    {m.already_completed ? '또 완주했어요!' : '코스 완주 성공!'}
-                  </Text>
-                  <Text style={[styles.completionSub, { color: textSecColor }]} numberOfLines={1}>
-                    {m.title}
-                  </Text>
-                  {!m.already_completed && typeof m.coverage === 'number' && (
-                    <Text style={[styles.completionCoverage, { color: textTertColor }]}>
-                      이 코스의 {Math.round(m.coverage * 100)}% 커버
+                style={[styles.completionCard, { backgroundColor: cardBg }]}>
+                <TouchableOpacity
+                  style={styles.completionCardBody}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    try {
+                      (navigation as any).navigate('TrailDetail', { id: m.trail_id });
+                    } catch {}
+                  }}>
+                  <View style={styles.completionIconCircle}>
+                    <Feather name="award" size={24} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.completionTitle, { color: textColor }]} numberOfLines={1}>
+                      {m.already_completed ? '또 완주했어요!' : '코스 완주 성공!'}
                     </Text>
-                  )}
-                </View>
-                <Feather name="chevron-right" size={20} color={textTertColor} />
-              </TouchableOpacity>
+                    <Text style={[styles.completionSub, { color: textSecColor }]} numberOfLines={1}>
+                      {m.title}
+                    </Text>
+                    {!m.already_completed && typeof m.coverage === 'number' && (
+                      <Text style={[styles.completionCoverage, { color: textTertColor }]}>
+                        이 코스의 {Math.round(m.coverage * 100)}% 커버
+                      </Text>
+                    )}
+                  </View>
+                  <Feather name="chevron-right" size={20} color={textTertColor} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.completionShareBtn}
+                  activeOpacity={0.85}
+                  onPress={() => handleShareCompletion(m)}>
+                  <Feather name="share-2" size={14} color="#fff" />
+                  <Text style={styles.completionShareBtnText}>완주 자랑하기</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}
@@ -591,8 +617,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   completionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
     borderRadius: 16,
     borderWidth: 1.5,
@@ -602,6 +626,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 4,
+  },
+  completionCardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completionShareBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#15803D',
+    gap: 6,
+  },
+  completionShareBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   completionIconCircle: {
     width: 48,

@@ -73,6 +73,31 @@ export interface Trail {
   source?: string;
 }
 
+export interface TrailSeries {
+  id: number;
+  slug: string;
+  title: string;
+  title_en?: string;
+  subtitle?: string;
+  description?: string;
+  region?: string;
+  cover_image?: string;
+  accent_emoji?: string;
+  is_featured?: boolean;
+  progress_completed: number;
+  progress_total: number;
+  progress_pct: number;
+  segments?: TrailSeriesSegment[];
+}
+
+export interface TrailSeriesSegment {
+  id: number;
+  order: number;
+  segment_label: string;
+  trail: Trail;
+  is_completed: boolean;
+}
+
 export type TrailType =
   | 'urban'
   | 'coastal'

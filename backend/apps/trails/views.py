@@ -11,7 +11,14 @@ from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
 from config.validators import validate_image_file
 
-from .models import Tag, Trail, TrailBookmark, TrailCompletion, TrailLike
+from .models import (
+    Tag,
+    Trail,
+    TrailBookmark,
+    TrailCompletion,
+    TrailLike,
+    TrailSeries,
+)
 from .serializers import (
     TagSerializer,
     TrailBookmarkSerializer,
@@ -19,6 +26,8 @@ from .serializers import (
     TrailCreateSerializer,
     TrailDetailSerializer,
     TrailListSerializer,
+    TrailSeriesDetailSerializer,
+    TrailSeriesListSerializer,
 )
 
 
@@ -267,6 +276,34 @@ class MyCompletionsView(generics.ListAPIView):
             .select_related("trail", "trail__author")
             .prefetch_related("trail__tags")
         )
+
+
+class TrailSeriesViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only series catalog.
+
+    Series are fully curated by admins; users never create them, so
+    we inherit from ReadOnlyModelViewSet (list + retrieve only).
+    Retrieval is by slug (e.g. /trail-series/jeju-olle/) for stable
+    URLs that survive reseeds.
+    """
+    permission_classes = [permissions.AllowAny]
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        return TrailSeries.objects.prefetch_related("trails").all()
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return TrailSeriesDetailSerializer
+        return TrailSeriesListSerializer
+
+    @action(detail=False, methods=["get"])
+    def featured(self, request):
+        qs = self.get_queryset().filter(is_featured=True)
+        serializer = TrailSeriesListSerializer(
+            qs, many=True, context={"request": request},
+        )
+        return Response(serializer.data)
 
 
 class TagListView(generics.ListAPIView):

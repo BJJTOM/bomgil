@@ -5,7 +5,15 @@ from django.utils.html import format_html
 from django.urls import reverse
 
 from .collections import Collection
-from .models import Tag, Trail, TrailBookmark, TrailCompletion, TrailLike
+from .models import (
+    Tag,
+    Trail,
+    TrailBookmark,
+    TrailCompletion,
+    TrailLike,
+    TrailSeries,
+    TrailSeriesTrail,
+)
 
 
 @admin.action(description="🚫 선택한 코스 숨김")
@@ -159,3 +167,27 @@ class CollectionAdmin(admin.ModelAdmin):
     filter_horizontal = ["trails"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
+
+
+class TrailSeriesTrailInline(admin.TabularInline):
+    model = TrailSeriesTrail
+    extra = 1
+    fields = ["order", "segment_label", "trail"]
+    autocomplete_fields = ["trail"]
+    ordering = ["order"]
+
+
+@admin.register(TrailSeries)
+class TrailSeriesAdmin(admin.ModelAdmin):
+    list_display = [
+        "title", "slug", "region", "is_featured", "sort_order", "trail_count",
+    ]
+    list_filter = ["is_featured", "region"]
+    search_fields = ["title", "title_en", "slug", "subtitle", "description"]
+    prepopulated_fields = {"slug": ("title_en",)}
+    ordering = ["sort_order", "title"]
+    inlines = [TrailSeriesTrailInline]
+
+    @admin.display(description="구간 수")
+    def trail_count(self, obj):
+        return obj.trails.count()

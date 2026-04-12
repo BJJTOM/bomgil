@@ -17,10 +17,12 @@ from .views import (
     MyCompletionsView,
     RecommendedTrailsView,
     TagListView,
+    TrailSeriesViewSet,
     TrailViewSet,
 )
 
 router = DefaultRouter()
+router.register("series", TrailSeriesViewSet, basename="trail-series")
 router.register("", TrailViewSet, basename="trail")
 
 urlpatterns = [

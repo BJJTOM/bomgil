@@ -163,6 +163,76 @@ class TrailBookmark(models.Model):
         ]
 
 
+class TrailSeries(models.Model):
+    """A curated multi-segment trail (e.g. 제주올레, 코리아둘레길).
+
+    Unlike a single Trail, a series groups several trails into an
+    ordered sequence with its own identity — a long-distance
+    "completion challenge" that users can chip away at over weeks or
+    months. Progress is computed per user from TrailCompletion rows
+    against the member trails.
+
+    Slug is a stable URL identifier used on the web landing pages
+    (/series/jeju-olle, /series/seoul-city). Region is the primary
+    geographic bucket; can be empty for cross-region series.
+    """
+
+    slug = models.SlugField(max_length=60, unique=True, db_index=True)
+    title = models.CharField(max_length=100)
+    title_en = models.CharField(max_length=100, blank=True, default="")
+    subtitle = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField(max_length=1500, blank=True, default="")
+    region = models.CharField(max_length=40, blank=True, default="")
+    cover_image = models.URLField(max_length=500, blank=True, default="")
+    accent_emoji = models.CharField(max_length=4, blank=True, default="")
+    # Display order on lists; lower = earlier
+    sort_order = models.PositiveIntegerField(default=100, db_index=True)
+    is_featured = models.BooleanField(default=False, db_index=True)
+    trails = models.ManyToManyField(
+        "Trail",
+        through="TrailSeriesTrail",
+        related_name="series",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "-created_at"]
+        verbose_name = "트레일 시리즈"
+        verbose_name_plural = "트레일 시리즈"
+
+    def __str__(self):
+        return self.title
+
+
+class TrailSeriesTrail(models.Model):
+    """Through model: one trail's position within a series."""
+
+    series = models.ForeignKey(
+        TrailSeries, on_delete=models.CASCADE, related_name="memberships",
+    )
+    trail = models.ForeignKey(
+        "Trail", on_delete=models.CASCADE, related_name="series_memberships",
+    )
+    order = models.PositiveIntegerField()
+    segment_label = models.CharField(
+        max_length=60, blank=True, default="",
+        help_text="e.g. '1코스' or 'Day 2'",
+    )
+
+    class Meta:
+        ordering = ["series", "order"]
+        unique_together = ["series", "trail"]
+        verbose_name = "시리즈 구간"
+        verbose_name_plural = "시리즈 구간"
+        indexes = [
+            models.Index(fields=["series", "order"]),
+        ]
+
+    def __str__(self):
+        return f"{self.series.title} · {self.segment_label or self.trail.title}"
+
+
 class TrailCompletion(models.Model):
     """A record that a user completed a specific trail.
 

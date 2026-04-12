@@ -16,6 +16,7 @@ export function Navbar() {
 
   const NAV_LINKS = [
     { href: "/explore", label: t("nav.explore") },
+    { href: "/series", label: language === "ko" ? "시리즈" : language === "ja" ? "シリーズ" : language === "zh" ? "系列" : "Series" },
     { href: "/community", label: language === "ko" ? "커뮤니티" : language === "ja" ? "コミュニティ" : language === "zh" ? "社区" : "Community" },
     { href: "/activities", label: language === "ko" ? "내 기록" : language === "ja" ? "マイ記録" : language === "zh" ? "我的记录" : "My Records" },
     { href: "/rankings", label: language === "ko" ? "랭킹" : language === "ja" ? "ランキング" : language === "zh" ? "排行榜" : "Rankings" },

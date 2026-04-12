@@ -71,6 +71,18 @@ class ActivityTrackCreateSerializer(serializers.ModelSerializer):
         return value
 
 
+class ActivityTrackUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityTrack
+        fields = [
+            "title", "track_points", "is_public",
+            "total_steps", "calories_burned",
+            "distance_km", "duration_minutes",
+            "elevation_gain_m", "elevation_loss_m",
+        ]
+        extra_kwargs = {f: {"required": False} for f in fields}
+
+
 class DailyActivitySummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = DailyActivitySummary

@@ -8,8 +8,6 @@ import {
   RefreshControl,
   StatusBar,
   Alert,
-  Animated,
-  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,8 +15,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
+import { useT } from '../i18n';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import { navParamCache } from '../utils/navParamCache';
 import { useThemeStore } from '../stores/theme';
 import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
@@ -34,44 +34,21 @@ const SOURCE_LABELS: Record<string, { label: string; icon: string; color: string
   strava: { label: 'Strava', icon: '\uD83C\uDFC3', color: '#FB923C' },
 };
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour <= 11) return '좋은 아침이에요! 오늘도 걸어볼까요?';
-  if (hour >= 12 && hour <= 17) return '산책하기 좋은 날이에요!';
-  if (hour >= 18 && hour <= 23) return '저녁 산책은 어떠세요?';
-  return '오늘도 수고했어요!';
-}
-
-// Pulse animation for CTA button
-function PulseButton({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
-  const scale = React.useRef(new Animated.Value(1)).current;
-
-  React.useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1.02, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [scale]);
-
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity style={styles.startWalkBtnLarge} onPress={onPress} activeOpacity={0.85}>
-        {children}
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const { isDark } = useThemeStore();
+  const t = useT();
+
+  const getGreeting = (): string => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour <= 11) return t.activity.greetingMorning;
+    if (hour >= 12 && hour <= 17) return t.activity.greetingAfternoon;
+    if (hour >= 18 && hour <= 23) return t.activity.greetingEvening;
+    return t.activity.greetingNight;
+  };
   const bg = isDark ? '#0a0a0a' : '#F8F9FB';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
@@ -119,7 +96,7 @@ export default function ActivityScreen() {
     if (!minutes) return '-';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
   const now = new Date();
@@ -174,22 +151,22 @@ export default function ActivityScreen() {
 
   const handleDelete = (activity: ActivityTrack) => {
     Alert.alert(
-      '활동 삭제',
-      '이 활동을 삭제하시겠습니까?',
+      t.activity.deleteTitle,
+      t.activity.deleteConfirm,
       [
-        { text: '취소', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: '삭제',
+          text: t.common.delete,
           style: 'destructive',
           onPress: async () => {
             try {
               await api.delete(`/activities/${activity.id}/`);
               queryClient.invalidateQueries({ queryKey: ['activities'] });
               queryClient.invalidateQueries({ queryKey: ['activity-stats'] });
-              Alert.alert('완료', '활동이 삭제되었습니다.');
+              Alert.alert(t.common.success, t.activity.deleteSuccess);
             } catch (err: any) {
-              const msg = err?.response?.data?.detail || err?.response?.status || '삭제에 실패했습니다.';
-              Alert.alert('오류', String(msg));
+              const msg = err?.response?.data?.detail || err?.response?.status || t.activity.deleteFailed;
+              Alert.alert(t.common.error, String(msg));
             }
           },
         },
@@ -201,18 +178,18 @@ export default function ActivityScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
         <View style={styles.headerSimple}>
-          <Text style={[styles.headerTitle, { color: textColor }]}>{'활동 기록'}</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]}>{t.activity.title}</Text>
         </View>
         <View style={styles.loginPrompt}>
           <Text style={styles.loginPromptIcon}>{'\uD83E\uDDB6'}</Text>
           <Text style={[styles.loginPromptTitle, { color: textSecColor }]}>
-            {'로그인하고 걸기 기록을 시작하세요'}
+{t.activity.loginPrompt}
           </Text>
           <TouchableOpacity
             style={styles.loginPromptBtn}
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.85}>
-            <Text style={styles.loginPromptBtnText}>{'로그인'}</Text>
+            <Text style={styles.loginPromptBtnText}>{t.activity.login}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -249,7 +226,7 @@ export default function ActivityScreen() {
               <View style={styles.statSubItem}>
                 <Feather name="trending-up" size={14} color="#60A5FA" />
                 <Text style={[styles.statSubValue, { color: textColor }]}>{todayStats.steps.toLocaleString()}</Text>
-                <Text style={[styles.statSubLabel, { color: textTertColor }]}>걸음</Text>
+                <Text style={[styles.statSubLabel, { color: textTertColor }]}>{t.walk.steps}</Text>
               </View>
               <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
               <View style={styles.statSubItem}>
@@ -267,25 +244,28 @@ export default function ActivityScreen() {
           <FadeInView delay={100}>
             <TouchableOpacity
               style={[styles.resumeWalkCard, { backgroundColor: cardBg }]}
-              onPress={() => navigation.navigate('Walk', { resumeData: pausedWalk })}
+              onPress={() => {
+                const cacheKey = navParamCache.put({ resumeData: pausedWalk });
+                navigation.navigate('Walk', { _resumeCacheKey: cacheKey });
+              }}
               activeOpacity={0.8}>
               <View style={styles.resumeIconCircle}>
                 <Feather name="play" size={18} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.resumeTitle, { color: textColor }]}>저장된 걷기 이어하기</Text>
+                <Text style={[styles.resumeTitle, { color: textColor }]}>{t.activity.resumeWalk}</Text>
                 <Text style={[styles.resumeMeta, { color: textTertColor }]}>
-                  {pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.distance || 0), 0).toFixed(1)}km · {Math.round(pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.duration || 0), 0) / 60)}분 · {pausedWalk.spots?.length || 0}개 스팟
+                  {pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.distance || 0), 0).toFixed(1)}km · {(() => { const mins = Math.round(pausedWalk.segments?.reduce((s: number, seg: any) => s + (seg.duration || 0), 0) / 60); const h = Math.floor(mins / 60); return h > 0 ? `${h}h ${mins % 60}m` : `${mins}m`; })()} · {pausedWalk.spots?.length || 0} spots
                 </Text>
                 <Text style={[styles.resumeExpiry, { color: textTertColor }]}>
-                  {new Date(pausedWalk.savedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 저장 · 거리/걸음/칼로리 이어서 누적됩니다
+                  {new Date(pausedWalk.savedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} {t.activity.resumeExpiry}
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  Alert.alert('저장 삭제', '저장된 걷기 데이터를 삭제할까요?', [
-                    { text: '취소', style: 'cancel' },
-                    { text: '삭제', style: 'destructive', onPress: () => { AsyncStorage.removeItem('walk_paused'); setPausedWalk(null); } },
+                  Alert.alert(t.activity.deleteSavedWalk, t.activity.deleteSavedWalkConfirm, [
+                    { text: t.common.cancel, style: 'cancel' },
+                    { text: t.common.delete, style: 'destructive', onPress: () => { AsyncStorage.removeItem('walk_paused'); setPausedWalk(null); } },
                   ]);
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -304,14 +284,14 @@ export default function ActivityScreen() {
             <View style={styles.startWalkIconCircle}>
               <Feather name="play" size={24} color="#fff" />
             </View>
-            <Text style={styles.startWalkTextLarge}>걷기 시작</Text>
+            <Text style={styles.startWalkTextLarge}>{t.activity.startWalk}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.watchImportLink, isDark && { borderColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => navigation.navigate('HealthImport')}
             activeOpacity={0.7}>
             <Feather name="watch" size={14} color={isDark ? 'rgba(255,255,255,0.5)' : colors.textTertiary} />
-            <Text style={[styles.watchImportLinkText, isDark && { color: 'rgba(255,255,255,0.5)' }]}>워치 기록 가져오기</Text>
+            <Text style={[styles.watchImportLinkText, isDark && { color: 'rgba(255,255,255,0.5)' }]}>{t.activity.importWatch}</Text>
             <Feather name="chevron-right" size={14} color={isDark ? 'rgba(255,255,255,0.3)' : colors.textTertiary} />
           </TouchableOpacity>
         </FadeInView>
@@ -320,7 +300,7 @@ export default function ActivityScreen() {
         <View style={styles.recentSection}>
           <FadeInView delay={250}>
             <View style={styles.recentHeader}>
-              <Text style={[styles.recentTitle, { color: textColor }]}>최근 활동 <Text style={{ color: textTertColor, fontSize: 14, fontWeight: '500' }}>{activities.length}</Text></Text>
+              <Text style={[styles.recentTitle, { color: textColor }]}>{t.activity.recentTitle} <Text style={{ color: textTertColor, fontSize: 14, fontWeight: '500' }}>{activities.length}</Text></Text>
             </View>
           </FadeInView>
 
@@ -329,10 +309,10 @@ export default function ActivityScreen() {
               <View style={[styles.noRecords, { backgroundColor: cardBg }]}>
                 <Text style={styles.noRecordsEmoji}>{'\uD83D\uDEB6'}</Text>
                 <Text style={styles.noRecordsText}>
-                  {'아직 활동 기록이 없어요'}
+                  {t.activity.noActivities}
                 </Text>
                 <Text style={styles.noRecordsHint}>
-                  {'첫 번째 걸기를 시작해 보세요!'}
+                  {t.activity.startWalk}
                 </Text>
               </View>
             </FadeInView>
@@ -359,7 +339,16 @@ export default function ActivityScreen() {
                   <TouchableOpacity
                     style={[styles.activityCard, { backgroundColor: cardBg }]}
                     activeOpacity={0.7}
-                    onPress={() => navigation.navigate('ActivityDetail', { activity })}
+                    onPress={() => navigation.navigate('ActivityDetail', {
+                      // Strip heavy fields before navigation — ActivityDetail
+                      // re-fetches the full record itself. Avoids Android's
+                      // Intent bundle size limit (TransactionTooLargeException).
+                      activity: {
+                        ...activity,
+                        track_points: undefined,
+                        route_coords: undefined,
+                      },
+                    })}
                     onLongPress={() => handleDelete(activity)}>
                     <View style={[styles.activityIconWrap, { backgroundColor: iconColor + '18' }]}>
                       <Feather name="map-pin" size={18} color={iconColor} />
@@ -388,7 +377,7 @@ export default function ActivityScreen() {
               style={[styles.loadMoreBtn, { backgroundColor: cardBg }]}
               onPress={() => setActivityPage(p => p + 1)}
               activeOpacity={0.7}>
-              <Text style={styles.loadMoreText}>더보기</Text>
+              <Text style={styles.loadMoreText}>{t.home.viewAll}</Text>
               <Feather name="chevron-down" size={16} color={colors.primary} />
             </TouchableOpacity>
           )}

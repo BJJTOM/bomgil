@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,12 @@ import {
   Image,
   FlatList,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
+import { useT } from '../i18n';
 import { useThemeStore } from '../stores/theme';
 import { KmSplit } from '../utils/walkEngine';
 import SplitChart from '../components/SplitChart';
@@ -63,11 +65,12 @@ function StatCard({ icon, value, label, accent, isDark }: StatCardProps) {
   );
 }
 
-export default function WalkCompleteScreen() {
+function WalkCompleteInner() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { isDark } = useThemeStore();
+  const t = useT();
 
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
@@ -86,12 +89,30 @@ export default function WalkCompleteScreen() {
     elevationLoss = '0',
     maxSpeed = '0',
     splits: splitsJson = '[]',
-    taggedPhotos = [],
-    spots = [],
-    routeCoords = [],
-    trackPoints = [],
     activityId = null,
   } = route.params || {};
+
+  // Large payloads (trackPoints, routeCoords, photos, spots) are loaded from
+  // AsyncStorage rather than navigation params to avoid Android's
+  // TransactionTooLargeException on long walks.
+  const [taggedPhotos, setTaggedPhotos] = useState<any[]>([]);
+  const [spots, setSpots] = useState<any[]>([]);
+  const [routeCoords, setRouteCoords] = useState<any[]>([]);
+  const [trackPoints, setTrackPoints] = useState<any[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('activity_latest_extra');
+        if (raw) {
+          const extra = JSON.parse(raw);
+          if (Array.isArray(extra?.taggedPhotos)) setTaggedPhotos(extra.taggedPhotos);
+          if (Array.isArray(extra?.spots)) setSpots(extra.spots);
+          if (Array.isArray(extra?.routeCoords)) setRouteCoords(extra.routeCoords);
+          if (Array.isArray(extra?.trackPoints)) setTrackPoints(extra.trackPoints);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const totalSeconds =
     typeof duration === 'number' ? duration : parseInt(duration) || 0;
@@ -120,6 +141,7 @@ export default function WalkCompleteScreen() {
     typeof maxSpeed === 'string' ? parseFloat(maxSpeed) : maxSpeed;
 
   const totalMinutes = Math.round(totalSeconds / 60);
+  const statTimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
   let splits: KmSplit[] = [];
   try {
@@ -155,7 +177,7 @@ export default function WalkCompleteScreen() {
           <Feather name="check-circle" size={16} color={colors.primary} />
           <Text style={[styles.accentLabel, { color: colors.primary }]}>WALK COMPLETED</Text>
         </View>
-        <Text style={[styles.celebrationText, { color: textColor }]}>{'\uC624\uB298\uB3C4 \uBA4B\uC9C4 \uAC78\uC74C!'}</Text>
+        <Text style={[styles.celebrationText, { color: textColor }]}>{t.walkComplete.greatWalk}</Text>
 
         {/* Main Stat Card */}
         <View style={[styles.statCard, { backgroundColor: cardBg }]}>
@@ -172,7 +194,7 @@ export default function WalkCompleteScreen() {
             <View style={styles.statCell}>
               <Feather name="clock" size={14} color={textTertColor} style={{ marginBottom: 6 }} />
               <Text style={[styles.statCellValue, { color: textColor }]}>{timeStr}</Text>
-              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uC2DC\uAC04'}</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{t.walk.time}</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statCell}>
@@ -180,13 +202,13 @@ export default function WalkCompleteScreen() {
               <Text style={[styles.statCellValue, { color: colors.accent }]}>
                 {typeof pace === 'string' && pace.includes("'") ? pace : formatPace(pace)}
               </Text>
-              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uD398\uC774\uC2A4'}</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{t.walk.pace}</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statCell}>
               <Feather name="zap" size={14} color={textTertColor} style={{ marginBottom: 6 }} />
               <Text style={[styles.statCellValue, { color: textColor }]}>{caloriesNum}</Text>
-              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{'\uCE7C\uB85C\uB9AC'}</Text>
+              <Text style={[styles.statCellLabel, { color: textTertColor }]}>{t.walk.calories}</Text>
             </View>
           </View>
 
@@ -194,7 +216,7 @@ export default function WalkCompleteScreen() {
           <View style={styles.stepsRow}>
             <Feather name="navigation" size={14} color={textSecColor} style={{ marginRight: 6 }} />
             <Text style={[styles.stepsValue, { color: textSecColor }]}>{stepsNum.toLocaleString()}</Text>
-            <Text style={[styles.stepsLabel, { color: textTertColor }]}> {'\uAC78\uC74C'}</Text>
+            <Text style={[styles.stepsLabel, { color: textTertColor }]}> {t.walk.steps}</Text>
           </View>
 
           {/* Date */}
@@ -208,10 +230,10 @@ export default function WalkCompleteScreen() {
 
         {/* Stats Cards Grid */}
         <View style={styles.statsCardsGrid}>
-          <StatCard icon="map-pin" value={`${distNum.toFixed(2)}km`} label={'\uAC70\uB9AC'} accent isDark={isDark} />
-          <StatCard icon="clock" value={`${totalMinutes}\uBD84`} label={'\uC2DC\uAC04'} isDark={isDark} />
-          <StatCard icon="footprints" value={stepsNum.toLocaleString()} label={'\uAC78\uC74C'} isDark={isDark} />
-          <StatCard icon="flame" value={`${caloriesNum}kcal`} label={'\uCE7C\uB85C\uB9AC'} isDark={isDark} />
+          <StatCard icon="map-pin" value={`${distNum.toFixed(2)}km`} label={t.walk.distance} accent isDark={isDark} />
+          <StatCard icon="clock" value={statTimeStr} label={t.walk.time} isDark={isDark} />
+          <StatCard icon="footprints" value={stepsNum.toLocaleString()} label={t.walk.steps} isDark={isDark} />
+          <StatCard icon="flame" value={`${caloriesNum}kcal`} label={t.walk.calories} isDark={isDark} />
         </View>
 
         {/* Splits — interactive pace chart */}
@@ -219,7 +241,7 @@ export default function WalkCompleteScreen() {
           <View style={[styles.splitsSection, { backgroundColor: cardBg }]}>
             <View style={styles.splitsTitleRow}>
               <Feather name="bar-chart-2" size={16} color={textSecColor} />
-              <Text style={[styles.splitsTitle, { color: textSecColor }]}>구간 기록</Text>
+              <Text style={[styles.splitsTitle, { color: textSecColor }]}>{t.walkComplete.segmentRecord}</Text>
             </View>
             <SplitChart splits={splits} isDark={isDark} />
           </View>
@@ -231,7 +253,7 @@ export default function WalkCompleteScreen() {
           <View style={[styles.splitsSection, { backgroundColor: cardBg }]}>
             <View style={styles.splitsTitleRow}>
               <Feather name="trending-up" size={16} color={textSecColor} />
-              <Text style={[styles.splitsTitle, { color: textSecColor }]}>고도</Text>
+              <Text style={[styles.splitsTitle, { color: textSecColor }]}>{t.walk.elevation}</Text>
             </View>
             <ElevationChart
               trackPoints={trackPoints}
@@ -248,7 +270,7 @@ export default function WalkCompleteScreen() {
             <View style={styles.photosTitleRow}>
               <Feather name="camera" size={16} color={textSecColor} />
               <Text style={[styles.photosSectionTitle, { color: textSecColor }]}>
-                {'\uC0AC\uC9C4'} ({taggedPhotos.length})
+                {t.walk.photoInfo} ({taggedPhotos.length})
               </Text>
             </View>
             <FlatList
@@ -277,16 +299,21 @@ export default function WalkCompleteScreen() {
             onPress={handleShare}
             activeOpacity={0.85}>
             <Feather name="share-2" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.shareBtnText}>{'\uACF5\uC720\uD558\uAE30'}</Text>
+            <Text style={styles.shareBtnText}>{t.walkComplete.share}</Text>
           </TouchableOpacity>
 
           <View style={styles.secondaryRow}>
             <TouchableOpacity
               style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
               onPress={() => navigation.navigate('ActivityDetail', {
+                // Pass ONLY metadata — heavy arrays (trackPoints/photos/spots)
+                // are already persisted to AsyncStorage under
+                // `activity_latest_extra` and ActivityDetail loads them from
+                // there. Passing them via nav params triggers Android's
+                // TransactionTooLargeException on long walks.
                 activity: {
                   id: activityId,
-                  title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} \uB3C4\uBCF4`,
+                  title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ${t.walk.walking}`,
                   distance_km: distance,
                   duration_minutes: Math.round(totalSeconds / 60),
                   total_steps: parseInt(steps) || 0,
@@ -295,22 +322,19 @@ export default function WalkCompleteScreen() {
                   source: 'phone_gps',
                   started_at: new Date(Date.now() - totalSeconds * 1000).toISOString(),
                   created_at: new Date().toISOString(),
-                  track_points: trackPoints,
                 },
-                taggedPhotos,
-                spots,
                 fromWalkComplete: true,
               })}
               activeOpacity={0.85}>
               <Feather name="file-text" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>활동 상세</Text>
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{t.walkComplete.activityDetail}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
               onPress={() => {
                 const pts = Array.isArray(trackPoints) ? trackPoints : [];
                 shareGpxFile(pts, {
-                  name: `${dateStr} 도보`,
+                  name: `${dateStr} Walk`,
                   startTime: new Date(Date.now() - totalSeconds * 1000).toISOString(),
                   distanceKm: distNum,
                   durationMinutes: totalMinutes,
@@ -318,7 +342,7 @@ export default function WalkCompleteScreen() {
               }}
               activeOpacity={0.85}>
               <Feather name="download" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>GPX 내보내기</Text>
+              <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>GPX Export</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -326,11 +350,47 @@ export default function WalkCompleteScreen() {
             onPress={() => navigation.popToTop()}
             activeOpacity={0.85}>
             <Feather name="home" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-            <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>홈으로</Text>
+            <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{t.walkComplete.goHome}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+// Error boundary — if the summary render throws (e.g. corrupted
+// trackPoints, bad JSON in AsyncStorage), push the user to the Activity
+// tab instead of crashing the app.
+class WalkCompleteBoundary extends React.Component<
+  { children: React.ReactNode; navigation: any },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: any) {
+    console.log('[Moru] WalkComplete render crash:', error);
+  }
+  componentDidUpdate(_: any, prev: { hasError: boolean }) {
+    if (!prev.hasError && this.state.hasError) {
+      setTimeout(() => {
+        try { this.props.navigation?.replace?.('Main', { screen: 'Activity' }); } catch {}
+      }, 100);
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return <View style={{ flex: 1, backgroundColor: '#FAFAFA' }} />;
+    }
+    return this.props.children;
+  }
+}
+
+export default function WalkCompleteScreen() {
+  const navigation = useNavigation<any>();
+  return (
+    <WalkCompleteBoundary navigation={navigation}>
+      <WalkCompleteInner />
+    </WalkCompleteBoundary>
   );
 }
 

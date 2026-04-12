@@ -13,6 +13,7 @@ from .serializers import (
     ActivityTrackCreateSerializer,
     ActivityTrackDetailSerializer,
     ActivityTrackListSerializer,
+    ActivityTrackUpdateSerializer,
     DailyActivitySummarySerializer,
 )
 
@@ -45,6 +46,8 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return ActivityTrackCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return ActivityTrackUpdateSerializer
         if self.action in ("retrieve",):
             return ActivityTrackDetailSerializer
         return ActivityTrackListSerializer
@@ -62,12 +65,17 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         started_at = serializer.validated_data.get("started_at")
-        # Only check duplicates if started_at is explicitly provided (not inferred from track_points later)
+        # Only check duplicates if started_at is explicitly provided (not
+        # inferred from track_points later). IMPORTANT: only consider VISIBLE
+        # activities — a hidden record (moderated or admin-hidden) should not
+        # block a re-import, because the user can't see or delete it from
+        # their own UI, resulting in a "ghost" duplicate error.
         if started_at:
             window_start = started_at - timezone.timedelta(seconds=30)
             window_end = started_at + timezone.timedelta(seconds=30)
             duplicate = ActivityTrack.objects.filter(
                 user=self.request.user,
+                is_hidden=False,
                 started_at__gte=window_start,
                 started_at__lte=window_end,
             ).exists()

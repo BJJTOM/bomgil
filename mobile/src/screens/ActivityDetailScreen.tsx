@@ -24,6 +24,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
 import api from '../api/client';
+import { navParamCache } from '../utils/navParamCache';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -101,7 +102,10 @@ export default function ActivityDetailScreen() {
         taggedPhotos: taggedPhotos || [],
         trailId: activity.trail || null,
       };
-      navigation.replace('Walk', { resumeData });
+      // Heavy data (tp, rc, photos) goes through the in-memory cache to
+      // avoid Android's TransactionTooLargeException on long walks.
+      const cacheKey = navParamCache.put({ resumeData });
+      navigation.replace('Walk', { _resumeCacheKey: cacheKey });
     } catch (e: any) {
       Alert.alert('오류', '이어가기를 시작할 수 없습니다: ' + (e?.message || ''));
     }
@@ -265,21 +269,40 @@ export default function ActivityDetailScreen() {
         raw = await AsyncStorage.getItem(`activity_${activity.id}_extra`);
       }
 
-      // 2. Try latest — only if activity is very recent (within 5 minutes)
+      // 2. Match by timestamp: find a timestamped backup whose save time
+      // falls within [started_at, started_at + 24h]. This recovers walks
+      // where the API save failed and no activity_{id}_extra key was created.
+      // Among matches, pick the one with the most routeCoords (most complete).
+      if (!raw && activity?.started_at) {
+        const startMs = new Date(activity.started_at).getTime();
+        const endMs = startMs + 24 * 60 * 60 * 1000;
+        const allKeys = await AsyncStorage.getAllKeys();
+        const candidates: { key: string; ts: number; rcLen: number }[] = [];
+        for (const k of allKeys) {
+          const m = k.match(/^activity_(\d+)_extra$/);
+          if (!m) continue;
+          const ts = parseInt(m[1]);
+          if (ts < startMs || ts > endMs) continue;
+          try {
+            const r = await AsyncStorage.getItem(k);
+            if (!r) continue;
+            const d = JSON.parse(r);
+            candidates.push({ key: k, ts, rcLen: d.routeCoords?.length || 0 });
+          } catch {}
+        }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.rcLen - a.rcLen);
+          raw = await AsyncStorage.getItem(candidates[0].key);
+          console.log(`[Moru] Matched backup ${candidates[0].key} (rc=${candidates[0].rcLen})`);
+        }
+      }
+
+      // 3. Try latest — only if activity is very recent (within 5 minutes)
       if (!raw) {
         const actCreated = new Date(activity?.created_at || activity?.started_at || 0).getTime();
         const fiveMinAgo = Date.now() - 5 * 60 * 1000;
         if (actCreated > fiveMinAgo) {
           raw = await AsyncStorage.getItem('activity_latest_extra');
-        }
-      }
-
-      // 3. Scan all keys, pick most recent
-      if (!raw) {
-        const allKeys = await AsyncStorage.getAllKeys();
-        const actKeys = allKeys.filter(k => k.startsWith('activity_') && k.endsWith('_extra') && k !== 'activity_latest_extra');
-        if (actKeys.length > 0) {
-          raw = await AsyncStorage.getItem(actKeys.sort().reverse()[0]);
         }
       }
 
@@ -290,18 +313,27 @@ export default function ActivityDetailScreen() {
         if (extra.taggedPhotos?.length && taggedPhotos.length === 0) setTaggedPhotos(extra.taggedPhotos);
         if (extra.spots?.length && walkSpots.length === 0) setWalkSpots(extra.spots);
         // Restore track points via setActivity (immutable update so React re-renders)
+        // Prefer routeCoords when it has more points than trackPoints —
+        // old resume code saved incomplete trackPoints (current segment only)
+        // but routeCoords always contained all segments.
+        const tpLen = extra.trackPoints?.length || 0;
+        const rcLen = extra.routeCoords?.length || 0;
+        const bestPoints = rcLen >= tpLen && rcLen > 0
+          ? extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] }))
+          : tpLen > 0 ? extra.trackPoints : null;
         setActivity((prev: any) => {
           if (!prev) return prev;
-          const hasPts = Array.isArray(prev.track_points) && prev.track_points.length > 0;
-          if (hasPts) return prev;
-          if (extra.trackPoints?.length) {
-            return { ...prev, track_points: extra.trackPoints };
-          }
-          if (extra.routeCoords?.length) {
-            return {
-              ...prev,
-              track_points: extra.routeCoords.map((c: [number, number]) => ({ lng: c[0], lat: c[1] })),
-            };
+          const serverLen = Array.isArray(prev.track_points) ? prev.track_points.length : 0;
+          // If local data is more complete, use it and patch the server
+          if (bestPoints && bestPoints.length > serverLen) {
+            console.log(`[Moru] Local route (${bestPoints.length}) > server (${serverLen}), patching...`);
+            // Fire-and-forget server patch
+            if (prev.id) {
+              api.patch(`/activities/${prev.id}/`, { track_points: bestPoints })
+                .then(() => console.log(`[Moru] Server patched: activity ${prev.id}`))
+                .catch((e: any) => console.log(`[Moru] Server patch failed:`, e));
+            }
+            return { ...prev, track_points: bestPoints };
           }
           return prev;
         });
@@ -327,7 +359,13 @@ export default function ActivityDetailScreen() {
 
   if (!activity) return null;
 
-  const trackPoints = activity.track_points || [];
+  // Filter out null / malformed points BEFORE mapping. Some legacy imports
+  // (Samsung Health, merged activities) produce arrays with null entries
+  // or entries lacking lat/lng — accessing p.lng/p.lat on those crashes.
+  const rawTrackPoints = Array.isArray(activity.track_points) ? activity.track_points : [];
+  const trackPoints = rawTrackPoints.filter(
+    (p: any) => p && typeof p.lng === 'number' && typeof p.lat === 'number',
+  );
   const pathCoords: [number, number][] = trackPoints.map((p: any) => [p.lng, p.lat]);
   const hasPath = pathCoords.length >= 2;
   const firstPoint = trackPoints[0];
@@ -384,6 +422,10 @@ export default function ActivityDetailScreen() {
     ]);
     const startCoord = roundedPath[0];
     const endCoord = roundedPath[roundedPath.length - 1];
+
+    // Defensive — if we somehow got here with no valid path, bail with null
+    // so the caller can show an error instead of submitting (0, 0) coords.
+    if (!startCoord || !endCoord) return null;
 
     const payload: any = {
       title,
@@ -447,6 +489,11 @@ export default function ActivityDetailScreen() {
     setSubmitting(true);
     try {
       const payload = buildPayload();
+      if (!payload) {
+        Alert.alert('오류', '경로 좌표를 읽을 수 없습니다.');
+        setSubmitting(false);
+        return;
+      }
       const { data } = await api.post('/trails/', payload);
       const trailId = data.id;
 

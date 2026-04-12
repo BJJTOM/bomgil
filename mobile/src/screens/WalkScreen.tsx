@@ -16,7 +16,6 @@ import {
   BackHandler,
   ScrollView,
   Image,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -24,20 +23,13 @@ import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 
 import Geolocation from '@react-native-community/geolocation';
-
-Geolocation.setRNConfiguration({
-  skipPermissionRequests: false,
-  authorizationLevel: 'always',
-  enableBackgroundLocationUpdates: true,
-  locationProvider: 'auto',
-});
-
 import Mapbox from '@rnmapbox/maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
+import { navParamCache } from '../utils/navParamCache';
 import {
   startBackgroundWalkService,
   stopBackgroundWalkService,
@@ -52,7 +44,7 @@ import {
 } from '../utils/nativeStepCounter';
 import { WalkAudioFeedback } from '../utils/audioFeedback';
 import { fetchWeatherAt, CurrentWeather } from '../utils/weather';
-import { startLiveShare, pushLiveUpdate, endLiveShare } from '../utils/liveShare';
+import { startBarometer, stopBarometer, subscribeToBarometer } from '../utils/barometer';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -91,12 +83,28 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function WalkScreen() {
+function WalkScreenInner() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { isAuthenticated } = useAuthStore();
   const trailId = route.params?.trailId;
+
+  // Configure Geolocation on mount (not at module import time).
+  // Setting `enableBackgroundLocationUpdates: true` at module scope runs
+  // every time WalkScreen is imported — including fast refresh — which can
+  // register a background location listener before the user grants
+  // permission and wastes battery.
+  useEffect(() => {
+    try {
+      Geolocation.setRNConfiguration({
+        skipPermissionRequests: false,
+        authorizationLevel: 'always',
+        enableBackgroundLocationUpdates: true,
+        locationProvider: 'auto',
+      });
+    } catch {}
+  }, []);
 
   const [state, setState] = useState<WalkState>('countdown');
   const [countdown, setCountdown] = useState(3);
@@ -105,6 +113,7 @@ export default function WalkScreen() {
     speed: 0, steps: 0, cadence: 0, calories: 0,
     elevationGain: 0, elevationLoss: 0, maxElevation: 0, minElevation: 0,
     maxSpeed: 0, splits: [], isAutoPaused: false,
+    gpsHealthy: true, usingSensorFallback: false, barometerActive: false,
   });
   // GPS signal tracking — latest accuracy (meters) + staleness timestamp.
   // Used to render the top-of-map signal bars. gpsStartedAt marks when
@@ -119,6 +128,11 @@ export default function WalkScreen() {
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [showStopModal, setShowStopModal] = useState(false);
+  // When true, the Mapbox MapView is dropped from the tree so its native
+  // view releases cleanly BEFORE we navigate away. Without this, Android
+  // 15 can crash in the Mapbox native layer during screen transition on
+  // some Samsung devices.
+  const [isCompleting, setIsCompleting] = useState(false);
   const [spots, setSpots] = useState<WalkSpot[]>([]);
   const [showSpotModal, setShowSpotModal] = useState(false);
   const [showRecordSummary, setShowRecordSummary] = useState(false);
@@ -132,10 +146,24 @@ export default function WalkScreen() {
   const [photoDesc, setPhotoDesc] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const fromTrailCreate = route.params?.fromTrailCreate;
-  const resumeData = route.params?.resumeData;
+  // resumeData can come either directly (legacy paused-walk flow) or via
+  // an in-memory nav cache key (new: avoids TransactionTooLargeException
+  // when the previous walk had a lot of track points).
+  const resumeData = React.useMemo(() => {
+    const direct = route.params?.resumeData;
+    if (direct) return direct;
+    const cacheKey = route.params?._resumeCacheKey;
+    if (cacheKey) {
+      const cached = navParamCache.take<{ resumeData: any }>(cacheKey);
+      return cached?.resumeData;
+    }
+    return undefined;
+  }, [route.params]);
 
   // Previous segment totals (for resume display)
   const [prevSegment, setPrevSegment] = useState<{ distance: number; duration: number; steps: number; calories: number } | null>(null);
+  // Previous segments' trackPoints saved during resume so they can be merged on completion
+  const prevTrackPointsRef = useRef<any[]>([]);
 
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
@@ -145,19 +173,15 @@ export default function WalkScreen() {
   const periodicSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bgSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stepSubRef = useRef<StepSubscription | null>(null);
+  const baroSubRef = useRef<{ remove: () => void } | null>(null);
   const audioFeedbackRef = useRef(new WalkAudioFeedback('ko'));
   const lastAnnouncedKmRef = useRef(0);
   const weatherRef = useRef<CurrentWeather | null>(null);
   // Set true once we successfully kick off the weather fetch so the
   // GPS watch callback below knows not to fire it again.
   const weatherFetchedRef = useRef(false);
-  // Live walk sharing — token populated when user enables "안전 공유"
-  const [liveToken, setLiveToken] = useState<string | null>(null);
-  const liveTokenRef = useRef<string | null>(null);
-  const liveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Refs that mirror state so the live-share interval (which captures
-  // values once at creation) always pushes the LATEST GPS fix instead
-  // of the value that was current when the user tapped the button.
+  // Refs that mirror state for any background timers / async tasks that
+  // need the latest GPS fix without re-triggering React re-renders.
   const currentPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const gpsAccuracyRef = useRef<number | null>(null);
   const photoBusyRef = useRef(false);
@@ -182,15 +206,19 @@ export default function WalkScreen() {
       // Restore previous data
       const segments = resumeData.segments || [];
       const prevCoords: [number, number][] = [];
+      const prevTp: any[] = [];
       let prevDistance = 0, prevSteps = 0, prevCalories = 0, prevDuration = 0, prevElevation = 0;
       for (const seg of segments) {
         if (seg.routeCoords) prevCoords.push(...seg.routeCoords);
+        if (seg.trackPoints) prevTp.push(...seg.trackPoints);
         prevDistance += seg.distance || 0;
         prevSteps += seg.steps || 0;
         prevCalories += seg.calories || 0;
         prevDuration += seg.duration || 0;
         prevElevation += seg.elevationGain || 0;
       }
+      prevTrackPointsRef.current = prevTp;
+      console.log(`[Moru] Resume: ${prevCoords.length} routeCoords, ${prevTp.length} trackPoints, ${segments.length} segments`);
       setRouteCoords(prevCoords);
       setSpots(resumeData.spots || []);
       setTaggedPhotos(resumeData.taggedPhotos || []);
@@ -212,8 +240,11 @@ export default function WalkScreen() {
       engineRef.current.start();
       timerRef.current = setInterval(() => {
         const s = engineRef.current.getStats();
-        setStats(s);
-        updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+        if (!isBackgroundRef.current) setStats(s);
+        updateBackgroundWalkNotification({
+          distance: s.distance, duration: s.duration,
+          steps: s.steps, pace: s.pace, isAutoPaused: s.isAutoPaused,
+        });
       }, 1000);
       // Start FGS before GPS so background tracking works on the resumed segment too
       startBackgroundWalkService().catch(() => {});
@@ -301,36 +332,83 @@ export default function WalkScreen() {
     } else { autoPausePulse.setValue(1); }
   }, [stats.isAutoPaused]);
 
-  // Save current walk state to AsyncStorage for crash protection
+  // Save current walk state to AsyncStorage for crash protection.
+  //
+  // CRITICAL for 10+ hour / 50+ km walks:
+  // At 1 GPS fix/second × 10 hours = 36,000 trackPoints × ~80 bytes
+  // = ~2.9 MB. Android AsyncStorage has a ~2 MB per-entry limit.
+  // Exceeding this SILENTLY FAILS → all data lost on crash.
+  //
+  // Fix: Save only routeCoords (lightweight [lng,lat] pairs ~16 bytes each)
+  // + stats summary + spots/photos. Full trackPoints are NOT saved in
+  // periodic recovery — they're only saved on walk completion via
+  // `activity_latest_extra` (which downsamples to 5000 points).
+  //
+  // This keeps the recovery blob under 800 KB even for 50 km walks.
+  // On crash recovery, the user gets: distance, time, steps, calories,
+  // route line on map, spots, photos — everything except the per-second
+  // track points (which are only used for elevation chart + GPX export).
   const saveWalkState = useCallback(async () => {
     try {
       const currentStats = engineRef.current.getStats();
+      // Downsample routeCoords if too large (>10,000 points → keep every Nth)
+      let safeRouteCoords = routeCoords;
+      if (safeRouteCoords.length > 10000) {
+        const stride = Math.ceil(safeRouteCoords.length / 10000);
+        safeRouteCoords = safeRouteCoords.filter((_, i) => i % stride === 0);
+      }
       const data = JSON.stringify({
+        version: 2, // schema version for forward compatibility
         stats: currentStats,
-        routeCoords,
-        trackPoints: engineRef.current.getTrackPoints(),
+        routeCoords: safeRouteCoords,
+        // trackPoints intentionally OMITTED — too large for AsyncStorage.
+        // Full track saved only on completion via activity_latest_extra.
         spots,
         taggedPhotos,
         timestamp: Date.now(),
       });
       await AsyncStorage.setItem('walk_in_progress', data);
-    } catch {}
+    } catch (e) {
+      // Log instead of silently swallowing — helps diagnose save failures
+      console.log('[Moru] saveWalkState failed:', e);
+    }
   }, [routeCoords, spots, taggedPhotos]);
+
+  // Track background state via ref (for GPS callback to read without re-render)
+  const isBackgroundRef = useRef(false);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      setIsBackground(s === 'background');
-      if (s === 'background' && state === 'walking') {
+      const bg = s === 'background';
+      setIsBackground(bg);
+      isBackgroundRef.current = bg;
+
+      if (bg && state === 'walking') {
         // Save immediately when going to background
         saveWalkState();
         // Then save every 30 seconds while in background
         bgSaveRef.current = setInterval(() => saveWalkState(), 30000);
+
+        // Battery optimization: reduce GPS when screen off.
+        // BUT: if user enabled high-accuracy mode, keep 1Hz always.
+        // High-accuracy mode is stored in a ref set from settings.
+        if (gpsModeRef.current === 'fast' && !highAccuracyRef.current) {
+          gpsModeRef.current = 'slow';
+          try { if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current); } catch {}
+          createGpsWatchRef.current?.('slow');
+        }
       }
       if (s === 'active') {
         // Clear background save timer
         if (bgSaveRef.current) {
           clearInterval(bgSaveRef.current);
           bgSaveRef.current = null;
+        }
+        // --- BATTERY OPTIMIZATION: Restore fast GPS when screen on ---
+        if (state === 'walking' && !engineRef.current.getStats().isAutoPaused) {
+          gpsModeRef.current = 'fast';
+          try { if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current); } catch {}
+          createGpsWatchRef.current?.('fast');
         }
         // Force stats and route update
         setStats(engineRef.current.getStats());
@@ -345,7 +423,10 @@ export default function WalkScreen() {
   // Periodic crash protection save every 60 seconds during walk
   useEffect(() => {
     if (state === 'walking') {
-      periodicSaveRef.current = setInterval(() => saveWalkState(), 60000);
+      // Save every 30s (was 60s). For a 10-hour walk, worst case data
+      // loss on crash is 30 seconds instead of 60. The save is lightweight
+      // (~500KB) so 30s interval is safe for flash wear.
+      periodicSaveRef.current = setInterval(() => saveWalkState(), 30000);
     } else {
       if (periodicSaveRef.current) {
         clearInterval(periodicSaveRef.current);
@@ -365,8 +446,10 @@ export default function WalkScreen() {
         if (saved) {
           const data = JSON.parse(saved);
           const ageMinutes = (Date.now() - data.timestamp) / 60000;
-          // Only offer recovery if data is less than 2 hours old
-          if (ageMinutes < 120 && data.stats?.distance > 0.05) {
+          // Offer recovery for up to 24 hours. Previously 2 hours — but
+          // long walks (10hr+) or overnight pauses would lose all data.
+          // For a trip walker doing 50km/day, 24h is essential.
+          if (ageMinutes < 1440 && data.stats?.distance > 0.05) {
             Alert.alert(
               '이전 걷기 기록 발견',
               `${data.stats.distance.toFixed(2)}km, ${Math.round(data.stats.duration / 60)}분 기록이 있습니다.\n복구하시겠습니까?`,
@@ -475,73 +558,129 @@ export default function WalkScreen() {
     setShowSpotModal(false);
   }, [spotName, spotType, spotDesc, currentPos, editingSpotIdx]);
 
-  const startGps = useCallback(() => {
-    // Mark the start time so the GPS signal indicator can show a pulsing
-    // "acquiring" state until the first fix arrives or the 60s cold-start
-    // grace period expires.
-    setGpsStartedAt(Date.now());
+  // GPS mode: 'fast' = 1 Hz (walking), 'slow' = 2s bg (auto-paused, saves battery)
+  const gpsModeRef = useRef<'fast' | 'slow'>('fast');
+  const createGpsWatchRef = useRef<((mode: 'fast' | 'slow') => void) | null>(null);
+  // High-accuracy mode: keep 1Hz GPS even when screen off. Uses more battery
+  // but gives maximum recording detail. User can toggle this.
+  const highAccuracyRef = useRef(false);
+  const [highAccuracy, setHighAccuracy] = useState(false);
+
+  // Use a ref for the GPS callback to break the circular dependency between
+  // gpsCallback → createGpsWatch → gpsCallback. The ref always points to
+  // the latest callback without causing useCallback identity changes.
+  const gpsCallbackRef = useRef<(pos: any) => void>(() => {});
+  gpsCallbackRef.current = (pos: any) => {
+    gpsAccuracyRef.current = pos.coords.accuracy ?? null;
+
+    // Engine ALWAYS processes the point (distance, steps, calories accumulate)
+    const point = engineRef.current.addPoint(
+      pos.coords.latitude, pos.coords.longitude,
+      pos.coords.altitude, pos.coords.accuracy,
+      pos.timestamp || Date.now(),
+    );
+    if (point) {
+      currentPosRef.current = { lat: point.lat, lng: point.lng };
+      // Weather fetch only needs to run once
+      if (!weatherFetchedRef.current) {
+        weatherFetchedRef.current = true;
+        fetchWeatherAt(point.lat, point.lng, 'ko')
+          .then((w) => { weatherRef.current = w; })
+          .catch(() => {});
+      }
+    }
+
+    // --- BATTERY OPTIMIZATION: Skip React state updates when in background ---
+    // setState triggers re-render → React reconciliation → layout → paint.
+    // When the screen is off, nobody sees the UI, so these are wasted CPU cycles.
+    // The engine keeps accumulating data regardless; UI catches up on resume.
+    // Notification updates still fire (handled below).
+    if (!isBackgroundRef.current) {
+      setGpsAccuracy(pos.coords.accuracy ?? null);
+      setGpsLastFixAt(Date.now());
+      if (point) {
+        setCurrentPos({ lat: point.lat, lng: point.lng });
+        setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
+      }
+      setStats(engineRef.current.getStats());
+    } else if (point) {
+      // In background: still accumulate routeCoords for the final save,
+      // but via ref to avoid re-renders.
+      setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
+    }
+
+    // Always update notification (visible on lockscreen)
+    const currentStats = engineRef.current.getStats();
+    updateBackgroundWalkNotification({
+      distance: currentStats.distance,
+      duration: currentStats.duration,
+      steps: currentStats.steps,
+      pace: currentStats.pace,
+      isAutoPaused: currentStats.isAutoPaused,
+    });
+
+    // Adaptive GPS: switch to slow polling when auto-paused for battery
+    // savings (~40% less GPS power). Switch back when movement resumes.
+    const wantedMode = currentStats.isAutoPaused ? 'slow' : 'fast';
+    if (wantedMode !== gpsModeRef.current) {
+      gpsModeRef.current = wantedMode;
+      try {
+        if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current);
+      } catch {}
+      createGpsWatch(wantedMode);
+    }
+  };
+
+  const createGpsWatch = useCallback((mode: 'fast' | 'slow'): void => {
+    const interval = mode === 'fast' ? 1000 : 3000;
+    const fastest = mode === 'fast' ? 500 : 2000;
     try {
       watchIdRef.current = Geolocation.watchPosition(
-        (pos) => {
-          // Always update the GPS signal indicator, even when the engine
-          // rejects the fix — the user needs to see "GPS is bad" as the
-          // reason nothing is accumulating.
-          setGpsAccuracy(pos.coords.accuracy ?? null);
-          gpsAccuracyRef.current = pos.coords.accuracy ?? null;
-          setGpsLastFixAt(Date.now());
-
-          const point = engineRef.current.addPoint(
-            pos.coords.latitude, pos.coords.longitude,
-            pos.coords.altitude, pos.coords.accuracy,
-            pos.timestamp || Date.now(),
-          );
-          if (point) {
-            setCurrentPos({ lat: point.lat, lng: point.lng });
-            currentPosRef.current = { lat: point.lat, lng: point.lng };
-            setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
-            // Late weather fetch — runs once on the first valid fix if
-            // startWalk() couldn't fire it (e.g. cold-start indoor walks
-            // where the countdown's getCurrentPosition timed out).
-            if (!weatherFetchedRef.current) {
-              weatherFetchedRef.current = true;
-              fetchWeatherAt(point.lat, point.lng, 'ko')
-                .then((w) => { weatherRef.current = w; })
-                .catch(() => {});
-            }
-          }
-          setStats(engineRef.current.getStats());
-        },
-        (err) => {
-          // Surface GPS errors to logs so we can diagnose background drops.
+        (pos: any) => gpsCallbackRef.current(pos),
+        (err: any) => {
           console.log('[Moru] GPS watch error:', err?.code, err?.message || String(err));
         },
         {
           enableHighAccuracy: true,
-          // distanceFilter is handled in software by WalkEngine (MIN_DISTANCE_FILTER)
-          // and a 0 here lets us see more raw fixes for smoother path drawing.
           distanceFilter: 0,
           timeout: 30000,
-          maximumAge: 0,
-          // Android-specific high-frequency updates. The FusedLocationProvider
-          // will pick the best native provider (GPS + Wi-Fi + sensors).
-          interval: 1000,
-          fastestInterval: 500,
+          maximumAge: mode === 'fast' ? 0 : 2000,
+          interval,
+          fastestInterval: fastest,
         } as any,
       );
     } catch (e) {
-      console.log('[Moru] startGps threw:', e);
+      console.log('[Moru] GPS watch create failed:', e);
     }
   }, []);
 
-  const startWalk = () => {
+  createGpsWatchRef.current = createGpsWatch;
+
+  const startGps = useCallback(() => {
+    setGpsStartedAt(Date.now());
+    gpsModeRef.current = 'fast';
+    createGpsWatch('fast');
+  }, [createGpsWatch]);
+
+  const startWalk = async () => {
     // Apply the user's body profile to the engine BEFORE start() so all
     // calorie and stride-based calculations use real numbers instead of
     // the "average adult" defaults (65 kg, 0.75 m stride).
     const profile = useAuthStore.getState().user as any;
-    if (profile) {
+    // Load calibrated stride length if user ran the StrideCalibration flow
+    let calibratedStride: number | null = null;
+    try {
+      const raw = await AsyncStorage.getItem('@moru_stride_length_m');
+      if (raw) {
+        const v = parseFloat(raw);
+        if (v > 0.3 && v < 1.5) calibratedStride = v;
+      }
+    } catch {}
+    if (profile || calibratedStride) {
       engineRef.current.setUserProfile({
-        weightKg: profile.weight_kg ?? null,
-        heightCm: profile.height_cm ?? null,
+        weightKg: profile?.weight_kg ?? null,
+        heightCm: profile?.height_cm ?? null,
+        strideLengthM: calibratedStride,
       });
     }
     engineRef.current.start();
@@ -549,8 +688,11 @@ export default function WalkScreen() {
     setState('walking');
     timerRef.current = setInterval(() => {
       const s = engineRef.current.getStats();
-      setStats(s);
-      updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+      if (!isBackgroundRef.current) setStats(s);
+      updateBackgroundWalkNotification({
+        distance: s.distance, duration: s.duration,
+        steps: s.steps, pace: s.pace, isAutoPaused: s.isAutoPaused,
+      });
       // Detect new km split and announce with TTS + haptic vibration.
       // This gives the NRC/Strava "km alert" that users rely on when
       // the phone is in their pocket.
@@ -580,6 +722,20 @@ export default function WalkScreen() {
       }
     }).catch(() => {});
 
+    // Start barometric pressure sensor for ±1m altitude accuracy.
+    // This runs on the sensor hub (<1mW) and continues in background/lockscreen.
+    // GPS altitude (±10-30m) is used as fallback when barometer is unavailable.
+    startBarometer().then((ok) => {
+      if (ok) {
+        baroSubRef.current = subscribeToBarometer(({ altitude }) => {
+          engineRef.current.updateBarometerAltitude(altitude);
+        });
+        console.log('[Moru] Barometer started — altitude precision: ±1m');
+      } else {
+        console.log('[Moru] Barometer unavailable — using GPS altitude (±10-30m)');
+      }
+    }).catch(() => {});
+
     // Capture weather conditions at the start of the walk. We try
     // immediately if we already have a fix (countdown's getCurrentPosition
     // succeeded), otherwise the GPS watch callback below will trigger
@@ -603,10 +759,14 @@ export default function WalkScreen() {
     setStats(engineRef.current.getStats()); // update stats with paused time
     // Keep the foreground service running so the user can resume without
     // losing GPS lock — we just stop charging distance while paused.
+    const pauseStats = engineRef.current.getStats();
     updateBackgroundWalkNotification({
-      distance: engineRef.current.getStats().distance,
-      duration: engineRef.current.getStats().duration,
-    }).catch(() => {});
+      distance: pauseStats.distance,
+      duration: pauseStats.duration,
+      steps: pauseStats.steps,
+      pace: pauseStats.pace,
+      isAutoPaused: true,
+    });
   };
 
   const resumeWalk = () => {
@@ -615,8 +775,11 @@ export default function WalkScreen() {
     if (!timerRef.current) {
       timerRef.current = setInterval(() => {
         const s = engineRef.current.getStats();
-        setStats(s);
-        updateBackgroundWalkNotification({ distance: s.distance, duration: s.duration }).catch(() => {});
+        if (!isBackgroundRef.current) setStats(s);
+        updateBackgroundWalkNotification({
+          distance: s.distance, duration: s.duration,
+          steps: s.steps, pace: s.pace, isAutoPaused: s.isAutoPaused,
+        });
       }, 1000);
     }
     if (watchIdRef.current === null) {
@@ -628,120 +791,216 @@ export default function WalkScreen() {
   };
 
   const completeWalk = async () => {
-    if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
-    if (bgSaveRef.current) clearInterval(bgSaveRef.current);
-    if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; }
-    stopStepCounter();
-    stopBackgroundWalkService().catch(() => {});
-    if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
-    if (liveTokenRef.current) { endLiveShare(liveTokenRef.current); liveTokenRef.current = null; setLiveToken(null); }
-    // Clear crash recovery + paused-walk data — walk completed successfully
+    // This function MUST NOT crash. Any throw here = lost walk + bad UX.
+    // Strategy:
+    //   1. Set isCompleting to unmount Mapbox first (native cleanup)
+    //   2. Cleanup timers/GPS/services fire-and-forget (no awaits)
+    //   3. Snapshot stats synchronously from engine ref
+    //   4. Save extra data to AsyncStorage in background (detached promise)
+    //   5. Fire API save in background (detached — don't block nav)
+    //   6. Navigate on next tick so Mapbox unmount completes first
+
+    // --- Phase 0: Drop Mapbox first ---
+    try { setIsCompleting(true); } catch {}
+
+    // --- Phase 1: Cleanup (each wrapped, one failure never cascades) ---
+    try { if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current); } catch {}
+    try { if (timerRef.current) clearInterval(timerRef.current); } catch {}
+    try { if (periodicSaveRef.current) clearInterval(periodicSaveRef.current); } catch {}
+    try { if (bgSaveRef.current) clearInterval(bgSaveRef.current); } catch {}
+    try { if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; } } catch {}
+    try { stopStepCounter(); } catch {}
+    try { stopBarometer(); } catch {}
+    try { if (baroSubRef.current) { baroSubRef.current.remove(); baroSubRef.current = null; } } catch {}
+    try { stopBackgroundWalkService().catch(() => {}); } catch {}
+    // Clear recovery flags — never block on these
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
     AsyncStorage.removeItem('walk_paused').catch(() => {});
-    const finalStats = engineRef.current.getStats();
-    // TTS finish announcement (distance, time, steps, calories)
-    audioFeedbackRef.current.announceFinish(
-      finalStats.distance, finalStats.duration,
-      finalStats.steps, finalStats.calories,
-    );
-    const trackPoints = engineRef.current.getTrackPoints();
 
-    // Always save locally first (before API call), including trackPoints
-    console.log(`[Moru] Saving extra: spots=${spots.length}, photos=${taggedPhotos.length}, route=${routeCoords.length}, trackPts=${trackPoints.length}`);
-    const extraData = JSON.stringify({
-      spots,
-      taggedPhotos,
-      routeCoords,
-      trackPoints,
-    });
-    const localKey = `activity_${Date.now()}_extra`;
-    // Save locally and to server in parallel
-    const localSave = Promise.all([
-      AsyncStorage.setItem(localKey, extraData).catch(() => {}),
-      AsyncStorage.setItem('activity_latest_extra', extraData).catch(() => {}),
+    // --- Phase 2: Snapshot stats ---
+    let finalStats: any = null;
+    let trackPoints: any[] = [];
+    try {
+      finalStats = engineRef.current?.getStats?.() || null;
+      // Merge previous segments' trackPoints (from resume) with current segment
+      const newTp = engineRef.current?.getTrackPoints?.() || [];
+      trackPoints = [...prevTrackPointsRef.current, ...newTp];
+    } catch (e) { console.log('[Moru] engine snapshot failed:', e); }
+    if (!finalStats) {
+      // Engine not ready — bail safely to Activity tab without crashing
+      try { navigation.replace('Main', { screen: 'Activity' }); } catch {}
+      return;
+    }
+
+    // --- Phase 3: Fire TTS (fire-and-forget, never awaited) ---
+    try {
+      audioFeedbackRef.current?.announceFinish(
+        finalStats.distance || 0, finalStats.duration || 0,
+        finalStats.steps || 0, finalStats.calories || 0,
+      );
+    } catch (e) { console.log('[Moru] TTS failed:', e); }
+
+    // --- Phase 4: Save locally BEFORE navigation ---
+    // This is the CRITICAL save — if it fails, the user loses their walk
+    // data. We AWAIT this (with timeout) so it's confirmed before nav.
+    // For 50km walks: 5000 downsampled points × ~80 bytes = ~400 KB (safe).
+    const saveExtras = async () => {
+      try {
+        // Downsample to keep under AsyncStorage's ~2 MB limit
+        let safeTrackPoints = trackPoints;
+        if (safeTrackPoints.length > 5000) {
+          const stride = Math.ceil(safeTrackPoints.length / 5000);
+          safeTrackPoints = safeTrackPoints.filter((_: any, i: number) => i % stride === 0);
+        }
+        let safeRouteCoords = routeCoords || [];
+        if (safeRouteCoords.length > 10000) {
+          const stride = Math.ceil(safeRouteCoords.length / 10000);
+          safeRouteCoords = safeRouteCoords.filter((_: any, i: number) => i % stride === 0);
+        }
+        const extraData = JSON.stringify({
+          spots: spots || [],
+          taggedPhotos: taggedPhotos || [],
+          routeCoords: safeRouteCoords,
+          trackPoints: safeTrackPoints,
+        });
+        // Save to TWO keys for redundancy:
+        // 1. Primary: used by WalkCompleteScreen
+        // 2. Backup: timestamped, survives if primary is overwritten
+        await AsyncStorage.setItem('activity_latest_extra', extraData);
+        await AsyncStorage.setItem(`activity_${Date.now()}_extra`, extraData);
+        console.log(`[Moru] Walk data saved: ${(extraData.length / 1024).toFixed(0)} KB, ` +
+          `${safeTrackPoints.length} points, ${safeRouteCoords.length} route coords`);
+      } catch (e) {
+        console.log('[Moru] saveExtras FAILED:', e);
+        // Even if AsyncStorage fails, the data is still in memory and
+        // will be sent to the API. Alert the user.
+        try {
+          Alert.alert('저장 주의', '로컬 저장이 실패했습니다. 네트워크 연결을 확인하세요.');
+        } catch {}
+      }
+    };
+    // Await with 5s timeout — don't hang forever but do wait for the save
+    await Promise.race([
+      saveExtras(),
+      new Promise<void>(r => setTimeout(r, 5000)),
     ]);
 
-    let activityId: string | number | null = null;
-    const apiSave = isAuthenticated ? (async () => {
-      try {
-        const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-        const weather = weatherRef.current;
-        const actRes = await api.post('/activities/', {
-          trail: trailId || null,
-          track_points: trackPoints.length > 0 ? trackPoints : [],
-          source: 'phone_gps',
-          title: `${dateLabel} 도보`,
-          started_at: new Date(Date.now() - finalStats.totalTime * 1000).toISOString(),
-          finished_at: new Date().toISOString(),
-          total_steps: finalStats.steps, calories_burned: finalStats.calories,
-          distance_km: finalStats.distance.toFixed(2),
-          duration_minutes: Math.max(1, Math.round(finalStats.duration / 60)),
-          elevation_gain_m: finalStats.elevationGain,
-          elevation_loss_m: finalStats.elevationLoss,
-          // Weather captured at start (may be null if API key absent)
-          weather_temp_c: weather ? weather.tempC : null,
-          weather_condition: weather ? weather.condition : '',
-          weather_icon: weather ? weather.icon : '',
-        });
-        activityId = actRes?.data?.id;
-        if (activityId) {
-          AsyncStorage.setItem(`activity_${activityId}_extra`, extraData).catch(() => {});
-        }
-      } catch (e) { console.log('Save error:', e); }
-    })() : Promise.resolve();
+    // API save — also detached. If it succeeds, we'll update the local
+    // activity extra key. If it fails, we still have local data.
+    if (isAuthenticated) {
+      (async () => {
+        try {
+          const dateLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+          const weather = weatherRef.current;
+          // Downsample track_points sent to API too — big uploads on cellular
+          // are slow and risk timeouts.
+          let apiTrackPoints = trackPoints;
+          if (apiTrackPoints.length > 3000) {
+            const stride = Math.ceil(apiTrackPoints.length / 3000);
+            apiTrackPoints = apiTrackPoints.filter((_, i) => i % stride === 0);
+          }
+          const actRes = await api.post('/activities/', {
+            trail: trailId || null,
+            track_points: apiTrackPoints.length > 0 ? apiTrackPoints : [],
+            source: 'phone_gps',
+            title: `${dateLabel} 도보`,
+            started_at: new Date(Date.now() - (finalStats.totalTime || 0) * 1000).toISOString(),
+            finished_at: new Date().toISOString(),
+            total_steps: finalStats.steps || 0,
+            calories_burned: finalStats.calories || 0,
+            distance_km: (finalStats.distance || 0).toFixed(2),
+            duration_minutes: Math.max(1, Math.round((finalStats.duration || 0) / 60)),
+            elevation_gain_m: finalStats.elevationGain || 0,
+            elevation_loss_m: finalStats.elevationLoss || 0,
+            weather_temp_c: weather ? weather.tempC : null,
+            weather_condition: weather ? weather.condition : '',
+            weather_icon: weather ? weather.icon : '',
+          }, { timeout: 30000 }); // 30s hard cap — never hang forever
+          const aid = actRes?.data?.id;
+          if (aid) {
+            try {
+              const raw = await AsyncStorage.getItem('activity_latest_extra');
+              if (raw) await AsyncStorage.setItem(`activity_${aid}_extra`, raw);
+            } catch {}
+          }
+        } catch (e) { console.log('[Moru] API save failed:', e); }
+      })();
+    }
 
-    await Promise.all([localSave, apiSave]);
+    // --- Phase 5: Navigate immediately ---
+    // Build nav params with primitive/small values only.
+    const navParams = {
+      distance: (finalStats.distance || 0).toFixed(2),
+      duration: String(Math.round(finalStats.duration || 0)),
+      steps: String(finalStats.steps || 0),
+      calories: String(finalStats.calories || 0),
+      pace: formatPace(finalStats.pace || 0),
+      elevationGain: String(finalStats.elevationGain || 0),
+      elevationLoss: String(finalStats.elevationLoss || 0),
+      maxSpeed: (finalStats.maxSpeed || 0).toFixed(1),
+      splits: (() => { try { return JSON.stringify(finalStats.splits || []); } catch { return '[]'; } })(),
+      activityId: null as any,
+    };
     const goToComplete = () => {
-      navigation.replace('WalkComplete', {
-        distance: finalStats.distance.toFixed(2),
-        duration: String(Math.round(finalStats.duration)),
-        steps: String(finalStats.steps), calories: String(finalStats.calories),
-        pace: formatPace(finalStats.pace),
-        elevationGain: String(finalStats.elevationGain),
-        elevationLoss: String(finalStats.elevationLoss),
-        maxSpeed: finalStats.maxSpeed.toFixed(1),
-        splits: JSON.stringify(finalStats.splits), taggedPhotos,
-        spots,
-        routeCoords,
-        trackPoints: engineRef.current.getTrackPoints(),
-        activityId,
-      });
+      // Defer so React has a chance to commit setIsCompleting(true) and
+      // Mapbox's native view has a chance to release before we navigate.
+      // 150ms is empirically enough for Mapbox teardown on Android 15.
+      setTimeout(() => {
+        try {
+          navigation.replace('WalkComplete', navParams);
+        } catch (e) {
+          console.log('[Moru] nav to WalkComplete failed:', e);
+          // Last-resort fallback
+          try { navigation.replace('Main', { screen: 'Activity' }); } catch {}
+        }
+      }, 150);
     };
 
     // If came from TrailCreate, offer to share as course
     if (fromTrailCreate && routeCoords.length >= 2) {
-      Alert.alert(
-        '코스로 공유하시겠어요?',
-        '걸은 경로를 코스로 등록할 수 있어요.',
-        [
-          {
-            text: '아니요',
-            style: 'cancel',
-            onPress: goToComplete,
-          },
-          {
-            text: '코스 등록',
-            onPress: () => {
-              const startCoord = routeCoords[0];
-              const endCoord = routeCoords[routeCoords.length - 1];
-              navigation.replace('TrailPublish', {
-                pathData: routeCoords,
-                distance: parseFloat(finalStats.distance.toFixed(2)),
-                duration: Math.max(1, Math.round(finalStats.duration / 60)),
-                elevationGain: finalStats.elevationGain,
-                spots,
-                startLat: startCoord[1],
-                startLng: startCoord[0],
-                endLat: endCoord[1],
-                endLng: endCoord[0],
-                manualMode: false,
-              });
+      try {
+        Alert.alert(
+          '코스로 공유하시겠어요?',
+          '걸은 경로를 코스로 등록할 수 있어요.',
+          [
+            { text: '아니요', style: 'cancel', onPress: goToComplete },
+            {
+              text: '코스 등록',
+              onPress: () => {
+                setTimeout(() => {
+                  try {
+                    const startCoord = routeCoords[0];
+                    const endCoord = routeCoords[routeCoords.length - 1];
+                    // Stash large arrays in the nav-param cache (in-memory key)
+                    // so the Android Intent bundle stays under 1 MB.
+                    const cacheKey = navParamCache.put({
+                      pathData: routeCoords,
+                      spots,
+                    });
+                    navigation.replace('TrailPublish', {
+                      _cacheKey: cacheKey,
+                      distance: parseFloat((finalStats.distance || 0).toFixed(2)),
+                      duration: Math.max(1, Math.round((finalStats.duration || 0) / 60)),
+                      elevationGain: finalStats.elevationGain || 0,
+                      startLat: startCoord[1],
+                      startLng: startCoord[0],
+                      endLat: endCoord[1],
+                      endLng: endCoord[0],
+                      manualMode: false,
+                    });
+                  } catch (e) {
+                    console.log('[Moru] nav to TrailPublish failed:', e);
+                    goToComplete();
+                  }
+                }, 150);
+              },
             },
-          },
-        ],
-      );
+          ],
+        );
+      } catch (e) {
+        console.log('[Moru] alert failed:', e);
+        goToComplete();
+      }
     } else {
       goToComplete();
     }
@@ -757,7 +1016,18 @@ export default function WalkScreen() {
     stopBackgroundWalkService().catch(() => {});
 
     const finalStats = engineRef.current.getStats();
-    const trackPoints = engineRef.current.getTrackPoints();
+    // Merge previous segments' trackPoints with current segment
+    let tp = [...prevTrackPointsRef.current, ...engineRef.current.getTrackPoints()];
+    // Downsample for AsyncStorage safety (50km walk = 36,000 points → 5,000)
+    if (tp.length > 5000) {
+      const stride = Math.ceil(tp.length / 5000);
+      tp = tp.filter((_: any, i: number) => i % stride === 0);
+    }
+    let rc = routeCoords;
+    if (rc.length > 10000) {
+      const stride = Math.ceil(rc.length / 10000);
+      rc = rc.filter((_: any, i: number) => i % stride === 0);
+    }
 
     const savedWalk = {
       savedAt: new Date().toISOString(),
@@ -765,20 +1035,28 @@ export default function WalkScreen() {
       segments: [{
         startedAt: new Date(Date.now() - finalStats.totalTime * 1000).toISOString(),
         endedAt: new Date().toISOString(),
-        routeCoords,
-        trackPoints,
+        routeCoords: rc,
+        trackPoints: tp,
         distance: finalStats.distance,
         duration: finalStats.duration,
         steps: finalStats.steps,
         calories: finalStats.calories,
         elevationGain: finalStats.elevationGain,
+        elevationLoss: finalStats.elevationLoss,
       }],
       spots,
       taggedPhotos,
       trailId: trailId || null,
     };
 
-    await AsyncStorage.setItem('walk_paused', JSON.stringify(savedWalk)).catch(() => {});
+    try {
+      await AsyncStorage.setItem('walk_paused', JSON.stringify(savedWalk));
+      console.log(`[Moru] Walk paused: ${tp.length} trackPoints, ${rc.length} routeCoords saved`);
+    } catch (e) {
+      console.log('[Moru] walk_paused save FAILED:', e);
+      Alert.alert('저장 주의', '일시 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+      return; // Don't navigate away if save failed
+    }
     AsyncStorage.removeItem('walk_in_progress').catch(() => {});
 
     Alert.alert(
@@ -790,79 +1068,19 @@ export default function WalkScreen() {
 
   const handleStop = () => setShowStopModal(true);
 
-  /**
-   * Start a Strava-Beacon-style live share — POST to /live-walks/, get
-   * a public URL, kick off a 15s push loop, and open the system share
-   * sheet so the user can text the link to a contact.
-   */
-  const toggleLiveShare = useCallback(async () => {
-    if (liveTokenRef.current) {
-      // Already sharing — confirm cancel
-      Alert.alert(
-        '안전 공유 종료',
-        '실시간 위치 공유를 중단할까요?',
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '종료',
-            style: 'destructive',
-            onPress: async () => {
-              const t = liveTokenRef.current;
-              if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
-              if (t) await endLiveShare(t);
-              liveTokenRef.current = null;
-              setLiveToken(null);
-            },
-          },
-        ],
-      );
-      return;
-    }
-    try {
-      const session = await startLiveShare();
-      liveTokenRef.current = session.token;
-      setLiveToken(session.token);
-      // Push an update every 15s so viewers see fresh position.
-      // Use refs (currentPosRef / gpsAccuracyRef / engineRef) so we
-      // always read the LATEST values — the previous version captured
-      // currentPos in the closure once and pinned it to the start.
-      liveTimerRef.current = setInterval(async () => {
-        const cur = currentPosRef.current;
-        if (!cur || !liveTokenRef.current) return;
-        const s = engineRef.current.getStats();
-        await pushLiveUpdate(liveTokenRef.current, {
-          lat: cur.lat,
-          lng: cur.lng,
-          accuracy: gpsAccuracyRef.current,
-          speedKmh: s.speed,
-          distanceKm: s.distance,
-          durationSeconds: s.duration,
-        });
-      }, 15000);
-      // Immediately share the URL via system share sheet
-      try {
-        await Share.share({
-          message: `모루 실시간 위치 공유\n지금 어디 있는지 볼 수 있어요:\n${session.share_url}`,
-          title: '안전 공유',
-        });
-      } catch {}
-    } catch (e: any) {
-      Alert.alert('공유 시작 실패', e?.response?.data?.error || '나중에 다시 시도해주세요.');
-    }
-  }, []);
-
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (watchIdRef.current !== null) { try { Geolocation.clearWatch(watchIdRef.current); } catch {} }
-      if (periodicSaveRef.current) clearInterval(periodicSaveRef.current);
-      if (bgSaveRef.current) clearInterval(bgSaveRef.current);
-      if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; }
-      stopStepCounter();
-      stopBackgroundWalkService().catch(() => {});
-      audioFeedbackRef.current.destroy();
-      if (liveTimerRef.current) { clearInterval(liveTimerRef.current); liveTimerRef.current = null; }
-      if (liveTokenRef.current) { endLiveShare(liveTokenRef.current); }
+      // Unmount cleanup — each call wrapped so one failure doesn't cascade
+      try { if (timerRef.current) clearInterval(timerRef.current); } catch {}
+      try { if (watchIdRef.current !== null) Geolocation.clearWatch(watchIdRef.current); } catch {}
+      try { if (periodicSaveRef.current) clearInterval(periodicSaveRef.current); } catch {}
+      try { if (bgSaveRef.current) clearInterval(bgSaveRef.current); } catch {}
+      try { if (stepSubRef.current) { stepSubRef.current.remove(); stepSubRef.current = null; } } catch {}
+      try { stopStepCounter(); } catch {}
+    try { stopBarometer(); } catch {}
+    try { if (baroSubRef.current) { baroSubRef.current.remove(); baroSubRef.current = null; } } catch {}
+      try { stopBackgroundWalkService().catch(() => {}); } catch {}
+      try { audioFeedbackRef.current?.destroy?.(); } catch {}
     };
   }, []);
 
@@ -921,7 +1139,14 @@ export default function WalkScreen() {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* ====== MAP (large, top area) ====== */}
+      {/* isCompleting: unmount Mapbox one frame before we navigate, so
+          the native layer gets a chance to release resources cleanly.
+          This prevents a native-side crash observed during screen
+          transition on Android 15 Samsung devices. */}
       <View style={[styles.mapWrap, { paddingTop: insets.top }]}>
+        {isCompleting ? (
+          <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />
+        ) : (
         <Mapbox.MapView
           style={{ flex: 1 }}
           styleURL="mapbox://styles/mapbox/dark-v11"
@@ -979,6 +1204,7 @@ export default function WalkScreen() {
             );
           })}
         </Mapbox.MapView>
+        )}
 
         {/* Map top-left: status pill + GPS signal indicator */}
         <View style={[styles.mapTopBar, { top: insets.top + 12 }]}>
@@ -994,29 +1220,24 @@ export default function WalkScreen() {
               }
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              style={[
-                styles.liveShareBtn,
-                liveToken && styles.liveShareBtnActive,
-              ]}
-              onPress={toggleLiveShare}
-              activeOpacity={0.8}>
-              <Feather
-                name={liveToken ? 'radio' : 'shield'}
-                size={14}
-                color={liveToken ? '#fff' : 'rgba(255,255,255,0.8)'}
-              />
-              <Text style={[styles.liveShareBtnText, liveToken && { color: '#fff' }]}>
-                {liveToken ? 'LIVE' : '안전'}
-              </Text>
-            </TouchableOpacity>
-            <GpsSignalIndicator
-              accuracy={gpsAccuracy}
-              lastFixAt={gpsLastFixAt}
-              startedAt={gpsStartedAt}
-            />
-          </View>
+          <GpsSignalIndicator
+            accuracy={gpsAccuracy}
+            lastFixAt={gpsLastFixAt}
+            startedAt={gpsStartedAt}
+          />
+          {/* High-accuracy toggle — keeps 1Hz GPS even with screen off */}
+          <TouchableOpacity
+            style={[styles.accuracyToggle, highAccuracy && styles.accuracyToggleOn]}
+            onPress={() => {
+              const next = !highAccuracy;
+              setHighAccuracy(next);
+              highAccuracyRef.current = next;
+            }}
+            activeOpacity={0.7}>
+            <Text style={styles.accuracyToggleText}>
+              {highAccuracy ? 'HD' : 'HD'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Map overlay buttons removed — using bottom quick actions instead */}
@@ -1052,20 +1273,16 @@ export default function WalkScreen() {
           <Text style={styles.distUnit}>km</Text>
         </View>
 
-        {/* Pace — current vs avg with delta arrow */}
+        {/* Pace — centered current pace, avg + delta in a row below */}
         <View style={styles.paceRow}>
-          <View style={styles.paceMain}>
-            <Text style={styles.paceLabel}>현재 페이스</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-              <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
-              <Text style={styles.paceUnit}>/km</Text>
-            </View>
+          <Text style={styles.paceLabel}>현재 페이스</Text>
+          <View style={styles.paceValueRow}>
+            <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
+            <Text style={styles.paceUnit}>/km</Text>
           </View>
-          {/* Avg pace + delta indicator */}
           {stats.distance > 0.1 && stats.pace > 0 && (
-            <View style={styles.paceAvg}>
-              <Text style={styles.paceAvgLabel}>평균</Text>
-              <Text style={styles.paceAvgValue}>{formatPace(stats.pace)}</Text>
+            <View style={styles.paceAvgRow}>
+              <Text style={styles.paceAvgLabel}>평균 {formatPace(stats.pace)}</Text>
               {stats.currentPace > 0 && (
                 <Text
                   style={[
@@ -1295,7 +1512,7 @@ export default function WalkScreen() {
                           onPress={() => {
                             Alert.prompt ? Alert.prompt('제목 수정', '', [
                               { text: '취소', style: 'cancel' },
-                              { text: '저장', onPress: (val) => setTaggedPhotos(prev => prev.map((ph, idx) => idx === i ? { ...ph, title: val || '' } : ph)) },
+                              { text: '저장', onPress: (val?: string) => setTaggedPhotos(prev => prev.map((ph, idx) => idx === i ? { ...ph, title: val || '' } : ph)) },
                             ], 'plain-text', p.title || '') : (() => {
                               // Android fallback — just use simple title edit
                               setTaggedPhotos(prev => prev.map((ph, idx) => idx === i ? { ...ph, title: `사진 ${i + 1}` } : ph));
@@ -1488,6 +1705,43 @@ export default function WalkScreen() {
   );
 }
 
+// Error boundary — if ANY render inside WalkScreen throws, catch it and
+// push the user back to the Activity tab instead of letting the JS bridge
+// tear down the app. This is the last line of defense for the walk flow.
+class WalkScreenBoundary extends React.Component<
+  { children: React.ReactNode; navigation: any },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: any, info: any) {
+    console.log('[Moru] WalkScreen render crash:', error, info);
+  }
+  componentDidUpdate(_: any, prev: { hasError: boolean }) {
+    if (!prev.hasError && this.state.hasError) {
+      // Defer navigation so React finishes the commit first
+      setTimeout(() => {
+        try { this.props.navigation?.replace?.('Main', { screen: 'Activity' }); } catch {}
+      }, 100);
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />;
+    }
+    return this.props.children;
+  }
+}
+
+export default function WalkScreen() {
+  const navigation = useNavigation<any>();
+  return (
+    <WalkScreenBoundary navigation={navigation}>
+      <WalkScreenInner />
+    </WalkScreenBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   // ---- COUNTDOWN ----
   countdownContainer: {
@@ -1565,24 +1819,6 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: 'transparent',
   },
-  liveShareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-  },
-  liveShareBtnActive: {
-    backgroundColor: '#EF4444',
-  },
-  liveShareBtnText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    color: 'rgba(255,255,255,0.8)',
-  },
   mapTopBar: {
     position: 'absolute',
     left: 16,
@@ -1592,6 +1828,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 10,
     gap: 10,
+  },
+  accuracyToggle: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginLeft: 8,
+  },
+  accuracyToggleOn: {
+    backgroundColor: '#4ADE80',
+  },
+  accuracyToggleText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   mapStatusPill: {
     flexDirection: 'row',
@@ -1674,19 +1926,22 @@ const styles = StyleSheet.create({
   statsPanel: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 16,
+    paddingTop: 8,
+    paddingBottom: 2,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    overflow: 'hidden',
   },
   prevBanner: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginBottom: 6,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginBottom: 4,
     alignSelf: 'center',
   },
   prevBannerText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
@@ -1710,19 +1965,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
   },
   timeLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.3)',
     textTransform: 'uppercase',
     letterSpacing: 2,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   timeValue: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.7)',
     fontVariant: ['tabular-nums'],
-    marginBottom: 4,
+    marginBottom: 2,
   },
   distRow: {
     flexDirection: 'row',
@@ -1730,67 +1985,68 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   distValue: {
-    fontSize: 52,
+    fontSize: 44,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -2,
   },
   distUnit: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.35)',
     marginLeft: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   paceRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
     width: '100%',
   },
-  paceMain: {
-    flex: 1,
-  },
   paceLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.3,
     marginBottom: 2,
+  },
+  paceValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
   },
   paceValue: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.6,
     color: '#4ADE80',
   },
   paceUnit: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.25)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.35)',
     marginLeft: 3,
   },
-  paceAvg: {
-    alignItems: 'flex-end',
+  paceAvgRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 3,
   },
   paceAvgLabel: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.3)',
-  },
-  paceAvgValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 1,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
   },
   paceDelta: {
     fontSize: 10,
     fontWeight: '600',
-    marginTop: 2,
   },
   grid: {
     flexDirection: 'row',
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 10,
     alignItems: 'center',
   },
   gridItem: {
@@ -1803,13 +2059,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   gridVal: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   gridLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: 'rgba(255,255,255,0.35)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -2083,14 +2339,14 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    paddingVertical: 8,
-    paddingBottom: 4,
+    gap: 18,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   quickBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',

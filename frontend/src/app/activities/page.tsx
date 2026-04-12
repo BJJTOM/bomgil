@@ -72,35 +72,11 @@ export default function ActivitiesPage() {
     return `${min}'${sec.toString().padStart(2, "0")}"`;
   }
 
-  const today = new Date().toISOString().split("T")[0];
-  const todayWeekly = stats?.weekly?.find((d) => d.date === today);
-  const todayFromActivities = (activities as ActivityTrack[]).filter(
-    (a) => a.started_at && a.started_at.startsWith(today)
-  );
-  const todayStats = todayWeekly
-    ? {
-        steps: todayWeekly.total_steps,
-        distance: parseFloat(todayWeekly.total_distance_km),
-        calories: todayWeekly.total_calories,
-      }
-    : {
-        steps: todayFromActivities.reduce((s, a) => s + (a.total_steps || 0), 0),
-        distance: todayFromActivities.reduce((s, a) => s + parseFloat(a.distance_km || "0"), 0),
-        calories: todayFromActivities.reduce((s, a) => s + (a.calories_burned || 0), 0),
-      };
-
   const recentActivityLabel: Record<string, string> = {
     ko: "최근 활동",
     en: "Recent Activity",
     ja: "最近のアクティビティ",
     zh: "最近活动",
-  };
-
-  const todayLabel: Record<string, string> = {
-    ko: "오늘",
-    en: "Today",
-    ja: "今日",
-    zh: "今天",
   };
 
   const todayDateStr = new Date().toLocaleDateString(language, { month: "long", day: "numeric", weekday: "long" });
@@ -123,35 +99,6 @@ export default function ActivitiesPage() {
               <Link href="/activities/upload" className="px-3.5 py-1.5 bg-[#F7F8FA] text-[#2D4A2E] rounded-[20px] text-[13px] font-medium hover:bg-[#E5E8EB] transition-colors">
                 + {t("activities.addRecord")}
               </Link>
-            </div>
-          </div>
-
-          {/* Today's main stat — distance */}
-          <div className="text-center mb-5">
-            <p className="text-[12px] text-[#B0B8C1] mb-1">{todayLabel[language] ?? todayLabel.en}</p>
-            <p className="text-[48px] font-bold text-[#2D4A2E] font-en leading-none">{todayStats.distance.toFixed(1)}</p>
-            <p className="text-[14px] text-[#B0B8C1] mt-0.5">km</p>
-          </div>
-
-          {/* Today's ring stats */}
-          <div className="flex justify-center gap-8 mb-5">
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full border-[3px] border-[#2D4A2E] flex items-center justify-center mb-1">
-                <span className="text-[14px] font-bold text-[#191F28] font-en">{todayStats.steps.toLocaleString()}</span>
-              </div>
-              <p className="text-[10px] text-[#B0B8C1]">{t("activities.steps")}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full border-[3px] border-[#A8E6CF] flex items-center justify-center mb-1">
-                <span className="text-[14px] font-bold text-[#191F28] font-en">{todayStats.distance.toFixed(1)}</span>
-              </div>
-              <p className="text-[10px] text-[#B0B8C1]">km</p>
-            </div>
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full border-[3px] border-[#FF6B6B] flex items-center justify-center mb-1">
-                <span className="text-[14px] font-bold text-[#191F28] font-en">{todayStats.calories}</span>
-              </div>
-              <p className="text-[10px] text-[#B0B8C1]">kcal</p>
             </div>
           </div>
 

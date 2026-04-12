@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { getTodayPassiveSteps } from '../utils/nativeStepCounter';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -103,18 +102,6 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: '今一番人気のコースを歩いてみましょう',
     zh: '走走现在最受欢迎的路线',
   },
-  communityTitle: {
-    ko: '최근 커뮤니티',
-    en: 'Recent Community',
-    ja: '最近のコミュニティ',
-    zh: '最新社区',
-  },
-  communitySub: {
-    ko: '여행자들의 최신 이야기',
-    en: 'Latest stories from travelers',
-    ja: '旅行者の最新の話',
-    zh: '旅行者的最新故事',
-  },
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
   stories: { ko: '걸은 이야기', en: 'Stories', ja: '歩いた話', zh: '步行故事' },
@@ -143,24 +130,6 @@ export default function HomeScreen() {
   const { isAuthenticated } = useAuthStore();
   const { isDark } = useThemeStore();
   const [showLangModal, setShowLangModal] = useState(false);
-  // Today's passive step count from the device's hardware step counter.
-  // This is what shows on HomeScreen even if the user never opened a walk
-  // recording session — we read TYPE_STEP_COUNTER's cumulative-since-boot
-  // value and subtract a "start of day" baseline stored in AsyncStorage.
-  const [todaySteps, setTodaySteps] = useState<number>(0);
-  useEffect(() => {
-    let cancelled = false;
-    const refresh = async () => {
-      const s = await getTodayPassiveSteps();
-      if (!cancelled) setTodaySteps(s);
-    };
-    refresh();
-    // Refresh every 30 seconds while the screen is mounted so the user
-    // sees the count climbing in close-to-real-time.
-    const id = setInterval(refresh, 30000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#191F28';
@@ -206,15 +175,18 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
-  const { data: recentPosts, isLoading: isLoadingCommunity } = useQuery({
-    queryKey: ['community', 'recent'],
+  // "오늘의 코스" — curated official trails. Shown at the top of home.
+  const { data: todayTrails, isLoading: isLoadingToday } = useQuery({
+    queryKey: ['trails', 'today'],
     queryFn: async () => {
-      const { data } = await api.get('/community/posts/', {
-        params: { page_size: 3 },
-      });
-      return (data?.results ?? data) as any[];
+      try {
+        const { data } = await api.get('/trails/today/', { params: { limit: 3 } });
+        return (data ?? []) as Trail[];
+      } catch {
+        return [] as Trail[];
+      }
     },
-    staleTime: 60000,
+    staleTime: 5 * 60 * 1000,
   });
 
   return (
@@ -268,22 +240,6 @@ export default function HomeScreen() {
           </LinearGradient>
         </FadeInView>
 
-        {/* Today's passive steps — read continuously from the OS step counter */}
-        {todaySteps > 0 && (
-          <View style={[styles.todayStepsCard, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.08)' }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.todayStepsLabel, { color: textTertColor }]}>오늘 걸음</Text>
-              <Text style={[styles.todayStepsValue, { color: textColor }]}>
-                {todaySteps.toLocaleString()}
-                <Text style={[styles.todayStepsUnit, { color: textTertColor }]}>  걸음</Text>
-              </Text>
-            </View>
-            <View style={styles.todayStepsBadge}>
-              <Text style={styles.todayStepsBadgeText}>🚶</Text>
-            </View>
-          </View>
-        )}
-
         {/* Stats bar — overlapping hero bottom */}
         <View style={[styles.statsBar, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <View style={styles.statItem}>
@@ -330,6 +286,48 @@ export default function HomeScreen() {
             </View>
           </View>
         </FadeInView>
+
+        {/* Today's Courses — curated official trails */}
+        {todayTrails && todayTrails.length > 0 && (
+          <FadeInView delay={150}>
+            <View style={styles.trailSection}>
+              <View style={styles.trailHeader}>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    {language === 'ko' ? '오늘의 코스' : language === 'ja' ? '今日のコース' : language === 'zh' ? '今日路线' : "Today's Picks"}
+                  </Text>
+                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                    {language === 'ko' ? '공식 큐레이션 · 지금 걷기 좋은' : language === 'ja' ? '公式キュレーション' : language === 'zh' ? '官方策划' : 'Official curation'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('Explore', { is_official: 'true' })
+                  }>
+                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={todayTrails}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.trailScroll}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <View style={styles.trailCardWrap}>
+                    <TrailCard
+                      trail={item}
+                      compact
+                      onPress={() =>
+                        navigation.navigate('TrailDetail', { id: item.id })
+                      }
+                    />
+                  </View>
+                )}
+              />
+            </View>
+          </FadeInView>
+        )}
 
         {/* Popular Trails */}
         <FadeInView delay={200}>
@@ -397,7 +395,7 @@ export default function HomeScreen() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 12, paddingTop: 16 }}>
+                  contentContainerStyle={{ gap: 12, paddingTop: 16, paddingBottom: 12, paddingRight: 20 }}>
                   {[1, 2, 3].map((i) => (
                     <View key={i} style={[styles.recCardSkeleton, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}>
                       <View style={[styles.recCardSkeletonImage, { backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
@@ -412,7 +410,7 @@ export default function HomeScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12, paddingTop: 16 }}>
+                contentContainerStyle={{ gap: 12, paddingTop: 16, paddingBottom: 12, paddingRight: 20 }}>
                 {(recommendedTrails || []).slice(0, 3).map((trail) => (
                   <TouchableOpacity
                     key={trail.id}
@@ -457,82 +455,6 @@ export default function HomeScreen() {
         )}
 
         {/* Recent Community Posts */}
-        {(isLoadingCommunity || (recentPosts && recentPosts.length > 0)) && (
-          <FadeInView delay={400}>
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Feather name="message-circle" size={18} color={isDark ? '#4ADE80' : '#2D4A2E'} />
-                <View style={{ marginLeft: 8, flex: 1 }}>
-                  <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
-                    {t('communityTitle', language)}
-                  </Text>
-                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
-                    {t('communitySub', language)}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate('Community')}>
-                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
-                </TouchableOpacity>
-              </View>
-              {isLoadingCommunity ? (
-                <View style={{ gap: 10, marginTop: 16 }}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={[styles.communityCardSkeleton, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                        <View style={[styles.skeletonCircle, { backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                        <View style={[styles.skeletonLine, { width: 80, marginLeft: 8, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                      </View>
-                      <View style={[styles.skeletonLine, { width: '90%', backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                      <View style={[styles.skeletonLine, { width: '60%', marginTop: 6, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                    </View>
-                  ))}
-                </View>
-              ) : (
-              <View style={{ gap: 10, marginTop: 16 }}>
-                {(recentPosts || []).slice(0, 3).map((post: any) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={[styles.communityCard, { backgroundColor: cardBg }]}
-                    activeOpacity={0.7}
-                    onPress={() => navigation.navigate('PostDetail', { id: post.id })}>
-                    <View style={styles.communityCardHeader}>
-                      <View style={styles.communityAvatar}>
-                        {post.author?.profile_image ? (
-                          <Image source={{ uri: post.author.profile_image }} style={styles.communityAvatarImg} />
-                        ) : (
-                          <Feather name="user" size={14} color="#B0B8C1" />
-                        )}
-                      </View>
-                      <Text style={[styles.communityAuthor, { color: textColor }]}>
-                        {post.author?.nickname || '익명'}
-                      </Text>
-                      <Text style={[styles.communityTime, { color: textTertColor }]}>
-                        {post.created_at
-                          ? new Date(post.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-                          : ''}
-                      </Text>
-                    </View>
-                    <Text style={[styles.communityContent, { color: textColor }]} numberOfLines={2}>
-                      {post.title || post.content || ''}
-                    </Text>
-                    <View style={styles.communityCardFooter}>
-                      <View style={styles.communityStatRow}>
-                        <Feather name="heart" size={12} color={textTertColor} />
-                        <Text style={[styles.communityStatText, { color: textTertColor }]}>{post.like_count ?? 0}</Text>
-                      </View>
-                      <View style={styles.communityStatRow}>
-                        <Feather name="message-square" size={12} color={textTertColor} />
-                        <Text style={[styles.communityStatText, { color: textTertColor }]}>{post.comment_count ?? 0}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              )}
-            </View>
-          </FadeInView>
-        )}
-
         {/* UGC CTA — single compact line */}
         <View style={[styles.ugcRow, isDark && { backgroundColor: '#1a1a1a' }]}>
           <Feather name="edit-3" size={16} color="#8B95A1" style={{ marginRight: 8 }} />
@@ -668,50 +590,6 @@ const styles = StyleSheet.create({
   },
 
   // Stats bar — white card overlapping hero bottom
-  todayStepsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F2F4F6',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    marginHorizontal: 16,
-    marginTop: -10,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  todayStepsLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  todayStepsValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  todayStepsUnit: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  todayStepsBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(45,74,46,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayStepsBadgeText: {
-    fontSize: 22,
-  },
   statsBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -746,7 +624,7 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 8,
+    paddingBottom: 20,
   },
   sectionTitle: {
     fontSize: 17,
@@ -795,7 +673,7 @@ const styles = StyleSheet.create({
   // Trail section
   trailSection: {
     paddingTop: 24,
-    paddingBottom: 8,
+    paddingBottom: 20,
   },
   trailHeader: {
     flexDirection: 'row',
@@ -811,6 +689,7 @@ const styles = StyleSheet.create({
   },
   trailScroll: {
     paddingHorizontal: 20,
+    paddingBottom: 12,
     gap: 12,
   },
   trailCardWrap: {
@@ -840,11 +719,6 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
   },
-  communityCardSkeleton: {
-    borderRadius: 14,
-    padding: 14,
-  },
-
   // UGC — single compact row
   ugcRow: {
     flexDirection: 'row',
@@ -922,67 +796,6 @@ const styles = StyleSheet.create({
   },
   recCardMetaText: {
     fontSize: 11,
-    color: '#B0B8C1',
-  },
-
-  // Community cards
-  communityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  communityCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  communityAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F2F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    marginRight: 8,
-  },
-  communityAvatarImg: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  communityAuthor: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#191F28',
-    flex: 1,
-  },
-  communityTime: {
-    fontSize: 11,
-    color: '#B0B8C1',
-  },
-  communityContent: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#191F28',
-    marginBottom: 8,
-  },
-  communityCardFooter: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  communityStatRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  communityStatText: {
-    fontSize: 12,
     color: '#B0B8C1',
   },
 

@@ -69,6 +69,8 @@ export interface Trail {
   is_liked: boolean;
   created_at: string;
   updated_at: string;
+  is_official?: boolean;
+  source?: string;
 }
 
 export type TrailType =

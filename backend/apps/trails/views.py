@@ -32,7 +32,10 @@ class TrailUpdateThrottle(UserRateThrottle):
 
 class TrailViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-    filterset_fields = ["region", "country", "difficulty", "best_season", "status", "tags"]
+    filterset_fields = [
+        "region", "country", "difficulty", "best_season", "status", "tags",
+        "is_official", "trail_type",
+    ]
     search_fields = ["title", "description", "region", "tags__name", "tags__name_en"]
     ordering_fields = ["created_at", "like_count", "distance_km"]
     ordering = ["-created_at"]
@@ -58,6 +61,18 @@ class TrailViewSet(viewsets.ModelViewSet):
             # 일반 유저는 approved만, 관리자는 status 필터 가능
             if not is_staff:
                 qs = qs.filter(status="approved")
+            # Category filters (time / distance) via query params
+            # These map user-facing buckets to ranges on estimated_minutes
+            # and distance_km. Kept here instead of filterset so the bucket
+            # labels ("short", "half", "full") can stay stable in the UI
+            # even if the underlying thresholds change.
+            time_bucket = self.request.query_params.get("time_bucket")
+            if time_bucket == "short":  # up to 1 hour
+                qs = qs.filter(estimated_minutes__lte=60)
+            elif time_bucket == "half":  # 1–4 hours
+                qs = qs.filter(estimated_minutes__gt=60, estimated_minutes__lte=240)
+            elif time_bucket == "full":  # 4+ hours
+                qs = qs.filter(estimated_minutes__gt=240)
         elif self.action == "retrieve":
             # 상세 보기는 approved이거나 작성자 본인 (또는 staff)
             if is_staff:
@@ -119,6 +134,34 @@ class TrailViewSet(viewsets.ModelViewSet):
     def popular(self, request):
         qs = Trail.objects.filter(status="approved", is_hidden=False).select_related("author").prefetch_related("tags")
         qs = qs.order_by("-like_count")[:20]
+        serializer = TrailListSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.AllowAny])
+    def today(self, request):
+        """Today's recommended courses for the home screen.
+
+        Prioritizes official/curated trails near the user. If no location
+        is provided, falls back to the most-liked official trails.
+        """
+        lat = request.query_params.get("lat")
+        lng = request.query_params.get("lng")
+        limit = int(request.query_params.get("limit", "3"))
+        base = Trail.objects.filter(
+            status="approved", is_hidden=False, is_official=True,
+        ).select_related("author").prefetch_related("tags")
+        if lat and lng:
+            try:
+                latd = Decimal(lat)
+                lngd = Decimal(lng)
+                degree = Decimal("0.5")  # ~55 km bounding box
+                base = base.filter(
+                    start_lat__range=(latd - degree, latd + degree),
+                    start_lng__range=(lngd - degree, lngd + degree),
+                )
+            except Exception:
+                pass
+        qs = base.order_by("-like_count", "-view_count")[:limit]
         serializer = TrailListSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 

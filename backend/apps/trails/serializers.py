@@ -64,6 +64,7 @@ class TrailListSerializer(serializers.ModelSerializer):
             "distance_km", "estimated_minutes", "difficulty",
             "cover_image", "thumbnail_url", "tags", "best_season", "status",
             "view_count", "like_count", "is_liked", "created_at",
+            "is_official", "source", "trail_type",
         ]
 
     def get_cover_image(self, obj):

@@ -35,18 +35,22 @@ const SORT_OPTIONS = [
 
 const FILTER_CHIPS = [
   {
-    key: 'country',
-    label: '국가',
+    key: 'is_official',
+    label: '출처',
     options: [
       { value: '', label: '전체' },
-      { value: 'KR', label: '🇰🇷 한국' },
-      { value: 'JP', label: '🇯🇵 일본' },
-      { value: 'TW', label: '🇹🇼 대만' },
-      { value: 'TH', label: '🇹🇭 태국' },
-      { value: 'US', label: '🇺🇸 미국' },
-      { value: 'GB', label: '🇬🇧 영국' },
-      { value: 'FR', label: '🇫🇷 프랑스' },
-      { value: 'ES', label: '🇪🇸 스페인' },
+      { value: 'true', label: '✓ 공식' },
+      { value: 'false', label: '유저' },
+    ],
+  },
+  {
+    key: 'time_bucket',
+    label: '소요',
+    options: [
+      { value: '', label: '전체' },
+      { value: 'short', label: '1시간 이하' },
+      { value: 'half', label: '반나절' },
+      { value: 'full', label: '종일' },
     ],
   },
   {
@@ -61,15 +65,15 @@ const FILTER_CHIPS = [
   },
   {
     key: 'trail_type',
-    label: '유형',
+    label: '테마',
     options: [
       { value: '', label: '전체' },
-      { value: 'urban', label: '도시' },
-      { value: 'coastal', label: '해안' },
-      { value: 'village', label: '마을' },
-      { value: 'cultural', label: '문화' },
-      { value: 'nature', label: '자연' },
-      { value: 'mixed', label: '복합' },
+      { value: 'coastal', label: '🌊 바다' },
+      { value: 'nature', label: '🌳 숲' },
+      { value: 'cultural', label: '🏯 역사' },
+      { value: 'urban', label: '🏙 도심' },
+      { value: 'village', label: '🏡 마을' },
+      { value: 'mixed', label: '🧩 복합' },
     ],
   },
   {
@@ -82,6 +86,21 @@ const FILTER_CHIPS = [
       { value: 'fall', label: '가을' },
       { value: 'winter', label: '겨울' },
       { value: 'all', label: '사계절' },
+    ],
+  },
+  {
+    key: 'country',
+    label: '국가',
+    options: [
+      { value: '', label: '전체' },
+      { value: 'KR', label: '🇰🇷 한국' },
+      { value: 'JP', label: '🇯🇵 일본' },
+      { value: 'TW', label: '🇹🇼 대만' },
+      { value: 'TH', label: '🇹🇭 태국' },
+      { value: 'US', label: '🇺🇸 미국' },
+      { value: 'GB', label: '🇬🇧 영국' },
+      { value: 'FR', label: '🇫🇷 프랑스' },
+      { value: 'ES', label: '🇪🇸 스페인' },
     ],
   },
 ];
@@ -107,6 +126,9 @@ export default function ExploreScreen() {
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     if (route.params?.country) initial.country = route.params.country;
+    if (route.params?.is_official) initial.is_official = route.params.is_official;
+    if (route.params?.trail_type) initial.trail_type = route.params.trail_type;
+    if (route.params?.time_bucket) initial.time_bucket = route.params.time_bucket;
     return initial;
   });
   const [expandedFilter, setExpandedFilter] = useState<string | null>(null);

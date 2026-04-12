@@ -87,9 +87,16 @@ export default function TrailCard({
           )}
         </View>
         <View style={styles.horizontalContent}>
-          <Text style={styles.horizontalTitle} numberOfLines={1}>
-            {trail?.title || ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {trail.is_official && (
+              <View style={styles.officialBadgeInline}>
+                <Text style={styles.officialBadgeText}>✓</Text>
+              </View>
+            )}
+            <Text style={styles.horizontalTitle} numberOfLines={1}>
+              {trail?.title || ''}
+            </Text>
+          </View>
           <Text style={styles.horizontalMeta} numberOfLines={1}>
             {trail?.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
           </Text>
@@ -126,6 +133,13 @@ export default function TrailCard({
         {trail.is_liked && (
           <View style={styles.likedBadge}>
             <Text style={styles.likedHeart}>{'❤️'}</Text>
+          </View>
+        )}
+
+        {/* Official badge top left — signals government/tourism-verified trails */}
+        {trail.is_official && (
+          <View style={styles.officialBadge}>
+            <Text style={styles.officialBadgeText}>✓ 공식</Text>
           </View>
         )}
       </View>
@@ -190,6 +204,28 @@ const styles = StyleSheet.create({
   },
   likedHeart: {
     fontSize: 13,
+  },
+  officialBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#2D4A2E',
+  },
+  officialBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  officialBadgeInline: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#2D4A2E',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     paddingHorizontal: 16,

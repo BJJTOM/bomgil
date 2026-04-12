@@ -48,10 +48,10 @@ def author_link(obj):
 class TrailAdmin(admin.ModelAdmin):
     list_display = [
         "id", "title", "author_display", "region", "country",
-        "difficulty", "distance_km", "status_badge", "hidden_badge",
+        "difficulty", "distance_km", "official_badge", "status_badge", "hidden_badge",
         "like_count", "view_count", "created_at",
     ]
-    list_filter = ["status", "is_hidden", "difficulty", "country", "best_season", "trail_type", "created_at"]
+    list_filter = ["status", "is_hidden", "is_official", "source", "difficulty", "country", "best_season", "trail_type", "created_at"]
     search_fields = ["title", "description", "region", "author__nickname"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
@@ -77,6 +77,9 @@ class TrailAdmin(admin.ModelAdmin):
         }),
         ("승인 / 모더레이션", {
             "fields": ("status", "rejection_reason", "is_hidden", "hidden_reason", "hidden_at"),
+        }),
+        ("출처 / 공식", {
+            "fields": ("is_official", "source", "source_url"),
         }),
         ("통계 (read-only)", {
             "fields": ("view_count", "like_count", "created_at", "updated_at"),
@@ -106,6 +109,14 @@ class TrailAdmin(admin.ModelAdmin):
         if obj.is_hidden:
             return format_html('<span style="color:#fff;background:#1F2937;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;">숨김</span>')
         return format_html('<span style="color:#22C55E;font-size:11px;font-weight:600;">공개</span>')
+
+    @admin.display(description="공식", ordering="is_official")
+    def official_badge(self, obj):
+        if obj.is_official:
+            return format_html(
+                '<span style="color:#fff;background:#2D4A2E;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;">공식</span>'
+            )
+        return format_html('<span style="color:#9CA3AF;font-size:11px;">유저</span>')
 
 
 @admin.register(Tag)

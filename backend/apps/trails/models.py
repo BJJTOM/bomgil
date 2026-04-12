@@ -92,6 +92,17 @@ class Trail(models.Model):
     hidden_at = models.DateTimeField(null=True, blank=True)
     hidden_reason = models.CharField(max_length=200, blank=True, default='')
 
+    # Phase 13: official/curated trails vs user-generated.
+    # Official trails come from government/tourism sources (Durunubi,
+    # 길따라, local municipalities) and get a verified badge in the UI.
+    # `source` identifies the origin; `source_url` is the canonical page.
+    is_official = models.BooleanField(default=False, db_index=True, help_text="공식 큐레이션 코스")
+    source = models.CharField(
+        max_length=40, blank=True, default='',
+        help_text="출처 식별자 (durunubi, gilttara, user 등)",
+    )
+    source_url = models.URLField(max_length=500, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -106,6 +117,7 @@ class Trail(models.Model):
             models.Index(fields=["status"]),
             models.Index(fields=["trail_type"]),
             models.Index(fields=["start_lat", "start_lng"]),
+            models.Index(fields=["is_official", "region"]),
         ]
 
     def __str__(self):

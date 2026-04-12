@@ -603,13 +603,17 @@ class Command(BaseCommand):
 
         # Use a dedicated system user as author so these records are
         # distinguishable from user-generated content in the admin.
-        system_user, _ = User.objects.get_or_create(
-            nickname="moru_official",
-            defaults={
-                "email": "official@moruwalk.com",
-                "is_active": False,  # not a login-capable account
-            },
-        )
+        # nickname is unique on CustomUser, so we look up by nickname
+        # first and fall back to creating with a matching username
+        # (AbstractUser requires username).
+        system_user = User.objects.filter(nickname="moru_official").first()
+        if not system_user:
+            system_user = User.objects.create(
+                username="moru_official",
+                nickname="moru_official",
+                email="official@moruwalk.com",
+                is_active=False,  # not a login-capable account
+            )
 
         created = 0
         updated = 0

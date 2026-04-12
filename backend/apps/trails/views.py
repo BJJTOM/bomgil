@@ -11,9 +11,11 @@ from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
 from config.validators import validate_image_file
 
-from .models import Tag, Trail, TrailLike
+from .models import Tag, Trail, TrailBookmark, TrailCompletion, TrailLike
 from .serializers import (
     TagSerializer,
+    TrailBookmarkSerializer,
+    TrailCompletionSerializer,
     TrailCreateSerializer,
     TrailDetailSerializer,
     TrailListSerializer,
@@ -22,6 +24,11 @@ from .serializers import (
 
 class TrailLikeThrottle(UserRateThrottle):
     scope = "trail_like"
+    rate = "200/hour"
+
+
+class TrailBookmarkThrottle(UserRateThrottle):
+    scope = "trail_bookmark"
     rate = "200/hour"
 
 
@@ -123,6 +130,43 @@ class TrailViewSet(viewsets.ModelViewSet):
         Trail.objects.filter(pk=trail.pk).update(like_count=F("like_count") + 1)
         return Response({"liked": True}, status=status.HTTP_201_CREATED)
 
+    @action(
+        detail=True, methods=["post"],
+        permission_classes=[permissions.IsAuthenticated],
+        throttle_classes=[TrailBookmarkThrottle],
+    )
+    def bookmark(self, request, pk=None):
+        """Toggle a bookmark. Body optional: {"note": "..."}"""
+        trail = self.get_object()
+        note = (request.data.get("note") or "")[:200] if isinstance(request.data, dict) else ""
+        bm, created = TrailBookmark.objects.get_or_create(
+            user=request.user, trail=trail, defaults={"note": note},
+        )
+        if not created:
+            bm.delete()
+            return Response({"bookmarked": False}, status=status.HTTP_200_OK)
+        return Response({"bookmarked": True}, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True, methods=["post"],
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def complete(self, request, pk=None):
+        """Manually mark this trail as completed by the user.
+
+        Does not require an activity — lets users who walked the trail
+        with another app or before installing Moru check it off.
+        """
+        trail = self.get_object()
+        tc, created = TrailCompletion.objects.get_or_create(
+            user=request.user, trail=trail,
+            defaults={"source": "manual", "coverage": 1.0},
+        )
+        return Response(
+            {"completed": True, "id": tc.id, "created": created},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["get"])
     def spots(self, request, pk=None):
         trail = self.get_object()
@@ -195,6 +239,34 @@ class RecommendedTrailsView(generics.ListAPIView):
         from .recommendations import get_recommendations
         qs = get_recommendations(self.request.user)
         return qs.select_related("author").prefetch_related("tags")
+
+
+class MyBookmarksView(generics.ListAPIView):
+    serializer_class = TrailBookmarkSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # bookmarks list is small; one request is fine
+
+    def get_queryset(self):
+        return (
+            TrailBookmark.objects
+            .filter(user=self.request.user, trail__is_hidden=False)
+            .select_related("trail", "trail__author")
+            .prefetch_related("trail__tags")
+        )
+
+
+class MyCompletionsView(generics.ListAPIView):
+    serializer_class = TrailCompletionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            TrailCompletion.objects
+            .filter(user=self.request.user, trail__is_hidden=False)
+            .select_related("trail", "trail__author")
+            .prefetch_related("trail__tags")
+        )
 
 
 class TagListView(generics.ListAPIView):

@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import UserPublicSerializer
 
-from .models import Tag, Trail, TrailLike
+from .models import Tag, Trail, TrailBookmark, TrailCompletion, TrailLike
 
 
 def _strip_tags(value):
@@ -51,10 +51,36 @@ def _bulk_liked_set(context):
     return context["_liked_ids"]
 
 
+def _bulk_bookmarked_set(context):
+    if "_bookmarked_ids" not in context:
+        request = context.get("request")
+        if request and request.user.is_authenticated:
+            context["_bookmarked_ids"] = set(
+                TrailBookmark.objects.filter(user=request.user).values_list("trail_id", flat=True)
+            )
+        else:
+            context["_bookmarked_ids"] = set()
+    return context["_bookmarked_ids"]
+
+
+def _bulk_completed_set(context):
+    if "_completed_ids" not in context:
+        request = context.get("request")
+        if request and request.user.is_authenticated:
+            context["_completed_ids"] = set(
+                TrailCompletion.objects.filter(user=request.user).values_list("trail_id", flat=True)
+            )
+        else:
+            context["_completed_ids"] = set()
+    return context["_completed_ids"]
+
+
 class TrailListSerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
+    is_completed = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -63,8 +89,8 @@ class TrailListSerializer(serializers.ModelSerializer):
             "id", "author", "title", "region", "country",
             "distance_km", "estimated_minutes", "difficulty",
             "cover_image", "thumbnail_url", "tags", "best_season", "status",
-            "view_count", "like_count", "is_liked", "created_at",
-            "is_official", "source", "trail_type",
+            "view_count", "like_count", "is_liked", "is_bookmarked", "is_completed",
+            "created_at", "is_official", "source", "trail_type",
         ]
 
     def get_cover_image(self, obj):
@@ -73,11 +99,20 @@ class TrailListSerializer(serializers.ModelSerializer):
     def get_is_liked(self, obj):
         return obj.pk in _bulk_liked_set(self.context)
 
+    def get_is_bookmarked(self, obj):
+        return obj.pk in _bulk_bookmarked_set(self.context)
+
+    def get_is_completed(self, obj):
+        return obj.pk in _bulk_completed_set(self.context)
+
 
 class TrailDetailSerializer(serializers.ModelSerializer):
     author = UserPublicSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
+    is_completed = serializers.SerializerMethodField()
+    completion_count = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -93,6 +128,37 @@ class TrailDetailSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return TrailLike.objects.filter(user=request.user, trail=obj).exists()
         return False
+
+    def get_is_bookmarked(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return TrailBookmark.objects.filter(user=request.user, trail=obj).exists()
+        return False
+
+    def get_is_completed(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return TrailCompletion.objects.filter(user=request.user, trail=obj).exists()
+        return False
+
+    def get_completion_count(self, obj):
+        return TrailCompletion.objects.filter(trail=obj).count()
+
+
+class TrailBookmarkSerializer(serializers.ModelSerializer):
+    trail = TrailListSerializer(read_only=True)
+
+    class Meta:
+        model = TrailBookmark
+        fields = ["id", "trail", "note", "created_at"]
+
+
+class TrailCompletionSerializer(serializers.ModelSerializer):
+    trail = TrailListSerializer(read_only=True)
+
+    class Meta:
+        model = TrailCompletion
+        fields = ["id", "trail", "source", "coverage", "completed_at"]
 
 
 class TrailCreateSerializer(serializers.ModelSerializer):

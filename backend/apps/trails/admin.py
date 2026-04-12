@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 
 from .collections import Collection
-from .models import Tag, Trail, TrailLike
+from .models import Tag, Trail, TrailBookmark, TrailCompletion, TrailLike
 
 
 @admin.action(description="🚫 선택한 코스 숨김")
@@ -131,6 +131,24 @@ class TrailLikeAdmin(admin.ModelAdmin):
     search_fields = ["user__nickname", "trail__title"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
+
+
+@admin.register(TrailBookmark)
+class TrailBookmarkAdmin(admin.ModelAdmin):
+    list_display = ["user", "trail", "note", "created_at"]
+    search_fields = ["user__nickname", "trail__title"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+
+
+@admin.register(TrailCompletion)
+class TrailCompletionAdmin(admin.ModelAdmin):
+    list_display = ["user", "trail", "source", "coverage", "completed_at"]
+    list_filter = ["source", "completed_at"]
+    search_fields = ["user__nickname", "trail__title"]
+    date_hierarchy = "completed_at"
+    ordering = ["-completed_at"]
+    autocomplete_fields = ["user", "trail"]
 
 
 @admin.register(Collection)

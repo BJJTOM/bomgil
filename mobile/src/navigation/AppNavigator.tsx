@@ -44,7 +44,9 @@ import NoticeScreen from '../screens/NoticeScreen';
 import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import SavedTrailsScreen from '../screens/SavedTrailsScreen';
+import BookmarkedTrailsScreen from '../screens/BookmarkedTrailsScreen';
 import WalkStatsScreen from '../screens/WalkStatsScreen';
+import StrideCalibrationScreen from '../screens/StrideCalibrationScreen';
 import AddRecordScreen from '../screens/AddRecordScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import MyTrailsScreen from '../screens/MyTrailsScreen';
@@ -239,7 +241,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Terms" component={TermsScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />
         <Stack.Screen name="SavedTrails" component={SavedTrailsScreen} />
+        <Stack.Screen name="BookmarkedTrails" component={BookmarkedTrailsScreen} />
         <Stack.Screen name="WalkStats" component={WalkStatsScreen} />
+        <Stack.Screen name="StrideCalibration" component={StrideCalibrationScreen} />
         <Stack.Screen name="AddRecord" component={AddRecordScreen} />
         <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
         <Stack.Screen name="MyTrails" component={MyTrailsScreen} />

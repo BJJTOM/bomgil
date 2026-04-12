@@ -923,6 +923,16 @@ function WalkScreenInner() {
               if (raw) await AsyncStorage.setItem(`activity_${aid}_extra`, raw);
             } catch {}
           }
+          // Stash matched trails for WalkCompleteScreen to show a
+          // "코스 완주!" card. Only written on success — if the API
+          // call fails, completion detection isn't possible anyway.
+          try {
+            const matched = actRes?.data?.matched_trails || [];
+            await AsyncStorage.setItem(
+              'walk_matched_trails',
+              JSON.stringify(matched),
+            );
+          } catch {}
         } catch (e) { console.log('[Moru] API save failed:', e); }
       })();
     }

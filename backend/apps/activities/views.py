@@ -63,6 +63,20 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             qs = qs.filter(source=source)
         return qs
 
+    def create(self, request, *args, **kwargs):
+        """Override to attach trail completion detection to the response.
+
+        The default ModelViewSet.create returns the serialized instance.
+        We append `matched_trails` so the mobile walk-complete screen
+        can show a "코스 완주!" card without a second round-trip.
+        """
+        response = super().create(request, *args, **kwargs)
+        # _last_completions is set by perform_create below.
+        completions = getattr(self, "_last_completions", None)
+        if completions and isinstance(response.data, dict):
+            response.data["matched_trails"] = completions
+        return response
+
     def perform_create(self, serializer):
         started_at = serializer.validated_data.get("started_at")
         # Only check duplicates if started_at is explicitly provided (not
@@ -102,6 +116,21 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
         self._update_daily_summary(instance)
         from apps.accounts.badges import check_and_award_badges
         check_and_award_badges(self.request.user)
+
+        # Trail completion detection — stash result on self so create()
+        # can surface it in the response. Errors here must never break
+        # the activity save (we'd rather lose a completion than an
+        # entire walk), so the whole thing is wrapped defensively.
+        try:
+            from apps.trails.completion_detector import detect_completions
+            self._last_completions = detect_completions(instance)
+        except Exception as e:  # pragma: no cover — defensive only
+            import logging
+            logging.getLogger(__name__).warning(
+                "Trail completion detection failed for activity %s: %s",
+                getattr(instance, "id", "?"), e,
+            )
+            self._last_completions = []
 
     def _update_daily_summary(self, activity):
         if not activity.started_at:

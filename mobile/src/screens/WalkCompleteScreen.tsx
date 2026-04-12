@@ -99,6 +99,9 @@ function WalkCompleteInner() {
   const [spots, setSpots] = useState<any[]>([]);
   const [routeCoords, setRouteCoords] = useState<any[]>([]);
   const [trackPoints, setTrackPoints] = useState<any[]>([]);
+  // Trails the backend detected as completed by this walk.
+  // Shape: [{trail_id, title, coverage, already_completed}]
+  const [matchedTrails, setMatchedTrails] = useState<any[]>([]);
   useEffect(() => {
     (async () => {
       try {
@@ -109,6 +112,16 @@ function WalkCompleteInner() {
           if (Array.isArray(extra?.spots)) setSpots(extra.spots);
           if (Array.isArray(extra?.routeCoords)) setRouteCoords(extra.routeCoords);
           if (Array.isArray(extra?.trackPoints)) setTrackPoints(extra.trackPoints);
+        }
+      } catch {}
+      try {
+        const mt = await AsyncStorage.getItem('walk_matched_trails');
+        if (mt) {
+          const arr = JSON.parse(mt);
+          if (Array.isArray(arr)) setMatchedTrails(arr);
+          // Consume the key so the same matches don't show up on the
+          // next walk completion.
+          AsyncStorage.removeItem('walk_matched_trails').catch(() => {});
         }
       } catch {}
     })();
@@ -227,6 +240,42 @@ function WalkCompleteInner() {
             <Text style={[styles.cardFooterText, { color: textTertColor }]}>moruwalk.com</Text>
           </View>
         </View>
+
+        {/* Completion Card — only shown if the backend matched this walk
+            to one or more curated trails. Tapping opens the trail detail. */}
+        {matchedTrails.length > 0 && (
+          <View style={styles.completionCardWrap}>
+            {matchedTrails.map((m: any, idx: number) => (
+              <TouchableOpacity
+                key={`${m.trail_id}-${idx}`}
+                style={[styles.completionCard, { backgroundColor: cardBg }]}
+                activeOpacity={0.85}
+                onPress={() => {
+                  try {
+                    (navigation as any).navigate('TrailDetail', { id: m.trail_id });
+                  } catch {}
+                }}>
+                <View style={styles.completionIconCircle}>
+                  <Feather name="award" size={24} color="#fff" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.completionTitle, { color: textColor }]} numberOfLines={1}>
+                    {m.already_completed ? '또 완주했어요!' : '코스 완주 성공!'}
+                  </Text>
+                  <Text style={[styles.completionSub, { color: textSecColor }]} numberOfLines={1}>
+                    {m.title}
+                  </Text>
+                  {!m.already_completed && typeof m.coverage === 'number' && (
+                    <Text style={[styles.completionCoverage, { color: textTertColor }]}>
+                      이 코스의 {Math.round(m.coverage * 100)}% 커버
+                    </Text>
+                  )}
+                </View>
+                <Feather name="chevron-right" size={20} color={textTertColor} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Stats Cards Grid */}
         <View style={styles.statsCardsGrid}>
@@ -535,6 +584,45 @@ const styles = StyleSheet.create({
     width: width - 48,
     gap: 10,
     marginBottom: 20,
+  },
+  completionCardWrap: {
+    width: width - 48,
+    marginBottom: 16,
+    gap: 10,
+  },
+  completionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#15803D',
+    shadowColor: '#15803D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  completionIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#15803D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  completionSub: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  completionCoverage: {
+    fontSize: 11,
+    marginTop: 2,
   },
   miniStatCard: {
     width: (width - 48 - 10) / 2,

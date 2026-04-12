@@ -12,7 +12,13 @@ from .rankings import (
     RegionPopularView,
     WeeklyPopularView,
 )
-from .views import RecommendedTrailsView, TagListView, TrailViewSet
+from .views import (
+    MyBookmarksView,
+    MyCompletionsView,
+    RecommendedTrailsView,
+    TagListView,
+    TrailViewSet,
+)
 
 router = DefaultRouter()
 router.register("", TrailViewSet, basename="trail")
@@ -30,6 +36,9 @@ urlpatterns = [
     path("collections/<int:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
     # Recommendations
     path("recommended/", RecommendedTrailsView.as_view(), name="trail-recommended"),
+    # Me: bookmarks and completions
+    path("me/bookmarks/", MyBookmarksView.as_view(), name="trail-my-bookmarks"),
+    path("me/completions/", MyCompletionsView.as_view(), name="trail-my-completions"),
     # GPX import
     path("import-gpx/", GpxImportView.as_view(), name="trail-import-gpx"),
     # OG Image

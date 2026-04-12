@@ -135,3 +135,74 @@ class TrailLike(models.Model):
         unique_together = ["user", "trail"]
         verbose_name = "코스 좋아요"
         verbose_name_plural = "코스 좋아요"
+
+
+class TrailBookmark(models.Model):
+    """A user's 'walk later' bookmark for a trail.
+
+    Distinct from TrailLike — a like is a social signal ("I liked this"),
+    a bookmark is an intent signal ("I plan to walk this"). The two are
+    tracked separately so we can push bookmarked trails when weather is
+    good without spamming users about every trail they liked.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trail_bookmarks"
+    )
+    trail = models.ForeignKey(Trail, on_delete=models.CASCADE, related_name="bookmarks")
+    created_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        unique_together = ["user", "trail"]
+        ordering = ["-created_at"]
+        verbose_name = "코스 북마크"
+        verbose_name_plural = "코스 북마크"
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+
+class TrailCompletion(models.Model):
+    """A record that a user completed a specific trail.
+
+    Created either manually (user taps "완주 인증") or automatically when
+    their walk GPS track sufficiently overlaps the trail path. We keep
+    the source so admin/analytics can tell them apart, and link back to
+    the ActivityTrack that triggered the completion so completions can
+    be undone if the underlying walk is deleted.
+    """
+
+    SOURCE_CHOICES = [
+        ("auto", "자동 감지"),
+        ("manual", "수동 인증"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trail_completions"
+    )
+    trail = models.ForeignKey(Trail, on_delete=models.CASCADE, related_name="completions")
+    activity = models.ForeignKey(
+        "activities.ActivityTrack",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="trail_completions",
+    )
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default="manual")
+    # Fraction of the trail path that was actually walked (0..1).
+    # Useful for display ("이 코스의 87% 완주") and for filtering out
+    # false positives down the road.
+    coverage = models.DecimalField(max_digits=4, decimal_places=3, default=1.000)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-completed_at"]
+        verbose_name = "코스 완주"
+        verbose_name_plural = "코스 완주"
+        indexes = [
+            models.Index(fields=["user", "-completed_at"]),
+            models.Index(fields=["trail", "-completed_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} completed trail {self.trail_id}"

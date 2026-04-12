@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
+import { useT } from '../i18n';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
 import { useThemeStore } from '../stores/theme';
@@ -43,6 +44,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, logout, setUser } = useAuthStore();
+  const t = useT();
 
   const handlePickPhoto = async () => {
     try {
@@ -65,12 +67,12 @@ export default function SettingsScreen() {
         const data = await res.json();
         setUser(data);
         queryClient.invalidateQueries({ queryKey: ['profile'] });
-        Alert.alert('완료', '프로필 사진이 변경되었습니다.');
+        Alert.alert(t.common.success, t.profile.saveSuccess);
       } else {
-        Alert.alert('오류', '사진 업로드에 실패했습니다.');
+        Alert.alert(t.common.error, t.profile.saveFailed);
       }
     } catch {
-      Alert.alert('오류', '사진 업로드에 실패했습니다.');
+      Alert.alert(t.common.error, t.profile.saveFailed);
     }
   };
 
@@ -79,9 +81,9 @@ export default function SettingsScreen() {
       await api.patch('/auth/me/', { profile_image: null });
       setUser({ ...user, profile_image: null } as any);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      Alert.alert('완료', '프로필 사진이 삭제되었습니다.');
+      Alert.alert(t.common.success, t.profile.saveSuccess);
     } catch {
-      Alert.alert('오류', '삭제에 실패했습니다.');
+      Alert.alert(t.common.error, t.activity.deleteFailed);
     }
   };
 
@@ -89,33 +91,32 @@ export default function SettingsScreen() {
     try {
       const result = await pickAndImportGpx();
       Alert.alert(
-        'GPX 가져오기 완료',
+        t.health.importComplete,
         `${result.title}\n` +
-          `거리: ${result.distance_km.toFixed(2)} km\n` +
-          `포인트: ${result.point_count}개\n\n` +
-          `임시저장 상태로 추가됐어요. 코스 관리에서 편집하세요.`,
+          `${t.walk.distance}: ${result.distance_km.toFixed(2)} km\n` +
+          `${result.point_count} points`,
         [
-          { text: '확인' },
-          { text: '코스 관리', onPress: () => navigation.navigate('MyTrails') },
+          { text: t.common.confirm },
+          { text: t.activity.management, onPress: () => navigation.navigate('MyTrails') },
         ],
       );
     } catch (e: any) {
-      const msg = e?.response?.data?.error || e?.message || '알 수 없는 오류';
+      const msg = e?.response?.data?.error || e?.message || t.common.error;
       // Don't show an alert if the user simply cancelled the picker
       if (/cancel/i.test(msg) || /취소/.test(msg)) return;
-      Alert.alert('GPX 가져오기 실패', msg);
+      Alert.alert(t.health.importFailed, msg);
     }
   };
 
   const handleAvatarPress = () => {
     const options: any[] = [
-      { text: '앨범에서 선택', onPress: handlePickPhoto },
+      { text: t.walk.gallery, onPress: handlePickPhoto },
     ];
     if (user?.profile_image) {
-      options.push({ text: '사진 삭제', style: 'destructive', onPress: handleDeletePhoto });
+      options.push({ text: t.common.delete, style: 'destructive', onPress: handleDeletePhoto });
     }
-    options.push({ text: '취소', style: 'cancel' });
-    Alert.alert('프로필 사진', '프로필 사진을 변경하세요', options);
+    options.push({ text: t.common.cancel, style: 'cancel' });
+    Alert.alert(t.settings.profile, t.settings.editProfile, options);
   };
 
   // Fetch profile data with follower/following counts
@@ -157,9 +158,9 @@ export default function SettingsScreen() {
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : colors.borderLight;
 
   const themeLabels: Record<string, string> = {
-    system: '시스템 설정',
-    light: '라이트 모드',
-    dark: '다크 모드',
+    system: t.settings.system,
+    light: t.settings.light,
+    dark: t.settings.dark,
   };
   const currentThemeLabel = themeLabels[themeMode];
 
@@ -176,28 +177,30 @@ export default function SettingsScreen() {
 
   const sections: Section[] = [
     {
-      title: '계정',
+      title: t.settings.profile,
       items: isAuthenticated
         ? [
-            { icon: 'user', label: '프로필 수정', onPress: () => navigation.navigate('ProfileEdit') },
+            { icon: 'user', label: t.settings.editProfile, onPress: () => navigation.navigate('ProfileEdit') },
             {
               icon: 'bar-chart-2',
-              label: '내 활동 기록',
+              label: t.activity.title,
               onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
-            { icon: 'map', label: '내 코스 관리', onPress: () => navigation.navigate('MyTrails') },
-            { icon: 'heart', label: '좋아요한 코스', onPress: () => navigation.navigate('LikedTrails') },
-            { icon: 'download', label: '저장한 코스', onPress: () => navigation.navigate('SavedTrails') },
-            { icon: 'upload', label: 'GPX 코스 가져오기', onPress: handleGpxImport },
-            ...(!isGuestUser ? [{ icon: 'lock', label: '\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD', onPress: () => navigation.navigate('PasswordChange') }] : []),
-            { icon: 'user-x', label: '\uD68C\uC6D0 \uD0C8\uD1F4', onPress: () => {
+            { icon: 'map', label: t.activity.management, onPress: () => navigation.navigate('MyTrails') },
+            { icon: 'heart', label: t.profile.likes, onPress: () => navigation.navigate('LikedTrails') },
+            { icon: 'bookmark', label: '저장한 코스', onPress: () => navigation.navigate('BookmarkedTrails') },
+            { icon: 'download', label: t.profile.courses, onPress: () => navigation.navigate('SavedTrails') },
+            { icon: 'upload', label: 'GPX', onPress: handleGpxImport },
+            { icon: 'crosshair', label: '보폭 보정', onPress: () => navigation.navigate('StrideCalibration') },
+            ...(!isGuestUser ? [{ icon: 'lock', label: t.password.changeTitle, onPress: () => navigation.navigate('PasswordChange') }] : []),
+            { icon: 'user-x', label: t.settings.deleteAccount, onPress: () => {
               Alert.alert(
-                '\uD68C\uC6D0 \uD0C8\uD1F4',
+                t.settings.deleteAccount,
                 '\uC815\uB9D0 \uD0C8\uD1F4\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uD0C8\uD1F4 \uD6C4 \uACC4\uC815\uACFC \uBAA8\uB4E0 \uB370\uC774\uD130\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',
                 [
-                  { text: '\uCDE8\uC18C', style: 'cancel' },
+                  { text: t.common.cancel, style: 'cancel' },
                   {
-                    text: '\uD0C8\uD1F4\uD558\uAE30',
+                    text: t.settings.deleteAccount,
                     style: 'destructive',
                     onPress: async () => {
                       try {
@@ -205,7 +208,7 @@ export default function SettingsScreen() {
                         logout();
                         navigation.navigate('Main');
                       } catch {
-                        Alert.alert('\uC624\uB958', '\uD68C\uC6D0 \uD0C8\uD1F4\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.');
+                        Alert.alert(t.common.error, t.common.retry);
                       }
                     },
                   },
@@ -216,42 +219,42 @@ export default function SettingsScreen() {
         : [
             {
               icon: 'log-in',
-              label: '로그인',
+              label: t.activity.login,
               onPress: () => navigation.navigate('Login'),
             },
             {
               icon: 'user-plus',
-              label: '회원가입',
+              label: t.activity.login,
               onPress: () => navigation.navigate('Register'),
             },
           ],
     },
     {
-      title: '앱 설정',
+      title: t.settings.title,
       items: [
         {
           icon: 'globe',
-          label: '언어 설정',
+          label: t.settings.language,
           value: LANGUAGES.find((l) => l.code === language)?.label,
           onPress: () => setShowLangModal(true),
         },
         {
           icon: 'moon',
-          label: '다크 모드',
+          label: t.settings.darkMode,
           value: currentThemeLabel,
           onPress: () => setShowThemeModal(true),
         },
-        { icon: 'bell', label: '알림 설정', onPress: () => navigation.navigate('Notifications') },
-        { icon: 'shield', label: '앱 권한 관리', onPress: () => navigation.navigate('Permissions') },
+        { icon: 'bell', label: t.settings.notifications, onPress: () => navigation.navigate('Notifications') },
+        { icon: 'shield', label: t.permissions.locationName, onPress: () => navigation.navigate('Permissions') },
       ],
     },
     {
-      title: '정보',
+      title: t.settings.notice,
       items: [
-        { icon: 'bell', label: '공지사항', onPress: () => navigation.navigate('Notice') },
-        { icon: 'file-text', label: '서비스 이용약관', onPress: () => navigation.navigate('Terms') },
-        { icon: 'shield', label: '개인정보처리방침', onPress: () => navigation.navigate('Privacy') },
-        { icon: 'info', label: '버전 정보', value: '1.0.0' },
+        { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
+        { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
+        { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
+        { icon: 'info', label: t.settings.version, value: '1.0.0' },
       ],
     },
   ];
@@ -267,7 +270,7 @@ export default function SettingsScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Feather name="arrow-left" size={22} color={textColor} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: textColor }]}>설정</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]}>{t.settings.title}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -310,7 +313,7 @@ export default function SettingsScreen() {
               activeOpacity={0.7}
               onPress={() => navigation.navigate('FollowList', { nickname: user.nickname, tab: 'followers' })}>
               <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.follower_count ?? 0}</Text>
-              <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로워</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>{t.profile.followers}</Text>
             </TouchableOpacity>
             <View style={[styles.followStatDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
             <TouchableOpacity
@@ -318,7 +321,7 @@ export default function SettingsScreen() {
               activeOpacity={0.7}
               onPress={() => navigation.navigate('FollowList', { nickname: user.nickname, tab: 'following' })}>
               <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.following_count ?? 0}</Text>
-              <Text style={[styles.followStatLabel, { color: textTertColor }]}>팔로잉</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>{t.profile.following}</Text>
             </TouchableOpacity>
             <View style={[styles.followStatDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
             <TouchableOpacity
@@ -326,7 +329,7 @@ export default function SettingsScreen() {
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Profile', { nickname: user.nickname })}>
               <Text style={[styles.followStatValue, { color: textColor }]}>{profileData.trail_count ?? 0}</Text>
-              <Text style={[styles.followStatLabel, { color: textTertColor }]}>코스</Text>
+              <Text style={[styles.followStatLabel, { color: textTertColor }]}>{t.profile.courses}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -391,7 +394,7 @@ export default function SettingsScreen() {
             style={styles.logoutBtn}
             onPress={handleLogout}
             activeOpacity={0.7}>
-            <Text style={styles.logoutText}>로그아웃</Text>
+            <Text style={styles.logoutText}>{t.settings.logout}</Text>
           </TouchableOpacity>
         )}
 
@@ -406,7 +409,7 @@ export default function SettingsScreen() {
           onPress={() => setShowLangModal(false)}
           activeOpacity={1}>
           <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
-            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>언어 설정</Text>
+            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>{t.settings.language}</Text>
             {([
               { code: 'ko' as Language, label: '한국어', flag: '🇰🇷' },
               { code: 'en' as Language, label: 'English', flag: '🇺🇸' },
@@ -432,11 +435,11 @@ export default function SettingsScreen() {
           onPress={() => setShowThemeModal(false)}
           activeOpacity={1}>
           <View style={[styles.langModal, isDark && { backgroundColor: '#1e1e1e' }]}>
-            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>{'테마 설정'}</Text>
+            <Text style={[styles.langModalTitle, isDark && { color: '#FFFFFF' }]}>{t.settings.theme}</Text>
             {([
-              { key: 'system' as const, label: '시스템 설정', icon: 'smartphone' },
-              { key: 'light' as const, label: '라이트 모드', icon: 'sun' },
-              { key: 'dark' as const, label: '다크 모드', icon: 'moon' },
+              { key: 'system' as const, label: t.settings.system, icon: 'smartphone' },
+              { key: 'light' as const, label: t.settings.light, icon: 'sun' },
+              { key: 'dark' as const, label: t.settings.dark, icon: 'moon' },
             ]).map((item) => (
               <TouchableOpacity
                 key={item.key}
@@ -457,18 +460,18 @@ export default function SettingsScreen() {
             {loggingOut ? (
               <View style={styles.logoutLoading}>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.logoutLoadingText}>{'로그아웃 중...'}</Text>
+                <Text style={styles.logoutLoadingText}>{t.common.loading}</Text>
               </View>
             ) : (
               <>
                 <Text style={styles.logoutModalIcon}>{'\uD83D\uDC4B'}</Text>
-                <Text style={styles.logoutModalTitle}>{'로그아웃 하시겠습니까?'}</Text>
-                <Text style={styles.logoutModalSub}>{'다시 로그인하면 기록을 이어갈 수 있어요'}</Text>
+                <Text style={styles.logoutModalTitle}>{t.settings.logout}?</Text>
+                <Text style={styles.logoutModalSub}>{t.activity.resumeExpiry}</Text>
                 <TouchableOpacity style={styles.logoutConfirmBtn} onPress={confirmLogout} activeOpacity={0.85}>
-                  <Text style={styles.logoutConfirmText}>{'로그아웃'}</Text>
+                  <Text style={styles.logoutConfirmText}>{t.settings.logout}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutModal(false)} activeOpacity={0.85}>
-                  <Text style={styles.logoutCancelText}>{'취소'}</Text>
+                  <Text style={styles.logoutCancelText}>{t.common.cancel}</Text>
                 </TouchableOpacity>
               </>
             )}

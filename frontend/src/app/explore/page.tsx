@@ -164,6 +164,28 @@ function ExploreContent() {
         </div>
 
         {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
+          {/* Region quick-links — deep link to the SEO region hub pages */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+            {[
+              { slug: "seoul", label: "서울", emoji: "🏙" },
+              { slug: "gyeonggi", label: "경기", emoji: "🌳" },
+              { slug: "incheon", label: "인천", emoji: "⚓" },
+              { slug: "gangwon", label: "강원", emoji: "⛰" },
+              { slug: "chungcheong", label: "충청", emoji: "🍃" },
+              { slug: "gyeongsang", label: "경상", emoji: "🌊" },
+              { slug: "jeolla", label: "전라", emoji: "🌾" },
+              { slug: "jeju", label: "제주", emoji: "🏝" },
+            ].map((r) => (
+              <Link
+                key={r.slug}
+                href={`/explore/region/${r.slug}`}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0F7F0] text-[#2D4A2E] rounded-full text-[12px] font-semibold hover:bg-[#E5EFE5] transition-colors">
+                <span>{r.emoji}</span>
+                <span>{r.label}</span>
+              </Link>
+            ))}
+          </div>
+
           {/* Search */}
           <div className="relative">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

@@ -214,6 +214,22 @@ function TrailDetailScreenInner() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trail', trailId] }),
   });
 
+  const bookmarkMutation = useMutation({
+    mutationFn: async () => (await api.post(`/trails/${trailId}/bookmark/`)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trail', trailId] });
+      queryClient.invalidateQueries({ queryKey: ['my-bookmarks'] });
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async () => (await api.post(`/trails/${trailId}/complete/`)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trail', trailId] });
+      queryClient.invalidateQueries({ queryKey: ['my-completions'] });
+    },
+  });
+
   const pickReviewImages = () => {
     if (reviewImages.length >= 3) {
       Alert.alert('최대 3장', '리뷰 사진은 최대 3장까지 첨부할 수 있습니다.');
@@ -393,25 +409,54 @@ function TrailDetailScreenInner() {
         <View style={[styles.actionBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
-              <Feather name="heart" size={20} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
-              <Text style={[styles.actionIconLabel, trail.is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
+              <Feather name="heart" size={20} color={(trail as any).is_liked ? '#FF4B4B' : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, (trail as any).is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionIconBtn}
+              onPress={() => bookmarkMutation.mutate()}
+              disabled={bookmarkMutation.isPending}
+              activeOpacity={0.7}>
+              <Feather
+                name={(trail as any).is_bookmarked ? 'bookmark' : 'bookmark'}
+                size={20}
+                color={(trail as any).is_bookmarked ? colors.primary : '#8B95A1'}
+                style={{ opacity: (trail as any).is_bookmarked ? 1 : 0.7 }}
+              />
+              <Text style={[styles.actionIconLabel, (trail as any).is_bookmarked && { color: colors.primary }]}>
+                {(trail as any).is_bookmarked ? '저장됨' : '저장'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionIconBtn} onPress={handleShare} activeOpacity={0.7}>
               <Feather name="share" size={20} color="#8B95A1" />
               <Text style={styles.actionIconLabel}>{'공유'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionIconBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
-              <Feather name={savedOffline ? 'check-circle' : 'bookmark'} size={20} color={savedOffline ? colors.primary : '#8B95A1'} />
+              <Feather name={savedOffline ? 'check-circle' : 'download'} size={20} color={savedOffline ? colors.primary : '#8B95A1'} />
               <Text style={[styles.actionIconLabel, savedOffline && { color: colors.primary }]}>
-                {savingOffline ? '...' : savedOffline ? '저장됨' : '저장'}
+                {savingOffline ? '...' : savedOffline ? '오프라인' : '오프라인'}
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Completion badge — shown if user has already completed this trail */}
+          {(trail as any).is_completed && (
+            <View style={styles.completionBadgeRow}>
+              <View style={styles.completionBadge}>
+                <Feather name="award" size={14} color="#fff" />
+                <Text style={styles.completionBadgeText}>완주한 코스</Text>
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity
             style={styles.walkBtn}
             onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
-            activeOpacity={0.8}>
-            <Text style={styles.walkBtnText}>{'걷기 시작'}</Text>
+            activeOpacity={0.85}>
+            <Feather name="play" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.walkBtnText}>
+              {(trail as any).is_completed ? '다시 걷기 시작' : '이 코스로 걷기 시작'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -506,7 +551,7 @@ function TrailDetailScreenInner() {
           style={[styles.mapSection, { backgroundColor: sectionBg }]}
           activeOpacity={0.95}
           onPress={() => navigation.navigate('MapDetail', {
-            pathCoordinates: (trail.path_data?.coordinates || trail.path_coordinates) || [],
+            pathCoordinates: trail.path_data?.coordinates || [],
             startLat: parseFloat(String(trail.start_lat)),
             startLng: parseFloat(String(trail.start_lng)),
             endLat: trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined,
@@ -522,7 +567,7 @@ function TrailDetailScreenInner() {
               lng={parseFloat(String(trail.start_lng))}
               endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
               endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
-              pathCoordinates={(trail.path_data?.coordinates || trail.path_coordinates) as [number, number][] | undefined}
+              pathCoordinates={trail.path_data?.coordinates as [number, number][] | undefined}
               region={trail.region}
               country={trail.country}
               height={260}
@@ -986,18 +1031,43 @@ const styles = StyleSheet.create({
     color: '#8B95A1',
   },
   walkBtn: {
-    flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#2D4A2E',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#2D4A2E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
   },
   walkBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.3,
+  },
+  completionBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  completionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#15803D',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 6,
+  },
+  completionBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // ── Sections ───────────────────────────────────────────
@@ -1415,20 +1485,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 12,
-  },
-  authorAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  authorName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
   },
   authorBio: {
     fontSize: 12,

@@ -166,7 +166,7 @@ export default function TrailDetailPage() {
   const likeLabel = language === "ko" ? "좋아요" : language === "ja" ? "いいね" : language === "zh" ? "点赞" : "Like";
   const shareLabel = language === "ko" ? "공유" : language === "ja" ? "共有" : language === "zh" ? "分享" : "Share";
   const saveLabel = language === "ko" ? "저장" : language === "ja" ? "保存" : language === "zh" ? "收藏" : "Save";
-  const walkLabel = language === "ko" ? "걷기" : language === "ja" ? "歩く" : language === "zh" ? "步行" : "Walk";
+  const walkLabel = language === "ko" ? "앱에서 걷기" : language === "ja" ? "アプリで歩く" : language === "zh" ? "在应用中步行" : "Walk in app";
   const moreLabel = language === "ko" ? "더보기" : language === "ja" ? "もっと見る" : language === "zh" ? "查看更多" : "Show more";
 
   return (
@@ -234,12 +234,16 @@ export default function TrailDetailPage() {
           <button onClick={handleToggleSave} className={`flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium ${isSaved ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-white border border-border-default text-text-primary"}`}>
             {isSaved ? "🔖 저장됨" : "🔖 " + saveLabel}
           </button>
-          <Link
-            href={`/walk?trail=${trailId}`}
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
+            }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-semibold bg-primary text-white"
           >
-            🚶 {walkLabel}
-          </Link>
+            📱 {walkLabel}
+          </a>
           <span className="ml-auto text-[12px] text-text-tertiary">
             👁️ {tr.view_count}
           </span>

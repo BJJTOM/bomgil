@@ -11,14 +11,11 @@ export function BottomNav() {
   const { user, isAuthenticated } = useAuthStore();
   const profileHref = isAuthenticated && user?.nickname ? `/profile/${user.nickname}` : "/auth/login";
 
-  // Hide on walk pages
-  if (pathname.startsWith("/walk")) return null;
-
   const labels: Record<string, Record<string, string>> = {
     "/": { ko: "홈", en: "Home", ja: "ホーム", zh: "首页" },
     "/explore": { ko: "탐색", en: "Explore", ja: "探索", zh: "探索" },
     "/community": { ko: "커뮤니티", en: "Community", ja: "コミュニティ", zh: "社区" },
-    "/activities": { ko: "활동", en: "Activity", ja: "活動", zh: "活动" },
+    "/activities": { ko: "내 기록", en: "Records", ja: "記録", zh: "记录" },
     "/profile": { ko: "MY", en: "MY", ja: "MY", zh: "MY" },
   };
 

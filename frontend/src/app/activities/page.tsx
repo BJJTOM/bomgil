@@ -28,30 +28,15 @@ export default function ActivitiesPage() {
   const { data: activities = [], isLoading } = useActivities();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState(10);
-  const [pausedWalk, setPausedWalk] = useState<{ distance: number; duration: number; steps: number; savedAt: number } | null>(null);
 
-  // Load paused walk from localStorage
+  // Clean up legacy paused-walk localStorage key (web walk feature removed).
+  // Recording is now mobile-only; this key is leftover state from older builds.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const data = localStorage.getItem("moru_paused_walk");
-      if (data) {
-        const parsed = JSON.parse(data);
-        const ageMinutes = (Date.now() - parsed.savedAt) / 60000;
-        if (ageMinutes < 120) setPausedWalk(parsed);
-        else localStorage.removeItem("moru_paused_walk");
-      }
+      localStorage.removeItem("moru_paused_walk");
     } catch {}
   }, []);
-
-  const handleResumeWalk = () => {
-    window.location.href = "/walk?resume=local";
-  };
-
-  const handleDeletePausedWalk = () => {
-    localStorage.removeItem("moru_paused_walk");
-    setPausedWalk(null);
-  };
 
   const hour = new Date().getHours();
   const greeting = language === "ko"
@@ -170,10 +155,18 @@ export default function ActivitiesPage() {
             </div>
           </div>
 
-          {/* Start walking */}
-          <Link href="/walk" className="block w-full py-3.5 bg-[#2D4A2E] text-white rounded-[14px] text-[15px] font-semibold text-center active:scale-[0.98] transition-transform">
-            🚶 {t("activities.startWalk")}
-          </Link>
+          {/* Mobile app banner — recording is mobile-only */}
+          <div className="w-full py-3.5 px-4 bg-[#F0F7F0] border border-[#2D4A2E]/20 rounded-[14px] flex items-center gap-3">
+            <span className="text-[22px]">📱</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-bold text-[#2D4A2E]">
+                {language === "ko" ? "걷기 기록은 모바일 앱에서" : language === "ja" ? "ウォーキング記録はモバイルアプリで" : language === "zh" ? "使用移动应用记录步行" : "Record walks in the mobile app"}
+              </p>
+              <p className="text-[11px] text-[#6B7F6C] mt-0.5">
+                {language === "ko" ? "GPS 기록, 음성 안내, 오프라인 지원" : language === "ja" ? "GPS記録、音声案内、オフライン対応" : language === "zh" ? "GPS记录、语音引导、离线支持" : "GPS tracking, voice guidance, offline"}
+              </p>
+            </div>
+          </div>
 
           {/* Weekly Chart */}
           {stats && stats.weekly.length > 0 && (
@@ -227,27 +220,6 @@ export default function ActivitiesPage() {
         </div>
       )}
 
-      {/* Paused walk resume card */}
-      {pausedWalk && (
-        <div className="px-5 pt-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-amber-50 border border-amber-200 rounded-[16px] p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="#D97706"/></svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-amber-900">일시정지된 걷기가 있어요</p>
-                <p className="text-[11px] text-amber-700">{pausedWalk.distance.toFixed(2)}km · {Math.floor(pausedWalk.duration / 60)}분 · {pausedWalk.steps.toLocaleString()}걸음 · 거리/걸음/칼로리 이어서 누적됩니다</p>
-              </div>
-              <button onClick={handleResumeWalk} className="text-[12px] font-bold bg-amber-600 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap">이어서 걷기</button>
-              <button onClick={handleDeletePausedWalk} className="text-amber-700 hover:text-amber-900 p-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Activity list */}
       <div className="px-5 pt-4 pb-24">
         <div className="max-w-3xl mx-auto">
@@ -262,12 +234,13 @@ export default function ActivitiesPage() {
               ))
             ) : activities.length === 0 ? (
               <div className="py-16 text-center">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4 text-2xl">🚶</div>
-                <p className="text-[15px] font-semibold text-gray-900 mb-1">{language === "ko" ? "아직 활동 기록이 없어요" : "No activities yet"}</p>
-                <p className="text-[13px] text-gray-400 mb-5">{language === "ko" ? "걷기를 시작해보세요!" : "Start a walk!"}</p>
-                <Link href="/walk" className="inline-block px-5 py-2 bg-[#2D4A2E] text-white text-sm font-semibold rounded-full">
-                  {language === "ko" ? "걷기 시작" : "Start Walk"}
-                </Link>
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4 text-2xl">📱</div>
+                <p className="text-[15px] font-semibold text-gray-900 mb-1">
+                  {language === "ko" ? "아직 기록이 없어요" : language === "ja" ? "まだ記録がありません" : language === "zh" ? "还没有记录" : "No records yet"}
+                </p>
+                <p className="text-[13px] text-gray-400">
+                  {language === "ko" ? "모바일 앱에서 걷기를 기록해보세요" : language === "ja" ? "モバイルアプリでウォーキングを記録しましょう" : language === "zh" ? "在移动应用中记录步行" : "Record walks in the mobile app"}
+                </p>
               </div>
             ) : (
               activities.slice(0, visibleCount).map((activity: ActivityTrack) => (

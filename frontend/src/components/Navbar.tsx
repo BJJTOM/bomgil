@@ -17,7 +17,7 @@ export function Navbar() {
   const NAV_LINKS = [
     { href: "/explore", label: t("nav.explore") },
     { href: "/community", label: language === "ko" ? "커뮤니티" : language === "ja" ? "コミュニティ" : language === "zh" ? "社区" : "Community" },
-    { href: "/activities", label: language === "ko" ? "활동 기록" : language === "ja" ? "アクティビティ" : language === "zh" ? "活动记录" : "Activities" },
+    { href: "/activities", label: language === "ko" ? "내 기록" : language === "ja" ? "マイ記録" : language === "zh" ? "我的记录" : "My Records" },
     { href: "/rankings", label: language === "ko" ? "랭킹" : language === "ja" ? "ランキング" : language === "zh" ? "排行榜" : "Rankings" },
   ];
 

@@ -140,7 +140,8 @@ export default function NewTrailPage() {
   const [drawDistance, setDrawDistance] = useState(0);
   const [drawDuration, setDrawDuration] = useState(0);
 
-  // Hydrate from completed walk if redirected from /walk/complete
+  // Hydrate from sessionStorage if a walk record was staged for trail creation
+  // (legacy entry point — retained for external callers that still set this key).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);

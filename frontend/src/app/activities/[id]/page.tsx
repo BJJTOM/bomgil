@@ -393,22 +393,6 @@ export default function ActivityDetailPage() {
         <div className="card shadow-card p-5 mb-4">
           <h2 className="text-[15px] font-bold mb-4">활동 관리</h2>
           <div className="grid grid-cols-2 gap-3">
-            {/* Resume walk */}
-            <button
-              onClick={() => {
-                if (!confirm("이 기록에 이어서 걷기를 시작하시겠어요?")) return;
-                const params = new URLSearchParams({ resume: String(id) });
-                router.push(`/walk?${params.toString()}`);
-              }}
-              className="bg-bg-secondary rounded-xl p-4 text-left hover:bg-emerald-50 transition-colors"
-            >
-              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2.5"><polygon points="5,3 19,12 5,21" fill="#2D4A2E"/></svg>
-              </div>
-              <p className="text-[13px] font-bold text-gray-900">이어서 걷기</p>
-              <p className="text-[11px] text-gray-500">이 기록에서 계속</p>
-            </button>
-
             {/* Merge records */}
             <button
               onClick={openMergeModal}

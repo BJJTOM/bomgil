@@ -13,7 +13,8 @@ import { notFound } from "next/navigation";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
 
-export const revalidate = 900;
+// Short revalidate window so freshly-seeded content appears quickly
+export const revalidate = 120;
 
 type Segment = {
   id: number;
@@ -49,7 +50,7 @@ type PageProps = { params: Promise<{ slug: string }> };
 async function fetchSeries(slug: string): Promise<SeriesDetail | null> {
   try {
     const res = await fetch(`${API_BASE}/trails/series/${slug}/`, {
-      next: { revalidate: 900, tags: [`trail-series-${slug}`] },
+      next: { revalidate: 120, tags: [`trail-series-${slug}`] },
     });
     if (!res.ok) return null;
     return await res.json();

@@ -62,7 +62,7 @@ export default function TrailSeriesDetailScreen() {
       <View style={[styles.hero, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.heroBackBtn}
+          style={[styles.heroBackBtn, { top: insets.top + 12 }]}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Feather name="chevron-left" size={24} color="#fff" />
         </TouchableOpacity>
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   heroBackBtn: {
     position: 'absolute',
     left: 16,
-    top: undefined as any,
+    zIndex: 10,
   },
   heroContent: {
     paddingHorizontal: 24,

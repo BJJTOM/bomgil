@@ -10,7 +10,10 @@ import Link from "next/link";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
 
-export const revalidate = 900;
+// 60s — short enough that freshly-seeded series appear within a
+// minute, long enough to avoid hammering the API. The list is tiny
+// (one row per series) so frequent revalidation is cheap.
+export const revalidate = 60;
 
 type Series = {
   id: number;
@@ -40,7 +43,7 @@ export const metadata: Metadata = {
 async function fetchSeries(): Promise<Series[]> {
   try {
     const res = await fetch(`${API_BASE}/trails/series/`, {
-      next: { revalidate: 900, tags: ["trail-series"] },
+      next: { revalidate: 60, tags: ["trail-series"] },
     });
     if (!res.ok) return [];
     const data = await res.json();

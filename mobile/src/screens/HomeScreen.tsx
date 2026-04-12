@@ -784,7 +784,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
-    marginRight: 12,
   },
   seriesHomeEmojiWrap: {
     width: 44,

@@ -23,7 +23,8 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
 
 // Revalidate each region page at most every 30 minutes.
-export const revalidate = 1800;
+// Short revalidate window for freshly-seeded content
+export const revalidate = 120;
 
 // slug → { label, region filter keywords, lede, hero emoji }
 // `keywords` is a list of Korean region strings we search the API with
@@ -124,7 +125,7 @@ async function fetchRegionTrails(keywords: string[]): Promise<Trail[]> {
       url.searchParams.set("ordering", "-like_count");
       url.searchParams.set("page_size", "30");
       const res = await fetch(url.toString(), {
-        next: { revalidate: 1800 },
+        next: { revalidate: 120 },
       });
       if (!res.ok) continue;
       const data = await res.json();

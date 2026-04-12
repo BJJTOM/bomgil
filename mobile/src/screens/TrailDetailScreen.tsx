@@ -453,9 +453,8 @@ function TrailDetailScreenInner() {
             style={styles.walkBtn}
             onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
             activeOpacity={0.85}>
-            <Feather name="play" size={18} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.walkBtnText}>
-              {(trail as any).is_completed ? '다시 걷기 시작' : '이 코스로 걷기 시작'}
+              {(trail as any).is_completed ? '다시 걷기 시작' : '걷기 시작'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1004,19 +1003,17 @@ const styles = StyleSheet.create({
 
   // ── Action Bar ─────────────────────────────────────────
   actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F2F4F6',
     backgroundColor: '#fff',
-    gap: 12,
   },
   actionIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-around',
+    paddingVertical: 4,
   },
   actionIconBtn: {
     alignItems: 'center',
@@ -1031,21 +1028,15 @@ const styles = StyleSheet.create({
     color: '#8B95A1',
   },
   walkBtn: {
-    flexDirection: 'row',
     backgroundColor: '#2D4A2E',
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 15,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: '#2D4A2E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 5,
+    marginTop: 14,
   },
   walkBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.3,

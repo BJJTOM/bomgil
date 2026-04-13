@@ -25,6 +25,21 @@ const FINISH_VIBRATION = Platform.OS === 'android'
   : [0, 300, 100, 300];
 
 let ttsInitialized = false;
+// Belt-and-suspenders: even with VIBRATE in the manifest, if the permission
+// was ever missing, Vibration.vibrate() dispatches to the native module
+// queue asynchronously and any SecurityException thrown there crashes the
+// whole app (JS try/catch cannot reach across the bridge thread). If we
+// ever catch a failure, disable haptics for the rest of the session.
+let vibrateBlocked = false;
+function safeVibrate(pattern: number[]): void {
+  if (vibrateBlocked) return;
+  try {
+    Vibration.vibrate(pattern);
+  } catch (e) {
+    vibrateBlocked = true;
+    console.log('[AudioFeedback] vibrate blocked:', e);
+  }
+}
 
 async function initTts(lang: FeedbackLanguage): Promise<void> {
   if (ttsInitialized) return;
@@ -105,7 +120,7 @@ export class WalkAudioFeedback {
   ): void {
     // Always vibrate (even if audio is off — haptic is separate)
     if (this.hapticEnabled) {
-      try { Vibration.vibrate(SPLIT_VIBRATION); } catch {}
+      safeVibrate(SPLIT_VIBRATION);
     }
 
     if (!this.enabled) return;
@@ -135,7 +150,7 @@ export class WalkAudioFeedback {
     calories: number,
   ): void {
     if (this.hapticEnabled) {
-      try { Vibration.vibrate(FINISH_VIBRATION); } catch {}
+      safeVibrate(FINISH_VIBRATION);
     }
 
     if (!this.enabled) return;
@@ -152,17 +167,30 @@ export class WalkAudioFeedback {
     this.speak(text);
   }
 
+  /** Public speak — for ad-hoc messages like off-route alerts. */
+  announce(text: string): void {
+    this.speak(text);
+  }
+
   private speak(text: string): void {
-    try {
-      // Stop any in-progress speech first
-      Tts.stop();
-      Tts.speak(text);
-    } catch (e) {
-      console.log('[AudioFeedback] TTS speak failed:', e);
-    }
+    // Run asynchronously and catch ALL errors (including promise rejections
+    // from Tts.speak) so TTS failures never crash the app.
+    (async () => {
+      try {
+        await Tts.stop();
+      } catch {}
+      try {
+        await Tts.speak(text);
+      } catch (e) {
+        console.log('[AudioFeedback] TTS speak failed:', e);
+      }
+    })().catch(() => {});
   }
 
   destroy(): void {
-    try { Tts.stop(); } catch {}
+    try {
+      const p: any = Tts.stop();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch {}
   }
 }

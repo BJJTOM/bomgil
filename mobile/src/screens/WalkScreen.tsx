@@ -30,6 +30,7 @@ import { useAuthStore } from '../stores/auth';
 import { takeTaggedPhoto, TaggedPhoto } from '../utils/photoTagger';
 import { WalkEngine, WalkStats, KmSplit } from '../utils/walkEngine';
 import { navParamCache } from '../utils/navParamCache';
+import { OffRouteDetector } from '../utils/offRouteDetector';
 import {
   startBackgroundWalkService,
   stopBackgroundWalkService,
@@ -165,6 +166,23 @@ function WalkScreenInner() {
   // Previous segments' trackPoints saved during resume so they can be merged on completion
   const prevTrackPointsRef = useRef<any[]>([]);
 
+  // Off-route detector — lazily initialized the first time we see
+  // the followed trail's path_data arrive. Non-null when a trail is
+  // being followed and its path_data has been parsed.
+  const offRouteRef = useRef<OffRouteDetector | null>(null);
+  const [offRoute, setOffRoute] = useState(false);
+
+  // Build the detector if route.params.trail.path_data is available.
+  // Also handles the case where only trailId was passed — in that case
+  // we skip off-route detection (no path to compare against).
+  useEffect(() => {
+    const trail = route.params?.trail;
+    const pathData = trail?.path_data;
+    if (!pathData || !Array.isArray(pathData?.coordinates)) return;
+    if (pathData.coordinates.length < 2) return;
+    offRouteRef.current = new OffRouteDetector(pathData.coordinates);
+  }, [route.params?.trail]);
+
   const engineRef = useRef(new WalkEngine());
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -263,7 +281,12 @@ function WalkScreenInner() {
     };
 
     doResume();
-  }, []); // eslint-disable-line
+    // Resume effect intentionally runs exactly once per screen mount.
+    // resumeData is captured from the first render and never changes
+    // during the lifetime of this screen — re-running would reset the
+    // engine offsets and double-count distance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- COUNTDOWN ----
   useEffect(() => {
@@ -607,6 +630,28 @@ function WalkScreenInner() {
       // In background: still accumulate routeCoords for the final save,
       // but via ref to avoid re-renders.
       setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
+    }
+
+    // Off-route detection: only runs when a trail is being followed
+    // and its path_data has been loaded. Fires a one-shot haptic + TTS
+    // warning when the user wanders > 60m for 3+ consecutive fixes.
+    if (point && offRouteRef.current) {
+      const result = offRouteRef.current.update({ lat: point.lat, lng: point.lng });
+      if (result.alert) {
+        try {
+          // @ts-ignore — Vibration is imported at top (RN core)
+          const { Vibration } = require('react-native');
+          Vibration.vibrate([0, 300, 150, 300]);
+        } catch {}
+        try {
+          audioFeedbackRef.current?.announce?.(
+            '경로를 벗어났습니다. 원래 길로 돌아가세요.',
+          );
+        } catch {}
+      }
+      if (!isBackgroundRef.current) {
+        setOffRoute(result.state === 'off');
+      }
     }
 
     // Always update notification (visible on lockscreen)
@@ -1214,6 +1259,18 @@ function WalkScreenInner() {
             );
           })}
         </Mapbox.MapView>
+        )}
+
+        {/* Off-route warning banner — only shown when the user is
+            following a trail and has drifted > 60 m from its path. */}
+        {offRoute && (
+          <View style={[styles.offRouteBanner, { top: insets.top + 70 }]}>
+            <Text style={styles.offRouteEmoji}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.offRouteTitle}>경로를 벗어났어요</Text>
+              <Text style={styles.offRouteSub}>원래 길로 돌아가세요</Text>
+            </View>
+          </View>
         )}
 
         {/* Map top-left: status pill + GPS signal indicator */}
@@ -1838,6 +1895,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 10,
     gap: 10,
+  },
+  offRouteBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  offRouteEmoji: { fontSize: 28 },
+  offRouteTitle: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  offRouteSub: {
+    color: '#B91C1C',
+    fontSize: 12,
+    marginTop: 1,
   },
   accuracyToggle: {
     paddingHorizontal: 8,

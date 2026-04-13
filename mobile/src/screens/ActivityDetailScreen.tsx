@@ -82,11 +82,14 @@ export default function ActivityDetailScreen() {
   const handleResumeWalk = () => {
     setShowResumeConfirm(false);
     try {
-      const tp = activity.track_points || [];
+      // Defensive: activity may be missing track_points (fresh walks)
+      // or the server may return null; never .map() on a non-array.
+      const tpRaw = activity?.track_points;
+      const tp = Array.isArray(tpRaw) ? tpRaw : [];
       const rc: [number, number][] = tp.map((p: any) => {
         if (Array.isArray(p)) return p as [number, number];
-        const lng = p.lng ?? p.longitude ?? 0;
-        const lat = p.lat ?? p.latitude ?? 0;
+        const lng = p?.lng ?? p?.longitude ?? 0;
+        const lat = p?.lat ?? p?.latitude ?? 0;
         return [lng, lat] as [number, number];
       }).filter((c: [number, number]) => c[0] !== 0 && c[1] !== 0);
       const resumeData = {

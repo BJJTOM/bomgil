@@ -101,8 +101,14 @@ def _sample_trail_points(trail) -> list[tuple[float, float]]:
                     continue
         if pts:
             if len(pts) > TRAIL_SAMPLE_POINTS:
-                step = len(pts) / TRAIL_SAMPLE_POINTS
-                pts = [pts[int(i * step)] for i in range(TRAIL_SAMPLE_POINTS)]
+                # Uniform downsample to exactly TRAIL_SAMPLE_POINTS points,
+                # always including the first and last. Earlier version used
+                # `int(i * step)` which could skip the last point entirely.
+                last = len(pts) - 1
+                pts = [
+                    pts[min(last, round(i * last / (TRAIL_SAMPLE_POINTS - 1)))]
+                    for i in range(TRAIL_SAMPLE_POINTS)
+                ]
             return pts
     # Fallback: start / end only
     return [

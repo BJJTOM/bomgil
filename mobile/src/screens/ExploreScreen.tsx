@@ -152,17 +152,16 @@ export default function ExploreScreen() {
     return params;
   }, [filters, debouncedSearch, sortBy]);
 
-  // Filtered query (with search param for API)
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  // Filtered query (with search param for API).
+  // Lets react-query surface isError so we can render a retry CTA
+  // instead of silently showing an empty list.
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['trails', queryParams],
     queryFn: async () => {
-      try {
-        const { data: res } = await api.get('/trails/', { params: { ...queryParams, page_size: 30 } });
-        return res;
-      } catch (e) {
-        console.log('Trails fetch error:', e);
-        return { results: [] };
-      }
+      const { data: res } = await api.get('/trails/', {
+        params: { ...queryParams, page_size: 30 },
+      });
+      return res;
     },
     retry: 1,
     staleTime: 30000,
@@ -421,6 +420,20 @@ export default function ExploreScreen() {
       {isLoading ? (
         <View style={styles.loadingCenter}>
           <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : isError ? (
+        <View style={styles.loadingCenter}>
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>⚠️</Text>
+          <Text style={[styles.emptyTitle, { color: textColor }]}>네트워크 오류</Text>
+          <Text style={[styles.emptyDesc, { color: textTertColor, marginBottom: 16 }]}>
+            코스를 불러오지 못했어요
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyResetBtn}
+            onPress={() => refetch()}
+            activeOpacity={0.85}>
+            <Text style={styles.emptyResetText}>다시 시도</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList

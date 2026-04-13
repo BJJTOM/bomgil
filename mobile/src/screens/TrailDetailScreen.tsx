@@ -49,6 +49,7 @@ import { colors } from '../theme/colors';
 import { Trail, Spot, Review } from '../types';
 import { saveTrailOffline, isSaved, getSavedTrail } from '../utils/offlineStorage';
 import SafeMapView from '../components/SafeMapView';
+import { ElevationProfile } from '../components/ElevationProfile';
 import { useThemeStore } from '../stores/theme';
 
 const { width } = Dimensions.get('window');
@@ -409,8 +410,8 @@ function TrailDetailScreenInner() {
         <View style={[styles.actionBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
-              <Feather name="heart" size={20} color={(trail as any).is_liked ? '#FF4B4B' : '#8B95A1'} />
-              <Text style={[styles.actionIconLabel, (trail as any).is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
+              <Feather name="heart" size={20} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, trail.is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionIconBtn}
@@ -418,13 +419,13 @@ function TrailDetailScreenInner() {
               disabled={bookmarkMutation.isPending}
               activeOpacity={0.7}>
               <Feather
-                name={(trail as any).is_bookmarked ? 'bookmark' : 'bookmark'}
+                name="bookmark"
                 size={20}
-                color={(trail as any).is_bookmarked ? colors.primary : '#8B95A1'}
-                style={{ opacity: (trail as any).is_bookmarked ? 1 : 0.7 }}
+                color={trail.is_bookmarked ? colors.primary : '#8B95A1'}
+                style={{ opacity: trail.is_bookmarked ? 1 : 0.7 }}
               />
-              <Text style={[styles.actionIconLabel, (trail as any).is_bookmarked && { color: colors.primary }]}>
-                {(trail as any).is_bookmarked ? '저장됨' : '저장'}
+              <Text style={[styles.actionIconLabel, trail.is_bookmarked && { color: colors.primary }]}>
+                {trail.is_bookmarked ? '저장됨' : '저장'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionIconBtn} onPress={handleShare} activeOpacity={0.7}>
@@ -434,13 +435,13 @@ function TrailDetailScreenInner() {
             <TouchableOpacity style={styles.actionIconBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
               <Feather name={savedOffline ? 'check-circle' : 'download'} size={20} color={savedOffline ? colors.primary : '#8B95A1'} />
               <Text style={[styles.actionIconLabel, savedOffline && { color: colors.primary }]}>
-                {savingOffline ? '...' : savedOffline ? '오프라인' : '오프라인'}
+                {savingOffline ? '저장중' : savedOffline ? '다운완료' : '다운로드'}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Completion badge — shown if user has already completed this trail */}
-          {(trail as any).is_completed && (
+          {trail.is_completed && (
             <View style={styles.completionBadgeRow}>
               <View style={styles.completionBadge}>
                 <Feather name="award" size={14} color="#fff" />
@@ -454,10 +455,43 @@ function TrailDetailScreenInner() {
             onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
             activeOpacity={0.85}>
             <Text style={styles.walkBtnText}>
-              {(trail as any).is_completed ? '다시 걷기 시작' : '걷기 시작'}
+              {trail.is_completed ? '다시 걷기 시작' : '걷기 시작'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* ===== 3b. Latest Condition Banner ===== */}
+        {(() => {
+          const lc = (trail as any).latest_condition;
+          if (!lc) return null;
+          const created = new Date(lc.created_at);
+          const hoursAgo = Math.floor((Date.now() - created.getTime()) / 3600000);
+          const freshLabel =
+            hoursAgo < 1 ? '방금 전' :
+            hoursAgo < 24 ? `${hoursAgo}시간 전` :
+            `${Math.floor(hoursAgo / 24)}일 전`;
+          return (
+            <TouchableOpacity
+              style={[styles.conditionBanner, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}
+              onPress={() => navigation.navigate('TrailConditions', { id: trail.id })}
+              activeOpacity={0.85}>
+              <View style={styles.conditionIconWrap}>
+                <Feather name="alert-circle" size={18} color="#B45309" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.conditionBannerTitle} numberOfLines={1}>
+                  {lc.tag_display || lc.tag} · {freshLabel}
+                </Text>
+                {!!lc.note && (
+                  <Text style={styles.conditionBannerNote} numberOfLines={2}>
+                    {lc.note}
+                  </Text>
+                )}
+              </View>
+              <Feather name="chevron-right" size={18} color="#B45309" />
+            </TouchableOpacity>
+          );
+        })()}
 
         {/* ===== 4. Description ===== */}
         <View style={styles.section}>
@@ -520,6 +554,14 @@ function TrailDetailScreenInner() {
             </View>
           )}
         </View>
+
+        {/* ===== 4b+ Elevation Profile ===== */}
+        {trail.path_data?.coordinates && (
+          <ElevationProfile
+            coordinates={trail.path_data.coordinates as any}
+            isDark={isDark}
+          />
+        )}
 
         {/* ===== 4c. Author ===== */}
         {trail.author && (
@@ -1059,6 +1101,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  conditionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  conditionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(180, 83, 9, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  conditionBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#78350F',
+  },
+  conditionBannerNote: {
+    fontSize: 12,
+    color: '#92400E',
+    marginTop: 2,
+    lineHeight: 16,
   },
 
   // ── Sections ───────────────────────────────────────────

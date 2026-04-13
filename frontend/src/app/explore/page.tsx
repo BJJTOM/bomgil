@@ -194,6 +194,7 @@ function ExploreContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("explore.searchPlaceholder")}
+              aria-label={t("explore.searchPlaceholder")}
               className="w-full pl-10 pr-4 py-2.5 rounded-[12px] bg-[#F7F8FA] border-none text-[13px] focus:outline-none focus:ring-2 focus:ring-[#2D4A2E]/20 placeholder:text-[#B0B8C1] transition-all"
             />
             {search && (
@@ -243,9 +244,9 @@ function ExploreContent() {
       {activeTab === "rankings" && (
         <div className="max-w-5xl mx-auto px-5 py-5">
           <div className="text-center py-4">
-            <a href="/rankings" className="inline-block px-6 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
+            <Link href="/rankings" className="inline-block px-6 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
               {t("rankings.title")} {"\u2192"}
-            </a>
+            </Link>
           </div>
         </div>
       )}

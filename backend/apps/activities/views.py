@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Sum, Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -198,7 +199,9 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def my_stats(self, request):
-        tracks = ActivityTrack.objects.filter(user=request.user)
+        # Exclude hidden (admin-moderated) activities — they must not
+        # count toward the user's public stats, streaks, or badges.
+        tracks = ActivityTrack.objects.filter(user=request.user, is_hidden=False)
         agg = tracks.aggregate(
             total_distance=Sum("distance_km"),
             total_steps=Sum("total_steps"),
@@ -286,6 +289,7 @@ class ActivityMergeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ActivityMergeThrottle]
 
+    @transaction.atomic
     def post(self, request):
         activity_ids = request.data.get('activity_ids', [])
         delete_originals = request.data.get('delete_originals', False)

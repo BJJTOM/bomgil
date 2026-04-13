@@ -67,10 +67,27 @@ export interface Trail {
   view_count: number;
   like_count: number;
   is_liked: boolean;
+  is_bookmarked?: boolean;
+  is_completed?: boolean;
+  completion_count?: number;
+  latest_condition?: TrailConditionReport | null;
+  condition_count?: number;
   created_at: string;
   updated_at: string;
   is_official?: boolean;
   source?: string;
+  source_url?: string;
+}
+
+export interface TrailConditionReport {
+  id: number;
+  user: User;
+  tag: string;
+  tag_display: string;
+  note: string;
+  image: string | null;
+  helpful_count: number;
+  created_at: string;
 }
 
 export interface TrailSeries {

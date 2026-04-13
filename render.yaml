@@ -23,6 +23,12 @@ services:
         sync: false
       - key: PYTHON_VERSION
         value: "3.11.9"
+      # Shared secret for the Next.js on-demand ISR webhook. Must match
+      # the REVALIDATE_SECRET env var on Vercel. Auto-generated.
+      - key: REVALIDATE_SECRET
+        generateValue: true
+      - key: WEB_BASE_URL
+        value: "https://moruwalk.com"
 
 databases:
   - name: roami-db

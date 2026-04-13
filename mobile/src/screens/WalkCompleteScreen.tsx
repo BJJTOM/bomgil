@@ -259,9 +259,11 @@ function WalkCompleteInner() {
             to one or more curated trails. Tapping opens the trail detail;
             the share button sends a text card so users can flex on
             Instagram / Kakao without waiting on image generation. */}
-        {matchedTrails.length > 0 && (
+        {matchedTrails.filter((m: any) => m?.trail_id && m?.title).length > 0 && (
           <View style={styles.completionCardWrap}>
-            {matchedTrails.map((m: any, idx: number) => (
+            {matchedTrails
+              .filter((m: any) => m?.trail_id && m?.title)
+              .map((m: any, idx: number) => (
               <View
                 key={`${m.trail_id}-${idx}`}
                 style={[styles.completionCard, { backgroundColor: cardBg }]}>

@@ -10,6 +10,7 @@ from .models import (
     Trail,
     TrailBookmark,
     TrailCompletion,
+    TrailCondition,
     TrailLike,
     TrailSeries,
     TrailSeriesTrail,
@@ -156,6 +157,16 @@ class TrailCompletionAdmin(admin.ModelAdmin):
     search_fields = ["user__nickname", "trail__title"]
     date_hierarchy = "completed_at"
     ordering = ["-completed_at"]
+    autocomplete_fields = ["user", "trail"]
+
+
+@admin.register(TrailCondition)
+class TrailConditionAdmin(admin.ModelAdmin):
+    list_display = ["trail", "tag", "user", "helpful_count", "is_hidden", "created_at"]
+    list_filter = ["tag", "is_hidden", "created_at"]
+    search_fields = ["trail__title", "user__nickname", "note"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
     autocomplete_fields = ["user", "trail"]
 
 

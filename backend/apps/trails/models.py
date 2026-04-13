@@ -233,6 +233,61 @@ class TrailSeriesTrail(models.Model):
         return f"{self.series.title} · {self.segment_label or self.trail.title}"
 
 
+class TrailCondition(models.Model):
+    """User-submitted real-time condition report for a trail.
+
+    Inspired by AllTrails "Trail Conditions": any user who walked the
+    trail recently can attach a structured tag + optional free text
+    note. The mobile trail detail surfaces the most recent report as
+    a banner ("3일 전: 진흙 많음") so the next walker knows what to
+    expect without reading every review.
+
+    Kept append-only: users create a new report rather than editing
+    an old one, so the timeline on the admin panel reflects actual
+    condition changes over time.
+    """
+
+    TAG_CHOICES = [
+        ("muddy", "진흙/미끄러움"),
+        ("icy", "빙판/결빙"),
+        ("overgrown", "수풀 무성"),
+        ("flooded", "침수/물빠짐"),
+        ("closed", "구간 통제"),
+        ("construction", "공사중"),
+        ("fallen_trees", "쓰러진 나무"),
+        ("bugs", "벌레 많음"),
+        ("crowded", "사람 많음"),
+        ("clear", "상태 양호"),
+        ("other", "기타"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trail_conditions"
+    )
+    trail = models.ForeignKey(Trail, on_delete=models.CASCADE, related_name="conditions")
+    tag = models.CharField(max_length=20, choices=TAG_CHOICES, db_index=True)
+    note = models.CharField(max_length=300, blank=True, default="")
+    # A single image attachment is enough for a "look what I saw" report.
+    # Multi-image uploads live in reviews, not condition reports.
+    image = models.ImageField(upload_to="trails/conditions/", null=True, blank=True)
+    # Helpful-votes count for community moderation without admin involvement.
+    helpful_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "코스 상태 제보"
+        verbose_name_plural = "코스 상태 제보"
+        indexes = [
+            models.Index(fields=["trail", "-created_at"]),
+            models.Index(fields=["tag", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.trail_id} · {self.tag} · {self.created_at:%Y-%m-%d}"
+
+
 class TrailCompletion(models.Model):
     """A record that a user completed a specific trail.
 

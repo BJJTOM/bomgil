@@ -11,6 +11,7 @@ from .models import (
     Trail,
     TrailBookmark,
     TrailCompletion,
+    TrailCondition,
     TrailLike,
     TrailSeries,
     TrailSeriesTrail,
@@ -122,6 +123,10 @@ class TrailDetailSerializer(serializers.ModelSerializer):
     is_completed = serializers.SerializerMethodField()
     completion_count = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
+    # Freshest condition report (≤7 days old) surfaced as a banner
+    # on the mobile trail detail. None if nothing recent.
+    latest_condition = serializers.SerializerMethodField()
+    condition_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Trail
@@ -152,6 +157,24 @@ class TrailDetailSerializer(serializers.ModelSerializer):
     def get_completion_count(self, obj):
         return TrailCompletion.objects.filter(trail=obj).count()
 
+    def get_latest_condition(self, obj):
+        from datetime import timedelta
+        from django.utils import timezone
+        cutoff = timezone.now() - timedelta(days=7)
+        latest = (
+            TrailCondition.objects
+            .filter(trail=obj, is_hidden=False, created_at__gte=cutoff)
+            .select_related("user")
+            .order_by("-created_at")
+            .first()
+        )
+        if not latest:
+            return None
+        return TrailConditionSerializer(latest, context=self.context).data
+
+    def get_condition_count(self, obj):
+        return TrailCondition.objects.filter(trail=obj, is_hidden=False).count()
+
 
 class TrailBookmarkSerializer(serializers.ModelSerializer):
     trail = TrailListSerializer(read_only=True)
@@ -167,6 +190,36 @@ class TrailCompletionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrailCompletion
         fields = ["id", "trail", "source", "coverage", "completed_at"]
+
+
+# --- Trail Conditions -----------------------------------------------------
+
+class TrailConditionSerializer(serializers.ModelSerializer):
+    user = UserPublicSerializer(read_only=True)
+    tag_display = serializers.CharField(source="get_tag_display", read_only=True)
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrailCondition
+        fields = [
+            "id", "user", "tag", "tag_display", "note", "image",
+            "helpful_count", "created_at",
+        ]
+        read_only_fields = ["id", "user", "helpful_count", "created_at"]
+
+    def get_image(self, obj):
+        if not obj.image:
+            return None
+        try:
+            return obj.image.url
+        except Exception:
+            return None
+
+
+class TrailConditionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrailCondition
+        fields = ["tag", "note", "image"]
 
 
 # --- Trail Series ---------------------------------------------------------

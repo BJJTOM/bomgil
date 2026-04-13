@@ -57,6 +57,8 @@ export function Navbar() {
           <div className="relative">
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
+              aria-label="Change language"
+              aria-expanded={showLangMenu}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-bg-secondary hover:bg-border-light transition-colors text-[13px]"
             >
               <span>{LANGUAGES.find(l => l.code === language)?.flag}</span>
@@ -99,6 +101,8 @@ export function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
+                  aria-label="User menu"
+                  aria-expanded={showUserMenu}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-pill bg-bg-secondary hover:bg-border-light transition-colors"
                 >
                   <div className="w-7 h-7 rounded-full bg-accent/40 flex items-center justify-center overflow-hidden text-xs">

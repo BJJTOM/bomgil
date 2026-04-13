@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -106,8 +107,13 @@ export default function BookmarkedTrailsScreen() {
             styles.list,
             { paddingBottom: insets.bottom + 24 },
           ]}
-          refreshing={isRefetching}
-          onRefresh={refetch}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+            />
+          }
           renderItem={({ item }) => (
             <View style={styles.cardWrap}>
               <TrailCard

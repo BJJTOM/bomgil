@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { colors } from '../theme/colors';
+import { useThemeStore } from '../stores/theme';
 import { Trail } from '../types';
 
 const { width } = Dimensions.get('window');
@@ -62,6 +63,13 @@ export default function TrailCard({
   compact,
   variant = 'default',
 }: TrailCardProps) {
+  const { isDark } = useThemeStore();
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const titleColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const metaColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const likeColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const imagePlaceholderBg = isDark ? '#2a2a2a' : colors.accentLight;
+
   const diff = DIFFICULTY_CONFIG[trail.difficulty] || DIFFICULTY_CONFIG.easy;
   const emoji = TRAIL_TYPE_EMOJI[trail.trail_type] || '\u{1F6B6}';
   const effectiveVariant = compact ? 'compact' : variant;
@@ -70,7 +78,7 @@ export default function TrailCard({
   if (effectiveVariant === 'horizontal') {
     return (
       <TouchableOpacity
-        style={styles.horizontalCard}
+        style={[styles.horizontalCard, { backgroundColor: cardBg }]}
         onPress={onPress}
         activeOpacity={0.85}>
         <View style={styles.horizontalImage}>
@@ -81,7 +89,7 @@ export default function TrailCard({
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.horizontalPlaceholder}>
+            <View style={[styles.horizontalPlaceholder, { backgroundColor: imagePlaceholderBg }]}>
               <Text style={styles.horizontalPlaceholderEmoji}>{emoji}</Text>
             </View>
           )}
@@ -93,11 +101,11 @@ export default function TrailCard({
                 <Text style={styles.officialBadgeText}>✓</Text>
               </View>
             )}
-            <Text style={styles.horizontalTitle} numberOfLines={1}>
+            <Text style={[styles.horizontalTitle, { color: titleColor }]} numberOfLines={1}>
               {trail?.title || ''}
             </Text>
           </View>
-          <Text style={styles.horizontalMeta} numberOfLines={1}>
+          <Text style={[styles.horizontalMeta, { color: metaColor }]} numberOfLines={1}>
             {trail?.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
           </Text>
         </View>
@@ -112,7 +120,7 @@ export default function TrailCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, { width: cardWidth }]}
+      style={[styles.card, { width: cardWidth, backgroundColor: cardBg }]}
       onPress={onPress}
       activeOpacity={0.85}>
       {/* Image */}
@@ -124,7 +132,7 @@ export default function TrailCard({
             resizeMode="cover"
           />
         ) : (
-          <View style={styles.imagePlaceholder}>
+          <View style={[styles.imagePlaceholder, { backgroundColor: imagePlaceholderBg }]}>
             <Text style={styles.imagePlaceholderEmoji}>{emoji}</Text>
           </View>
         )}
@@ -146,13 +154,13 @@ export default function TrailCard({
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
           {trail.title || ''}
         </Text>
-        <Text style={styles.meta} numberOfLines={1}>
+        <Text style={[styles.meta, { color: metaColor }]} numberOfLines={1}>
           {trail.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
         </Text>
-        <Text style={styles.likeCount}>
+        <Text style={[styles.likeCount, { color: likeColor }]}>
           {'♥'} {trail.like_count ?? 0}
         </Text>
       </View>

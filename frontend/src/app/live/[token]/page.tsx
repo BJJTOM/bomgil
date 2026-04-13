@@ -32,7 +32,8 @@ interface LiveData {
   is_live: boolean;
 }
 
-const API_BASE = 'https://api.moruwalk.com/api/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || 'https://api.moruwalk.com/api/v1';
 const POLL_INTERVAL_MS = 10_000;
 
 function formatDuration(seconds: number): string {

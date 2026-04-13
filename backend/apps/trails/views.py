@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db.models import F
+from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from .models import (
     Trail,
     TrailBookmark,
     TrailCompletion,
+    TrailCondition,
     TrailLike,
     TrailSeries,
 )
@@ -23,6 +25,8 @@ from .serializers import (
     TagSerializer,
     TrailBookmarkSerializer,
     TrailCompletionSerializer,
+    TrailConditionCreateSerializer,
+    TrailConditionSerializer,
     TrailCreateSerializer,
     TrailDetailSerializer,
     TrailListSerializer,
@@ -176,6 +180,60 @@ class TrailViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
+    @action(
+        detail=True, methods=["get", "post"],
+        permission_classes=[permissions.IsAuthenticatedOrReadOnly],
+    )
+    def conditions(self, request, pk=None):
+        """List condition reports for a trail or submit a new one.
+
+        GET returns up to 20 most-recent reports, newest first.
+        POST expects {tag, note?, image?} and returns the created row.
+        """
+        trail = self.get_object()
+
+        if request.method == "GET":
+            qs = (
+                TrailCondition.objects
+                .filter(trail=trail, is_hidden=False)
+                .select_related("user")
+                .order_by("-created_at")[:20]
+            )
+            serializer = TrailConditionSerializer(
+                qs, many=True, context={"request": request},
+            )
+            return Response(serializer.data)
+
+        # POST — authenticated users only
+        if not request.user.is_authenticated:
+            return Response({"detail": "authentication required"}, status=401)
+
+        # Rate-limit: one report per user per trail per hour. Prevents
+        # spamming the same trail with stale tags.
+        recent_cutoff = timezone.now() - timezone.timedelta(hours=1)
+        recent_exists = TrailCondition.objects.filter(
+            user=request.user, trail=trail, created_at__gte=recent_cutoff,
+        ).exists()
+        if recent_exists:
+            return Response(
+                {"detail": "이미 최근에 이 코스에 제보했어요. 1시간 후 다시 시도해주세요."},
+                status=429,
+            )
+
+        serializer = TrailConditionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        img = request.FILES.get("image")
+        if img is not None:
+            try:
+                validate_image_file(img)
+            except Exception as e:
+                return Response({"image": str(e)}, status=400)
+        instance = serializer.save(user=request.user, trail=trail)
+        return Response(
+            TrailConditionSerializer(instance, context={"request": request}).data,
+            status=201,
+        )
+
     @action(detail=True, methods=["get"])
     def spots(self, request, pk=None):
         trail = self.get_object()
@@ -197,9 +255,13 @@ class TrailViewSet(viewsets.ModelViewSet):
         Prioritizes official/curated trails near the user. If no location
         is provided, falls back to the most-liked official trails.
         """
+        from decimal import InvalidOperation
         lat = request.query_params.get("lat")
         lng = request.query_params.get("lng")
-        limit = int(request.query_params.get("limit", "3"))
+        try:
+            limit = max(1, min(20, int(request.query_params.get("limit", "3"))))
+        except (TypeError, ValueError):
+            limit = 3
         base = Trail.objects.filter(
             status="approved", is_hidden=False, is_official=True,
         ).select_related("author").prefetch_related("tags")
@@ -212,7 +274,10 @@ class TrailViewSet(viewsets.ModelViewSet):
                     start_lat__range=(latd - degree, latd + degree),
                     start_lng__range=(lngd - degree, lngd + degree),
                 )
-            except Exception:
+            except (InvalidOperation, TypeError, ValueError):
+                # Malformed coordinates → fall through to global list
+                # rather than throw 500. Better UX: user sees *some*
+                # curated content even with a bad lat/lng query param.
                 pass
         qs = base.order_by("-like_count", "-view_count")[:limit]
         serializer = TrailListSerializer(qs, many=True, context={"request": request})

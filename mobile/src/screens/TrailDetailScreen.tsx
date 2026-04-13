@@ -357,6 +357,7 @@ function TrailDetailScreenInner() {
         showsVerticalScrollIndicator={false}
         bounces={true}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 110 }}
       >
 
         {/* ===== 1. Cover Image ===== */}
@@ -394,28 +395,26 @@ function TrailDetailScreenInner() {
         </View>
 
         {/* ===== 2. Hero Stats Card =====
-            Replaces the old single-line `statsText`. Three primary
-            metrics are displayed in equal columns with icons + labels;
-            difficulty gets its own colored pill so it pops at a glance. */}
-        <View style={[styles.heroStatsCard, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
+            Spacing-only column layout. No vertical dividers — those
+            were visual noise. Each stat gets a small icon on top, a
+            bold value in the middle, and a tiny label underneath. */}
+        <View style={[styles.heroStatsCard, { backgroundColor: cardBg }]}>
           <View style={styles.heroStatsCol}>
-            <Feather name="map" size={16} color={colors.primary} />
+            <Feather name="map" size={18} color={colors.primary} />
             <Text style={[styles.heroStatValue, { color: textColor }]}>
               {formatDistance(trail.distance_km)}
             </Text>
             <Text style={[styles.heroStatLabel, { color: textTertColor }]}>거리</Text>
           </View>
-          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
           <View style={styles.heroStatsCol}>
-            <Feather name="clock" size={16} color={colors.primary} />
+            <Feather name="clock" size={18} color={colors.primary} />
             <Text style={[styles.heroStatValue, { color: textColor }]}>
               {formatDuration(trail.estimated_minutes)}
             </Text>
             <Text style={[styles.heroStatLabel, { color: textTertColor }]}>소요시간</Text>
           </View>
-          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
           <View style={styles.heroStatsCol}>
-            <Feather name="trending-up" size={16} color={colors.primary} />
+            <Feather name="trending-up" size={18} color={colors.primary} />
             <View style={[styles.heroDifficultyPill, { backgroundColor: diff.bg }]}>
               <Text style={[styles.heroDifficultyText, { color: diff.text }]}>
                 {diff.label}
@@ -424,16 +423,13 @@ function TrailDetailScreenInner() {
             <Text style={[styles.heroStatLabel, { color: textTertColor }]}>난이도</Text>
           </View>
           {trail.elevation_gain != null && trail.elevation_gain > 0 && (
-            <>
-              <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
-              <View style={styles.heroStatsCol}>
-                <Feather name="triangle" size={16} color="#FF6B35" />
-                <Text style={[styles.heroStatValue, { color: textColor }]}>
-                  +{Math.round(trail.elevation_gain)}m
-                </Text>
-                <Text style={[styles.heroStatLabel, { color: textTertColor }]}>고도</Text>
-              </View>
-            </>
+            <View style={styles.heroStatsCol}>
+              <Feather name="triangle" size={18} color="#FF6B35" />
+              <Text style={[styles.heroStatValue, { color: textColor }]}>
+                +{Math.round(trail.elevation_gain)}m
+              </Text>
+              <Text style={[styles.heroStatLabel, { color: textTertColor }]}>고도</Text>
+            </View>
           )}
         </View>
 
@@ -460,41 +456,12 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-        {/* ===== 3. Action Bar ===== */}
+        {/* ===== 3. Action Bar (icons only) =====
+            The walk-start CTA moved to a sticky button at the bottom
+            of the screen so it stays in reach as the user scrolls.
+            This bar now has only the secondary actions: like /
+            bookmark / share / offline. */}
         <View style={[styles.actionBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
-          <View style={styles.actionIcons}>
-            <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
-              <Feather name="heart" size={20} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
-              <Text style={[styles.actionIconLabel, trail.is_liked && { color: '#FF4B4B' }]}>{trail.like_count ?? 0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionIconBtn}
-              onPress={() => bookmarkMutation.mutate()}
-              disabled={bookmarkMutation.isPending}
-              activeOpacity={0.7}>
-              <Feather
-                name="bookmark"
-                size={20}
-                color={trail.is_bookmarked ? colors.primary : '#8B95A1'}
-                style={{ opacity: trail.is_bookmarked ? 1 : 0.7 }}
-              />
-              <Text style={[styles.actionIconLabel, trail.is_bookmarked && { color: colors.primary }]}>
-                {trail.is_bookmarked ? '저장됨' : '저장'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconBtn} onPress={handleShare} activeOpacity={0.7}>
-              <Feather name="share" size={20} color="#8B95A1" />
-              <Text style={styles.actionIconLabel}>{'공유'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
-              <Feather name={savedOffline ? 'check-circle' : 'download'} size={20} color={savedOffline ? colors.primary : '#8B95A1'} />
-              <Text style={[styles.actionIconLabel, savedOffline && { color: colors.primary }]}>
-                {savingOffline ? '저장중' : savedOffline ? '다운완료' : '다운로드'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Completion badge — shown if user has already completed this trail */}
           {trail.is_completed && (
             <View style={styles.completionBadgeRow}>
               <View style={styles.completionBadge}>
@@ -503,15 +470,38 @@ function TrailDetailScreenInner() {
               </View>
             </View>
           )}
-
-          <TouchableOpacity
-            style={styles.walkBtn}
-            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
-            activeOpacity={0.85}>
-            <Text style={styles.walkBtnText}>
-              {trail.is_completed ? '다시 걷기 시작' : '걷기 시작'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actionIcons}>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
+              <Feather name="heart" size={22} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, { color: textTertColor }, trail.is_liked && { color: '#FF4B4B' }]}>
+                {trail.like_count ?? 0}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionIconBtn}
+              onPress={() => bookmarkMutation.mutate()}
+              disabled={bookmarkMutation.isPending}
+              activeOpacity={0.7}>
+              <Feather
+                name="bookmark"
+                size={22}
+                color={trail.is_bookmarked ? colors.primary : '#8B95A1'}
+              />
+              <Text style={[styles.actionIconLabel, { color: textTertColor }, trail.is_bookmarked && { color: colors.primary }]}>
+                {trail.is_bookmarked ? '저장됨' : '저장'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={handleShare} activeOpacity={0.7}>
+              <Feather name="share-2" size={22} color="#8B95A1" />
+              <Text style={[styles.actionIconLabel, { color: textTertColor }]}>{'공유'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
+              <Feather name={savedOffline ? 'check-circle' : 'download'} size={22} color={savedOffline ? colors.primary : '#8B95A1'} />
+              <Text style={[styles.actionIconLabel, { color: textTertColor }, savedOffline && { color: colors.primary }]}>
+                {savingOffline ? '저장중' : savedOffline ? '오프라인' : '오프라인'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ===== 3b. Latest Condition Banner ===== */}
@@ -974,9 +964,36 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-        {/* Bottom spacing for tab bar */}
-        <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* ===== Sticky bottom CTA — primary "걷기 시작" =====
+          Floats above the scroll content and stays in reach as the
+          user scrolls through the long detail page. The completion
+          flag swaps the label and adds a leading icon. */}
+      <View
+        style={[
+          styles.stickyCtaWrap,
+          {
+            backgroundColor: cardBg,
+            borderTopColor: borderColor,
+            paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 14,
+          },
+        ]}>
+        <TouchableOpacity
+          style={styles.stickyCtaBtn}
+          onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
+          activeOpacity={0.88}>
+          <Feather
+            name={trail.is_completed ? 'rotate-cw' : 'play'}
+            size={18}
+            color="#fff"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.stickyCtaText}>
+            {trail.is_completed ? '다시 걷기 시작' : '이 코스로 걷기 시작'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
 
       {/* Fullscreen Image Viewer */}
@@ -1029,7 +1046,7 @@ const styles = StyleSheet.create({
 
   // ── Cover ──────────────────────────────────────────────
   coverContainer: {
-    height: 320,
+    height: 360,
     position: 'relative',
     backgroundColor: '#2D4A2E',
     overflow: 'hidden',
@@ -1046,8 +1063,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D4A2E',
   },
   coverEmoji: {
-    fontSize: 72,
-    opacity: 0.25,
+    fontSize: 88,
+    opacity: 0.22,
   },
   statusBarOverlay: {
     position: 'absolute',
@@ -1057,13 +1074,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     zIndex: 5,
   },
+  // Stronger gradient: takes up bottom half so the title legibility
+  // doesn't depend on the brightness of whatever cover image was
+  // uploaded. Layered on top of the photo via two stacked Views.
   coverGradientBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 90,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    height: 220,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   diffBadgeBottom: {
     paddingHorizontal: 12,
@@ -1076,52 +1096,54 @@ const styles = StyleSheet.create({
   },
   coverOverlay: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 24,
+    left: 24,
+    right: 24,
   },
   coverTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 30,
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    marginBottom: 8,
+    letterSpacing: -0.6,
+    lineHeight: 36,
     textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  coverRegion: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.92)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  coverRegion: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.95)',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1.5,
-  },
 
-  // ── Quick Stats ────────────────────────────────────────
-  // ── Hero stats card (replaces statsLine) ─────────
+  // ── Hero stats card ────────────────────────────────────
+  // No vertical dividers — the columns breathe naturally on
+  // their own width. Less visual noise, more focus on the values.
   heroStatsCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 18,
+    alignItems: 'flex-start',
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingVertical: 22,
     backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F2F4F6',
   },
   heroStatsCol: {
     flex: 1,
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   heroStatValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   heroStatLabel: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
   },
   heroStatsDivider: {
     width: StyleSheet.hairlineWidth,
@@ -1174,8 +1196,8 @@ const styles = StyleSheet.create({
   // ── Action Bar ─────────────────────────────────────────
   actionBar: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#F2F4F6',
     backgroundColor: '#fff',
   },
@@ -1187,14 +1209,15 @@ const styles = StyleSheet.create({
   },
   actionIconBtn: {
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
+    minWidth: 56,
   },
   actionIconEmoji: {
     fontSize: 20,
   },
   actionIconLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#8B95A1',
   },
   walkBtn: {
@@ -1211,10 +1234,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.3,
   },
+  // ── Sticky bottom CTA ────────────────────────────────────
+  stickyCtaWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  stickyCtaBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#2D4A2E',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stickyCtaText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.2,
+  },
   completionBadgeRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 8,
+    marginBottom: 12,
   },
   completionBadge: {
     flexDirection: 'row',

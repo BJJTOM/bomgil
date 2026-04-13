@@ -145,6 +145,34 @@ export default function TrailSeriesListScreen() {
                   {item.progress_completed}/{item.progress_total}
                 </Text>
               </View>
+
+              {/* Quick-stat row — distance + duration + completer count */}
+              <View style={styles.statsMicroRow}>
+                {item.total_distance_km != null && (
+                  <View style={styles.statsMicroItem}>
+                    <Feather name="map" size={11} color={textTertColor} />
+                    <Text style={[styles.statsMicroText, { color: textTertColor }]}>
+                      {item.total_distance_km}km
+                    </Text>
+                  </View>
+                )}
+                {item.total_minutes != null && item.total_minutes > 0 && (
+                  <View style={styles.statsMicroItem}>
+                    <Feather name="clock" size={11} color={textTertColor} />
+                    <Text style={[styles.statsMicroText, { color: textTertColor }]}>
+                      {Math.floor(item.total_minutes / 60)}h{item.total_minutes % 60}m
+                    </Text>
+                  </View>
+                )}
+                {item.total_completers != null && item.total_completers > 0 && (
+                  <View style={styles.statsMicroItem}>
+                    <Feather name="award" size={11} color={textTertColor} />
+                    <Text style={[styles.statsMicroText, { color: textTertColor }]}>
+                      {item.total_completers}명 완주
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -268,5 +296,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     minWidth: 40,
     textAlign: 'right',
+  },
+  statsMicroRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 12,
+  },
+  statsMicroItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statsMicroText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

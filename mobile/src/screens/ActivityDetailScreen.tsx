@@ -25,6 +25,7 @@ import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
 import api from '../api/client';
 import { navParamCache } from '../utils/navParamCache';
+import { useThemeStore } from '../stores/theme';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -67,6 +68,15 @@ export default function ActivityDetailScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { isDark } = useThemeStore();
+  // Theme-reactive surface colors. Computed every render — cheap.
+  const bg = isDark ? '#0a0a0a' : '#FAFAFA';
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const surfaceBg = isDark ? '#1a1a1a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
   const [activity, setActivity] = useState<any>(route.params?.activity);
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
@@ -545,15 +555,21 @@ export default function ActivityDetailScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={bg}
+        />
 
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color={colors.textPrimary} />
+        <View style={[styles.header, { backgroundColor: bg, borderBottomColor: borderColor }]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityLabel="뒤로가기">
+            <Feather name="arrow-left" size={20} color={textColor} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>활동 상세</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]}>활동 상세</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -622,7 +638,7 @@ export default function ActivityDetailScreen() {
           <View style={styles.titleSection}>
             {editingTitle ? (
               <TextInput
-                style={styles.titleInput}
+                style={[styles.titleInput, { color: textColor, borderBottomColor: colors.primary }]}
                 value={editTitle}
                 onChangeText={setEditTitle}
                 onBlur={saveTitle}
@@ -630,56 +646,76 @@ export default function ActivityDetailScreen() {
                 autoFocus
               />
             ) : (
-              <TouchableOpacity onPress={() => setEditingTitle(true)}>
-                <Text style={styles.actTitle}>{editTitle || activity.title || '걷기 기록'} {'✏️'}</Text>
+              <TouchableOpacity
+                onPress={() => setEditingTitle(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                accessibilityLabel="제목 편집">
+                <Text style={[styles.actTitle, { color: textColor }]} numberOfLines={2}>
+                  {editTitle || activity.title || '걷기 기록'}
+                </Text>
+                <Feather name="edit-2" size={14} color={textTertColor} />
               </TouchableOpacity>
             )}
-            <Text style={styles.actDate}>{dateStr}</Text>
-            {timeStr ? <Text style={styles.actTime}>{timeStr} 시작</Text> : null}
+            <Text style={[styles.actDate, { color: textSecColor }]}>{dateStr}</Text>
+            {timeStr ? <Text style={[styles.actTime, { color: textTertColor }]}>{timeStr} 시작</Text> : null}
           </View>
 
-          {/* 2. Stats cards — Row 1 */}
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Feather name="clock" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>시간</Text>
-              <Text style={styles.statVal}>{formatDuration(duration)}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Feather name="navigation" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>거리</Text>
-              <Text style={styles.statVal}>{distance.toFixed(2)} km</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Feather name="activity" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>걸음</Text>
-              <Text style={styles.statVal}>{steps.toLocaleString()}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Feather name="zap" size={16} color="#FF8C42" style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>칼로리</Text>
-              <Text style={styles.statVal}>{calories} kcal</Text>
-            </View>
-          </View>
+          {/* Hero stats — distance is the dominant metric. Time second.
+              Steps + calories on a secondary row.
 
-          {/* Stats cards — Row 2 */}
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Feather name="trending-up" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>평균 페이스</Text>
-              <Text style={styles.statVal}>{formatPace(pace)}</Text>
+              Visual hierarchy intent:
+              - Distance fills the eye first (40px font, primary color).
+              - Time slightly smaller (24px) with same weight.
+              - Pace + elevation as supporting micro-stats below.
+              The previous 4-card grid gave equal weight to every metric,
+              which made the screen feel cluttered. */}
+          <View style={[styles.heroStatsCard, { backgroundColor: cardBg }]}>
+            <View style={styles.heroStatsTop}>
+              <View style={styles.heroStatsCol}>
+                <Text style={[styles.heroStatLabel, { color: textTertColor }]}>총 거리</Text>
+                <Text style={styles.heroDistanceValue}>
+                  {distance.toFixed(2)}
+                  <Text style={[styles.heroDistanceUnit, { color: textSecColor }]}> km</Text>
+                </Text>
+              </View>
+              <View style={[styles.heroDivider, { backgroundColor: borderColor }]} />
+              <View style={styles.heroStatsCol}>
+                <Text style={[styles.heroStatLabel, { color: textTertColor }]}>총 시간</Text>
+                <Text style={[styles.heroTimeValue, { color: textColor }]}>
+                  {formatDuration(duration)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.statCard}>
-              <Feather name="triangle" size={16} color={elevation > 0 ? '#FF6B35' : '#B0B8C1'} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>고도 상승</Text>
-              <Text style={[styles.statVal, elevation > 0 && { color: '#FF6B35' }]}>
-                {elevation > 0 ? `+${Math.round(elevation)}m` : '-'}
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Feather name="radio" size={16} color={colors.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.statLabel}>소스</Text>
-              <Text style={styles.statVal}>{activity.source === 'phone_gps' ? 'GPS' : activity.source || '-'}</Text>
+
+            <View style={[styles.heroSecondaryRow, { borderTopColor: borderColor }]}>
+              <View style={styles.heroSecondaryItem}>
+                <Feather name="activity" size={14} color={textTertColor} />
+                <Text style={[styles.heroSecondaryValue, { color: textColor }]}>
+                  {steps.toLocaleString()}
+                </Text>
+                <Text style={[styles.heroSecondaryLabel, { color: textTertColor }]}>걸음</Text>
+              </View>
+              <View style={styles.heroSecondaryItem}>
+                <Feather name="zap" size={14} color="#FF8C42" />
+                <Text style={[styles.heroSecondaryValue, { color: textColor }]}>{calories}</Text>
+                <Text style={[styles.heroSecondaryLabel, { color: textTertColor }]}>kcal</Text>
+              </View>
+              <View style={styles.heroSecondaryItem}>
+                <Feather name="trending-up" size={14} color={textTertColor} />
+                <Text style={[styles.heroSecondaryValue, { color: textColor }]}>
+                  {formatPace(pace)}
+                </Text>
+                <Text style={[styles.heroSecondaryLabel, { color: textTertColor }]}>페이스</Text>
+              </View>
+              {elevation > 0 && (
+                <View style={styles.heroSecondaryItem}>
+                  <Feather name="triangle" size={14} color="#FF6B35" />
+                  <Text style={[styles.heroSecondaryValue, { color: '#FF6B35' }]}>
+                    +{Math.round(elevation)}
+                  </Text>
+                  <Text style={[styles.heroSecondaryLabel, { color: textTertColor }]}>m</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -1433,6 +1469,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  // Hero stats — single dominant card replaces the previous 4-card grid
+  heroStatsCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 20,
+    paddingTop: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  heroStatsTop: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingBottom: 18,
+  },
+  heroStatsCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  heroDistanceValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#2D4A2E',
+    letterSpacing: -1,
+    lineHeight: 40,
+  },
+  heroDistanceUnit: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  heroTimeValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 34,
+    marginTop: 2,
+  },
+  heroDivider: {
+    width: 1,
+    marginHorizontal: 16,
+  },
+  heroSecondaryRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    justifyContent: 'space-around',
+  },
+  heroSecondaryItem: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 4,
+  },
+  heroSecondaryValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  heroSecondaryLabel: {
+    fontSize: 10,
+    fontWeight: '500',
   },
   section: {
     marginHorizontal: 20,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,9 @@ import api from '../../api/client';
 import { colors } from '../../theme/colors';
 import { CommunityPost } from '../../types';
 import { useAuthStore } from '../../stores/auth';
+import { useThemeStore } from '../../stores/theme';
 import { FadeInView } from '../../components/FadeInView';
+import { useT } from '../../i18n';
 
 const CATEGORIES = [
   { key: '', label: '전체' },
@@ -43,9 +45,19 @@ const timeAgo = (dateStr: string) => {
 };
 
 export default function CommunityBoardTab({ searchVisible = false }: { searchVisible?: boolean }) {
+  const t = useT();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
+  // Theme-reactive surface colors. Computed once per render — cheap.
+  const containerBg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const surfaceBg = isDark ? '#1a1a1a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const dividerBg = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -53,21 +65,30 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   const [loadingMore, setLoadingMore] = useState(false);
   const nextUrlRef = useRef<string | null>(null);
 
-  const { isLoading, refetch, isRefetching } = useQuery<CommunityPost[]>({
+  const { data: queryData, isLoading, refetch, isRefetching } = useQuery<{ results: CommunityPost[]; next: string | null }>({
     queryKey: ['community-posts', category, searchQuery],
     queryFn: async () => {
       let params = '?';
       if (category) params += `category=${category}&`;
-      if (searchQuery) params += `q=${encodeURIComponent(searchQuery)}&`;
+      // Only send q param if search has content (trim to ignore whitespace-only)
+      if (searchQuery.trim()) params += `q=${encodeURIComponent(searchQuery.trim())}&`;
       const { data } = await api.get(`/community/posts/${params}`);
       const results = data.results ?? data;
-      setPosts(results);
-      nextUrlRef.current = data.next || null;
-      setHasMore(!!data.next);
-      return results;
+      return { results: Array.isArray(results) ? results : [], next: data.next || null };
     },
     staleTime: 30000,
   });
+
+  // Sync query data into local paginated list whenever category/search changes
+  // or cached data is served. Using a useEffect instead of side-effect in
+  // queryFn so that cached results also reset the list.
+  useEffect(() => {
+    if (queryData) {
+      setPosts(queryData.results);
+      nextUrlRef.current = queryData.next;
+      setHasMore(!!queryData.next);
+    }
+  }, [queryData]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || !nextUrlRef.current) return;
@@ -114,7 +135,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   const renderPost = useCallback(({ item, index }: { item: CommunityPost; index: number }) => (
     <FadeInView delay={index * 30}>
       <TouchableOpacity
-        style={styles.postCard}
+        style={[styles.postCard, { backgroundColor: cardBg, borderBottomColor: dividerBg }]}
         activeOpacity={0.6}
         onPress={() => navigation.navigate('PostDetail', { postId: item.id })}>
         <View style={styles.postContent}>
@@ -129,7 +150,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
           </View>
 
           {/* Title */}
-          <Text style={styles.postTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={[styles.postTitle, { color: textColor }]} numberOfLines={2}>{item.title}</Text>
 
           {/* Meta */}
           <View style={styles.postMeta}>
@@ -140,30 +161,32 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
               {item.author_image ? (
                 <Image source={{ uri: item.author_image }} style={styles.miniAvatar} />
               ) : (
-                <View style={styles.miniAvatarPlaceholder}><Text style={{ fontSize: 8, color: colors.textTertiary }}>U</Text></View>
+                <View style={[styles.miniAvatarPlaceholder, { backgroundColor: surfaceBg }]}>
+                  <Text style={{ fontSize: 8, color: textTertColor }}>U</Text>
+                </View>
               )}
-              <Text style={styles.postAuthorName}>{item.author_nickname}</Text>
+              <Text style={[styles.postAuthorName, { color: textSecColor }]}>{item.author_nickname}</Text>
               {item.author_level != null && item.author_level > 0 && (
                 <View style={styles.lvBadge}>
                   <Text style={styles.lvBadgeText}>Lv.{item.author_level}</Text>
                 </View>
               )}
             </TouchableOpacity>
-            <Text style={styles.postTime}>{timeAgo(item.created_at)}</Text>
+            <Text style={[styles.postTime, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
           </View>
 
           {/* Stats — 심플 아이콘, 리스트에서도 좋아요 가능 */}
           <View style={styles.postStats}>
             <TouchableOpacity style={styles.statBtn} onPress={() => handleLike(item.id)} activeOpacity={0.6}>
-              <Feather name="heart" size={14} color={item.is_liked ? '#FF4B4B' : colors.textTertiary} />
-              <Text style={[styles.statText, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
+              <Feather name="heart" size={14} color={item.is_liked ? '#FF4B4B' : textTertColor} />
+              <Text style={[styles.statText, { color: textTertColor }, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
             </TouchableOpacity>
             <View style={styles.statBtn}>
-              <Feather name="message-circle" size={14} color={colors.textTertiary} />
-              <Text style={styles.statText}>{item.comment_count}</Text>
+              <Feather name="message-circle" size={14} color={textTertColor} />
+              <Text style={[styles.statText, { color: textTertColor }]}>{item.comment_count}</Text>
             </View>
             <View style={styles.statBtn}>
-              <Text style={styles.statText}>조회 {item.view_count}</Text>
+              <Text style={[styles.statText, { color: textTertColor }]}>조회 {item.view_count}</Text>
             </View>
           </View>
         </View>
@@ -174,19 +197,19 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
         )}
       </TouchableOpacity>
     </FadeInView>
-  ), [category, searchQuery, isAuthenticated]);
+  ), [category, searchQuery, isAuthenticated, cardBg, dividerBg, textColor, textSecColor, textTertColor, surfaceBg]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       {/* Search bar — controlled by parent */}
       {searchVisible && (
-        <View style={styles.searchBar}>
-          <View style={styles.searchInputWrap}>
-            <Feather name="search" size={16} color={colors.textTertiary} style={styles.searchIcon} />
+        <View style={[styles.searchBar, { backgroundColor: containerBg, borderBottomColor: dividerBg }]}>
+          <View style={[styles.searchInputWrap, { backgroundColor: surfaceBg }]}>
+            <Feather name="search" size={16} color={textTertColor} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="게시글 검색"
-              placeholderTextColor={colors.textTertiary}
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder={t.community.searchPlaceholder}
+              placeholderTextColor={textTertColor}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
@@ -194,7 +217,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Text style={styles.searchClear}>✕</Text>
+                <Text style={[styles.searchClear, { color: textTertColor }]}>✕</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -206,14 +229,23 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryList}
-        style={styles.categoryBar}>
+        style={[styles.categoryBar, { backgroundColor: containerBg, borderBottomColor: dividerBg }]}>
         {CATEGORIES.map((item) => (
           <TouchableOpacity
             key={item.key}
-            style={[styles.categoryChip, category === item.key && styles.categoryChipActive]}
+            style={[
+              styles.categoryChip,
+              { backgroundColor: surfaceBg },
+              category === item.key && styles.categoryChipActive,
+            ]}
             onPress={() => setCategory(item.key)}
             activeOpacity={0.7}>
-            <Text style={[styles.categoryChipText, category === item.key && styles.categoryChipTextActive]}>
+            <Text
+              style={[
+                styles.categoryChipText,
+                { color: textSecColor },
+                category === item.key && styles.categoryChipTextActive,
+              ]}>
               {item.label}
             </Text>
           </TouchableOpacity>
@@ -222,14 +254,14 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
 
       {/* Posts */}
       {isLoading ? (
-        <View style={styles.loadingContainer}><Text style={styles.loadingText}>로딩 중...</Text></View>
+        <View style={styles.loadingContainer}><Text style={styles.loadingText}>{t.common.loading}</Text></View>
       ) : posts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>
-            {searchQuery ? `'${searchQuery}' 검색 결과가 없어요` : '아직 게시글이 없어요'}
+          <Text style={[styles.emptyTitle, { color: textColor }]}>
+            {searchQuery.trim() ? t.community.noPostsSearch : t.community.noPosts}
           </Text>
-          <Text style={styles.emptyDesc}>
-            {searchQuery ? '다른 키워드로 검색해보세요' : '첫 번째 글을 작성해보세요'}
+          <Text style={[styles.emptyDesc, { color: textTertColor }]}>
+            {searchQuery.trim() ? t.community.noPostsSearchHint : t.community.noPostsHint}
           </Text>
         </View>
       ) : (
@@ -239,7 +271,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
           renderItem={renderPost}
           contentContainerStyle={styles.postList}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: dividerBg }]} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}

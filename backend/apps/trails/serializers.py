@@ -235,6 +235,10 @@ class TrailSeriesListSerializer(serializers.ModelSerializer):
     progress_completed = serializers.SerializerMethodField()
     progress_total = serializers.SerializerMethodField()
     progress_pct = serializers.SerializerMethodField()
+    # Aggregate stats across all member trails
+    total_distance_km = serializers.SerializerMethodField()
+    total_minutes = serializers.SerializerMethodField()
+    total_completers = serializers.SerializerMethodField()
 
     class Meta:
         model = TrailSeries
@@ -242,6 +246,7 @@ class TrailSeriesListSerializer(serializers.ModelSerializer):
             "id", "slug", "title", "title_en", "subtitle", "region",
             "cover_image", "accent_emoji", "is_featured",
             "progress_completed", "progress_total", "progress_pct",
+            "total_distance_km", "total_minutes", "total_completers",
         ]
 
     def get_progress_total(self, obj):
@@ -267,6 +272,34 @@ class TrailSeriesListSerializer(serializers.ModelSerializer):
             return 0
         done = self.get_progress_completed(obj)
         return round((done / total) * 100)
+
+    def get_total_distance_km(self, obj):
+        total = sum(
+            float(t.distance_km or 0) for t in obj.trails.only("distance_km")
+        )
+        return round(total, 1)
+
+    def get_total_minutes(self, obj):
+        return sum(int(t.estimated_minutes or 0) for t in obj.trails.only("estimated_minutes"))
+
+    def get_total_completers(self, obj):
+        """Number of distinct users who completed ALL trails in this series.
+
+        A user is counted when their TrailCompletion set contains every
+        trail in the series. Computed via a single GROUP BY query.
+        """
+        from django.db.models import Count
+        trail_ids = list(obj.trails.values_list("id", flat=True))
+        if not trail_ids:
+            return 0
+        return (
+            TrailCompletion.objects
+            .filter(trail_id__in=trail_ids)
+            .values("user_id")
+            .annotate(c=Count("trail_id", distinct=True))
+            .filter(c__gte=len(trail_ids))
+            .count()
+        )
 
 
 class TrailSeriesSegmentSerializer(serializers.ModelSerializer):

@@ -14,15 +14,32 @@ import { colors } from '../../theme/colors';
 import { Challenge } from '../../types';
 import { FadeInView } from '../../components/FadeInView';
 import LeaderboardCard from '../../components/LeaderboardCard';
+import { useThemeStore } from '../../stores/theme';
+import { useT } from '../../i18n';
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  upcoming: { bg: '#EFF6FF', text: '#1D4ED8', label: '예정' },
-  active: { bg: '#F0FDF4', text: '#15803D', label: '진행중' },
-  ended: { bg: '#F7F8FA', text: '#8B95A1', label: '종료' },
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  upcoming: { bg: '#EFF6FF', text: '#1D4ED8' },
+  active: { bg: '#F0FDF4', text: '#15803D' },
+  ended: { bg: '#F7F8FA', text: '#8B95A1' },
 };
 
 export default function CommunityChallengeTab() {
+  const t = useT();
   const navigation = useNavigation<any>();
+  const { isDark } = useThemeStore();
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const cardBorder = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+  const surfaceBg = isDark ? '#2a2a2a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const progressTrackBg = isDark ? '#2a2a2a' : '#F2F4F6';
+
+  const STATUS_LABELS: Record<string, string> = {
+    upcoming: t.community.statusUpcoming,
+    active: t.community.statusActive,
+    ended: t.community.statusEnded,
+  };
 
   const { data: challenges = [], isLoading, refetch, isRefetching } = useQuery<Challenge[]>({
     queryKey: ['community-challenges'],
@@ -33,37 +50,38 @@ export default function CommunityChallengeTab() {
   });
 
   const renderChallenge = useCallback(({ item, index }: { item: Challenge; index: number }) => {
-    const statusStyle = STATUS_STYLE[item.status] || STATUS_STYLE.active;
+    const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.active;
+    const statusLabel = STATUS_LABELS[item.status] || STATUS_LABELS.active;
     const daysLeft = Math.ceil((new Date(item.end_date).getTime() - Date.now()) / 86400000);
 
     return (
       <FadeInView delay={index * 60}>
         <TouchableOpacity
-          style={styles.challengeCard}
+          style={[styles.challengeCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
           activeOpacity={0.6}
           onPress={() => navigation.navigate('ChallengeDetail', { challengeId: item.id })}>
           {/* Top row */}
           <View style={styles.cardTop}>
-            <View style={styles.emojiBox}>
+            <View style={[styles.emojiBox, { backgroundColor: surfaceBg }]}>
               <Text style={styles.emojiText}>{item.emoji}</Text>
             </View>
             <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-              <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+              <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusLabel}</Text>
             </View>
           </View>
 
           {/* Title & desc */}
-          <Text style={styles.challengeTitle}>{item.title}</Text>
-          <Text style={styles.challengeDesc} numberOfLines={2}>{item.description}</Text>
+          <Text style={[styles.challengeTitle, { color: textColor }]}>{item.title}</Text>
+          <Text style={[styles.challengeDesc, { color: textSecColor }]} numberOfLines={2}>{item.description}</Text>
 
           {/* Goal bar */}
           <View style={styles.goalSection}>
-            <View style={styles.goalBar}>
+            <View style={[styles.goalBar, { backgroundColor: progressTrackBg }]}>
               <View style={[styles.goalProgress, { width: `${Math.min(item.my_progress, 100)}%` }]} />
             </View>
             <View style={styles.goalMeta}>
-              <Text style={styles.goalText}>
-                목표 {item.goal_value}{item.goal_unit}
+              <Text style={[styles.goalText, { color: textSecColor }]}>
+                {t.community.goalLabel} {item.goal_value}{item.goal_unit}
               </Text>
               {item.is_joined && (
                 <Text style={styles.progressText}>{item.my_progress}%</Text>
@@ -74,30 +92,30 @@ export default function CommunityChallengeTab() {
           {/* Bottom meta */}
           <View style={styles.cardBottom}>
             <View style={styles.metaRow}>
-              <Text style={styles.metaText}>👥 {item.participant_count}명 참여</Text>
+              <Text style={[styles.metaText, { color: textTertColor }]}>👥 {item.participant_count}{t.community.participants}</Text>
               {item.status === 'active' && daysLeft > 0 && (
-                <Text style={styles.metaText}>⏰ {daysLeft}일 남음</Text>
+                <Text style={[styles.metaText, { color: textTertColor }]}>⏰ {daysLeft}{t.community.daysLeft}</Text>
               )}
             </View>
             {item.is_joined ? (
               <View style={styles.joinedPill}>
-                <Text style={styles.joinedPillText}>참여중 ✓</Text>
+                <Text style={styles.joinedPillText}>{t.community.joined}</Text>
               </View>
             ) : item.status === 'active' ? (
               <View style={styles.joinPill}>
-                <Text style={styles.joinPillText}>참여하기</Text>
+                <Text style={styles.joinPillText}>{t.community.joinBtn}</Text>
               </View>
             ) : null}
           </View>
         </TouchableOpacity>
       </FadeInView>
     );
-  }, []);
+  }, [cardBg, cardBorder, surfaceBg, textColor, textSecColor, textTertColor, progressTrackBg]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>챌린지 불러오는 중...</Text>
+        <Text style={[styles.loadingText, { color: textTertColor }]}>{t.community.loadingChallenges}</Text>
       </View>
     );
   }
@@ -106,8 +124,8 @@ export default function CommunityChallengeTab() {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🏆</Text>
-        <Text style={styles.emptyTitle}>아직 챌린지가 없어요</Text>
-        <Text style={styles.emptyDesc}>곧 새로운 챌린지가 시작됩니다</Text>
+        <Text style={[styles.emptyTitle, { color: textColor }]}>{t.community.noChallenges}</Text>
+        <Text style={[styles.emptyDesc, { color: textTertColor }]}>{t.community.noChallengesSoon}</Text>
       </View>
     );
   }
@@ -126,7 +144,7 @@ export default function CommunityChallengeTab() {
       // activity history. Challenges + ranking belong together.
       ListHeaderComponent={
         <View style={{ marginBottom: 16 }}>
-          <LeaderboardCard isDark={false} limit={5} />
+          <LeaderboardCard isDark={isDark} limit={5} />
         </View>
       }
     />

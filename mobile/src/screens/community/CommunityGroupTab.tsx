@@ -14,6 +14,7 @@ import api from '../../api/client';
 import { colors } from '../../theme/colors';
 import { CommunityGroup } from '../../types';
 import { FadeInView } from '../../components/FadeInView';
+import { useThemeStore } from '../../stores/theme';
 
 const GROUP_CATEGORIES = [
   { key: '', label: '전체' },
@@ -27,6 +28,14 @@ const GROUP_CATEGORIES = [
 
 export default function CommunityGroupTab() {
   const navigation = useNavigation<any>();
+  const { isDark } = useThemeStore();
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const cardBorder = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+  const surfaceBg = isDark ? '#2a2a2a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const containerBg = isDark ? '#0a0a0a' : '#FFFFFF';
   const [category, setCategory] = useState('');
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery<CommunityGroup[]>({
@@ -41,35 +50,35 @@ export default function CommunityGroupTab() {
   const renderGroup = useCallback(({ item, index }: { item: CommunityGroup; index: number }) => (
     <FadeInView delay={index * 50}>
       <TouchableOpacity
-        style={styles.groupCard}
+        style={[styles.groupCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
         activeOpacity={0.6}
         onPress={() => navigation.navigate('GroupDetail', { groupId: item.id })}>
         {/* Emoji avatar — 토스 스타일 */}
-        <View style={styles.groupEmoji}>
+        <View style={[styles.groupEmoji, { backgroundColor: surfaceBg }]}>
           <Text style={styles.groupEmojiText}>{item.emoji}</Text>
         </View>
 
         <View style={styles.groupInfo}>
           <View style={styles.groupNameRow}>
-            <Text style={styles.groupName} numberOfLines={1}>{item.name}</Text>
+            <Text style={[styles.groupName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
             {!item.is_public && <Text style={styles.lockIcon}>🔒</Text>}
           </View>
-          <Text style={styles.groupDesc} numberOfLines={2}>{item.description}</Text>
+          <Text style={[styles.groupDesc, { color: textSecColor }]} numberOfLines={2}>{item.description}</Text>
           <View style={styles.groupMeta}>
             <View style={styles.groupMetaItem}>
               <Text style={styles.groupMetaIcon}>👥</Text>
-              <Text style={styles.groupMetaText}>
+              <Text style={[styles.groupMetaText, { color: textTertColor }]}>
                 {item.member_count}{item.max_members > 0 ? `/${item.max_members}` : ''}명
               </Text>
             </View>
             {item.region ? (
               <View style={styles.groupMetaItem}>
                 <Text style={styles.groupMetaIcon}>📍</Text>
-                <Text style={styles.groupMetaText}>{item.region}</Text>
+                <Text style={[styles.groupMetaText, { color: textTertColor }]}>{item.region}</Text>
               </View>
             ) : null}
             <View style={styles.groupMetaItem}>
-              <Text style={styles.groupMetaText}>{item.category_display}</Text>
+              <Text style={[styles.groupMetaText, { color: textTertColor }]}>{item.category_display}</Text>
             </View>
           </View>
         </View>
@@ -86,20 +95,29 @@ export default function CommunityGroupTab() {
         )}
       </TouchableOpacity>
     </FadeInView>
-  ), []);
+  ), [cardBg, cardBorder, surfaceBg, textColor, textSecColor, textTertColor]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       {/* Category filter */}
       <FlatList
         data={GROUP_CATEGORIES}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.categoryChip, category === item.key && styles.categoryChipActive]}
+            style={[
+              styles.categoryChip,
+              { backgroundColor: surfaceBg },
+              category === item.key && styles.categoryChipActive,
+            ]}
             onPress={() => setCategory(item.key)}
             activeOpacity={0.7}>
-            <Text style={[styles.categoryChipText, category === item.key && styles.categoryChipTextActive]}>
+            <Text
+              style={[
+                styles.categoryChipText,
+                { color: textSecColor },
+                category === item.key && styles.categoryChipTextActive,
+              ]}>
               {item.label}
             </Text>
           </TouchableOpacity>
@@ -107,18 +125,18 @@ export default function CommunityGroupTab() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryList}
-        style={styles.categoryBar}
+        style={[styles.categoryBar, { backgroundColor: containerBg }]}
       />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>모임 불러오는 중...</Text>
+          <Text style={[styles.loadingText, { color: textTertColor }]}>모임 불러오는 중...</Text>
         </View>
       ) : groups.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyTitle}>아직 모임이 없어요</Text>
-          <Text style={styles.emptyDesc}>첫 번째 모임을 만들어보세요</Text>
+          <Text style={[styles.emptyTitle, { color: textColor }]}>아직 모임이 없어요</Text>
+          <Text style={[styles.emptyDesc, { color: textTertColor }]}>첫 번째 모임을 만들어보세요</Text>
         </View>
       ) : (
         <FlatList
@@ -127,7 +145,7 @@ export default function CommunityGroupTab() {
           renderItem={renderGroup}
           contentContainerStyle={styles.groupList}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: cardBorder }]} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
         />
       )}

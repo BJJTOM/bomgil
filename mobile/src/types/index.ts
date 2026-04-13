@@ -104,6 +104,9 @@ export interface TrailSeries {
   progress_completed: number;
   progress_total: number;
   progress_pct: number;
+  total_distance_km?: number;
+  total_minutes?: number;
+  total_completers?: number;
   segments?: TrailSeriesSegment[];
 }
 

@@ -48,6 +48,7 @@ import BookmarkedTrailsScreen from '../screens/BookmarkedTrailsScreen';
 import TrailSeriesListScreen from '../screens/TrailSeriesListScreen';
 import TrailSeriesDetailScreen from '../screens/TrailSeriesDetailScreen';
 import TrailConditionsScreen from '../screens/TrailConditionsScreen';
+import { useThemeStore } from '../stores/theme';
 import WalkStatsScreen from '../screens/WalkStatsScreen';
 import StrideCalibrationScreen from '../screens/StrideCalibrationScreen';
 import AddRecordScreen from '../screens/AddRecordScreen';
@@ -117,6 +118,9 @@ const TAB_I18N_KEYS: Record<string, keyof typeof import('../i18n/ko').default['t
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const t = useT();
+  const { isDark } = useThemeStore();
+  const pillBg = isDark ? '#1c1c1e' : '#fff';
+  const inactiveColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
 
   return (
     <View
@@ -124,7 +128,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         styles.tabBarOuter,
         { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 },
       ]}>
-      <View style={styles.tabBarPill}>
+      <View style={[styles.tabBarPill, { backgroundColor: pillBg }]}>
         {state.routes.map((route: any, index: number) => {
           const config = TAB_CONFIG.find((tc) => tc.name === route.name);
           const isFocused = state.index === index;
@@ -153,7 +157,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 style={[
                   styles.tabLabel,
                   {
-                    color: isFocused ? colors.primary : colors.textTertiary,
+                    color: isFocused ? colors.primary : inactiveColor,
                     fontWeight: isFocused ? '600' : '400',
                   },
                 ]}>

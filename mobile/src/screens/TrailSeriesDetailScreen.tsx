@@ -110,6 +110,50 @@ export default function TrailSeriesDetailScreen() {
             />
           }
           contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+          {/* Completion celebration — when 100% done */}
+          {progressPct >= 100 && (
+            <View style={styles.celebrationCard}>
+              <Text style={styles.celebrationEmoji}>🏆</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.celebrationTitle}>시리즈 완주!</Text>
+                <Text style={styles.celebrationSub}>
+                  모든 구간을 완주했어요. 진짜 워커네요.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Stats summary — total distance / duration / completers */}
+          <View style={[styles.statsSection, { backgroundColor: cardBg }]}>
+            <View style={styles.statsRow}>
+              <View style={styles.statCol}>
+                <Feather name="map" size={14} color={textTertColor} />
+                <Text style={[styles.statValue, { color: textColor }]}>
+                  {(data as any)?.total_distance_km?.toFixed(1) || 0}
+                  <Text style={styles.statUnit}>km</Text>
+                </Text>
+                <Text style={[styles.statLabel, { color: textTertColor }]}>총 거리</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: trackColor }]} />
+              <View style={styles.statCol}>
+                <Feather name="clock" size={14} color={textTertColor} />
+                <Text style={[styles.statValue, { color: textColor }]}>
+                  {Math.floor(((data as any)?.total_minutes || 0) / 60)}
+                  <Text style={styles.statUnit}>h</Text>
+                </Text>
+                <Text style={[styles.statLabel, { color: textTertColor }]}>예상 시간</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: trackColor }]} />
+              <View style={styles.statCol}>
+                <Feather name="award" size={14} color={textTertColor} />
+                <Text style={[styles.statValue, { color: textColor }]}>
+                  {(data as any)?.total_completers || 0}
+                </Text>
+                <Text style={[styles.statLabel, { color: textTertColor }]}>완주자</Text>
+              </View>
+            </View>
+          </View>
+
           {/* Description */}
           {!!data?.description && (
             <View style={[styles.section, { backgroundColor: cardBg }]}>
@@ -258,6 +302,69 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 10,
     elevation: 2,
+  },
+  celebrationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    gap: 14,
+  },
+  celebrationEmoji: {
+    fontSize: 36,
+  },
+  celebrationTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#78350F',
+    marginBottom: 2,
+  },
+  celebrationSub: {
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 16,
+  },
+  statsSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 18,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.6,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
   },
   sectionTitle: {
     fontSize: 15,

@@ -12,23 +12,34 @@ import { useQuery } from '@tanstack/react-query';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
+import { useT } from '../i18n';
 import api from '../api/client';
 import CommunityBoardTab from './community/CommunityBoardTab';
 import CommunityGroupTab from './community/CommunityGroupTab';
 import CommunityChallengeTab from './community/CommunityChallengeTab';
 
-const TABS = [
-  { key: 'feed', label: '피드' },
-  { key: 'group', label: '모임' },
-  { key: 'challenge', label: '챌린지' },
-];
-
 export default function CommunityScreen() {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
   const [activeTab, setActiveTab] = useState(0);
   const [searchVisible, setSearchVisible] = useState(false);
+
+  // Theme-reactive colors
+  const bg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const headerTextColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const iconBg = isDark ? '#1c1c1e' : '#F7F8FA';
+  const tabInactiveColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const tabBorderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+
+  const TABS = [
+    { key: 'feed', label: t.community.feed },
+    { key: 'group', label: t.community.group },
+    { key: 'challenge', label: t.community.challenges },
+  ];
 
   const { data: unreadData } = useQuery({
     queryKey: ['notifications-unread-count'],
@@ -54,24 +65,27 @@ export default function CommunityScreen() {
   const fabAction = getFabAction();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={bg}
+      />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>커뮤니티</Text>
+        <Text style={[styles.headerTitle, { color: headerTextColor }]}>{t.community.title}</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, { backgroundColor: iconBg }]}
             onPress={() => navigation.navigate('Notifications')}>
-            <Feather name="bell" size={20} color={colors.textPrimary} />
-            {hasUnread && <View style={styles.bellBadge} />}
+            <Feather name="bell" size={20} color={headerTextColor} />
+            {hasUnread && <View style={[styles.bellBadge, { borderColor: iconBg }]} />}
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Tab Bar + Search icon */}
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { borderBottomColor: tabBorderColor }]}>
         <View style={styles.tabItems}>
           {TABS.map((tab, i) => (
             <TouchableOpacity
@@ -79,7 +93,12 @@ export default function CommunityScreen() {
               style={styles.tabItem}
               onPress={() => setActiveTab(i)}
               activeOpacity={0.7}>
-              <Text style={[styles.tabLabel, activeTab === i && styles.tabLabelActive]}>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: activeTab === i ? colors.primary : tabInactiveColor },
+                  activeTab === i && styles.tabLabelActive,
+                ]}>
                 {tab.label}
               </Text>
               {activeTab === i && <View style={styles.tabIndicator} />}
@@ -89,7 +108,7 @@ export default function CommunityScreen() {
         <TouchableOpacity
           style={styles.tabSearchBtn}
           onPress={() => setSearchVisible(!searchVisible)}>
-          <Feather name="search" size={18} color={searchVisible ? colors.primary : colors.textTertiary} />
+          <Feather name="search" size={18} color={searchVisible ? colors.primary : tabInactiveColor} />
         </TouchableOpacity>
       </View>
 

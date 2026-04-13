@@ -121,7 +121,7 @@ export default function ExploreScreen() {
 
   const [search, setSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'courses' | 'rankings'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'series' | 'rankings'>('courses');
   const [sortBy, setSortBy] = useState('-created_at');
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -178,6 +178,22 @@ export default function ExploreScreen() {
     },
     staleTime: 60000,
   });
+
+  // Series for the new "시리즈" tab. Fetched lazily — only when the
+  // user actually switches to the series tab — so we don't pay for
+  // an extra request if they only ever look at trail listings.
+  const { data: seriesData, refetch: refetchSeries, isRefetching: seriesRefetching } = useQuery({
+    queryKey: ['trail-series-list'],
+    queryFn: async () => {
+      try {
+        const { data: res } = await api.get('/trails/series/');
+        return Array.isArray(res) ? res : (res?.results ?? []);
+      } catch { return []; }
+    },
+    enabled: activeTab === 'series',
+    staleTime: 60 * 1000,
+  });
+  const seriesList = seriesData || [];
 
   const trails = useMemo(() => {
     const apiResults = data?.results ?? (Array.isArray(data) ? data : []);
@@ -256,6 +272,11 @@ export default function ExploreScreen() {
             style={[styles.tabBtn, activeTab === 'courses' && styles.tabBtnActive]}
             onPress={() => setActiveTab('courses')}>
             <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'courses' && { color: textColor }]}>코스</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'series' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('series')}>
+            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'series' && { color: textColor }]}>시리즈</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'rankings' && styles.tabBtnActive]}
@@ -404,9 +425,132 @@ export default function ExploreScreen() {
         )}
       </View>
 
-      {/* Content — courses or rankings */}
+      {/* Content — courses, series, or rankings */}
       {activeTab === 'rankings' ? (
         <RankingsInline />
+      ) : activeTab === 'series' ? (
+        // Series listing: bigger cards with progress bars. Reuses
+        // exactly the same shape the dedicated TrailSeriesListScreen
+        // uses, so users see consistent UI whether they enter from
+        // home or explore.
+        <FlatList
+          data={seriesList}
+          keyExtractor={(item: any) => `xs-${item.id}`}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={seriesRefetching}
+              onRefresh={refetchSeries}
+              tintColor={colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.loadingCenter}>
+              <Text style={{ fontSize: 44, marginBottom: 12 }}>🚶</Text>
+              <Text style={[styles.emptyTitle, { color: textColor }]}>아직 시리즈가 없어요</Text>
+              <Text style={[styles.emptyDesc, { color: textTertColor }]}>
+                곧 새로운 장거리 챌린지를 추가할 예정이에요
+              </Text>
+            </View>
+          }
+          renderItem={({ item }: any) => {
+            const pct = Math.min(100, item.progress_pct || 0);
+            return (
+              <TouchableOpacity
+                style={[
+                  {
+                    backgroundColor: cardBg,
+                    padding: 16,
+                    borderRadius: 18,
+                    marginBottom: 4,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 10,
+                    elevation: 2,
+                  },
+                ]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate('TrailSeriesDetail', { slug: item.slug })
+                }>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 16,
+                      backgroundColor: isDark ? '#2a3a2b' : '#F0F7F0',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                    <Text style={{ fontSize: 24 }}>{item.accent_emoji || '🚶'}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text
+                      style={{
+                        color: textColor,
+                        fontSize: 16,
+                        fontWeight: '700',
+                        marginBottom: 3,
+                      }}
+                      numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={{ color: textSecColor, fontSize: 12, fontWeight: '500' }}
+                      numberOfLines={1}>
+                      {item.subtitle || item.region || ''}
+                    </Text>
+                  </View>
+                  {item.is_featured && (
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        backgroundColor: '#F59E0B',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                      <Feather name="star" size={10} color="#fff" />
+                    </View>
+                  )}
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 10 }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 8,
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#EEF1F4',
+                    }}>
+                    <View
+                      style={{
+                        height: '100%',
+                        width: `${pct}%`,
+                        backgroundColor: '#2D4A2E',
+                      }}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      color: textSecColor,
+                      fontSize: 12,
+                      fontWeight: '700',
+                      minWidth: 40,
+                      textAlign: 'right',
+                    }}>
+                    {item.progress_completed}/{item.progress_total}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
       ) : (
       <>
       {/* Result Count */}

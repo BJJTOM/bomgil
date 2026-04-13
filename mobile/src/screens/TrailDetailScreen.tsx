@@ -378,16 +378,17 @@ function TrailDetailScreenInner() {
           {/* Gradient overlay */}
           <View style={styles.coverGradientBottom} />
 
-          {/* Title overlay at bottom */}
+          {/* Title overlay at bottom — title + region.
+              Difficulty intentionally removed from here; the hero
+              stats card right below shows it as a colored pill, so
+              two copies on the same screen was redundant. */}
           <View style={styles.coverOverlay}>
             <Text style={styles.coverTitle} numberOfLines={2}>{trail?.title || ''}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Feather name="map-pin" size={12} color="rgba(255,255,255,0.85)" />
               <Text style={styles.coverRegion}>
                 {[trail?.region, trail?.country].filter(Boolean).join(', ')}
               </Text>
-              <View style={[styles.diffBadgeBottom, { backgroundColor: diff.bg }]}>
-                <Text style={[styles.diffText, { color: diff.text }]}>{diff.label}</Text>
-              </View>
             </View>
           </View>
         </View>
@@ -561,56 +562,69 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
-        {/* ===== 4b. Course Details ===== */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>코스 정보</Text>
-          <View style={styles.detailGrid}>
-            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-              <Text style={[styles.detailLabel, { color: textTertColor }]}>거리</Text>
-              <Text style={[styles.detailValue, { color: textColor }]}>{formatDistance(trail.distance_km)}</Text>
-            </View>
-            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-              <Text style={[styles.detailLabel, { color: textTertColor }]}>소요시간</Text>
-              <Text style={[styles.detailValue, { color: textColor }]}>{formatDuration(trail.estimated_minutes)}</Text>
-            </View>
-            <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-              <Text style={[styles.detailLabel, { color: textTertColor }]}>난이도</Text>
-              <View style={[styles.detailBadge, { backgroundColor: diff.bg }]}>
-                <Text style={[styles.detailBadgeText, { color: diff.text }]}>{diff.label}</Text>
+        {/* ===== 4b. Additional Info =====
+            거리·시간·난이도·고도는 위 hero stats 카드에서 이미 노출.
+            여기는 hero에 없는 부가 속성만 보여 — 시즌/유형/노면.
+            모든 부가 속성이 비어 있으면 섹션 자체를 숨겨서 빈 카드가
+            나오지 않게 한다. */}
+        {(() => {
+          const tt = (trail as any).trail_type;
+          const ws = (trail as any).walking_surface;
+          const ta = (trail as any).transport_access;
+          const hasAny = trail.best_season || tt || ws || ta;
+          if (!hasAny) return null;
+
+          // Inline list rather than a 2-col grid — 3-4 short rows
+          // read more cleanly as a list and avoid the odd-column
+          // alignment problem the grid had.
+          const rows: { label: string; value: string }[] = [];
+          if (trail.best_season) {
+            rows.push({
+              label: '추천 계절',
+              value: SEASON_LABELS[trail.best_season] || trail.best_season,
+            });
+          }
+          if (tt) {
+            rows.push({
+              label: '코스 유형',
+              value: tt === 'one_way' ? '편도' : tt === 'round_trip' ? '왕복' : '순환',
+            });
+          }
+          if (ws) {
+            rows.push({
+              label: '노면',
+              value: ws === 'paved' ? '포장' : ws === 'unpaved' ? '비포장' : '혼합',
+            });
+          }
+
+          return (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>추가 정보</Text>
+              <View style={[styles.infoCard, { backgroundColor: sectionBg }]}>
+                {rows.map((r, idx) => (
+                  <View
+                    key={r.label}
+                    style={[
+                      styles.infoRow,
+                      idx < rows.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: borderColor,
+                      },
+                    ]}>
+                    <Text style={[styles.infoLabel, { color: textTertColor }]}>{r.label}</Text>
+                    <Text style={[styles.infoValue, { color: textColor }]}>{r.value}</Text>
+                  </View>
+                ))}
               </View>
+              {ta && (
+                <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
+                  <Text style={styles.transportLabel}>교통편 안내</Text>
+                  <Text style={[styles.transportText, { color: textColor }]}>{ta}</Text>
+                </View>
+              )}
             </View>
-            {trail.elevation_gain != null && trail.elevation_gain > 0 && (
-              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-                <Text style={[styles.detailLabel, { color: textTertColor }]}>고도 상승</Text>
-                <Text style={[styles.detailValue, { color: textColor }]}>+{Math.round(trail.elevation_gain)}m</Text>
-              </View>
-            )}
-            {trail.best_season && (
-              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-                <Text style={[styles.detailLabel, { color: textTertColor }]}>추천 계절</Text>
-                <Text style={[styles.detailValue, { color: textColor }]}>{SEASON_LABELS[trail.best_season] || trail.best_season}</Text>
-              </View>
-            )}
-            {(trail as any).trail_type && (
-              <View style={[styles.detailItem, { backgroundColor: sectionBg }]}>
-                <Text style={[styles.detailLabel, { color: textTertColor }]}>코스 유형</Text>
-                <Text style={[styles.detailValue, { color: textColor }]}>
-                  {(trail as any).trail_type === 'one_way' ? '편도' : (trail as any).trail_type === 'round_trip' ? '왕복' : '순환'}
-                </Text>
-              </View>
-            )}
-            {/* Invisible spacer balances odd item counts so the last
-                row doesn't collapse weirdly to the left under
-                justifyContent: space-between. */}
-            <View style={{ width: '48.5%', height: 0 }} />
-          </View>
-          {(trail as any).transport_access && (
-            <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
-              <Text style={styles.transportLabel}>교통편 안내</Text>
-              <Text style={[styles.transportText, { color: textColor }]}>{(trail as any).transport_access}</Text>
-            </View>
-          )}
-        </View>
+          );
+        })()}
 
         {/* ===== 4b+ Elevation Profile ===== */}
         {trail.path_data?.coordinates && (
@@ -1604,6 +1618,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#2D4A2E',
+  },
+  // ── Additional info list (replaces the old detailGrid) ─────────
+  infoCard: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  infoLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   detailGrid: {
     flexDirection: 'row',

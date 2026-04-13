@@ -15,6 +15,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { CommunityGroup } from '../types';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
 
 export default function GroupDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -22,6 +23,14 @@ export default function GroupDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const bg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const surfaceBg = isDark ? '#2a2a2a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
   const groupId = route.params?.groupId;
 
   const { data: group } = useQuery<CommunityGroup>({
@@ -68,39 +77,39 @@ export default function GroupDetailScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+      <View style={[styles.header, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: surfaceBg }]}>
+          <Text style={[styles.backIcon, { color: textColor }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]} numberOfLines={1}>{group.name}</Text>
         <View style={{ width: 34 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero section — 토스 카드 스타일 */}
-        <View style={styles.heroSection}>
-          <View style={styles.heroEmoji}>
+        <View style={[styles.heroSection, { backgroundColor: cardBg }]}>
+          <View style={[styles.heroEmoji, { backgroundColor: surfaceBg }]}>
             <Text style={styles.heroEmojiText}>{group.emoji}</Text>
           </View>
-          <Text style={styles.heroName}>{group.name}</Text>
-          <Text style={styles.heroDesc}>{group.description}</Text>
+          <Text style={[styles.heroName, { color: textColor }]}>{group.name}</Text>
+          <Text style={[styles.heroDesc, { color: textSecColor }]}>{group.description}</Text>
 
-          <View style={styles.statRow}>
+          <View style={[styles.statRow, { backgroundColor: surfaceBg }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{group.member_count}</Text>
-              <Text style={styles.statLabel}>멤버</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{group.member_count}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>멤버</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{group.category_display}</Text>
-              <Text style={styles.statLabel}>카테고리</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{group.category_display}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>카테고리</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{group.region || '전국'}</Text>
-              <Text style={styles.statLabel}>지역</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{group.region || '전국'}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>지역</Text>
             </View>
           </View>
         </View>
@@ -125,25 +134,25 @@ export default function GroupDetailScreen() {
           )}
         </View>
 
-        <View style={styles.sectionDivider} />
+        <View style={[styles.sectionDivider, { backgroundColor: borderColor }]} />
 
         {/* Members */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>멤버 {group.member_count}</Text>
+        <View style={[styles.section, { backgroundColor: cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>멤버 {group.member_count}</Text>
           <View style={styles.memberGrid}>
             {group.members?.map((member) => (
               <TouchableOpacity
                 key={member.id}
                 style={styles.memberItem}
                 onPress={() => navigation.navigate('Profile', { userId: member.user })}>
-                <View style={styles.memberAvatar}>
+                <View style={[styles.memberAvatar, { backgroundColor: surfaceBg }]}>
                   {member.profile_image ? (
                     <Image source={{ uri: member.profile_image }} style={styles.memberAvatarImg} />
                   ) : (
                     <Text style={{ fontSize: 16 }}>👤</Text>
                   )}
                 </View>
-                <Text style={styles.memberName} numberOfLines={1}>{member.nickname}</Text>
+                <Text style={[styles.memberName, { color: textColor }]} numberOfLines={1}>{member.nickname}</Text>
                 {member.role === 'owner' && (
                   <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>방장</Text></View>
                 )}

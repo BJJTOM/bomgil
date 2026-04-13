@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { colors } from '../theme/colors';
+import { useThemeStore } from '../stores/theme';
 
 const CATEGORIES = [
   { key: 'hiking', label: '🏔 등산' },
@@ -31,6 +32,14 @@ export default function GroupCreateScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
+  const { isDark } = useThemeStore();
+  const bg = isDark ? '#0a0a0a' : '#FFFFFF';
+  const surfaceBg = isDark ? '#1c1c1e' : '#F7F8FA';
+  const inputBg = isDark ? '#1c1c1e' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -66,15 +75,15 @@ export default function GroupCreateScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: bg, borderBottomColor: borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>취소</Text>
+          <Text style={[styles.cancelText, { color: textSecColor }]}>취소</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>모임 만들기</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>모임 만들기</Text>
         <TouchableOpacity
-          style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, !canSubmit && [styles.submitBtnDisabled, isDark && { backgroundColor: '#2a2a2a' }]]}
           onPress={handleSubmit}
           disabled={!canSubmit || submitting}>
           <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
@@ -83,14 +92,14 @@ export default function GroupCreateScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView style={[styles.scroll, { backgroundColor: bg }]} keyboardShouldPersistTaps="handled">
         {/* Emoji picker */}
-        <Text style={styles.sectionLabel}>모임 아이콘</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>모임 아이콘</Text>
         <View style={styles.emojiGrid}>
           {EMOJIS.map((e) => (
             <TouchableOpacity
               key={e}
-              style={[styles.emojiItem, emoji === e && styles.emojiItemActive]}
+              style={[styles.emojiItem, { backgroundColor: surfaceBg }, emoji === e && styles.emojiItemActive]}
               onPress={() => setEmoji(e)}>
               <Text style={styles.emojiItemText}>{e}</Text>
             </TouchableOpacity>
@@ -98,22 +107,22 @@ export default function GroupCreateScreen() {
         </View>
 
         {/* Name */}
-        <Text style={styles.sectionLabel}>모임 이름</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>모임 이름</Text>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: inputBg, color: textColor }]}
           placeholder="모임 이름을 입력하세요"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={textTertColor}
           value={name}
           onChangeText={setName}
           maxLength={50}
         />
 
         {/* Description */}
-        <Text style={styles.sectionLabel}>소개</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>소개</Text>
         <TextInput
-          style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
+          style={[styles.textInput, { backgroundColor: inputBg, color: textColor, height: 80, textAlignVertical: 'top' }]}
           placeholder="모임에 대해 소개해주세요"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={textTertColor}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -121,35 +130,35 @@ export default function GroupCreateScreen() {
         />
 
         {/* Category */}
-        <Text style={styles.sectionLabel}>카테고리</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>카테고리</Text>
         <View style={styles.chipGrid}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.key}
-              style={[styles.chip, category === cat.key && styles.chipActive]}
+              style={[styles.chip, { backgroundColor: surfaceBg, borderColor }, category === cat.key && styles.chipActive]}
               onPress={() => setCategory(cat.key)}>
-              <Text style={[styles.chipText, category === cat.key && styles.chipTextActive]}>{cat.label}</Text>
+              <Text style={[styles.chipText, { color: textSecColor }, category === cat.key && styles.chipTextActive]}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Region */}
-        <Text style={styles.sectionLabel}>지역 (선택)</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>지역 (선택)</Text>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: inputBg, color: textColor }]}
           placeholder="예: 서울, 부산"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={textTertColor}
           value={region}
           onChangeText={setRegion}
           maxLength={50}
         />
 
         {/* Max members */}
-        <Text style={styles.sectionLabel}>정원 (선택)</Text>
+        <Text style={[styles.sectionLabel, { color: textSecColor }]}>정원 (선택)</Text>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: inputBg, color: textColor }]}
           placeholder="최대 인원 (기본 50명)"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={textTertColor}
           value={maxMembers}
           onChangeText={setMaxMembers}
           keyboardType="number-pad"

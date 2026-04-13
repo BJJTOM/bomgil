@@ -19,6 +19,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { GroupMessage } from '../types';
 import { useAuthStore } from '../stores/auth';
+import { useThemeStore } from '../stores/theme';
 
 const timeFormat = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -33,6 +34,15 @@ export default function GroupChatScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const bg = isDark ? '#0a0a0a' : '#F7F8FA';
+  const headerBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const inputBg = isDark ? '#2a2a2a' : '#F7F8FA';
+  const bubbleBg = isDark ? '#2a2a2a' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
   const groupId = route.params?.groupId;
   const groupName = route.params?.groupName ?? '채팅';
 
@@ -75,7 +85,7 @@ export default function GroupChatScreen() {
     return (
       <View style={[styles.msgRow, isMine && styles.msgRowMine]}>
         {!isMine && (
-          <View style={styles.msgAvatar}>
+          <View style={[styles.msgAvatar, { backgroundColor: bubbleBg }]}>
             {item.sender_image ? (
               <Image source={{ uri: item.sender_image }} style={styles.msgAvatarImg} />
             ) : (
@@ -84,11 +94,25 @@ export default function GroupChatScreen() {
           </View>
         )}
         <View style={[styles.msgBubbleWrap, isMine && styles.msgBubbleWrapMine]}>
-          {!isMine && <Text style={styles.msgSender}>{item.sender_nickname}</Text>}
-          <View style={[styles.msgBubble, isMine && styles.msgBubbleMine]}>
-            <Text style={[styles.msgText, isMine && styles.msgTextMine]}>{item.content}</Text>
+          {!isMine && <Text style={[styles.msgSender, { color: textSecColor }]}>{item.sender_nickname}</Text>}
+          <View
+            style={[
+              styles.msgBubble,
+              { backgroundColor: bubbleBg },
+              isMine && styles.msgBubbleMine,
+            ]}>
+            <Text
+              style={[
+                styles.msgText,
+                { color: textColor },
+                isMine && styles.msgTextMine,
+              ]}>
+              {item.content}
+            </Text>
           </View>
-          <Text style={[styles.msgTime, isMine && styles.msgTimeMine]}>{timeFormat(item.created_at)}</Text>
+          <Text style={[styles.msgTime, { color: textTertColor }, isMine && styles.msgTimeMine]}>
+            {timeFormat(item.created_at)}
+          </Text>
         </View>
       </View>
     );
@@ -96,17 +120,17 @@ export default function GroupChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { backgroundColor: bg, paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+      <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: borderColor }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: inputBg }]}>
+          <Text style={[styles.backIcon, { color: textColor }]}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{groupName}</Text>
-          <Text style={styles.headerSub}>채팅</Text>
+          <Text style={[styles.headerTitle, { color: textColor }]} numberOfLines={1}>{groupName}</Text>
+          <Text style={[styles.headerSub, { color: textTertColor }]}>채팅</Text>
         </View>
         <View style={{ width: 34 }} />
       </View>
@@ -118,16 +142,25 @@ export default function GroupChatScreen() {
         keyExtractor={(item) => String(item.id)}
         renderItem={renderMessage}
         contentContainerStyle={styles.messageList}
+        style={{ backgroundColor: bg }}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
       />
 
       {/* Input — 당근 채팅 스타일 */}
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }]}>
+      <View
+        style={[
+          styles.inputBar,
+          {
+            backgroundColor: headerBg,
+            borderTopColor: borderColor,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+          },
+        ]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
           placeholder="메시지를 입력하세요"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={textTertColor}
           value={text}
           onChangeText={setText}
           multiline

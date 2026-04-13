@@ -16,6 +16,7 @@ import { colors } from '../theme/colors';
 import { Challenge, ChallengeParticipant } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { FadeInView } from '../components/FadeInView';
+import { useThemeStore } from '../stores/theme';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   upcoming: { bg: '#EFF6FF', text: '#1D4ED8' },
@@ -29,6 +30,14 @@ export default function ChallengeDetailScreen() {
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const bg = isDark ? '#0a0a0a' : '#F7F8FA';
+  const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const surfaceBg = isDark ? '#2a2a2a' : '#F7F8FA';
+  const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const trackBg = isDark ? '#2a2a2a' : '#F2F4F6';
   const challengeId = route.params?.challengeId;
 
   const { data: challenge } = useQuery<Challenge>({
@@ -86,20 +95,20 @@ export default function ChallengeDetailScreen() {
   const daysLeft = Math.ceil((new Date(challenge.end_date).getTime() - Date.now()) / 86400000);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+      <View style={[styles.header, { backgroundColor: cardBg }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: surfaceBg }]}>
+          <Text style={[styles.backIcon, { color: textColor }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>챌린지</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>챌린지</Text>
         <View style={{ width: 34 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero — 토스 카드 */}
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: cardBg }]}>
           <View style={styles.heroTop}>
-            <View style={styles.emojiBox}>
+            <View style={[styles.emojiBox, { backgroundColor: surfaceBg }]}>
               <Text style={styles.emojiText}>{challenge.emoji}</Text>
             </View>
             <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
@@ -107,12 +116,12 @@ export default function ChallengeDetailScreen() {
             </View>
           </View>
 
-          <Text style={styles.heroTitle}>{challenge.title}</Text>
-          <Text style={styles.heroDesc}>{challenge.description}</Text>
+          <Text style={[styles.heroTitle, { color: textColor }]}>{challenge.title}</Text>
+          <Text style={[styles.heroDesc, { color: textSecColor }]}>{challenge.description}</Text>
 
           {/* Date */}
           <View style={styles.dateRow}>
-            <Text style={styles.dateText}>📅 {challenge.start_date} ~ {challenge.end_date}</Text>
+            <Text style={[styles.dateText, { color: textTertColor }]}>📅 {challenge.start_date} ~ {challenge.end_date}</Text>
             {challenge.status === 'active' && daysLeft > 0 && (
               <Text style={styles.daysLeft}>{daysLeft}일 남음</Text>
             )}
@@ -121,10 +130,10 @@ export default function ChallengeDetailScreen() {
           {/* Goal progress */}
           <View style={styles.goalSection}>
             <View style={styles.goalHeader}>
-              <Text style={styles.goalLabel}>목표</Text>
-              <Text style={styles.goalValue}>{challenge.goal_value} {challenge.goal_unit}</Text>
+              <Text style={[styles.goalLabel, { color: textTertColor }]}>목표</Text>
+              <Text style={[styles.goalValue, { color: textColor }]}>{challenge.goal_value} {challenge.goal_unit}</Text>
             </View>
-            <View style={styles.goalBar}>
+            <View style={[styles.goalBar, { backgroundColor: trackBg }]}>
               <View style={[styles.goalProgress, { width: `${Math.min(challenge.my_progress, 100)}%` }]} />
             </View>
             {challenge.is_joined && (
@@ -133,20 +142,20 @@ export default function ChallengeDetailScreen() {
           </View>
 
           {/* Stats */}
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { backgroundColor: surfaceBg }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{challenge.participant_count}</Text>
-              <Text style={styles.statLabel}>참여자</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{challenge.participant_count}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>참여자</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: trackBg }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{challenge.type_display}</Text>
-              <Text style={styles.statLabel}>유형</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{challenge.type_display}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>유형</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: trackBg }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{challenge.goal_value}</Text>
-              <Text style={styles.statLabel}>{challenge.goal_unit}</Text>
+              <Text style={[styles.statValue, { color: textColor }]}>{challenge.goal_value}</Text>
+              <Text style={[styles.statLabel, { color: textTertColor }]}>{challenge.goal_unit}</Text>
             </View>
           </View>
         </View>
@@ -171,17 +180,17 @@ export default function ChallengeDetailScreen() {
         )}
 
         {/* Leaderboard */}
-        <View style={styles.leaderboardSection}>
-          <Text style={styles.leaderboardTitle}>🏅 리더보드</Text>
+        <View style={[styles.leaderboardSection, { backgroundColor: cardBg }]}>
+          <Text style={[styles.leaderboardTitle, { color: textColor }]}>🏅 리더보드</Text>
           {challenge.leaderboard?.map((participant, index) => (
             <FadeInView key={participant.id} delay={index * 40}>
               <View style={styles.leaderItem}>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankText}>
+                <View style={[styles.rankBadge, { backgroundColor: surfaceBg }]}>
+                  <Text style={[styles.rankText, { color: textColor }]}>
                     {index < 3 ? ['🥇', '🥈', '🥉'][index] : `${index + 1}`}
                   </Text>
                 </View>
-                <View style={styles.leaderAvatar}>
+                <View style={[styles.leaderAvatar, { backgroundColor: surfaceBg }]}>
                   {participant.profile_image ? (
                     <Image source={{ uri: participant.profile_image }} style={styles.leaderAvatarImg} />
                   ) : (
@@ -189,16 +198,16 @@ export default function ChallengeDetailScreen() {
                   )}
                 </View>
                 <View style={styles.leaderInfo}>
-                  <Text style={styles.leaderName}>{participant.nickname}</Text>
-                  <Text style={styles.leaderValue}>
+                  <Text style={[styles.leaderName, { color: textColor }]}>{participant.nickname}</Text>
+                  <Text style={[styles.leaderValue, { color: textTertColor }]}>
                     {participant.current_value} {challenge.goal_unit}
                   </Text>
                 </View>
                 <View style={styles.leaderProgress}>
-                  <View style={styles.miniBar}>
+                  <View style={[styles.miniBar, { backgroundColor: trackBg }]}>
                     <View style={[styles.miniBarFill, { width: `${Math.min(participant.progress, 100)}%` }]} />
                   </View>
-                  <Text style={styles.leaderPercent}>{participant.progress}%</Text>
+                  <Text style={[styles.leaderPercent, { color: textTertColor }]}>{participant.progress}%</Text>
                 </View>
                 {participant.completed && (
                   <View style={styles.completedBadge}>

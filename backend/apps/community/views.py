@@ -330,16 +330,35 @@ class PostImageUploadView(APIView):
     throttle_classes = [ImageUploadThrottle]
 
     def post(self, request, pk):
+        """Upload up to 10 images to a post.
+
+        Returns:
+          { "created": [...], "rejected": [{"index": i, "name": str, "reason": str}] }
+        with status 201 if at least one was created, or 400 if every
+        upload failed validation. Previous version silently skipped
+        invalid files and returned a partial list, leaving the user
+        wondering why some images vanished.
+        """
         from config.validators import is_valid_image_file
         post = generics.get_object_or_404(Post, pk=pk, author=request.user)
         images = request.FILES.getlist('images')
         created = []
+        rejected = []
         for i, img in enumerate(images[:10]):
             if not is_valid_image_file(img):
-                continue  # skip invalid files silently
+                rejected.append({
+                    'index': i,
+                    'name': getattr(img, 'name', f'image_{i}'),
+                    'reason': '잘못된 이미지 파일 (포맷 또는 크기)',
+                })
+                continue
             obj = PostImage.objects.create(post=post, image=img, order=i)
             created.append({'id': obj.id, 'image': obj.image.url, 'order': obj.order})
-        return Response(created, status=status.HTTP_201_CREATED)
+
+        payload = {'created': created, 'rejected': rejected}
+        if not created and rejected:
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class PostImageDeleteView(APIView):

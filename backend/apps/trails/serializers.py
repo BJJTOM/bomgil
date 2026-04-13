@@ -137,24 +137,19 @@ class TrailDetailSerializer(serializers.ModelSerializer):
         return _get_cached_cover_image_url(obj)
 
     def get_is_liked(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return TrailLike.objects.filter(user=request.user, trail=obj).exists()
-        return False
+        # Detail view = single instance, but use the bulk helper anyway
+        # so the same code path serves both the detail and any future
+        # nested list serializer that wraps multiple trails.
+        return obj.pk in _bulk_liked_set(self.context)
 
     def get_is_bookmarked(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return TrailBookmark.objects.filter(user=request.user, trail=obj).exists()
-        return False
+        return obj.pk in _bulk_bookmarked_set(self.context)
 
     def get_is_completed(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return TrailCompletion.objects.filter(user=request.user, trail=obj).exists()
-        return False
+        return obj.pk in _bulk_completed_set(self.context)
 
     def get_completion_count(self, obj):
+        # Single COUNT query per detail view — trivial cost.
         return TrailCompletion.objects.filter(trail=obj).count()
 
     def get_latest_condition(self, obj):

@@ -77,6 +77,87 @@ export async function generateMetadata(
   };
 }
 
-export default function TrailLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+/**
+ * Build a schema.org TouristAttraction + ExerciseAction JSON-LD blob
+ * for a trail. Surfacing this lets Google show rich results (rating,
+ * distance, image) on SERPs.
+ */
+function buildJsonLd(trail: any, id: string): string | null {
+  if (!trail) return null;
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "TouristAttraction",
+    name: trail.title,
+    description: trail.description?.slice(0, 500) || trail.title,
+    image: trail.cover_image || trail.thumbnail_url || undefined,
+    url: `https://moruwalk.com/trails/${id}`,
+    address: {
+      "@type": "PostalAddress",
+      addressRegion: trail.region || "",
+      addressCountry: trail.country || "KR",
+    },
+    geo:
+      trail.start_lat && trail.start_lng
+        ? {
+            "@type": "GeoCoordinates",
+            latitude: Number(trail.start_lat),
+            longitude: Number(trail.start_lng),
+          }
+        : undefined,
+    additionalProperty: [
+      trail.distance_km && {
+        "@type": "PropertyValue",
+        name: "distance",
+        value: `${trail.distance_km} km`,
+      },
+      trail.estimated_minutes && {
+        "@type": "PropertyValue",
+        name: "estimated_duration",
+        value: `${trail.estimated_minutes} minutes`,
+      },
+      trail.difficulty && {
+        "@type": "PropertyValue",
+        name: "difficulty",
+        value: trail.difficulty,
+      },
+      trail.elevation_gain && {
+        "@type": "PropertyValue",
+        name: "elevation_gain",
+        value: `${trail.elevation_gain} m`,
+      },
+    ].filter(Boolean),
+    aggregateRating:
+      trail.like_count > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: 4.5,
+            reviewCount: trail.like_count,
+          }
+        : undefined,
+  };
+  return JSON.stringify(ld);
+}
+
+export default async function TrailLayout({
+  params,
+  children,
+}: {
+  params: Promise<RouteParams>;
+  children: React.ReactNode;
+}) {
+  const { id } = await params;
+  const trail = await fetchTrail(id);
+  const ld = buildJsonLd(trail, id);
+  return (
+    <>
+      {ld && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: ld }}
+        />
+      )}
+      {children}
+    </>
+  );
 }

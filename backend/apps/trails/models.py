@@ -50,7 +50,11 @@ class Trail(models.Model):
     ]
 
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trails"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="trails",
+        help_text="작성자가 탈퇴해도 코스는 보존됨 (SET_NULL)",
     )
     title = models.CharField(max_length=100)
     title_en = models.CharField(max_length=100, blank=True)
@@ -118,6 +122,11 @@ class Trail(models.Model):
             models.Index(fields=["trail_type"]),
             models.Index(fields=["start_lat", "start_lng"]),
             models.Index(fields=["is_official", "region"]),
+            # The list view filters by status + is_hidden and orders
+            # by created_at. Without this composite index Postgres
+            # falls back to a full scan once the catalog grows past
+            # ~10k rows.
+            models.Index(fields=["status", "is_hidden", "-created_at"]),
         ]
 
     def __str__(self):
@@ -316,8 +325,11 @@ class TrailCompletion(models.Model):
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default="manual")
     # Fraction of the trail path that was actually walked (0..1).
     # Useful for display ("이 코스의 87% 완주") and for filtering out
-    # false positives down the road.
-    coverage = models.DecimalField(max_digits=4, decimal_places=3, default=1.000)
+    # false positives down the road. max_digits=4 holds 1.000 + sign.
+    coverage = models.DecimalField(
+        max_digits=4, decimal_places=3, default=1.000,
+        help_text="0.000 ~ 1.000 — fraction of trail path walked",
+    )
     completed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

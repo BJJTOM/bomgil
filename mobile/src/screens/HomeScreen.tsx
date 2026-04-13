@@ -144,6 +144,21 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
+  // My personal stats — for the daily goal widget. Returns null
+  // for unauthenticated users so the widget can hide gracefully.
+  const { data: myStats } = useQuery({
+    queryKey: ['my-stats'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get('/activities/my_stats/');
+        return data as any;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const STATS = [
     { value: String(platformStats?.countries || 0), label: t('registeredCountries', language) },
     { value: String(platformStats?.trails || 0), label: t('courses', language) },
@@ -300,6 +315,47 @@ export default function HomeScreen() {
             </View>
           </View>
         </FadeInView>
+
+        {/* Daily goal widget — only when authenticated and stats exist */}
+        {myStats && (
+          <FadeInView delay={120}>
+            <View style={[styles.goalWidget, { backgroundColor: cardBg }]}>
+              <View style={styles.goalWidgetTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.goalWidgetLabel, { color: textTertColor }]}>
+                    {language === 'ko' ? '이번 주 목표' : 'Weekly goal'}
+                  </Text>
+                  <Text style={[styles.goalWidgetValue, { color: textColor }]}>
+                    {Number(myStats.weekly_distance_km || 0).toFixed(1)}
+                    <Text style={[styles.goalWidgetUnit, { color: textTertColor }]}>
+                      {' '}/ {Number(myStats.weekly_goal_km || 20).toFixed(0)}km
+                    </Text>
+                  </Text>
+                </View>
+                <View style={styles.goalStreakWrap}>
+                  <Text style={styles.goalStreakEmoji}>🔥</Text>
+                  <Text style={[styles.goalStreakValue, { color: textColor }]}>
+                    {myStats.current_streak || 0}
+                  </Text>
+                  <Text style={[styles.goalStreakLabel, { color: textTertColor }]}>
+                    {language === 'ko' ? '일 연속' : 'day streak'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.goalWidgetTrack}>
+                <View
+                  style={[
+                    styles.goalWidgetFill,
+                    { width: `${Math.min(100, myStats.weekly_progress_pct || 0)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.goalWidgetPct, { color: textTertColor }]}>
+                {Math.min(100, myStats.weekly_progress_pct || 0)}%
+              </Text>
+            </View>
+          </FadeInView>
+        )}
 
         {/* Series Challenges — multi-segment progression */}
         {featuredSeries && featuredSeries.length > 0 && (
@@ -784,6 +840,69 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
+  },
+  // Daily goal widget — sits above series section
+  goalWidget: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  goalWidgetTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  goalWidgetLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  goalWidgetValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  goalWidgetUnit: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  goalStreakWrap: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  goalStreakEmoji: { fontSize: 20 },
+  goalStreakValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  goalStreakLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    marginTop: -2,
+  },
+  goalWidgetTrack: {
+    height: 8,
+    backgroundColor: '#EEF1F4',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalWidgetFill: {
+    height: '100%',
+    backgroundColor: '#2D4A2E',
+    borderRadius: 4,
+  },
+  goalWidgetPct: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'right',
+    marginTop: 6,
   },
   seriesHomeEmojiWrap: {
     width: 44,

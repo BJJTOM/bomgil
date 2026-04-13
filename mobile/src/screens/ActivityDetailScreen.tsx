@@ -26,6 +26,7 @@ import SafeMapView from '../components/SafeMapView';
 import api from '../api/client';
 import { navParamCache } from '../utils/navParamCache';
 import { useThemeStore } from '../stores/theme';
+import { PhotoViewer } from '../components/PhotoViewer';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -80,6 +81,10 @@ export default function ActivityDetailScreen() {
   const [activity, setActivity] = useState<any>(route.params?.activity);
   const [taggedPhotos, setTaggedPhotos] = useState<any[]>(route.params?.taggedPhotos || []);
   const [walkSpots, setWalkSpots] = useState<any[]>(route.params?.spots || []);
+  const [photoViewer, setPhotoViewer] = useState<{ visible: boolean; index: number }>({
+    visible: false,
+    index: 0,
+  });
 
   // Title editing state
   const [editingTitle, setEditingTitle] = useState(false);
@@ -614,12 +619,17 @@ export default function ActivityDetailScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Photos thumbnails below map */}
+          {/* Photos thumbnails below map — tap to open fullscreen viewer */}
           {taggedPhotos.length > 0 && (
             <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
                 {taggedPhotos.map((photo: any, idx: number) => (
-                  <View key={`map-thumb-${idx}`} style={{ marginRight: 8, alignItems: 'center' }}>
+                  <TouchableOpacity
+                    key={`map-thumb-${idx}`}
+                    style={{ marginRight: 8, alignItems: 'center' }}
+                    activeOpacity={0.85}
+                    accessibilityLabel={`사진 ${idx + 1} 보기`}
+                    onPress={() => setPhotoViewer({ visible: true, index: idx })}>
                     <Image
                       source={{ uri: photo.uri }}
                       style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 2, borderColor: '#7F77DD' }}
@@ -628,7 +638,7 @@ export default function ActivityDetailScreen() {
                     {photo.lat != null && photo.lng != null && (
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#7F77DD', marginTop: 4 }} />
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -1365,6 +1375,20 @@ export default function ActivityDetailScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Fullscreen photo viewer — opened from photo thumbnails */}
+      <PhotoViewer
+        visible={photoViewer.visible}
+        index={photoViewer.index}
+        images={taggedPhotos
+          .filter((p: any) => p?.uri)
+          .map((p: any) => ({
+            uri: p.uri,
+            title: p.title,
+            caption: p.description || p.note,
+          }))}
+        onClose={() => setPhotoViewer({ visible: false, index: 0 })}
+      />
     </KeyboardAvoidingView>
   );
 }

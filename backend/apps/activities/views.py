@@ -134,27 +134,39 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             self._last_completions = []
 
     def _update_daily_summary(self, activity):
+        """Recompute the user's daily summary atomically.
+
+        Two concurrent writes (e.g., user finishes a walk and a GPX
+        import lands at the same time) can race here: each one calls
+        get_or_create + aggregate + save, and the loser silently
+        overwrites the winner with stale data. Wrap the whole thing
+        in a transaction with select_for_update so they serialize.
+
+        Also exclude is_hidden activities from the aggregate so
+        admin-moderated walks don't pollute the summary.
+        """
         if not activity.started_at:
             return
         date = activity.started_at.date()
-        summary, _ = DailyActivitySummary.objects.get_or_create(
-            user=activity.user, date=date
-        )
-        agg = ActivityTrack.objects.filter(
-            user=activity.user, started_at__date=date
-        ).aggregate(
-            steps=Sum("total_steps"),
-            distance=Sum("distance_km"),
-            duration=Sum("duration_minutes"),
-            calories=Sum("calories_burned"),
-            count=Count("id"),
-        )
-        summary.total_steps = agg["steps"] or 0
-        summary.total_distance_km = agg["distance"] or 0
-        summary.total_duration_minutes = agg["duration"] or 0
-        summary.total_calories = agg["calories"] or 0
-        summary.track_count = agg["count"] or 0
-        summary.save()
+        with transaction.atomic():
+            summary, _ = DailyActivitySummary.objects.select_for_update().get_or_create(
+                user=activity.user, date=date,
+            )
+            agg = ActivityTrack.objects.filter(
+                user=activity.user, started_at__date=date, is_hidden=False,
+            ).aggregate(
+                steps=Sum("total_steps"),
+                distance=Sum("distance_km"),
+                duration=Sum("duration_minutes"),
+                calories=Sum("calories_burned"),
+                count=Count("id"),
+            )
+            summary.total_steps = agg["steps"] or 0
+            summary.total_distance_km = agg["distance"] or 0
+            summary.total_duration_minutes = agg["duration"] or 0
+            summary.total_calories = agg["calories"] or 0
+            summary.track_count = agg["count"] or 0
+            summary.save()
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.AllowAny])
     def leaderboard(self, request):

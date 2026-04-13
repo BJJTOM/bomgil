@@ -53,11 +53,14 @@ const timeAgo = (dateStr: string) => {
 function BottomSheet({ visible, onClose, children }: {
   visible: boolean; onClose: () => void; children: React.ReactNode;
 }) {
+  const { isDark } = useThemeStore();
+  const sheetBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const handleColor = isDark ? 'rgba(255,255,255,0.18)' : '#E5E8EB';
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={s.sheetBackdrop} activeOpacity={1} onPress={onClose}>
-        <View style={s.sheetContainer}>
-          <View style={s.sheetHandle} />
+        <View style={[s.sheetContainer, { backgroundColor: sheetBg }]}>
+          <View style={[s.sheetHandle, { backgroundColor: handleColor }]} />
           {children}
         </View>
       </TouchableOpacity>
@@ -68,10 +71,13 @@ function BottomSheet({ visible, onClose, children }: {
 function SheetItem({ icon, label, danger, onPress }: {
   icon: string; label: string; danger?: boolean; onPress: () => void;
 }) {
+  const { isDark } = useThemeStore();
+  const labelColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const iconColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
   return (
     <TouchableOpacity style={s.sheetItem} onPress={onPress} activeOpacity={0.6}>
-      <Feather name={icon} size={18} color={danger ? '#FF4B4B' : colors.textSecondary} style={{ marginRight: 12 }} />
-      <Text style={[s.sheetItemLabel, danger && { color: '#FF4B4B' }]}>{label}</Text>
+      <Feather name={icon} size={18} color={danger ? '#FF4B4B' : iconColor} style={{ marginRight: 12 }} />
+      <Text style={[s.sheetItemLabel, { color: danger ? '#FF4B4B' : labelColor }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -80,27 +86,33 @@ function ReportModal({ visible, onClose, onSubmit }: {
   visible: boolean; onClose: () => void;
   onSubmit: (reason: string, detail: string) => void;
 }) {
+  const { isDark } = useThemeStore();
+  const sheetBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const titleColor = isDark ? '#FFFFFF' : colors.textPrimary;
+  const subColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
+  const tertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const inputBg = isDark ? '#2a2a2a' : '#F7F8FA';
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
   const handleSubmit = () => { if (!reason) return; onSubmit(reason, detail); setReason(''); setDetail(''); };
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.reportBackdrop}>
-        <View style={s.reportContainer}>
+        <View style={[s.reportContainer, { backgroundColor: sheetBg }]}>
           <View style={s.reportHeader}>
-            <Text style={s.reportTitle}>신고하기</Text>
-            <TouchableOpacity onPress={onClose}><Text style={s.reportClose}>✕</Text></TouchableOpacity>
+            <Text style={[s.reportTitle, { color: titleColor }]}>신고하기</Text>
+            <TouchableOpacity onPress={onClose}><Text style={[s.reportClose, { color: tertColor }]}>✕</Text></TouchableOpacity>
           </View>
-          <Text style={s.reportSubtitle}>신고 사유를 선택해주세요</Text>
+          <Text style={[s.reportSubtitle, { color: subColor }]}>신고 사유를 선택해주세요</Text>
           {REPORT_REASONS.map((r) => (
             <TouchableOpacity key={r.key} style={s.reportReasonItem} onPress={() => setReason(r.key)}>
               <View style={[s.reportRadio, reason === r.key && s.reportRadioActive]}>
                 {reason === r.key && <View style={s.reportRadioDot} />}
               </View>
-              <Text style={[s.reportReasonText, reason === r.key && { color: colors.textPrimary, fontWeight: '600' }]}>{r.label}</Text>
+              <Text style={[s.reportReasonText, { color: subColor }, reason === r.key && { color: titleColor, fontWeight: '600' }]}>{r.label}</Text>
             </TouchableOpacity>
           ))}
-          <TextInput style={s.reportDetail} placeholder="상세 내용 (선택)" placeholderTextColor={colors.textTertiary} value={detail} onChangeText={setDetail} multiline maxLength={500} />
+          <TextInput style={[s.reportDetail, { backgroundColor: inputBg, color: titleColor }]} placeholder="상세 내용 (선택)" placeholderTextColor={tertColor} value={detail} onChangeText={setDetail} multiline maxLength={500} />
           <TouchableOpacity style={[s.reportSubmitBtn, !reason && { opacity: 0.4 }]} onPress={handleSubmit} disabled={!reason}>
             <Text style={s.reportSubmitText}>신고하기</Text>
           </TouchableOpacity>
@@ -173,28 +185,44 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: {
     Alert.alert('댓글 삭제', '정말 삭제하시겠어요?', [
       { text: '취소', style: 'cancel' },
       { text: '삭제', style: 'destructive', onPress: async () => {
-        await api.delete(`/community/posts/comments/${comment.id}/delete/`);
-        queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+        try {
+          await api.delete(`/community/posts/comments/${comment.id}/delete/`);
+          queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+        } catch (e: any) {
+          Alert.alert('삭제 실패', e?.response?.data?.detail || '네트워크 오류');
+        }
       }},
     ]);
   };
   const handleEdit = async () => {
     if (!editText.trim()) return;
-    await api.patch(`/community/posts/comments/${comment.id}/update/`, { content: editText.trim() });
-    setEditing(false);
-    queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+    try {
+      await api.patch(`/community/posts/comments/${comment.id}/update/`, { content: editText.trim() });
+      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+    } catch (e: any) {
+      Alert.alert('수정 실패', e?.response?.data?.detail || '네트워크 오류');
+    }
   };
   const handleReport = async (reason: string, detail: string) => {
-    await api.post('/community/report/', { target_type: 'comment', target_id: comment.id, reason, detail });
-    setShowReport(false);
-    Alert.alert('신고 완료', '신고가 접수되었습니다.');
+    try {
+      await api.post('/community/report/', { target_type: 'comment', target_id: comment.id, reason, detail });
+      setShowReport(false);
+      Alert.alert('신고 완료', '신고가 접수되었습니다.');
+    } catch (e: any) {
+      Alert.alert('신고 실패', e?.response?.data?.detail || '네트워크 오류');
+    }
   };
   const handleBlock = () => {
     Alert.alert('사용자 차단', `${comment.author_nickname}님을 차단하시겠어요?`, [
       { text: '취소', style: 'cancel' },
       { text: '차단', style: 'destructive', onPress: async () => {
-        await api.post('/community/block/', { user_id: comment.author });
-        queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+        try {
+          await api.post('/community/block/', { user_id: comment.author });
+          queryClient.invalidateQueries({ queryKey: ['post-detail', postId] });
+        } catch (e: any) {
+          Alert.alert('차단 실패', e?.response?.data?.detail || '네트워크 오류');
+        }
       }},
     ]);
   };
@@ -333,17 +361,25 @@ export default function PostDetailScreen() {
     Alert.alert('게시글 삭제', '정말 삭제하시겠어요?', [
       { text: '취소', style: 'cancel' },
       { text: '삭제', style: 'destructive', onPress: async () => {
-        await api.delete(`/community/posts/${postId}/delete/`);
-        queryClient.invalidateQueries({ queryKey: ['community-posts'] });
-        navigation.goBack();
+        try {
+          await api.delete(`/community/posts/${postId}/delete/`);
+          queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+          navigation.goBack();
+        } catch (e: any) {
+          Alert.alert('삭제 실패', e?.response?.data?.detail || '네트워크 오류');
+        }
       }},
     ]);
   };
 
   const handleReport = async (reason: string, detail: string) => {
-    await api.post('/community/report/', { target_type: 'post', target_id: postId, reason, detail });
-    setShowReport(false);
-    Alert.alert('신고 완료', '신고가 접수되었습니다.');
+    try {
+      await api.post('/community/report/', { target_type: 'post', target_id: postId, reason, detail });
+      setShowReport(false);
+      Alert.alert('신고 완료', '신고가 접수되었습니다.');
+    } catch (e: any) {
+      Alert.alert('신고 실패', e?.response?.data?.detail || '네트워크 오류');
+    }
   };
 
   const handleBlock = () => {
@@ -351,9 +387,13 @@ export default function PostDetailScreen() {
     Alert.alert('사용자 차단', `${post.author_nickname}님을 차단하시겠어요?`, [
       { text: '취소', style: 'cancel' },
       { text: '차단', style: 'destructive', onPress: async () => {
-        await api.post('/community/block/', { user_id: post.author });
-        queryClient.invalidateQueries({ queryKey: ['community-posts'] });
-        navigation.goBack();
+        try {
+          await api.post('/community/block/', { user_id: post.author });
+          queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+          navigation.goBack();
+        } catch (e: any) {
+          Alert.alert('차단 실패', e?.response?.data?.detail || '네트워크 오류');
+        }
       }},
     ]);
   };
@@ -451,27 +491,31 @@ export default function PostDetailScreen() {
                 {/* Content */}
                 <Text style={[s.content, { color: textColor }]}>{post.content}</Text>
                 {/* Images -- grid layout */}
-                {post.images && post.images.length > 0 && (
-                  <View style={[s.imageSection, post.images.length > 1 && s.imageGrid]}>
-                    {post.images.length === 1 ? (
-                      <TouchableOpacity activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: 0 })}>
-                        <Image source={{ uri: post.images[0].image }} style={s.contentImageSingle} resizeMode="cover" />
-                      </TouchableOpacity>
-                    ) : (
-                      post.images.map((img, idx) => (
-                        <TouchableOpacity key={img.id} activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: idx })}
-                          style={[s.imageGridItem, { width: post.images.length === 2 ? '49%' as any : '32%' as any }]}>
-                          <Image source={{ uri: img.image }} style={s.contentImageGrid} resizeMode="cover" />
-                          {idx === 3 && post.images.length > 4 && (
-                            <View style={s.imageOverlayCount}>
-                              <Text style={s.imageOverlayText}>+{post.images.length - 4}</Text>
-                            </View>
-                          )}
+                {(() => {
+                  const imgs = post.images;
+                  if (!imgs || imgs.length === 0) return null;
+                  return (
+                    <View style={[s.imageSection, imgs.length > 1 && s.imageGrid]}>
+                      {imgs.length === 1 ? (
+                        <TouchableOpacity activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: 0 })}>
+                          <Image source={{ uri: imgs[0].image }} style={s.contentImageSingle} resizeMode="cover" />
                         </TouchableOpacity>
-                      )).slice(0, 4)
-                    )}
-                  </View>
-                )}
+                      ) : (
+                        imgs.map((img, idx) => (
+                          <TouchableOpacity key={img.id} activeOpacity={0.9} onPress={() => setViewerImages({ visible: true, index: idx })}
+                            style={[s.imageGridItem, { width: imgs.length === 2 ? '49%' as any : '32%' as any }]}>
+                            <Image source={{ uri: img.image }} style={s.contentImageGrid} resizeMode="cover" />
+                            {idx === 3 && imgs.length > 4 && (
+                              <View style={s.imageOverlayCount}>
+                                <Text style={s.imageOverlayText}>+{imgs.length - 4}</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        )).slice(0, 4)
+                      )}
+                    </View>
+                  );
+                })()}
                 {/* Action bar */}
                 <View style={[s.actionBar, { borderTopColor: borderColor }]}>
                   <TouchableOpacity style={s.actionItem} onPress={handleLike} activeOpacity={0.6}>

@@ -35,12 +35,18 @@ const SORT_OPTIONS = [
 
 const FILTER_CHIPS = [
   {
-    key: 'is_official',
-    label: '출처',
+    key: 'country',
+    label: '국가',
     options: [
       { value: '', label: '전체' },
-      { value: 'true', label: '✓ 공식' },
-      { value: 'false', label: '유저' },
+      { value: 'KR', label: '🇰🇷 한국' },
+      { value: 'JP', label: '🇯🇵 일본' },
+      { value: 'TW', label: '🇹🇼 대만' },
+      { value: 'TH', label: '🇹🇭 태국' },
+      { value: 'US', label: '🇺🇸 미국' },
+      { value: 'GB', label: '🇬🇧 영국' },
+      { value: 'FR', label: '🇫🇷 프랑스' },
+      { value: 'ES', label: '🇪🇸 스페인' },
     ],
   },
   {
@@ -89,18 +95,12 @@ const FILTER_CHIPS = [
     ],
   },
   {
-    key: 'country',
-    label: '국가',
+    key: 'is_official',
+    label: '출처',
     options: [
       { value: '', label: '전체' },
-      { value: 'KR', label: '🇰🇷 한국' },
-      { value: 'JP', label: '🇯🇵 일본' },
-      { value: 'TW', label: '🇹🇼 대만' },
-      { value: 'TH', label: '🇹🇭 태국' },
-      { value: 'US', label: '🇺🇸 미국' },
-      { value: 'GB', label: '🇬🇧 영국' },
-      { value: 'FR', label: '🇫🇷 프랑스' },
-      { value: 'ES', label: '🇪🇸 스페인' },
+      { value: 'true', label: '✓ 공식' },
+      { value: 'false', label: '유저' },
     ],
   },
 ];

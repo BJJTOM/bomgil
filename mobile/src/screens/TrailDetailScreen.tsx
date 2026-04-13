@@ -307,9 +307,9 @@ function TrailDetailScreenInner() {
 
   if (!trailId) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[styles.container, styles.center, { paddingTop: insets.top, backgroundColor: bg }]}>
         <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 찾을 수 없습니다'}</Text>
+        <Text style={{ fontSize: 16, color: textColor, fontWeight: '600' }}>{'코스를 찾을 수 없습니다'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
         </TouchableOpacity>
@@ -319,10 +319,10 @@ function TrailDetailScreenInner() {
 
   if (error) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[styles.container, styles.center, { paddingTop: insets.top, backgroundColor: bg }]}>
         <Text style={{ fontSize: 40, marginBottom: 12 }}>{'⚠️'}</Text>
-        <Text style={{ fontSize: 16, color: '#191F28', fontWeight: '600' }}>{'코스를 불러올 수 없습니다'}</Text>
-        <Text style={{ fontSize: 13, color: '#8B95A1', marginTop: 4 }}>{'네트워크 연결을 확인해주세요'}</Text>
+        <Text style={{ fontSize: 16, color: textColor, fontWeight: '600' }}>{'코스를 불러올 수 없습니다'}</Text>
+        <Text style={{ fontSize: 13, color: textTertColor, marginTop: 4 }}>{'네트워크 연결을 확인해주세요'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}>
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{'돌아가기'}</Text>
         </TouchableOpacity>
@@ -344,13 +344,6 @@ function TrailDetailScreenInner() {
     safeReviews.length > 0
       ? (safeReviews.reduce((sum: number, r: Review) => sum + (r.rating || 0), 0) / safeReviews.length).toFixed(1)
       : null;
-
-  const statsItems = [
-    formatDistance(trail.distance_km),
-    formatDuration(trail.estimated_minutes),
-    diff.label,
-    SEASON_LABELS[trail?.best_season || ''] || trail?.best_season || '',
-  ].filter(Boolean);
 
   return (
     <>
@@ -399,12 +392,72 @@ function TrailDetailScreenInner() {
           </View>
         </View>
 
-        {/* ===== 2. Quick Stats Line ===== */}
-        <View style={[styles.statsLine, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
-          <Text style={[styles.statsText, { color: textSecColor }]}>
-            {statsItems.join('  ·  ')}
-          </Text>
+        {/* ===== 2. Hero Stats Card =====
+            Replaces the old single-line `statsText`. Three primary
+            metrics are displayed in equal columns with icons + labels;
+            difficulty gets its own colored pill so it pops at a glance. */}
+        <View style={[styles.heroStatsCard, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
+          <View style={styles.heroStatsCol}>
+            <Feather name="map" size={16} color={colors.primary} />
+            <Text style={[styles.heroStatValue, { color: textColor }]}>
+              {formatDistance(trail.distance_km)}
+            </Text>
+            <Text style={[styles.heroStatLabel, { color: textTertColor }]}>거리</Text>
+          </View>
+          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.heroStatsCol}>
+            <Feather name="clock" size={16} color={colors.primary} />
+            <Text style={[styles.heroStatValue, { color: textColor }]}>
+              {formatDuration(trail.estimated_minutes)}
+            </Text>
+            <Text style={[styles.heroStatLabel, { color: textTertColor }]}>소요시간</Text>
+          </View>
+          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.heroStatsCol}>
+            <Feather name="trending-up" size={16} color={colors.primary} />
+            <View style={[styles.heroDifficultyPill, { backgroundColor: diff.bg }]}>
+              <Text style={[styles.heroDifficultyText, { color: diff.text }]}>
+                {diff.label}
+              </Text>
+            </View>
+            <Text style={[styles.heroStatLabel, { color: textTertColor }]}>난이도</Text>
+          </View>
+          {trail.elevation_gain != null && trail.elevation_gain > 0 && (
+            <>
+              <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
+              <View style={styles.heroStatsCol}>
+                <Feather name="triangle" size={16} color="#FF6B35" />
+                <Text style={[styles.heroStatValue, { color: textColor }]}>
+                  +{Math.round(trail.elevation_gain)}m
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: textTertColor }]}>고도</Text>
+              </View>
+            </>
+          )}
         </View>
+
+        {/* Series-membership chip — shows above the action bar if this
+            trail is part of one or more curated series. Tapping jumps
+            to the series detail. Inspired by AllTrails' "part of"
+            navigation crumb. */}
+        {Array.isArray((trail as any).series) && (trail as any).series.length > 0 && (
+          <View style={styles.seriesMembershipRow}>
+            {(trail as any).series.slice(0, 3).map((sm: any) => (
+              <TouchableOpacity
+                key={`sm-${sm.id || sm.slug}`}
+                style={[styles.seriesMembershipChip, { backgroundColor: '#F0F7F0' }]}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (sm.slug) navigation.navigate('TrailSeriesDetail', { slug: sm.slug });
+                }}>
+                <Feather name="flag" size={11} color={colors.primary} />
+                <Text style={[styles.seriesMembershipText, { color: colors.primary }]} numberOfLines={1}>
+                  {sm.title || sm.slug}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* ===== 3. Action Bar ===== */}
         <View style={[styles.actionBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
@@ -546,6 +599,10 @@ function TrailDetailScreenInner() {
                 </Text>
               </View>
             )}
+            {/* Invisible spacer balances odd item counts so the last
+                row doesn't collapse weirdly to the left under
+                justifyContent: space-between. */}
+            <View style={{ width: '48.5%', height: 0 }} />
           </View>
           {(trail as any).transport_access && (
             <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
@@ -616,9 +673,9 @@ function TrailDetailScreenInner() {
               spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
           ) : (
-            <View style={styles.mapFallback}>
+            <View style={[styles.mapFallback, { backgroundColor: sectionBg }]}>
               <Text style={{ fontSize: 32 }}>{'\u{1F5FA}️'}</Text>
-              <Text style={{ color: '#8B95A1', fontSize: 13, marginTop: 6 }}>
+              <Text style={{ color: textTertColor, fontSize: 13, marginTop: 6 }}>
                 {trail?.region || ''} {trail?.country || ''}
               </Text>
             </View>
@@ -784,8 +841,8 @@ function TrailDetailScreenInner() {
           {/* Review List */}
           {safeReviews.length === 0 && !showReviewForm && (
             <View style={styles.emptyReviews}>
-              <Text style={styles.emptyReviewsText}>{'아직 리뷰가 없습니다'}</Text>
-              <Text style={styles.emptyReviewsSub}>{'첫 번째 리뷰를 작성해보세요'}</Text>
+              <Text style={[styles.emptyReviewsText, { color: textSecColor }]}>{'아직 리뷰가 없습니다'}</Text>
+              <Text style={[styles.emptyReviewsSub, { color: textTertColor }]}>{'첫 번째 리뷰를 작성해보세요'}</Text>
             </View>
           )}
           {safeReviews.slice(0, 5).map((review: Review) => (
@@ -1028,6 +1085,63 @@ const styles = StyleSheet.create({
   },
 
   // ── Quick Stats ────────────────────────────────────────
+  // ── Hero stats card (replaces statsLine) ─────────
+  heroStatsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 18,
+    backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F2F4F6',
+  },
+  heroStatsCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+  },
+  heroStatValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  heroStatLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  heroStatsDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 36,
+  },
+  heroDifficultyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  heroDifficultyText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Series chips above action bar
+  seriesMembershipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  seriesMembershipChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  seriesMembershipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   statsLine: {
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -1494,13 +1608,19 @@ const styles = StyleSheet.create({
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    rowGap: 10,
   },
   detailItem: {
-    width: '45%',
+    // Two-column grid: 48% leaves a clean gutter when justifyContent
+    // is space-between. Last item on an odd row stays left-anchored
+    // by design (we add an invisible spacer below to balance it).
+    width: '48.5%',
     backgroundColor: '#F7F8FA',
     borderRadius: 14,
     padding: 14,
+    minHeight: 64,
+    justifyContent: 'center',
   },
   detailLabel: {
     fontSize: 11,

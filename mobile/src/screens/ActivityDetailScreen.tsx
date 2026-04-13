@@ -734,7 +734,7 @@ export default function ActivityDetailScreen() {
             <View style={styles.section}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                 <Feather name="flag" size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { marginLeft: 6, marginBottom: 0 }]}>거리 구간</Text>
+                <Text style={[styles.sectionTitle, { color: textColor, marginLeft: 6, marginBottom: 0 }]}>거리 구간</Text>
               </View>
               <View style={styles.distanceMarkersRow}>
                 {Array.from({ length: Math.floor(distance) }, (_, i) => i + 1).slice(0, 10).map((km) => (
@@ -742,12 +742,12 @@ export default function ActivityDetailScreen() {
                     <View style={styles.distanceMarkerDot}>
                       <Text style={styles.distanceMarkerText}>{km}</Text>
                     </View>
-                    <Text style={styles.distanceMarkerLabel}>km</Text>
+                    <Text style={[styles.distanceMarkerLabel, { color: textTertColor }]}>km</Text>
                   </View>
                 ))}
                 <View style={styles.distanceMarkerFinish}>
                   <Feather name="flag" size={14} color="#FF4B4B" />
-                  <Text style={styles.distanceMarkerLabel}>{distance.toFixed(1)}km</Text>
+                  <Text style={[styles.distanceMarkerLabel, { color: textTertColor }]}>{distance.toFixed(1)}km</Text>
                 </View>
               </View>
             </View>
@@ -772,8 +772,8 @@ export default function ActivityDetailScreen() {
               <View style={styles.section}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                   <Feather name="trending-up" size={16} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, { marginLeft: 6, marginBottom: 0 }]}>고도 프로필</Text>
-                  <Text style={{ fontSize: 12, color: '#8B95A1', marginLeft: 8 }}>
+                  <Text style={[styles.sectionTitle, { color: textColor, marginLeft: 6, marginBottom: 0 }]}>고도 프로필</Text>
+                  <Text style={{ fontSize: 12, color: textTertColor, marginLeft: 8 }}>
                     {Math.round(minElev)}m ~ {Math.round(maxElev)}m
                   </Text>
                 </View>
@@ -803,94 +803,104 @@ export default function ActivityDetailScreen() {
           {/* 3. Photos section */}
           {taggedPhotos.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>사진 ({taggedPhotos.length})</Text>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>사진 ({taggedPhotos.length})</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {taggedPhotos.map((photo: any, idx: number) => (
-                  <View key={idx} style={styles.photoItem}>
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.photoItem}
+                    activeOpacity={0.85}
+                    onPress={() => setPhotoViewer({ visible: true, index: idx })}
+                    accessibilityLabel={`사진 ${idx + 1} 풀스크린 보기`}>
                     <Image
                       source={{ uri: photo.uri }}
                       style={styles.photoThumb}
                       resizeMode="cover"
                     />
-                    <Text style={styles.photoLocation} numberOfLines={1}>
+                    <Text style={[styles.photoLocation, { color: textColor }]} numberOfLines={1}>
                       {photo.title || `사진 ${idx + 1}`}
                     </Text>
                     {photo.lat != null && photo.lng != null && (
-                      <Text style={styles.photoCoords}>
+                      <Text style={[styles.photoCoords, { color: textTertColor }]}>
                         {'\uD83D\uDCCD'} {photo.lat.toFixed(4)}, {photo.lng.toFixed(4)}
                       </Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
           )}
 
-          {/* 4. Spots section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>스팟 ({walkSpots.length})</Text>
-            {walkSpots.map((spot: any, idx: number) => (
-              <View key={idx} style={styles.spotItem}>
-                <View style={[styles.spotDot, { backgroundColor: SPOT_COLORS[spot.type] || '#888780' }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.spotName}>{spot.name} <Text style={styles.spotTypeLabel}>{SPOT_LABELS[spot.type] || spot.type}</Text></Text>
-                  {spot.description ? <Text style={styles.spotDesc}>{spot.description}</Text> : null}
-                  {spot.lat != null && spot.lng != null && (
-                    <Text style={styles.spotCoords}>
-                      {'\uD83D\uDCCD'} {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
+          {/* 4. Spots section — only when there's at least one spot */}
+          {walkSpots.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>스팟 ({walkSpots.length})</Text>
+              {walkSpots.map((spot: any, idx: number) => (
+                <View key={idx} style={[styles.spotItem, { backgroundColor: cardBg, borderColor }]}>
+                  <View style={[styles.spotDot, { backgroundColor: SPOT_COLORS[spot.type] || '#888780' }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.spotName, { color: textColor }]}>
+                      {spot.name}{' '}
+                      <Text style={[styles.spotTypeLabel, { color: textTertColor }]}>{SPOT_LABELS[spot.type] || spot.type}</Text>
                     </Text>
-                  )}
+                    {spot.description ? <Text style={[styles.spotDesc, { color: textSecColor }]}>{spot.description}</Text> : null}
+                    {spot.lat != null && spot.lng != null && (
+                      <Text style={[styles.spotCoords, { color: textTertColor }]}>
+                        {'\uD83D\uDCCD'} {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
 
           {/* === Action buttons (unified) === */}
           <View style={styles.actionGroup}>
-            <Text style={styles.actionGroupTitle}>활동 관리</Text>
+            <Text style={[styles.actionGroupTitle, { color: textColor }]}>활동 관리</Text>
             <View style={styles.actionGrid}>
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[styles.actionCard, { backgroundColor: cardBg, borderColor }]}
                 activeOpacity={0.7}
                 onPress={() => setShowResumeConfirm(true)}>
                 <View style={[styles.actionIconCircle, { backgroundColor: colors.primary + '15' }]}>
                   <Feather name="play-circle" size={20} color={colors.primary} />
                 </View>
-                <Text style={styles.actionCardTitle}>이어서 걷기</Text>
-                <Text style={styles.actionCardDesc}>이 기록에서 계속</Text>
+                <Text style={[styles.actionCardTitle, { color: textColor }]}>이어서 걷기</Text>
+                <Text style={[styles.actionCardDesc, { color: textTertColor }]}>이 기록에서 계속</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[styles.actionCard, { backgroundColor: cardBg, borderColor }]}
                 activeOpacity={0.7}
                 onPress={openMergeModal}>
                 <View style={[styles.actionIconCircle, { backgroundColor: '#60A5FA15' }]}>
                   <Feather name="git-merge" size={20} color="#60A5FA" />
                 </View>
-                <Text style={styles.actionCardTitle}>기록 합치기</Text>
-                <Text style={styles.actionCardDesc}>다른 활동과 병합</Text>
+                <Text style={[styles.actionCardTitle, { color: textColor }]}>기록 합치기</Text>
+                <Text style={[styles.actionCardDesc, { color: textTertColor }]}>다른 활동과 병합</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[styles.actionCard, { backgroundColor: cardBg, borderColor }]}
                 activeOpacity={0.7}
                 onPress={() => setShowSpotModal(true)}>
                 <View style={[styles.actionIconCircle, { backgroundColor: '#F59E0B15' }]}>
                   <Feather name="map-pin" size={20} color="#F59E0B" />
                 </View>
-                <Text style={styles.actionCardTitle}>스팟 추가</Text>
-                <Text style={styles.actionCardDesc}>장소 등록하기</Text>
+                <Text style={[styles.actionCardTitle, { color: textColor }]}>스팟 추가</Text>
+                <Text style={[styles.actionCardDesc, { color: textTertColor }]}>장소 등록하기</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.actionCard}
+                style={[styles.actionCard, { backgroundColor: cardBg, borderColor }]}
                 activeOpacity={0.7}
                 onPress={() => setCourseExpanded(true)}>
                 <View style={[styles.actionIconCircle, { backgroundColor: '#22C55E15' }]}>
                   <Feather name="share-2" size={20} color="#22C55E" />
                 </View>
-                <Text style={styles.actionCardTitle}>코스 공유</Text>
-                <Text style={styles.actionCardDesc}>경로를 코스로</Text>
+                <Text style={[styles.actionCardTitle, { color: textColor }]}>코스 공유</Text>
+                <Text style={[styles.actionCardDesc, { color: textTertColor }]}>경로를 코스로</Text>
               </TouchableOpacity>
             </View>
           </View>

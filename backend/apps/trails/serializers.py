@@ -127,6 +127,9 @@ class TrailDetailSerializer(serializers.ModelSerializer):
     # on the mobile trail detail. None if nothing recent.
     latest_condition = serializers.SerializerMethodField()
     condition_count = serializers.SerializerMethodField()
+    # Series this trail is a member of — surfaced as chips on the
+    # mobile detail header so users can navigate to the parent series.
+    series = serializers.SerializerMethodField()
 
     class Meta:
         model = Trail
@@ -169,6 +172,17 @@ class TrailDetailSerializer(serializers.ModelSerializer):
 
     def get_condition_count(self, obj):
         return TrailCondition.objects.filter(trail=obj, is_hidden=False).count()
+
+    def get_series(self, obj):
+        # Surface the series this trail belongs to as compact chips.
+        # Up to 3 to keep the response payload small. Sorted by series
+        # sort_order so the curated featured ones come first.
+        series_qs = (
+            obj.series
+            .order_by("sort_order")
+            .values("id", "slug", "title", "accent_emoji")[:3]
+        )
+        return list(series_qs)
 
 
 class TrailBookmarkSerializer(serializers.ModelSerializer):

@@ -24,9 +24,12 @@ python manage.py sanitize_phone_usernames
 # break the build, because the app is still fully functional without
 # the curated content — so we wrap each in `|| true` and just log.
 echo "=== Seeding official trails (idempotent) ==="
-python manage.py seed_official_trails --update || echo "seed_official_trails failed — continuing"
+# MORU_DISABLE_REVALIDATE=1 stops the ISR webhook signals from firing
+# 30+ times in a loop during bulk seeding. The first real trail edit
+# after deploy will revalidate naturally via the signals.
+MORU_DISABLE_REVALIDATE=1 python manage.py seed_official_trails --update || echo "seed_official_trails failed — continuing"
 
 echo "=== Seeding trail series (idempotent) ==="
-python manage.py seed_trail_series || echo "seed_trail_series failed — continuing"
+MORU_DISABLE_REVALIDATE=1 python manage.py seed_trail_series || echo "seed_trail_series failed — continuing"
 
 echo "=== Build complete ==="

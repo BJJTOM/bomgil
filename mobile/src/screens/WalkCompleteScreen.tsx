@@ -13,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useT } from '../i18n';
@@ -71,6 +72,7 @@ function WalkCompleteInner() {
   const route = useRoute<any>();
   const { isDark } = useThemeStore();
   const t = useT();
+  const qc = useQueryClient();
 
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
@@ -118,7 +120,21 @@ function WalkCompleteInner() {
         const mt = await AsyncStorage.getItem('walk_matched_trails');
         if (mt) {
           const arr = JSON.parse(mt);
-          if (Array.isArray(arr)) setMatchedTrails(arr);
+          if (Array.isArray(arr)) {
+            setMatchedTrails(arr);
+            // Invalidate any cached trail/series data so the next
+            // time the user opens the matched trail or its series,
+            // they see their new completion reflected in is_completed
+            // and the series progress bar.
+            for (const m of arr) {
+              if (m?.trail_id) {
+                qc.invalidateQueries({ queryKey: ['trail', m.trail_id] });
+              }
+            }
+            qc.invalidateQueries({ queryKey: ['my-completions'] });
+            qc.invalidateQueries({ queryKey: ['trail-series-list'] });
+            qc.invalidateQueries({ queryKey: ['trail-series'] });
+          }
           // Consume the key so the same matches don't show up on the
           // next walk completion.
           AsyncStorage.removeItem('walk_matched_trails').catch(() => {});

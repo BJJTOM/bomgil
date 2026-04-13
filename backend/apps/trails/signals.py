@@ -41,6 +41,10 @@ def _fire_revalidate(tags: list[str]) -> None:
     """Fire the webhook in a background thread so the save returns fast."""
     if not tags or not REVALIDATE_SECRET:
         return
+    # Bulk operations like seed commands set MORU_DISABLE_REVALIDATE=1
+    # to avoid firing 30+ webhooks in a tight loop during deploy.
+    if os.environ.get("MORU_DISABLE_REVALIDATE"):
+        return
 
     def _run():
         try:

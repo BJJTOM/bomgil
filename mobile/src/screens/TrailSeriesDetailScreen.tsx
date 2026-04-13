@@ -129,7 +129,7 @@ export default function TrailSeriesDetailScreen() {
               <View style={styles.statCol}>
                 <Feather name="map" size={14} color={textTertColor} />
                 <Text style={[styles.statValue, { color: textColor }]}>
-                  {(data as any)?.total_distance_km?.toFixed(1) || 0}
+                  {(Number((data as any)?.total_distance_km) || 0).toFixed(1)}
                   <Text style={styles.statUnit}>km</Text>
                 </Text>
                 <Text style={[styles.statLabel, { color: textTertColor }]}>총 거리</Text>
@@ -215,7 +215,7 @@ export default function TrailSeriesDetailScreen() {
                     style={[styles.segmentMeta, { color: textTertColor }]}
                     numberOfLines={1}>
                     {seg.trail.region}
-                    {seg.trail.distance_km ? ` · ${Number(seg.trail.distance_km).toFixed(1)}km` : ''}
+                    {seg.trail.distance_km ? ` · ${(Number(seg.trail.distance_km) || 0).toFixed(1)}km` : ''}
                     {seg.trail.estimated_minutes ? ` · ${Math.round(seg.trail.estimated_minutes / 60)}h${seg.trail.estimated_minutes % 60}m` : ''}
                   </Text>
                 </View>

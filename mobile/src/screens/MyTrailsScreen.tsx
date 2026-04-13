@@ -57,7 +57,7 @@ export default function MyTrailsScreen() {
   };
 
   const renderItem = ({ item }: { item: Trail }) => {
-    const distStr = item.distance_km ? `${parseFloat(item.distance_km).toFixed(1)}km` : '';
+    const distStr = item.distance_km ? `${(parseFloat(String(item.distance_km)) || 0).toFixed(1)}km` : '';
     const diffLabel = item.difficulty === 'easy' ? '쉬움' : item.difficulty === 'moderate' ? '보통' : '어려움';
 
     return (

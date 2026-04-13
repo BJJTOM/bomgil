@@ -153,15 +153,19 @@ function WalkCompleteInner() {
       ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
       : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
+  // Defensive numeric coercion. Nav params come in as strings (the
+  // platform serializes them); a missing param becomes undefined and
+  // parseFloat/parseInt(undefined) returns NaN, which propagates into
+  // every downstream `.toFixed()` and renders as the literal string
+  // "NaN". `|| 0` short-circuits NaN to a safe zero.
   const distNum =
-    typeof distance === 'string' ? parseFloat(distance) : distance;
-  const stepsNum = typeof steps === 'string' ? parseInt(steps) : steps;
+    (typeof distance === 'string' ? parseFloat(distance) : Number(distance)) || 0;
+  const stepsNum =
+    (typeof steps === 'string' ? parseInt(steps, 10) : Number(steps)) || 0;
   const caloriesNum =
-    typeof calories === 'string' ? parseInt(calories) : calories;
+    (typeof calories === 'string' ? parseInt(calories, 10) : Number(calories)) || 0;
   const eleGain =
-    typeof elevationGain === 'string'
-      ? parseInt(elevationGain)
-      : elevationGain;
+    (typeof elevationGain === 'string' ? parseInt(elevationGain, 10) : Number(elevationGain)) || 0;
   const eleLoss =
     typeof elevationLoss === 'string'
       ? parseInt(elevationLoss)

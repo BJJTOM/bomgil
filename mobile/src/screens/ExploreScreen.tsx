@@ -622,7 +622,7 @@ export default function ExploreScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.suggestCardTitle, { color: textColor }]} numberOfLines={1}>{trail.title}</Text>
                           <Text style={[styles.suggestCardMeta, { color: textTertColor }]} numberOfLines={1}>
-                            {trail.region ? trail.region : ''}{trail.distance_km ? ` · ${parseFloat(trail.distance_km).toFixed(1)}km` : ''}
+                            {trail.region ? trail.region : ''}{trail.distance_km ? ` · ${(parseFloat(String(trail.distance_km)) || 0).toFixed(1)}km` : ''}
                           </Text>
                         </View>
                         <Feather name="chevron-right" size={16} color={textTertColor} />

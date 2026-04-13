@@ -81,7 +81,7 @@ export default function RankingsScreen() {
             {item.title}
           </Text>
           <Text style={styles.rankMeta}>
-            {item.region}{' · '}{item.distance_km ? `${parseFloat(String(item.distance_km)).toFixed(1)}km` : '-'}
+            {item.region}{' · '}{item.distance_km ? `${(parseFloat(String(item.distance_km)) || 0).toFixed(1)}km` : '-'}
           </Text>
           <View style={styles.rankStats}>
             <Text style={styles.rankLikes}>{'❤️'} {item.like_count}</Text>

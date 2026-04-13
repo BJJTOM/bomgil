@@ -329,7 +329,7 @@ export default function ActivityScreen() {
                   });
               const sourceInfo = SOURCE_LABELS[activity.source];
               const distanceStr = activity.distance_km
-                ? `${parseFloat(activity.distance_km).toFixed(1)}km`
+                ? `${(parseFloat(String(activity.distance_km || '0')) || 0).toFixed(1)}km`
                 : '';
               const durationStr = formatDuration(activity.duration_minutes);
               const iconColor = sourceInfo?.color || '#9CA3AF';

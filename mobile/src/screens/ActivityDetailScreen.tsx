@@ -1105,7 +1105,7 @@ export default function ActivityDetailScreen() {
                         <Text style={styles.mergeItemTitle}>{item.title || '걷기 기록'}</Text>
                         <Text style={styles.mergeItemMeta}>
                           {time ? `${time} · ` : ''}
-                          {item.distance_km ? `${parseFloat(item.distance_km).toFixed(2)}km` : ''}
+                          {item.distance_km ? `${(parseFloat(String(item.distance_km)) || 0).toFixed(2)}km` : ''}
                           {item.duration_minutes ? ` · ${item.duration_minutes}분` : ''}
                           {item.total_steps ? ` · ${item.total_steps}걸음` : ''}
                         </Text>

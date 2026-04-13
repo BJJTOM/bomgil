@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import F
+from django.db.models import Count, F, Sum
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -285,15 +285,32 @@ class TrailViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def nearby(self, request):
-        lat = request.query_params.get("lat")
-        lng = request.query_params.get("lng")
-        radius_km = request.query_params.get("radius_km", "10")
-        if not lat or not lng:
+        from decimal import InvalidOperation
+        lat_raw = request.query_params.get("lat")
+        lng_raw = request.query_params.get("lng")
+        radius_raw = request.query_params.get("radius_km", "10")
+        if not lat_raw or not lng_raw:
             return Response(
                 {"error": "lat and lng are required"}, status=status.HTTP_400_BAD_REQUEST
             )
-        lat, lng = Decimal(lat), Decimal(lng)
-        radius = Decimal(radius_km)
+        try:
+            lat = Decimal(lat_raw)
+            lng = Decimal(lng_raw)
+            radius = Decimal(radius_raw)
+        except (InvalidOperation, TypeError, ValueError):
+            return Response(
+                {"error": "lat, lng, radius_km must be valid numbers"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Sanity-check ranges before issuing a potentially massive
+        # bounding-box query. -90..90 / -180..180 for coords;
+        # radius capped at 100 km to keep response size reasonable.
+        if not (Decimal("-90") <= lat <= Decimal("90")):
+            return Response({"error": "lat out of range"}, status=status.HTTP_400_BAD_REQUEST)
+        if not (Decimal("-180") <= lng <= Decimal("180")):
+            return Response({"error": "lng out of range"}, status=status.HTTP_400_BAD_REQUEST)
+        if radius <= 0 or radius > Decimal("100"):
+            radius = Decimal("10")
         degree_approx = radius / Decimal("111")
         qs = Trail.objects.filter(
             status="approved",
@@ -355,7 +372,13 @@ class TrailSeriesViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return TrailSeries.objects.prefetch_related("trails").all()
+        # Annotate aggregate stats on the queryset so the serializer
+        # methods don't have to issue per-series queries (was N+1).
+        return TrailSeries.objects.prefetch_related("trails").annotate(
+            _trail_count=Count("trails", distinct=True),
+            _total_distance=Sum("trails__distance_km"),
+            _total_minutes=Sum("trails__estimated_minutes"),
+        ).all()
 
     def get_serializer_class(self):
         if self.action == "retrieve":

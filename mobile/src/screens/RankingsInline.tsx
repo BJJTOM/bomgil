@@ -119,7 +119,7 @@ export default function RankingsInline() {
                 </View>
                 <View style={styles.rankContent}>
                   <Text style={styles.rankTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.rankMeta}>{item.region}{item.distance_km ? ` · ${parseFloat(String(item.distance_km)).toFixed(1)}km` : ''}</Text>
+                  <Text style={styles.rankMeta}>{item.region}{item.distance_km ? ` · ${(parseFloat(String(item.distance_km)) || 0).toFixed(1)}km` : ''}</Text>
                   <View style={styles.rankStats}>
                     <Feather name="heart" size={12} color="#FF4B4B" />
                     <Text style={styles.rankStatText}>{item.like_count}</Text>

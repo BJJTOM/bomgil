@@ -349,9 +349,18 @@ class ActivityMergeView(APIView):
                     finished_at = a.finished_at
 
         first = activities[0]
+        # Pick the most common trail across the merged activities;
+        # if every activity has a different (or null) trail, fall back
+        # to None. Using `first.trail` blindly was wrong when the
+        # source activities targeted different trails.
+        from collections import Counter
+        trail_counts = Counter(
+            (a.trail_id for a in activities if a.trail_id is not None)
+        )
+        merged_trail_id = trail_counts.most_common(1)[0][0] if trail_counts else None
         merged = ActivityTrack.objects.create(
             user=request.user,
-            trail=first.trail,
+            trail_id=merged_trail_id,
             source=first.source,
             title=first.title or '합친 기록',
             started_at=started_at,

@@ -85,7 +85,7 @@ def _bulk_completed_set(context):
 
 
 class TrailListSerializer(serializers.ModelSerializer):
-    author = UserPublicSerializer(read_only=True)
+    author = UserPublicSerializer(read_only=True, allow_null=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
     is_bookmarked = serializers.SerializerMethodField()
@@ -116,7 +116,9 @@ class TrailListSerializer(serializers.ModelSerializer):
 
 
 class TrailDetailSerializer(serializers.ModelSerializer):
-    author = UserPublicSerializer(read_only=True)
+    # allow_null because Trail.author is SET_NULL — a user account
+    # deletion leaves the trail intact with author=None.
+    author = UserPublicSerializer(read_only=True, allow_null=True)
     tags = TagSerializer(many=True, read_only=True)
     is_liked = serializers.SerializerMethodField()
     is_bookmarked = serializers.SerializerMethodField()
@@ -283,12 +285,19 @@ class TrailSeriesListSerializer(serializers.ModelSerializer):
         return round((done / total) * 100)
 
     def get_total_distance_km(self, obj):
+        # Prefer the annotation set by the viewset (single SUM query).
+        # Fallback to per-instance calculation if used outside the
+        # default queryset.
+        if hasattr(obj, "_total_distance") and obj._total_distance is not None:
+            return round(float(obj._total_distance), 1)
         total = sum(
             float(t.distance_km or 0) for t in obj.trails.only("distance_km")
         )
         return round(total, 1)
 
     def get_total_minutes(self, obj):
+        if hasattr(obj, "_total_minutes") and obj._total_minutes is not None:
+            return int(obj._total_minutes)
         return sum(int(t.estimated_minutes or 0) for t in obj.trails.only("estimated_minutes"))
 
     def get_total_completers(self, obj):

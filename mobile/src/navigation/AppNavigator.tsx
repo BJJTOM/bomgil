@@ -67,6 +67,9 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import FollowListScreen from '../screens/FollowListScreen';
 import PermissionsScreen from '../screens/PermissionsScreen';
 import PhoneAuthScreen from '../screens/PhoneAuthScreen';
+import CompanionsScreen from '../screens/CompanionsScreen';
+import WalkPlanCreateScreen from '../screens/WalkPlanCreateScreen';
+import MyWalkPlansScreen from '../screens/MyWalkPlansScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -269,6 +272,9 @@ export default function AppNavigator() {
         <Stack.Screen name="FollowList" component={FollowListScreen} />
         <Stack.Screen name="Permissions" component={PermissionsScreen} />
         <Stack.Screen name="PhoneAuth" component={PhoneAuthScreen} />
+        <Stack.Screen name="Companions" component={CompanionsScreen} />
+        <Stack.Screen name="WalkPlanCreate" component={WalkPlanCreateScreen} />
+        <Stack.Screen name="MyWalkPlans" component={MyWalkPlansScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

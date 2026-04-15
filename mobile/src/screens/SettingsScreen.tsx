@@ -187,6 +187,8 @@ export default function SettingsScreen() {
               onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
             },
             { icon: 'map', label: t.activity.management, onPress: () => navigation.navigate('MyTrails') },
+            { icon: 'users', label: '동행 찾기', onPress: () => navigation.navigate('Companions') },
+            { icon: 'calendar', label: '내 일정', onPress: () => navigation.navigate('MyWalkPlans') },
             { icon: 'heart', label: t.profile.likes, onPress: () => navigation.navigate('LikedTrails') },
             { icon: 'bookmark', label: '저장한 코스', onPress: () => navigation.navigate('BookmarkedTrails') },
             { icon: 'flag', label: '시리즈 도전', onPress: () => navigation.navigate('TrailSeriesList') },

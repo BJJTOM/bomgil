@@ -413,3 +413,31 @@ export interface ChallengeParticipant {
   completed_at: string | null;
   joined_at: string;
 }
+
+export type WalkPlanPace = 'slow' | 'moderate' | 'fast';
+export type CompanionStatus = 'open' | 'matched' | 'closed' | 'completed';
+
+export interface WalkPlan {
+  id: number;
+  user: User;
+  trail: Trail | null;
+  planned_date: string;
+  planned_time: string | null;
+  pace: WalkPlanPace;
+  max_companions: number;
+  accepted_count: number;
+  preferred_gender: 'any' | 'male' | 'female';
+  preferred_age_range: 'any' | '20s' | '30s' | '40s' | '50s_plus';
+  message: string;
+  companion_status: CompanionStatus;
+  created_at: string;
+}
+
+export interface CompanionRequest {
+  id: number;
+  requester: User;
+  walk_plan: number;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+}

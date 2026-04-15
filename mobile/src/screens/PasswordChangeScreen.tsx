@@ -17,10 +17,12 @@ import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import api from '../api/client';
+import { useT } from '../i18n';
 
 export default function PasswordChangeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const t = useT();
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -55,8 +57,8 @@ export default function PasswordChangeScreen() {
         old_password: oldPassword,
         new_password: newPassword,
       });
-      Alert.alert('완료', '비밀번호가 변경되었습니다.', [
-        { text: '확인', onPress: () => navigation.goBack() },
+      Alert.alert(t.common.done, t.password.changeComplete, [
+        { text: t.common.confirm, onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
       const msg =
@@ -81,7 +83,7 @@ export default function PasswordChangeScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Feather name="arrow-left" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>비밀번호 변경</Text>
+          <Text style={styles.headerTitle}>{t.password.changeTitle}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -95,7 +97,7 @@ export default function PasswordChangeScreen() {
           </View>
 
           <Text style={styles.description}>
-            보안을 위해 현재 비밀번호를 확인한 후 새 비밀번호를 설정합니다.
+            {t.password.changeDesc}
           </Text>
 
           {/* Current password */}
@@ -174,7 +176,7 @@ export default function PasswordChangeScreen() {
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.submitBtnText}>비밀번호 변경</Text>
+              <Text style={styles.submitBtnText}>{t.password.changeTitle}</Text>
             )}
           </TouchableOpacity>
         </ScrollView>

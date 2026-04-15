@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
+import { useT } from '../i18n';
 
 interface PermissionItem {
   name: string;
@@ -15,13 +16,14 @@ interface PermissionItem {
 export default function PermissionsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const t = useT();
   const [permissions, setPermissions] = useState<PermissionItem[]>([
-    { name: '위치 (GPS)', icon: 'map-pin', desc: '걷기 기록, 주변 코스 검색', status: 'checking' },
-    { name: '백그라운드 위치', icon: 'navigation', desc: '걷기 중 앱 전환 시 기록 유지', status: 'checking' },
-    { name: '카메라', icon: 'camera', desc: '걷기 중 사진 촬영', status: 'checking' },
-    { name: '사진/미디어', icon: 'image', desc: '이미지 첨부', status: 'checking' },
-    { name: '신체 활동', icon: 'activity', desc: '걸음수 측정', status: 'checking' },
-    { name: '알림', icon: 'bell', desc: '푸시 알림 수신', status: 'checking' },
+    { name: t.permissions.locationName, icon: 'map-pin', desc: t.permissions.locationDesc, status: 'checking' },
+    { name: t.permissions.bgLocationName, icon: 'navigation', desc: t.permissions.bgLocationDesc, status: 'checking' },
+    { name: t.permissions.cameraName, icon: 'camera', desc: t.permissions.cameraDesc, status: 'checking' },
+    { name: '\uC0AC\uC9C4/\uBBF8\uB514\uC5B4', icon: 'image', desc: '\uC774\uBBF8\uC9C0 \uCCA8\uBD80', status: 'checking' },
+    { name: t.permissions.activityName, icon: 'activity', desc: t.permissions.activityDesc, status: 'checking' },
+    { name: t.permissions.notificationName, icon: 'bell', desc: t.permissions.notificationDesc, status: 'checking' },
   ]);
 
   useEffect(() => {
@@ -81,8 +83,7 @@ export default function PermissionsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <Text style={styles.sectionDesc}>
-          모루 앱이 사용하는 권한 목록입니다.{'\n'}
-          거부된 권한은 설정에서 변경할 수 있습니다.
+          {t.permissions.deniedMsg}
         </Text>
 
         {permissions.map((perm, i) => (
@@ -107,7 +108,7 @@ export default function PermissionsScreen() {
           onPress={() => Linking.openSettings()}
           activeOpacity={0.7}>
           <Feather name="settings" size={16} color={colors.primary} />
-          <Text style={styles.settingsBtnText}>시스템 설정에서 권한 변경</Text>
+          <Text style={styles.settingsBtnText}>{t.permissions.settingsBtn}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

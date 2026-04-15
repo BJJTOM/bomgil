@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    backdropFilter: 'blur(8px)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -235,7 +234,6 @@ const styles = StyleSheet.create({
   },
   statPill: {
     backgroundColor: 'rgba(0,0,0,0.6)',
-    backdropFilter: 'blur(12px)',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 10,

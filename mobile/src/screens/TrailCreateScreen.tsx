@@ -9,10 +9,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+import { useT } from '../i18n';
 
 export default function TrailCreateScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const t = useT();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -26,13 +28,13 @@ export default function TrailCreateScreen() {
           activeOpacity={0.7}>
           <Text style={styles.backBtnText}>{'←'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>코스 만들기</Text>
+        <Text style={styles.headerTitle}>{t.trail.createTitle}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.subtitle}>어떻게 코스를 만들까요?</Text>
+        <Text style={styles.subtitle}>{t.trail.createSubtitle}</Text>
 
         {/* Card 1: Walk & Record */}
         <TouchableOpacity
@@ -43,9 +45,9 @@ export default function TrailCreateScreen() {
             <Text style={styles.cardIcon}>{'\uD83D\uDEB6'}</Text>
           </View>
           <View style={styles.cardTextWrap}>
-            <Text style={styles.cardTitle}>걸으면서 기록하기</Text>
+            <Text style={styles.cardTitle}>{t.trail.recordWalking}</Text>
             <Text style={styles.cardDesc}>
-              GPS로 경로를 자동 기록하고{'\n'}걷는 중에 스팟도 추가해요
+              {t.trail.recordWalkingDesc}
             </Text>
           </View>
           <Text style={styles.cardArrow}>{'›'}</Text>
@@ -60,9 +62,9 @@ export default function TrailCreateScreen() {
             <Text style={styles.cardIcon}>{'🗺'}</Text>
           </View>
           <View style={styles.cardTextWrap}>
-            <Text style={styles.cardTitle}>지도에서 경로 만들기</Text>
+            <Text style={styles.cardTitle}>{t.trail.drawOnMap}</Text>
             <Text style={styles.cardDesc}>
-              지도를 탭해서 경유지를 찍으면{'\n'}AI가 실제 도보 경로를 자동 생성
+              {t.trail.drawOnMapDesc}
             </Text>
           </View>
           <Text style={styles.cardArrow}>{'›'}</Text>
@@ -88,9 +90,9 @@ export default function TrailCreateScreen() {
             <Text style={styles.cardIcon}>{'📝'}</Text>
           </View>
           <View style={styles.cardTextWrap}>
-            <Text style={styles.cardTitle}>직접 입력하기</Text>
+            <Text style={styles.cardTitle}>{t.trail.manualEntry}</Text>
             <Text style={styles.cardDesc}>
-              코스 정보를 직접 입력해서{'\n'}나만의 코스를 등록해요
+              {t.trail.manualEntryDesc}
             </Text>
           </View>
           <Text style={styles.cardArrow}>{'›'}</Text>

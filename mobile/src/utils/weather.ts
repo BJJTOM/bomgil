@@ -39,7 +39,11 @@ export async function fetchWeatherAt(
       `https://api.openweathermap.org/data/2.5/weather` +
       `?lat=${lat}&lon=${lng}` +
       `&units=metric&lang=${lang}&appid=${OWM_API_KEY}`;
-    const res = await fetch(url, { method: 'GET' });
+    // 8s cap — weather is best-effort; don't make the walk startup wait.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { method: 'GET', signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
     const w = Array.isArray(data?.weather) && data.weather[0] ? data.weather[0] : null;

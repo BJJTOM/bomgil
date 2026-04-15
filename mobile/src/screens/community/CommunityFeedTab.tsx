@@ -17,6 +17,7 @@ import { colors } from '../../theme/colors';
 import { WalkStory } from '../../types';
 import { useAuthStore } from '../../stores/auth';
 import { FadeInView } from '../../components/FadeInView';
+import { useT } from '../../i18n';
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; bg: string; text: string }> = {
   happy: { emoji: '😊', label: '행복해요', bg: '#FFFBEB', text: '#B45309' },
@@ -73,6 +74,7 @@ const timeAgo = (dateStr: string) => {
 };
 
 export default function CommunityFeedTab() {
+  const t = useT();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
@@ -112,7 +114,7 @@ export default function CommunityFeedTab() {
           onPress={() => navigation.navigate('StoryDetail', { id: item.id })}>
           <View style={styles.authorRow}>
             <View style={styles.avatar}>
-              {item.author.profile_image ? (
+              {item.author?.profile_image ? (
                 <Image source={{ uri: item.author.profile_image }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarFallback}>👤</Text>
@@ -120,8 +122,8 @@ export default function CommunityFeedTab() {
             </View>
             <View style={styles.authorInfo}>
               <View style={styles.authorNameRow}>
-                <Text style={styles.authorName}>{item.author.nickname}</Text>
-                {(item.author as any).is_verified && (
+                <Text style={styles.authorName}>{item.author?.nickname || '탈퇴한 사용자'}</Text>
+                {(item.author as any)?.is_verified && (
                   <View style={styles.verifiedBadge}><Text style={styles.verifiedCheck}>✓</Text></View>
                 )}
                 {mood && (
@@ -201,7 +203,7 @@ export default function CommunityFeedTab() {
           <View style={[styles.loadingDot, { opacity: 0.8 }]} />
           <View style={[styles.loadingDot, { opacity: 1 }]} />
         </View>
-        <Text style={styles.loadingText}>로딩 중...</Text>
+        <Text style={styles.loadingText}>{t.common.loading}</Text>
       </View>
     );
   }

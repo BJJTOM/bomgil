@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
@@ -13,7 +13,14 @@ import {
   StatusBar,
   Image,
   KeyboardAvoidingView,
+  PermissionsAndroid,
+  Linking,
+  Modal,
+  Dimensions,
+  BackHandler,
 } from 'react-native';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -22,6 +29,8 @@ import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { colors } from '../theme/colors';
 import SafeMapView from '../components/SafeMapView';
+import PrettyAlert, { PrettyAlertType } from '../components/PrettyAlert';
+import { navParamCache } from '../utils/navParamCache';
 
 const API_URL = 'https://api.moruwalk.com/api/v1';
 
@@ -67,6 +76,54 @@ const SPOT_TYPE_COLORS: Record<string, string> = {
   '전망': '#EF9F27',
 };
 
+// Request runtime permissions for camera / media library on Android.
+// react-native-image-picker does NOT automatically request these, so on
+// Android 13+ launchCamera / launchImageLibrary silently fail with
+// "permission" errorCode unless we request first.
+async function ensureMediaPermissions(kind: 'camera' | 'library'): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    if (kind === 'camera') {
+      const res = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: '카메라 권한',
+          message: '사진을 촬영하려면 카메라 권한이 필요해요.',
+          buttonPositive: '허용',
+          buttonNegative: '취소',
+        },
+      );
+      return res === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    // Library — Android 13+ uses READ_MEDIA_IMAGES, older uses READ_EXTERNAL_STORAGE
+    const perm =
+      Number(Platform.Version) >= 33
+        ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+        : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+    const res = await PermissionsAndroid.request(perm, {
+      title: '사진 권한',
+      message: '갤러리에서 사진을 선택하려면 권한이 필요해요.',
+      buttonPositive: '허용',
+      buttonNegative: '취소',
+    });
+    return res === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
+function showPermissionDeniedAlert(kind: 'camera' | 'library') {
+  const label = kind === 'camera' ? '카메라' : '사진';
+  Alert.alert(
+    `${label} 권한이 필요해요`,
+    '설정에서 권한을 허용해주세요.',
+    [
+      { text: '취소', style: 'cancel' },
+      { text: '설정 열기', onPress: () => Linking.openSettings().catch(() => {}) },
+    ],
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -92,17 +149,33 @@ export default function TrailPublishScreen() {
   const route = useRoute<any>();
 
   const {
-    pathData = [],
+    pathData: directPathData = [],
     distance: autoDistance = 0,
     duration: autoDuration = 0,
     elevationGain: autoElevation = 0,
-    spots: initialSpots = [],
+    spots: directInitialSpots = [],
     startLat = 0,
     startLng = 0,
     endLat = 0,
     endLng = 0,
     manualMode = false,
+    _cacheKey,
   } = route.params || {};
+
+  // Pull heavy arrays (pathData, spots) out of the nav-param cache. We only
+  // `peek` because the user may back-navigate to this screen and we still
+  // need the data. The cache auto-expires after 5 minutes so memory is
+  // reclaimed even if the user abandons the flow.
+  const cached = useMemo(
+    () => navParamCache.peek<{ pathData?: any[]; spots?: any[] }>(_cacheKey) || {},
+    [_cacheKey],
+  );
+  const pathData = cached.pathData && cached.pathData.length > 0
+    ? cached.pathData
+    : directPathData;
+  const initialSpots = cached.spots && cached.spots.length > 0
+    ? cached.spots
+    : directInitialSpots;
 
   // Form state
   const [name, setName] = useState('');
@@ -123,6 +196,52 @@ export default function TrailPublishScreen() {
   const [newSpotDesc, setNewSpotDesc] = useState('');
   const [newSpotImageUri, setNewSpotImageUri] = useState('');
   const [newSpotLocation, setNewSpotLocation] = useState('');
+  // Progress text shown on the submit button during uploads (null = idle)
+  const [progressText, setProgressText] = useState<string | null>(null);
+  // Hold post-submit navigation timer so we can cancel on unmount
+  const navTimerRef = useRef<any>(null);
+  useEffect(() => () => {
+    if (navTimerRef.current) clearTimeout(navTimerRef.current);
+  }, []);
+
+  // Pretty validation alert state
+  const [alertState, setAlertState] = useState<{
+    visible: boolean;
+    type: PrettyAlertType;
+    title: string;
+    message?: string;
+  }>({ visible: false, type: 'warning', title: '' });
+  const showPrettyAlert = useCallback((type: PrettyAlertType, title: string, message?: string) => {
+    setAlertState({ visible: true, type, title, message });
+  }, []);
+  const closePrettyAlert = useCallback(() => {
+    setAlertState(s => ({ ...s, visible: false }));
+  }, []);
+
+  // Close the waypoint modal and reset its form state. Pulling this into one
+  // function ensures back-button / cancel / swipe-down all clean up
+  // consistently (previously a stale state was leaving a ghost overlay).
+  const closeSpotModal = useCallback(() => {
+    setShowSpotModal(false);
+    setNewSpotName('');
+    setNewSpotDesc('');
+    setNewSpotType('photo');
+    setNewSpotImageUri('');
+    setNewSpotLocation('');
+  }, []);
+
+  // Intercept the hardware back button while the waypoint modal is open so
+  // that the screen itself doesn't navigate back. Without this, pressing
+  // back closes the Modal via onRequestClose AND pops the screen at the
+  // same time, leaving a ghost overlay half-rendered.
+  useEffect(() => {
+    if (!showSpotModal) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeSpotModal();
+      return true; // consume the event, don't navigate back
+    });
+    return () => sub.remove();
+  }, [showSpotModal, closeSpotModal]);
 
   // Manual mode fields
   const [manualDistance, setManualDistance] = useState('');
@@ -145,16 +264,28 @@ export default function TrailPublishScreen() {
     Alert.alert('커버 사진', '사진을 선택해주세요', [
       {
         text: '카메라',
-        onPress: () => {
-          launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
+        onPress: async () => {
+          const ok = await ensureMediaPermissions('camera');
+          if (!ok) { showPermissionDeniedAlert('camera'); return; }
+          launchCamera({ mediaType: 'photo', quality: 0.7, maxWidth: 1600, maxHeight: 1600, saveToPhotos: false }, (res) => {
+            if (res.errorCode) {
+              Alert.alert('카메라 오류', res.errorMessage || res.errorCode);
+              return;
+            }
             if (res.assets?.[0]) setCoverImage(res.assets[0]);
           });
         },
       },
       {
         text: '갤러리',
-        onPress: () => {
-          launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
+        onPress: async () => {
+          const ok = await ensureMediaPermissions('library');
+          if (!ok) { showPermissionDeniedAlert('library'); return; }
+          launchImageLibrary({ mediaType: 'photo', quality: 0.7, maxWidth: 1600, maxHeight: 1600, selectionLimit: 1 }, (res) => {
+            if (res.errorCode) {
+              Alert.alert('갤러리 오류', res.errorMessage || res.errorCode);
+              return;
+            }
             if (res.assets?.[0]) setCoverImage(res.assets[0]);
           });
         },
@@ -164,7 +295,10 @@ export default function TrailPublishScreen() {
   }, []);
 
   const addSpot = useCallback(() => {
-    if (!newSpotName.trim()) return;
+    if (!newSpotName.trim()) {
+      showPrettyAlert('warning', '장소 이름이 비어있어요', '경유지 이름은 꼭 입력해주세요.');
+      return;
+    }
     setSpots(prev => [...prev, {
       name: newSpotName.trim(),
       type: newSpotType,
@@ -174,13 +308,8 @@ export default function TrailPublishScreen() {
       imageUrl: newSpotImageUri.trim() || undefined,
       location: newSpotLocation.trim() || undefined,
     }]);
-    setNewSpotName('');
-    setNewSpotDesc('');
-    setNewSpotType('photo');
-    setNewSpotImageUri('');
-    setNewSpotLocation('');
-    setShowSpotModal(false);
-  }, [newSpotName, newSpotType, newSpotDesc, newSpotImageUri, newSpotLocation, startLat, startLng]);
+    closeSpotModal();
+  }, [newSpotName, newSpotType, newSpotDesc, newSpotImageUri, newSpotLocation, startLat, startLng, closeSpotModal, showPrettyAlert]);
 
   const removeSpot = useCallback((idx: number) => {
     setSpots(prev => prev.filter((_, i) => i !== idx));
@@ -196,22 +325,45 @@ export default function TrailPublishScreen() {
   }, [name, description, difficulty, trailType, seasons, country, tags, transport, recommendedTime, coverImage]);
 
   const handleSubmit = useCallback(async () => {
-    // Auto-generate name from date if empty
-    const now = new Date();
-    const autoName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} 코스`;
-    const finalName = name.trim() || autoName;
-
+    // --- Required field validation ---
+    if (!name.trim()) {
+      showPrettyAlert('warning', '코스 이름을 입력해주세요', '나중에 찾기 쉽도록 이름을 지어주세요.');
+      return;
+    }
+    if (!manualRegion.trim()) {
+      showPrettyAlert('warning', '지역을 입력해주세요', '예) 서울 종로구, 부산 해운대구');
+      return;
+    }
+    if (manualMode) {
+      if (!manualDistance.trim() || parseFloat(manualDistance) <= 0) {
+        showPrettyAlert('warning', '거리를 입력해주세요', '숫자로 km 단위를 입력해주세요. 예) 3.5');
+        return;
+      }
+      if (!manualDuration.trim() || parseFloat(manualDuration) <= 0) {
+        showPrettyAlert('warning', '소요 시간을 입력해주세요', '분 단위로 입력해주세요. 예) 90');
+        return;
+      }
+    }
     if (!manualMode && pathData.length < 2) {
-      Alert.alert('오류', '경로 데이터가 부족합니다.');
+      showPrettyAlert('error', '경로 데이터가 부족해요', '걷기를 통해 수집된 경로가 충분하지 않습니다.');
+      return;
+    }
+    // Reject GPS-mode submissions where the start/end coords never locked
+    // onto a real location — prevents trails appearing at (0,0) in the
+    // Atlantic Ocean after an indoor-only walk.
+    if (!manualMode && startLat === 0 && startLng === 0) {
+      showPrettyAlert('error', 'GPS 위치가 잡히지 않았어요', '실외에서 GPS가 정상적으로 작동한 뒤에 다시 시도해주세요.');
       return;
     }
 
     // Check auth
     const token = require('../stores/auth').useAuthStore.getState().accessToken;
     if (!token) {
-      Alert.alert('로그인 필요', '코스를 등록하려면 로그인해주세요.');
+      showPrettyAlert('info', '로그인이 필요해요', '코스를 등록하려면 먼저 로그인해주세요.');
       return;
     }
+
+    const finalName = name.trim();
 
     setSubmitting(true);
     try {
@@ -257,85 +409,120 @@ export default function TrailPublishScreen() {
 
       if (seasons.length > 0) payload.best_season = seasons[0];
 
+      setProgressText('코스 정보 저장 중...');
       const { data } = await api.post('/trails/', payload);
       const trailId = data.id;
+      const token = useAuthStore.getState().accessToken;
 
-      // Upload cover image separately if present
-      if (coverImage && trailId) {
-        try {
-          const formData = new FormData();
-          formData.append('cover_image', {
-            uri: coverImage.uri,
-            type: coverImage.type || 'image/jpeg',
-            name: coverImage.fileName || 'cover.jpg',
-          } as any);
-          const token = useAuthStore.getState().accessToken;
-          const res = await fetch(`${API_URL}/trails/${trailId}/`, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-          });
-          if (!res.ok) {
-            const errText = await res.text();
-            Alert.alert('커버 이미지 업로드 실패', `${res.status}: ${errText.slice(0, 200)}`);
-          }
-        } catch (imgErr: any) {
-          Alert.alert('커버 이미지 업로드 실패', imgErr?.message || 'unknown');
-        }
-      }
+      // --- PARALLEL UPLOADS ---
+      // Previously: create trail → upload cover (await) → for-loop each spot
+      //   with await spot-create then await image-upload. For 5 spots with
+      //   images, that's 1 + 1 + 10 = 12 sequential round trips.
+      // Now: create cover + all spots in parallel (Promise.all), then all
+      //   spot-images in parallel. 5 spots w/ images = ~3 parallel waves.
+      const uploadErrors: string[] = [];
 
-      // Upload spots
-      if (spots.length > 0 && trailId) {
-        const token = useAuthStore.getState().accessToken;
-        for (let i = 0; i < spots.length; i++) {
-          const spot = spots[i];
-          try {
-            const { data: spotData } = await api.post('/spots/', {
-              trail: trailId,
-              name: spot.name,
-              spot_type: spot.type || 'photo',
-              description: spot.description || '',
-              lat: spot.lat || 0,
-              lng: spot.lng || 0,
-              order: i,
-            });
-            // Upload spot image if exists
-            if (spot.imageUrl && spotData.id) {
-              try {
-                const imgForm = new FormData();
-                imgForm.append('spot', String(spotData.id));
-                imgForm.append('image', {
-                  uri: spot.imageUrl,
-                  type: 'image/jpeg',
-                  name: `spot_${spotData.id}.jpg`,
-                } as any);
-                imgForm.append('order', '0');
-                const imgRes = await fetch(`${API_URL}/spots/images/`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${token}` },
-                  body: imgForm,
-                });
-                if (!imgRes.ok) {
-                  const errText = await imgRes.text();
-                  Alert.alert('경유지 이미지 실패', `${imgRes.status}: ${errText.slice(0, 200)}`);
-                }
-              } catch (imgErr: any) {
-                Alert.alert('경유지 이미지 오류', imgErr?.message || 'unknown');
+      // Wave 1: cover image PATCH + all spot creates in parallel
+      setProgressText(
+        spots.length > 0
+          ? `업로드 중... (경유지 ${spots.length}개)`
+          : '이미지 업로드 중...',
+      );
+      const coverPromise: Promise<void> = (coverImage && trailId)
+        ? (async () => {
+            try {
+              const formData = new FormData();
+              formData.append('cover_image', {
+                uri: coverImage.uri,
+                type: coverImage.type || 'image/jpeg',
+                name: coverImage.fileName || 'cover.jpg',
+              } as any);
+              const res = await fetch(`${API_URL}/trails/${trailId}/`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+              });
+              if (!res.ok) {
+                const txt = await res.text();
+                uploadErrors.push(`커버: ${res.status} ${txt.slice(0, 80)}`);
               }
+            } catch (e: any) {
+              uploadErrors.push(`커버: ${e?.message || 'error'}`);
             }
-          } catch {}
-        }
+          })()
+        : Promise.resolve();
+
+      const spotCreatePromises: Promise<{ id: number | null; imageUrl?: string }>[] =
+        (spots.length > 0 && trailId)
+          ? spots.map((spot, i) =>
+              api.post('/spots/', {
+                trail: trailId,
+                name: spot.name,
+                spot_type: spot.type || 'photo',
+                description: spot.description || '',
+                lat: spot.lat || 0,
+                lng: spot.lng || 0,
+                order: i,
+              })
+              .then((res) => ({ id: res?.data?.id ?? null, imageUrl: spot.imageUrl }))
+              .catch((e) => {
+                uploadErrors.push(`경유지 "${spot.name}": ${e?.response?.status || 'error'}`);
+                return { id: null, imageUrl: spot.imageUrl };
+              }),
+            )
+          : [];
+
+      const [, createdSpots] = await Promise.all([
+        coverPromise,
+        Promise.all(spotCreatePromises),
+      ]);
+
+      // Wave 2: all spot images in parallel
+      const spotsNeedingImages = createdSpots.filter(s => s.id && s.imageUrl);
+      if (spotsNeedingImages.length > 0) {
+        setProgressText(`경유지 사진 업로드 중... (${spotsNeedingImages.length}개)`);
+        await Promise.all(spotsNeedingImages.map(async (s) => {
+          try {
+            const imgForm = new FormData();
+            imgForm.append('spot', String(s.id));
+            imgForm.append('image', {
+              uri: s.imageUrl,
+              type: 'image/jpeg',
+              name: `spot_${s.id}.jpg`,
+            } as any);
+            imgForm.append('order', '0');
+            const imgRes = await fetch(`${API_URL}/spots/images/`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: imgForm,
+            });
+            if (!imgRes.ok) {
+              uploadErrors.push(`경유지 이미지: ${imgRes.status}`);
+            }
+          } catch (e: any) {
+            uploadErrors.push(`경유지 이미지: ${e?.message || 'error'}`);
+          }
+        }));
       }
 
+      setProgressText(null);
       queryClient.invalidateQueries({ queryKey: ['trails'] });
       queryClient.invalidateQueries({ queryKey: ['trails-all'] });
       queryClient.invalidateQueries({ queryKey: ['my-trails'] });
-      Alert.alert('등록 완료', '코스가 성공적으로 등록되었습니다!', [
-        {
-          text: '확인',
-          onPress: () => navigation.navigate('Main'),
-        },
-      ]);
+
+      // If there were any upload errors, show a warning but still proceed.
+      // The trail itself was created successfully.
+      if (uploadErrors.length > 0) {
+        showPrettyAlert(
+          'warning',
+          '일부 업로드 실패',
+          `코스는 등록되었지만 ${uploadErrors.length}건이 실패했어요.\n(${uploadErrors[0]})`,
+        );
+        navTimerRef.current = setTimeout(() => navigation.navigate('Main'), 1500);
+      } else {
+        showPrettyAlert('success', '등록 완료', '코스가 성공적으로 등록되었습니다!');
+        navTimerRef.current = setTimeout(() => navigation.navigate('Main'), 900);
+      }
     } catch (err: any) {
       const errData = err?.response?.data;
       console.log('Trail create error:', errData || err);
@@ -345,9 +532,10 @@ export default function TrailPublishScreen() {
         const firstVal = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
         msg = `${firstKey}: ${firstVal}`;
       }
-      Alert.alert('오류', msg);
+      showPrettyAlert('error', '오류', msg);
     } finally {
       setSubmitting(false);
+      setProgressText(null);
     }
   }, [
     name, description, difficulty, country, seasons, transport, trailType, recommendedTime, tags,
@@ -384,7 +572,7 @@ export default function TrailPublishScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
 
-        {/* 1. Map preview — always visible */}
+        {/* 1. Map preview — always visible (dark theme to match TrailDetail) */}
         <SafeMapView
           lat={startLat || 37.5665}
           lng={startLng || 126.978}
@@ -392,6 +580,7 @@ export default function TrailPublishScreen() {
           endLng={endLng || undefined}
           pathCoordinates={pathData && pathData.length > 1 ? pathData : undefined}
           height={200}
+          theme="dark"
         />
 
         {/* 2a. Auto stats (GPS mode) */}
@@ -418,7 +607,7 @@ export default function TrailPublishScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>코스 위치</Text>
 
-          <Text style={styles.fieldLabel}>지역</Text>
+          <Text style={styles.fieldLabel}>지역 <Text style={styles.requiredMark}>*</Text></Text>
           <TextInput
             style={styles.input}
             placeholder="예: 서울 종로구"
@@ -448,7 +637,7 @@ export default function TrailPublishScreen() {
           {manualMode && (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>거리 (km)</Text>
+                <Text style={styles.fieldLabel}>거리 (km) <Text style={styles.requiredMark}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="3.5"
@@ -459,7 +648,7 @@ export default function TrailPublishScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>소요시간 (분)</Text>
+                <Text style={styles.fieldLabel}>소요시간 (분) <Text style={styles.requiredMark}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="90"
@@ -474,7 +663,7 @@ export default function TrailPublishScreen() {
         </View>
 
         {/* 3. Name */}
-        <Text style={styles.fieldLabel}>코스 이름</Text>
+        <Text style={styles.fieldLabel}>코스 이름 <Text style={styles.requiredMark}>*</Text></Text>
         <TextInput
           style={styles.input}
           placeholder="예: 북한산 둘레길"
@@ -656,15 +845,21 @@ export default function TrailPublishScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Spot add modal */}
-      {showSpotModal && (
+      {/* Spot add modal — statusBarTranslucent is intentionally OFF so
+          Android's windowSoftInputMode=adjustResize pushes the sheet up
+          correctly when the keyboard appears. */}
+      <Modal
+        visible={showSpotModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeSpotModal}>
         <KeyboardAvoidingView
           style={styles.spotModalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <TouchableOpacity
             style={{ flex: 1 }}
             activeOpacity={1}
-            onPress={() => setShowSpotModal(false)}
+            onPress={closeSpotModal}
           />
           <View style={styles.spotModalSheet}>
             <View style={styles.spotModalHandle} />
@@ -672,7 +867,7 @@ export default function TrailPublishScreen() {
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: 420 }}>
+              contentContainerStyle={{ paddingBottom: 8 }}>
               <TextInput
                 style={styles.input}
                 placeholder="장소 이름 *"
@@ -714,15 +909,27 @@ export default function TrailPublishScreen() {
               />
               <Text style={[styles.fieldLabel, { marginTop: 8, marginBottom: 6 }]}>사진</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
-                  launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                <TouchableOpacity style={styles.miniPickBtn} onPress={async () => {
+                  const ok = await ensureMediaPermissions('camera');
+                  if (!ok) { showPermissionDeniedAlert('camera'); return; }
+                  launchCamera({ mediaType: 'photo', quality: 0.7, maxWidth: 1600, maxHeight: 1600, saveToPhotos: false }, (res) => {
+                    if (res.errorCode) {
+                      Alert.alert('카메라 오류', res.errorMessage || res.errorCode);
+                      return;
+                    }
                     if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
                   });
                 }}>
                   <Text style={styles.miniPickBtnText}>{'\uD83D\uDCF7'} 카메라</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.miniPickBtn} onPress={() => {
-                  launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
+                <TouchableOpacity style={styles.miniPickBtn} onPress={async () => {
+                  const ok = await ensureMediaPermissions('library');
+                  if (!ok) { showPermissionDeniedAlert('library'); return; }
+                  launchImageLibrary({ mediaType: 'photo', quality: 0.7, maxWidth: 1600, maxHeight: 1600, selectionLimit: 1 }, (res) => {
+                    if (res.errorCode) {
+                      Alert.alert('갤러리 오류', res.errorMessage || res.errorCode);
+                      return;
+                    }
                     if (!res.didCancel && res.assets?.[0]?.uri) setNewSpotImageUri(res.assets[0].uri);
                   });
                 }}>
@@ -736,7 +943,7 @@ export default function TrailPublishScreen() {
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
                 style={[styles.spotModalBtn, { backgroundColor: '#F2F4F6' }]}
-                onPress={() => setShowSpotModal(false)}>
+                onPress={closeSpotModal}>
                 <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -747,7 +954,7 @@ export default function TrailPublishScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
-      )}
+      </Modal>
 
       {/* 12. Submit buttons */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
@@ -764,13 +971,26 @@ export default function TrailPublishScreen() {
             disabled={submitting}
             activeOpacity={0.85}>
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.submitBtnText}>{progressText || '등록 중...'}</Text>
+              </View>
             ) : (
               <Text style={styles.submitBtnText}>코스 공유하기</Text>
             )}
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Pretty validation alert — replaces the default OS Alert for
+          friendlier in-app feedback. */}
+      <PrettyAlert
+        visible={alertState.visible}
+        type={alertState.type}
+        title={alertState.title}
+        message={alertState.message}
+        onClose={closePrettyAlert}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -881,6 +1101,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 8,
     marginTop: 8,
+  },
+  requiredMark: {
+    color: '#EF4444',
+    fontWeight: '700',
   },
   input: {
     backgroundColor: '#fff',
@@ -1050,19 +1274,20 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   spotModalOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
-    zIndex: 100,
   },
   spotModalSheet: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
-    paddingBottom: 34,
+    paddingBottom: 24,
     paddingTop: 12,
+    // Cap natural height so the sheet never pushes above the screen when
+    // content is long. ScrollView inside handles overflow.
+    maxHeight: SCREEN_HEIGHT * 0.88,
   },
   spotModalHandle: {
     width: 36,

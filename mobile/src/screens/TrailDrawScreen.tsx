@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Mapbox from '@rnmapbox/maps';
 import { colors } from '../theme/colors';
+import { navParamCache } from '../utils/navParamCache';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1Ijoia2h3IiwiYSI6ImNtbm' +
@@ -39,7 +40,12 @@ export default function TrailDrawScreen() {
     try {
       const coordStr = points.map(p => `${p[0]},${p[1]}`).join(';');
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordStr}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&steps=false`;
-      const res = await fetch(url);
+      // 10s hard cap — otherwise flaky networks leave the user watching a
+      // spinner forever.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (data.routes?.[0]) {
@@ -106,12 +112,18 @@ export default function TrailDrawScreen() {
       Alert.alert('경로 부족', '최소 2개 이상의 경유지가 필요합니다.');
       return;
     }
-    navigation.navigate('TrailPublish', {
+    // Stash the full path (can be thousands of coordinates) in the in-memory
+    // nav cache — passing it via nav params would trigger
+    // TransactionTooLargeException for long walks.
+    const cacheKey = navParamCache.put({
       pathData: routeCoords,
+      spots: [],
+    });
+    navigation.navigate('TrailPublish', {
+      _cacheKey: cacheKey,
       distance: parseFloat(totalDistance.toFixed(2)),
       duration: totalDuration,
       elevationGain: 0,
-      spots: [],
       startLat: routeCoords[0]?.[1] || 0,
       startLng: routeCoords[0]?.[0] || 0,
       endLat: routeCoords[routeCoords.length - 1]?.[1] || 0,

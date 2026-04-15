@@ -9,17 +9,20 @@
  * Usage:
  *   await startBackgroundWalkService();
  *   // ... start GPS watch ...
- *   await updateBackgroundWalkNotification({ distance: 1.23, duration: 450 });
+ *   updateBackgroundWalkNotification({ distance: 1.23, duration: 450, steps: 1200, pace: 12.5 });
  *   // ... eventually ...
  *   await stopBackgroundWalkService();
  */
 import BackgroundService from 'react-native-background-actions';
 
-const TASK_NAME = '모루 - 걷기 기록 중';
+const TASK_NAME = '모루 걷기';
 
-interface BackgroundStats {
+export interface BackgroundStats {
   distance: number; // km
   duration: number; // seconds
+  steps?: number;
+  pace?: number; // min/km
+  isAutoPaused?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -32,6 +35,37 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function formatPace(pace: number): string {
+  if (!pace || pace <= 0 || pace > 30) return "--'--\"";
+  const min = Math.floor(pace);
+  const sec = Math.round((pace - min) * 60);
+  return `${min}'${sec.toString().padStart(2, '0')}"`;
+}
+
+/**
+ * Build a rich notification string.
+ *
+ * Before: "1.23km · 12:45"
+ * After:  "🚶 1.23km · 12:45 · 1,200걸음 · 12'30"/km"
+ *   or when auto-paused: "⏸ 일시정지 · 1.23km · 12:45"
+ */
+function buildNotificationDesc(stats: BackgroundStats): string {
+  if (stats.isAutoPaused) {
+    return `⏸ 일시정지 · ${stats.distance.toFixed(2)}km · ${formatDuration(stats.duration)}`;
+  }
+  const parts = [
+    `🚶 ${stats.distance.toFixed(2)}km`,
+    formatDuration(stats.duration),
+  ];
+  if (stats.steps && stats.steps > 0) {
+    parts.push(`${stats.steps.toLocaleString()}걸음`);
+  }
+  if (stats.pace && stats.pace > 0 && stats.pace < 30) {
+    parts.push(`${formatPace(stats.pace)}/km`);
+  }
+  return parts.join(' · ');
+}
+
 /**
  * This is the task callback that runs inside the foreground service.
  * It MUST be an infinite async loop — when it returns, the service stops.
@@ -42,9 +76,6 @@ function formatDuration(seconds: number): string {
  */
 const veryLongTask = async (taskData?: { delay?: number }) => {
   const delay = taskData?.delay ?? 5000;
-  // Using Promise-based sleep in a loop. The task can be awoken by
-  // updateNotification / stop calls; we just keep looping until stopped.
-  // eslint-disable-next-line no-constant-condition
   while (BackgroundService.isRunning()) {
     await new Promise<void>((resolve) => setTimeout(resolve, delay));
   }
@@ -60,14 +91,7 @@ const baseOptions = {
   },
   color: '#2D4A2E',
   linkingURI: 'moru://walk',
-  // Android 14+ (targetSdkVersion 34+) requires every foreground service
-  // to be started with an explicit type. Without this the library calls
-  // Service.startForeground with type=NONE and the OS throws
-  // InvalidForegroundServiceTypeException. Passing "location" here tells
-  // the library to forward FOREGROUND_SERVICE_TYPE_LOCATION, which the
-  // manifest override at android/app/src/main/AndroidManifest.xml also
-  // declares.
-  foregroundServiceType: ['location'],
+  foregroundServiceType: ['location'] as ('location')[],
   parameters: {
     delay: 5000,
   },
@@ -86,19 +110,30 @@ export async function startBackgroundWalkService(): Promise<boolean> {
   }
 }
 
-export async function updateBackgroundWalkNotification(
+// Throttle: Android throttles notification updates. We keep a minimum
+// interval of 2s between updates to avoid dropped/queued notifications.
+let lastNotifUpdateAt = 0;
+const NOTIF_MIN_INTERVAL_MS = 2000;
+
+export function updateBackgroundWalkNotification(
   stats: BackgroundStats,
-): Promise<void> {
-  try {
-    if (!BackgroundService.isRunning()) return;
-    await BackgroundService.updateNotification({
-      taskTitle: TASK_NAME,
-      taskDesc: `${stats.distance.toFixed(2)}km · ${formatDuration(stats.duration)}`,
-    });
-  } catch (e) {
-    // Silently ignore — the service might be in the middle of stopping
-    console.log('[BackgroundWalk] updateNotification failed:', e);
-  }
+): void {
+  const now = Date.now();
+  if (now - lastNotifUpdateAt < NOTIF_MIN_INTERVAL_MS) return;
+  lastNotifUpdateAt = now;
+
+  // Fire-and-forget — never block the caller.
+  (async () => {
+    try {
+      if (!BackgroundService.isRunning()) return;
+      await BackgroundService.updateNotification({
+        taskTitle: TASK_NAME,
+        taskDesc: buildNotificationDesc(stats),
+      });
+    } catch (e) {
+      // Silently ignore — the service might be in the middle of stopping
+    }
+  })();
 }
 
 export async function stopBackgroundWalkService(): Promise<void> {

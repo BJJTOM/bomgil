@@ -144,7 +144,11 @@ export default function HealthImportScreen() {
     );
   };
 
-  const doImport = async (session: HealthWalkSession) => {
+  // `forceOffset` is used to bypass the server's ±30s duplicate check for
+  // "ghost" imports — activities that the backend considers duplicates but
+  // that aren't visible in the user's list (usually because a prior import
+  // row was hidden by moderation). When set, we shift started_at slightly.
+  const doImport = async (session: HealthWalkSession, forceOffset = 0) => {
     setImporting(session.id);
     try {
       // Format track_points for our API
@@ -165,11 +169,20 @@ export default function HealthImportScreen() {
       );
       const durationMinutes = Math.max(1, session.duration || 1);
 
+      // Shift started_at when forcing a re-import past the server's
+      // duplicate-window check.
+      const startedAtIso = forceOffset
+        ? new Date(new Date(session.startTime).getTime() + forceOffset * 1000).toISOString()
+        : session.startTime;
+      const finishedAtIso = forceOffset
+        ? new Date(new Date(session.endTime).getTime() + forceOffset * 1000).toISOString()
+        : session.endTime;
+
       const payload: any = {
         title: session.title,
         source: 'samsung_health',
-        started_at: session.startTime,
-        finished_at: session.endTime,
+        started_at: startedAtIso,
+        finished_at: finishedAtIso,
         total_steps: session.steps || 0,
         calories_burned: session.calories || 0,
         distance_km: distanceKm,
@@ -237,8 +250,14 @@ export default function HealthImportScreen() {
       if (isDuplicate) {
         Alert.alert(
           '이미 가져온 기록',
-          '이 세션은 이미 활동에 추가되어 있어요.',
-          [{ text: '확인' }],
+          '이 세션은 이미 활동에 추가되어 있어요.\n활동 탭에서 보이지 않는다면 "강제로 가져오기"를 눌러주세요.',
+          [
+            { text: '확인', style: 'cancel' },
+            {
+              text: '강제로 가져오기',
+              onPress: () => doImport(session, 60), // +60s offset bypasses dup window
+            },
+          ],
         );
       } else if (status === 401) {
         Alert.alert(
@@ -356,12 +375,12 @@ export default function HealthImportScreen() {
           <Text style={styles.emptyIcon}>{'⌚'}</Text>
           <Text style={styles.emptyTitle}>Health Connect를 사용할 수 없습니다</Text>
           <Text style={styles.emptyDesc}>
-            {Platform.Version >= 34
+            {Number(Platform.Version) >= 34
               ? 'Health Connect 설정에서 모루 앱의 권한을 확인해주세요.'
               : 'Health Connect 앱을 설치하면 갤럭시 워치 걷기 기록을 가져올 수 있습니다.'}
           </Text>
           {errorMsg ? <Text style={[styles.emptyDesc, { color: '#FF6B6B', marginTop: 8, fontSize: 12 }]}>{errorMsg}</Text> : null}
-          {Platform.OS === 'android' && Platform.Version >= 34 ? (
+          {Platform.OS === 'android' && Number(Platform.Version) >= 34 ? (
             <TouchableOpacity
               style={styles.permissionBtn}
               onPress={() => {

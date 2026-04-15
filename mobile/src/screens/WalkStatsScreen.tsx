@@ -16,6 +16,7 @@ import { useAuthStore } from '../stores/auth';
 import { FadeInView } from '../components/FadeInView';
 import StreakCard from '../components/StreakCard';
 import { ActivityStats, PaginatedResponse, ActivityTrack } from '../types';
+import { useT } from '../i18n';
 
 const DAILY_GOAL_KM = 5;
 const DAILY_GOAL_STEPS = 10000;
@@ -25,6 +26,7 @@ export default function WalkStatsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { isAuthenticated } = useAuthStore();
+  const t = useT();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['activity-stats'],
@@ -149,7 +151,7 @@ export default function WalkStatsScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>{'<-'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>걷기 통계</Text>
+          <Text style={styles.headerTitle}>{t.walkStats.title}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -346,7 +348,7 @@ export default function WalkStatsScreen() {
             <View style={styles.statsGridItem}>
               <Text style={styles.statsGridIcon}>{'🏆'}</Text>
               <Text style={styles.statsGridValue}>{stats?.track_count || 0}</Text>
-              <Text style={styles.statsGridLabel}>총 활동</Text>
+              <Text style={styles.statsGridLabel}>{t.walkStats.totalActivity}</Text>
             </View>
           </View>
         </FadeInView>

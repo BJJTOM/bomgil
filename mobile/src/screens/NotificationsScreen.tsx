@@ -14,6 +14,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
+import { useT } from '../i18n';
 
 interface Notification {
   id: number;
@@ -36,17 +37,17 @@ const NOTIF_ICON_MAP: Record<string, { name: string; color: string; bg: string }
   system: { name: 'bell', color: '#F39C12', bg: '#FEF9E7' },
 };
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, nt: { justNow: string; minutesAgo: string; hoursAgo: string; daysAgo: string }): string {
   const now = new Date();
   const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return '\uBC29\uAE08 \uC804';
-  if (diffMin < 60) return `${diffMin}\uBD84 \uC804`;
+  if (diffMin < 1) return nt.justNow;
+  if (diffMin < 60) return `${diffMin}${nt.minutesAgo}`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}\uC2DC\uAC04 \uC804`;
+  if (diffHour < 24) return `${diffHour}${nt.hoursAgo}`;
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}\uC77C \uC804`;
+  if (diffDay < 7) return `${diffDay}${nt.daysAgo}`;
   return date.toLocaleDateString('ko-KR');
 }
 
@@ -55,6 +56,7 @@ export default function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { isDark } = useThemeStore();
+  const t = useT();
 
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#fff';
@@ -126,7 +128,7 @@ export default function NotificationsScreen() {
           <Text style={[styles.notifBody, { color: textSecColor }]} numberOfLines={2}>
             {item.body}
           </Text>
-          <Text style={[styles.notifTime, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
+          <Text style={[styles.notifTime, { color: textTertColor }]}>{timeAgo(item.created_at, t.notifications)}</Text>
         </View>
         {!item.is_read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -140,12 +142,12 @@ export default function NotificationsScreen() {
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: cardBg, borderColor: borderColor }]} onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={18} color={textColor} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>{'\uC54C\uB9BC'}</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>{t.notifications.title}</Text>
         {hasUnread ? (
           <TouchableOpacity
             style={styles.markAllBtn}
             onPress={() => markAllRead.mutate()}>
-            <Text style={styles.markAllText}>{'\uBAA8\uB450 \uC77D\uC74C'}</Text>
+            <Text style={styles.markAllText}>{t.notifications.markAllRead}</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -159,8 +161,8 @@ export default function NotificationsScreen() {
       ) : !notifications || notifications.length === 0 ? (
         <View style={styles.center}>
           <Feather name="bell-off" size={48} color={textTertColor} style={{ marginBottom: 16 }} />
-          <Text style={[styles.emptyTitle, { color: textColor }]}>{'\uC54C\uB9BC\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
-          <Text style={[styles.emptyDesc, { color: textSecColor }]}>{'\uC0C8\uB85C\uC6B4 \uC18C\uC2DD\uC774 \uC788\uC73C\uBA74 \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694'}</Text>
+          <Text style={[styles.emptyTitle, { color: textColor }]}>{t.notifications.empty}</Text>
+          <Text style={[styles.emptyDesc, { color: textSecColor }]}>{t.notifications.emptyDesc}</Text>
         </View>
       ) : (
         <FlatList

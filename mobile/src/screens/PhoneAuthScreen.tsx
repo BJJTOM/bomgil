@@ -8,6 +8,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
+import { useT } from '../i18n';
 
 type Step = 'phone' | 'code' | 'nickname';
 
@@ -28,6 +29,7 @@ export default function PhoneAuthScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const login = useAuthStore((s) => s.login);
+  const t = useT();
 
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
@@ -48,11 +50,11 @@ export default function PhoneAuthScreen() {
 
   const handleSendCode = async () => {
     if (!phone.trim()) {
-      Alert.alert('알림', '전화번호를 입력해주세요.');
+      Alert.alert(t.common.confirm, t.auth.phoneRequired);
       return;
     }
     if (!isValidKoreanPhone(phone)) {
-      Alert.alert('알림', '올바른 휴대폰 번호를 입력해주세요.\n예: 010-1234-5678');
+      Alert.alert(t.common.confirm, t.auth.phoneInvalid);
       return;
     }
     setLoading(true);
@@ -62,7 +64,7 @@ export default function PhoneAuthScreen() {
       setStep('code');
     } catch (e: any) {
       const msg = e?.response?.data?.error || '인증번호 전송에 실패했습니다.';
-      Alert.alert('전송 실패', msg);
+      Alert.alert(t.auth.sendFailed, msg);
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,7 @@ export default function PhoneAuthScreen() {
 
   const handleVerifyCode = async () => {
     if (!code.trim() || code.length !== 6) {
-      Alert.alert('알림', '6자리 인증번호를 입력해주세요.');
+      Alert.alert(t.common.confirm, t.auth.codeDesc);
       return;
     }
     setLoading(true);
@@ -101,7 +103,7 @@ export default function PhoneAuthScreen() {
         }
       }
     } catch (e: any) {
-      Alert.alert('인증 실패', e?.response?.data?.error || '인증번호가 일치하지 않습니다.');
+      Alert.alert(t.auth.verifyFailed, e?.response?.data?.error || t.auth.verifyFailed);
     } finally {
       setLoading(false);
     }
@@ -110,15 +112,15 @@ export default function PhoneAuthScreen() {
   const handleSetNickname = async () => {
     const trimmed = nickname.trim();
     if (trimmed.length < 2) {
-      Alert.alert('알림', '닉네임은 2자 이상이어야 합니다.');
+      Alert.alert(t.common.confirm, t.auth.nicknameMinError);
       return;
     }
     if (trimmed.length > 20) {
-      Alert.alert('알림', '닉네임은 20자 이하여야 합니다.');
+      Alert.alert(t.common.confirm, t.auth.nicknameMaxError);
       return;
     }
     if (!verificationTokenRef.current) {
-      Alert.alert('오류', '인증이 만료되었습니다. 처음부터 다시 시도해주세요.');
+      Alert.alert(t.common.error, t.auth.codeExpired);
       setStep('phone');
       return;
     }
@@ -131,7 +133,7 @@ export default function PhoneAuthScreen() {
       login(data.user, data.access, data.refresh);
       goToMain();
     } catch (e: any) {
-      Alert.alert('오류', e?.response?.data?.error || '가입에 실패했습니다.');
+      Alert.alert(t.common.error, e?.response?.data?.error || t.auth.registerFailed);
     } finally {
       setLoading(false);
     }
@@ -150,15 +152,15 @@ export default function PhoneAuthScreen() {
       <View style={styles.content}>
         {step === 'phone' && (
           <>
-            <Text style={styles.title}>전화번호로 시작하기</Text>
-            <Text style={styles.desc}>가입 또는 로그인을 위해{'\n'}전화번호를 입력해주세요.</Text>
+            <Text style={styles.title}>{t.auth.phoneTitle}</Text>
+            <Text style={styles.desc}>{t.auth.phoneDesc}</Text>
             <View style={styles.inputWrap}>
-              <Text style={styles.inputLabel}>전화번호</Text>
+              <Text style={styles.inputLabel}>{t.auth.phoneLabel}</Text>
               <TextInput
                 style={styles.input}
                 value={phone}
-                onChangeText={(t) => setPhone(formatPhoneInput(t))}
-                placeholder="010-1234-5678"
+                onChangeText={(v) => setPhone(formatPhoneInput(v))}
+                placeholder={t.auth.phonePlaceholder}
                 placeholderTextColor={colors.textTertiary}
                 keyboardType="phone-pad"
                 autoFocus
@@ -166,23 +168,23 @@ export default function PhoneAuthScreen() {
               />
             </View>
             <Text style={styles.legal}>
-              계속하면 모루의 서비스 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.
+              {t.auth.legalText}
             </Text>
             <TouchableOpacity
               style={[styles.btn, (!phone || loading) && styles.btnDisabled]}
               onPress={handleSendCode}
               disabled={!phone || loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>인증번호 받기</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t.auth.sendCode}</Text>}
             </TouchableOpacity>
           </>
         )}
 
         {step === 'code' && (
           <>
-            <Text style={styles.title}>인증번호 입력</Text>
-            <Text style={styles.desc}>{phone}{'\n'}로 전송된 6자리 인증번호를 입력해주세요.</Text>
+            <Text style={styles.title}>{t.auth.codeTitle}</Text>
+            <Text style={styles.desc}>{phone}{'\n'}{t.auth.codeDesc}</Text>
             <View style={styles.inputWrap}>
-              <Text style={styles.inputLabel}>인증번호</Text>
+              <Text style={styles.inputLabel}>{t.auth.codeTitle}</Text>
               <TextInput
                 style={[styles.input, { fontSize: 24, letterSpacing: 8, textAlign: 'center' }]}
                 value={code}
@@ -195,28 +197,28 @@ export default function PhoneAuthScreen() {
               />
             </View>
             <TouchableOpacity onPress={handleSendCode} disabled={loading}>
-              <Text style={styles.resendText}>인증번호 다시 받기</Text>
+              <Text style={styles.resendText}>{t.auth.resendCode}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btn, (code.length !== 6 || loading) && styles.btnDisabled]}
               onPress={handleVerifyCode}
               disabled={code.length !== 6 || loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>확인</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t.common.confirm}</Text>}
             </TouchableOpacity>
           </>
         )}
 
         {step === 'nickname' && (
           <>
-            <Text style={styles.title}>닉네임 설정</Text>
-            <Text style={styles.desc}>모루에서 사용할 닉네임을 입력해주세요.</Text>
+            <Text style={styles.title}>{t.auth.nicknameTitle}</Text>
+            <Text style={styles.desc}>{t.auth.nicknameDesc}</Text>
             <View style={styles.inputWrap}>
-              <Text style={styles.inputLabel}>닉네임</Text>
+              <Text style={styles.inputLabel}>{t.auth.nicknameTitle}</Text>
               <TextInput
                 style={styles.input}
                 value={nickname}
                 onChangeText={setNickname}
-                placeholder="2~20자"
+                placeholder={t.auth.nicknamePlaceholder}
                 placeholderTextColor={colors.textTertiary}
                 maxLength={20}
                 autoFocus
@@ -226,7 +228,7 @@ export default function PhoneAuthScreen() {
               style={[styles.btn, (nickname.length < 2 || loading) && styles.btnDisabled]}
               onPress={handleSetNickname}
               disabled={nickname.length < 2 || loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>모루 시작하기</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t.auth.startBtn}</Text>}
             </TouchableOpacity>
           </>
         )}

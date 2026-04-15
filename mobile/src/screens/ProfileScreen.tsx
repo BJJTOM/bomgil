@@ -17,17 +17,9 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { User } from '../types';
 import { useAuthStore } from '../stores/auth';
+import { useT } from '../i18n';
 
 const { width } = Dimensions.get('window');
-
-const WALKING_STYLE_LABELS: Record<string, string> = {
-  fast: '빠른 걸음',
-  slow: '느린 산책',
-  photo: '사진 여행',
-  food: '맛집 탐방',
-  nature: '자연 탐험',
-  culture: '문화 탐방',
-};
 
 const BADGE_ICONS: Record<string, string> = {
   first_walk: '🥾',
@@ -45,6 +37,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user: currentUser } = useAuthStore();
+  const t = useT();
   const nickname = route.params?.nickname;
   const [activeTab, setActiveTab] = useState<TabKey>('courses');
 
@@ -78,11 +71,20 @@ export default function ProfileScreen() {
     );
   }
 
+  const WALKING_STYLE_LABELS: Record<string, string> = {
+    fast: t.profile.styleFast,
+    slow: t.profile.styleSlow,
+    photo: t.profile.stylePhoto,
+    food: t.profile.styleFood,
+    nature: t.profile.styleNature,
+    culture: t.profile.styleCulture,
+  };
+
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'courses', label: '코스' },
-    { key: 'activity', label: '활동' },
-    { key: 'likes', label: '좋아요' },
-    { key: 'reviews', label: '리뷰' },
+    { key: 'courses', label: t.profile.courses },
+    { key: 'activity', label: t.profile.activityTab },
+    { key: 'likes', label: t.profile.likes },
+    { key: 'reviews', label: t.profile.reviews },
   ];
 
   return (
@@ -93,7 +95,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.headerBtnIcon}>{'←'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>프로필</Text>
+          <Text style={styles.headerTitle}>{t.profile.title}</Text>
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => navigation.navigate('Settings')}>
@@ -129,15 +131,15 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{profile.trail_count ?? 0}</Text>
-            <Text style={styles.statLabel}>코스</Text>
+            <Text style={styles.statLabel}>{t.profile.courses}</Text>
           </View>
           <TouchableOpacity style={styles.statItem}>
             <Text style={styles.statValue}>{profile.follower_count ?? 0}</Text>
-            <Text style={styles.statLabel}>팔로워</Text>
+            <Text style={styles.statLabel}>{t.profile.followers}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statItem}>
             <Text style={styles.statValue}>{profile.following_count ?? 0}</Text>
-            <Text style={styles.statLabel}>팔로잉</Text>
+            <Text style={styles.statLabel}>{t.profile.following}</Text>
           </TouchableOpacity>
         </View>
 
@@ -146,7 +148,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.editBtn}
             onPress={() => navigation.navigate('ProfileEdit')}>
-            <Text style={styles.editBtnText}>프로필 수정</Text>
+            <Text style={styles.editBtnText}>{t.settings.editProfile}</Text>
           </TouchableOpacity>
         ) : currentUser ? (
           <TouchableOpacity
@@ -161,7 +163,7 @@ export default function ProfileScreen() {
                 styles.followBtnText,
                 profile.is_following && styles.followBtnTextFollowing,
               ]}>
-              {profile.is_following ? '팔로잉' : '팔로우'}
+              {profile.is_following ? t.profile.following : t.profile.follow}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -201,10 +203,10 @@ export default function ProfileScreen() {
         {/* Tab Content */}
         <View style={styles.tabContent}>
           <Text style={styles.emptyText}>
-            {activeTab === 'courses' && '등록한 코스가 없습니다'}
-            {activeTab === 'activity' && '활동 기록이 없습니다'}
-            {activeTab === 'likes' && '좋아요한 코스가 없습니다'}
-            {activeTab === 'reviews' && '작성한 리뷰가 없습니다'}
+            {activeTab === 'courses' && t.profile.noCourses}
+            {activeTab === 'activity' && t.profile.noActivity}
+            {activeTab === 'likes' && t.profile.noLikes}
+            {activeTab === 'reviews' && t.profile.noReviews}
           </Text>
         </View>
       </ScrollView>

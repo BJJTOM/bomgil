@@ -20,17 +20,9 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../stores/auth';
 import { useLanguageStore, Language, LANGUAGES } from '../stores/language';
+import { useT } from '../i18n';
 
 const { width } = Dimensions.get('window');
-
-const WALKING_STYLES = [
-  { key: 'fast', label: '빠른 걸음', emoji: '🏃' },
-  { key: 'slow', label: '느린 산책', emoji: '🚶' },
-  { key: 'photo', label: '사진 여행', emoji: '📷' },
-  { key: 'food', label: '맛집 탐방', emoji: '🍜' },
-  { key: 'nature', label: '자연 탐험', emoji: '🌿' },
-  { key: 'culture', label: '문화 탐방', emoji: '🏛️' },
-];
 
 export default function ProfileEditScreen() {
   const insets = useSafeAreaInsets();
@@ -38,6 +30,16 @@ export default function ProfileEditScreen() {
   const queryClient = useQueryClient();
   const { user, setUser } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
+  const t = useT();
+
+  const WALKING_STYLES = [
+    { key: 'fast', label: t.profile.styleFast, emoji: '\uD83C\uDFC3' },
+    { key: 'slow', label: t.profile.styleSlow, emoji: '\uD83D\uDEB6' },
+    { key: 'photo', label: t.profile.stylePhoto, emoji: '\uD83D\uDCF7' },
+    { key: 'food', label: t.profile.styleFood, emoji: '\uD83C\uDF5C' },
+    { key: 'nature', label: t.profile.styleNature, emoji: '\uD83C\uDF3F' },
+    { key: 'culture', label: t.profile.styleCulture, emoji: '\uD83C\uDFDB\uFE0F' },
+  ];
 
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [bio, setBio] = useState(user?.bio || '');
@@ -84,12 +86,12 @@ export default function ProfileEditScreen() {
       setUser(data);
       setLanguage(selectedLang);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      Alert.alert('저장 완료', '프로필이 업데이트되었습니다.', [
-        { text: '확인', onPress: () => navigation.goBack() },
+      Alert.alert(t.profile.saveComplete, t.profile.saveSuccess, [
+        { text: t.common.confirm, onPress: () => navigation.goBack() },
       ]);
     },
     onError: () => {
-      Alert.alert('오류', '프로필 저장에 실패했습니다.');
+      Alert.alert(t.common.error, t.profile.saveFailed);
     },
   });
 
@@ -106,7 +108,7 @@ export default function ProfileEditScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>{'←'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>프로필 수정</Text>
+          <Text style={styles.headerTitle}>{t.profile.editTitle}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -146,7 +148,7 @@ export default function ProfileEditScreen() {
             style={[styles.textInput, styles.textArea]}
             value={bio}
             onChangeText={setBio}
-            placeholder="간단한 자기소개를 작성해주세요"
+            placeholder={t.profile.bioPlaceholder}
             placeholderTextColor={colors.textTertiary}
             multiline
             numberOfLines={4}
@@ -158,7 +160,7 @@ export default function ProfileEditScreen() {
 
         {/* Walking Style */}
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>걷기 스타일</Text>
+          <Text style={styles.fieldLabel}>{t.profile.walkingStyle}</Text>
           <View style={styles.styleGrid}>
             {WALKING_STYLES.map((style) => (
               <TouchableOpacity
@@ -183,7 +185,7 @@ export default function ProfileEditScreen() {
 
         {/* Physical profile (drives walk-engine accuracy) */}
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>신체 정보</Text>
+          <Text style={styles.fieldLabel}>{t.profile.bodyInfo}</Text>
           <Text style={styles.fieldHint}>
             정확한 칼로리·거리 계산을 위해 입력해주세요. (선택)
           </Text>
@@ -286,7 +288,7 @@ export default function ProfileEditScreen() {
 
         {/* Language */}
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>언어</Text>
+          <Text style={styles.fieldLabel}>{t.settings.language}</Text>
           <View style={styles.langRow}>
             {LANGUAGES.map((lang) => (
               <TouchableOpacity
@@ -319,7 +321,7 @@ export default function ProfileEditScreen() {
             {saveMutation.isPending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.saveBtnText}>저장</Text>
+              <Text style={styles.saveBtnText}>{t.common.save}</Text>
             )}
           </TouchableOpacity>
         </View>

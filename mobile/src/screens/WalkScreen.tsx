@@ -46,6 +46,8 @@ import {
 import { WalkAudioFeedback } from '../utils/audioFeedback';
 import { fetchWeatherAt, CurrentWeather } from '../utils/weather';
 import { startBarometer, stopBarometer, subscribeToBarometer } from '../utils/barometer';
+import { useLiveShare } from '../hooks/useLiveShare';
+import LiveShareButton from '../components/LiveShareButton';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -128,6 +130,9 @@ function WalkScreenInner() {
   const [isBackground, setIsBackground] = useState(false);
   const [currentPos, setCurrentPos] = useState<{lat: number; lng: number} | null>(null);
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+  // Live walk share — Strava-Beacon-style URL for trusted contacts.
+  // Session is owned by the hook; button below renders UI only.
+  const liveShare = useLiveShare({ stats, currentPos });
   const [showStopModal, setShowStopModal] = useState(false);
   // When true, the Mapbox MapView is dropped from the tree so its native
   // view releases cleanly BEFORE we navigate away. Without this, Android
@@ -1305,6 +1310,13 @@ function WalkScreenInner() {
               {highAccuracy ? 'HD' : 'HD'}
             </Text>
           </TouchableOpacity>
+          <LiveShareButton
+            active={liveShare.active}
+            starting={liveShare.starting}
+            session={liveShare.session}
+            onStart={liveShare.start}
+            onStop={liveShare.stop}
+          />
         </View>
 
         {/* Map overlay buttons removed — using bottom quick actions instead */}

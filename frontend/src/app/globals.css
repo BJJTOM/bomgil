@@ -7,6 +7,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+ * Theme tokens — light defaults live in :root, dark overrides
+ * under .dark (added to <html> by ThemeInit / layout bootstrap).
+ * Tailwind's semantic color classes (bg-warm, text-text-primary,
+ * border-border-default, …) read these so every component that
+ * uses a token adapts automatically.
+ * ============================================================ */
+:root {
+  --c-warm: #FAFAFA;
+  --c-surface: #FFFFFF;
+  --c-text-primary: #191F28;
+  --c-text-secondary: #8B95A1;
+  --c-text-tertiary: #B0B8C1;
+  --c-border-default: #E5E8EB;
+  --c-border-light: #F2F4F6;
+  --c-bg-secondary: #F7F8FA;
+  color-scheme: light;
+}
+
+html.dark {
+  --c-warm: #0F0F10;
+  --c-surface: #18181B;
+  --c-text-primary: #F5F5F5;
+  --c-text-secondary: #A1A1AA;
+  --c-text-tertiary: #71717A;
+  --c-border-default: #27272A;
+  --c-border-light: #1F1F22;
+  --c-bg-secondary: #18181B;
+  color-scheme: dark;
+}
+
+/* Catch the common `bg-white` usage inside dark mode so components that
+ * haven't been migrated to the `bg-surface` token still pick up a dark
+ * surface. Same for a few gray shades used throughout. Targeted enough
+ * to avoid breaking intentional bright whites (modal accents). */
+html.dark .bg-white { background-color: #18181B; }
+html.dark .bg-gray-50 { background-color: #1F1F22; }
+html.dark .bg-gray-100 { background-color: #27272A; }
+html.dark .border-gray-100 { border-color: #27272A; }
+html.dark .border-gray-200 { border-color: #2F2F34; }
+html.dark .text-gray-900 { color: #F5F5F5; }
+html.dark .text-gray-600 { color: #A1A1AA; }
+html.dark .text-gray-500 { color: #8B8B92; }
+html.dark .text-gray-400 { color: #71717A; }
+
 /* Password masking without type="password" — prevents Chrome detection */
 .password-mask {
   -webkit-text-security: disc;
@@ -62,8 +107,8 @@ main {
 
   body {
     font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #191F28;
-    background-color: #FAFAFA;
+    color: var(--c-text-primary);
+    background-color: var(--c-warm);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.02em;
@@ -100,11 +145,11 @@ main {
   }
 
   .card {
-    @apply bg-white rounded-card border border-[#E5E8EB];
+    @apply bg-surface rounded-card border border-border-default;
   }
 
   .card-hover {
-    @apply bg-white rounded-card border border-[#E5E8EB] hover:shadow-card
+    @apply bg-surface rounded-card border border-border-default hover:shadow-card
            active:scale-[0.99] transition-all duration-200;
   }
 

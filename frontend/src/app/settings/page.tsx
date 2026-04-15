@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icons";
 import { useAuthStore } from "@/stores/auth";
 import { useLanguageStore, LANGUAGES, useT } from "@/stores/language";
+import { useThemeStore, type ThemeMode } from "@/stores/theme";
 import api from "@/lib/api";
 
 export default function SettingsPage() {
@@ -37,6 +38,7 @@ export default function SettingsPage() {
     setShowPhotoMenu(false);
   };
   const { language, setLanguage } = useLanguageStore();
+  const { mode: themeMode, setMode: setThemeMode } = useThemeStore();
   const { t } = useT();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -189,6 +191,36 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Theme toggle */}
+        <div className="mb-4">
+          <p className="px-5 text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">
+            {language === "ko" ? "테마" : "Theme"}
+          </p>
+          <div className="mx-5 bg-surface rounded-card shadow-soft p-3 flex gap-2">
+            {([
+              { key: "light", ko: "라이트", en: "Light", emoji: "☀️" },
+              { key: "dark", ko: "다크", en: "Dark", emoji: "🌙" },
+              { key: "system", ko: "시스템", en: "System", emoji: "💻" },
+            ] as const).map((opt) => {
+              const active = themeMode === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setThemeMode(opt.key as ThemeMode)}
+                  className={`flex-1 py-3 rounded-button text-[13px] font-semibold transition-all ${
+                    active
+                      ? "bg-primary text-white shadow-soft"
+                      : "bg-bg-secondary text-text-secondary hover:bg-border-light"
+                  }`}
+                >
+                  <div className="text-xl mb-0.5">{opt.emoji}</div>
+                  {language === "ko" ? opt.ko : opt.en}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Sections */}
         {sections.map((section) => (

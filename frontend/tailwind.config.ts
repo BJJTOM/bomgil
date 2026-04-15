@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -25,16 +26,19 @@ const config: Config = {
           light: "#d4f5e4",
           dark: "#6dd4a8",
         },
-        warm: "#FAFAFA",
-        surface: "#FFFFFF",
+        // Semantic tokens — values come from CSS variables defined in
+        // globals.css so they flip automatically when <html class="dark">
+        // is set.
+        warm: "var(--c-warm)",
+        surface: "var(--c-surface)",
         danger: "#FF4B4B",
         success: "#34C759",
-        "text-primary": "#191F28",
-        "text-secondary": "#8B95A1",
-        "text-tertiary": "#B0B8C1",
-        "border-default": "#E5E8EB",
-        "border-light": "#F2F4F6",
-        "bg-secondary": "#F7F8FA",
+        "text-primary": "var(--c-text-primary)",
+        "text-secondary": "var(--c-text-secondary)",
+        "text-tertiary": "var(--c-text-tertiary)",
+        "border-default": "var(--c-border-default)",
+        "border-light": "var(--c-border-light)",
+        "bg-secondary": "var(--c-bg-secondary)",
       },
       fontFamily: {
         title: ["'Pretendard'", "'Noto Sans KR'", "sans-serif"],

@@ -88,7 +88,7 @@ export default function StoryDetailPage() {
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-border-light">
         <div className="max-w-2xl mx-auto px-5 h-14 flex items-center gap-3">
           <button onClick={() => router.back()} className="p-1">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-primary)" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
           <h1 className="text-[16px] font-bold">{language === "ko" ? "게시글" : "Post"}</h1>
         </div>

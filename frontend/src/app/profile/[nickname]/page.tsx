@@ -114,7 +114,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
       <div className="max-w-2xl mx-auto">
         {/* Profile Header — Instagram style */}
         <div className="bg-white px-5 pt-8 pb-5 text-center">

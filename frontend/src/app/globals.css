@@ -38,19 +38,62 @@ html.dark {
   color-scheme: dark;
 }
 
-/* Catch the common `bg-white` usage inside dark mode so components that
- * haven't been migrated to the `bg-surface` token still pick up a dark
- * surface. Same for a few gray shades used throughout. Targeted enough
- * to avoid breaking intentional bright whites (modal accents). */
+/* Catch common utility classes inside dark mode so components that
+ * haven't been migrated to semantic tokens still look right. Kept
+ * narrow so intentional accents (red-500 danger buttons, emerald-500
+ * success pills) don't get flattened. */
+
+/* Surfaces — swap whites and near-whites for dark panels. */
 html.dark .bg-white { background-color: #18181B; }
-html.dark .bg-gray-50 { background-color: #1F1F22; }
-html.dark .bg-gray-100 { background-color: #27272A; }
-html.dark .border-gray-100 { border-color: #27272A; }
-html.dark .border-gray-200 { border-color: #2F2F34; }
-html.dark .text-gray-900 { color: #F5F5F5; }
-html.dark .text-gray-600 { color: #A1A1AA; }
-html.dark .text-gray-500 { color: #8B8B92; }
-html.dark .text-gray-400 { color: #71717A; }
+html.dark .bg-gray-50,
+html.dark .bg-gray-100,
+html.dark .bg-gray-200 { background-color: #1F1F22; }
+
+/* Translucent whites used for frosted nav bars / floating pills.
+ * Keep the opacity so backdrop-blur still feels right; just swap
+ * the base colour to a dark neutral. */
+html.dark .bg-white\/95 { background-color: rgba(24,24,27,0.92); }
+html.dark .bg-white\/90 { background-color: rgba(24,24,27,0.88); }
+html.dark .bg-white\/85 { background-color: rgba(24,24,27,0.82); }
+html.dark .bg-white\/80 { background-color: rgba(24,24,27,0.78); }
+html.dark .border-white\/50 { border-color: rgba(255,255,255,0.08); }
+
+/* Tinted "-50" accent pills / badges — dim to ~8% of the accent. */
+html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12); }
+html.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.18); }
+html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.18); }
+
+/* Borders. border-white is common for avatar ring — make it dark. */
+html.dark .border-gray-100,
+html.dark .border-gray-200 { border-color: #27272A; }
+html.dark .border-gray-300 { border-color: #2F2F34; }
+html.dark .border-white { border-color: #18181B; }
+html.dark .border-gray-900 { border-color: #F5F5F5; }
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #27272A; }
+
+/* Text — gray scale only. Coloured accents (red/emerald/yellow/blue)
+ * are left alone because they convey meaning and still read on dark. */
+html.dark .text-gray-900,
+html.dark .text-gray-800 { color: #F5F5F5; }
+html.dark .text-gray-700,
+html.dark .text-gray-600 { color: #C4C4C7; }
+html.dark .text-gray-500 { color: #A1A1AA; }
+html.dark .text-gray-400 { color: #8B8B92; }
+html.dark .text-gray-300,
+html.dark .text-gray-200 { color: #71717A; }
+
+/* Chrome autofill in dark mode — the light override below breaks
+ * otherwise. */
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #18181B inset !important;
+  -webkit-text-fill-color: #F5F5F5 !important;
+}
 
 /* Password masking without type="password" — prevents Chrome detection */
 .password-mask {

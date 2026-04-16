@@ -41,7 +41,7 @@ export default function LicensesPage() {
               <p className="text-[14px] font-medium">{lib.name}</p>
               <p className="text-[12px] text-text-tertiary">{lib.license}</p>
             </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
             </svg>
           </a>

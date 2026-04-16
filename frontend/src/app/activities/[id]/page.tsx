@@ -322,7 +322,7 @@ export default function ActivityDetailPage() {
               </div>
               <div className="bg-bg-secondary rounded-card p-3.5">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M7 7l9.2 9.2M17 7v10H7"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2"><path d="M7 7l9.2 9.2M17 7v10H7"/></svg>
                   <span className="text-[11px] text-text-tertiary">손실 고도</span>
                 </div>
                 <p className="text-[18px] font-bold font-en">{activity.elevation_loss_m || 0}<span className="text-[12px] text-text-tertiary ml-0.5">m</span></p>

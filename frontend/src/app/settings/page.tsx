@@ -150,8 +150,8 @@ export default function SettingsPage() {
               <p className="font-bold text-[16px]">{user.nickname}</p>
               <p className="text-[12px] text-text-tertiary">{user.email}</p>
             </Link>
-            <Link href={`/profile/${user.nickname}`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+            <Link href={`/profile/${user.nickname}`} className="text-text-tertiary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </Link>
           </div>
         )}

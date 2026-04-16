@@ -170,7 +170,7 @@ export default function TrailDetailPage() {
   const moreLabel = language === "ko" ? "더보기" : language === "ja" ? "もっと見る" : language === "zh" ? "查看更多" : "Show more";
 
   return (
-    <div className="md:pt-16" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="md:pt-16" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Cover Image */}
       <div className="relative h-56 md:h-72 bg-primary">
         {tr.cover_image || tr.thumbnail_url ? (

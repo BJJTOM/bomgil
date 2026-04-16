@@ -159,7 +159,7 @@ export default function Home() {
   const countryStatsLabel = platformStats ? `${platformStats.countries}${countryUnit}` : "—";
 
   return (
-    <div className="bg-warm" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="bg-warm" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Mobile top bar */}
       <div className="md:hidden absolute top-0 left-0 right-0 z-20 px-5 pt-12 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">

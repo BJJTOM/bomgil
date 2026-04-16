@@ -124,7 +124,7 @@ export default async function SeriesDetailPage({ params }: PageProps) {
   const segments = series.segments || [];
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Hero */}
       <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-20 md:pt-24 pb-14 px-5 text-white">
         <div className="max-w-4xl mx-auto">
@@ -212,7 +212,7 @@ export default async function SeriesDetailPage({ params }: PageProps) {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="#B0B8C1"
+                    stroke="var(--c-text-tertiary)"
                     strokeWidth="2.5"
                     className="flex-shrink-0">
                     <polyline points="9 18 15 12 9 6" />

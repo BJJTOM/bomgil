@@ -13,7 +13,7 @@ import type { Trail } from "@/types";
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "#FAFAFA" }} />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "var(--c-warm)" }} />}>
       <ExploreContent />
     </Suspense>
   );
@@ -146,7 +146,7 @@ function ExploreContent() {
   const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");
 
   return (
-    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Tabs + Search Header */}
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
         <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
@@ -188,7 +188,7 @@ function ExploreContent() {
 
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               type="text"
               value={search}
@@ -315,7 +315,7 @@ function ExploreContent() {
                             : ""}
                         </p>
                       </div>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B0B8C1" strokeWidth="2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2">
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     </Link>

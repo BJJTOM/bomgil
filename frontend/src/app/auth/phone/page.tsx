@@ -159,7 +159,7 @@ export default function PhoneAuthPage() {
       {/* Header */}
       <header className="px-5 py-4 flex items-center">
         <button onClick={handleBack} className="w-9 h-9 -ml-1 flex items-center justify-center" aria-label="뒤로">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-primary)" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>

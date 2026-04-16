@@ -197,7 +197,7 @@ export default async function RegionHubPage({ params }: PageProps) {
   const trails = await fetchRegionTrails(region.keywords);
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Hero */}
       <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-20 md:pt-24 pb-12 px-5 text-white">
         <div className="max-w-4xl mx-auto">

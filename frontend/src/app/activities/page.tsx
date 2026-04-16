@@ -82,7 +82,7 @@ export default function ActivitiesPage() {
   const todayDateStr = new Date().toLocaleDateString(language, { month: "long", day: "numeric", weekday: "long" });
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#FAFAFA" }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Header */}
       <div className="bg-white pt-14 md:pt-20 px-5 pb-5 border-b border-[#F2F4F6]">
         <div className="max-w-3xl mx-auto">

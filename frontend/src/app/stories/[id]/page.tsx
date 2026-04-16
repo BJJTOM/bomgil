@@ -139,13 +139,13 @@ export default function StoryDetailPage() {
       <header className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center gap-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-primary)" strokeWidth="2">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
           <h1 className="text-[16px] font-bold flex-1">스토리</h1>
           <button onClick={handleShare} className="p-1">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-primary)" strokeWidth="2">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
               <polyline points="16 6 12 2 8 6" />
               <line x1="12" y1="2" x2="12" y2="15" />

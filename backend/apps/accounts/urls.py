@@ -4,8 +4,6 @@ from .views import (
     AccountDeleteView,
     EmailLoginView,
     FCMTokenView,
-    FirebasePhoneAuthView,
-    PhoneSmsSentLogView,
     SendOtpView,
     VerifyOtpView,
     CompletePhoneAuthView,
@@ -19,8 +17,6 @@ from .views import (
     NotificationListView,
     NotificationReadAllView,
     NotificationUnreadCountView,
-    PhoneSendView,
-    PhoneVerifyView,
     ThrottledRegisterView,
     UserBadgesView,
     UserLikedTrailsView,
@@ -33,8 +29,6 @@ urlpatterns = [
     path("", include("dj_rest_auth.urls")),
     path("register/", ThrottledRegisterView.as_view(), name="throttled-register"),
     path("register/", include("dj_rest_auth.registration.urls")),
-    path("social/google/", include("allauth.socialaccount.providers.google.urls")),
-    path("social/kakao/", include("allauth.socialaccount.providers.kakao.urls")),
     path("me/", MeView.as_view(), name="user-me"),
     path("me/delete/", AccountDeleteView.as_view(), name="account-delete"),
     path("me/xp/", MeXPView.as_view(), name="user-me-xp"),
@@ -52,13 +46,7 @@ urlpatterns = [
     path("guest-login/", GuestLoginView.as_view(), name="guest-login"),
     # Password change
     path("password-change/", PasswordChangeView.as_view(), name="password-change"),
-    # Phone verification (legacy)
-    path("phone/send/", PhoneSendView.as_view(), name="phone-send"),
-    path("phone/verify/", PhoneVerifyView.as_view(), name="phone-verify"),
-    # Firebase Phone Auth (legacy)
-    path("phone/firebase/", FirebasePhoneAuthView.as_view(), name="firebase-phone-auth"),
-    path("phone/sms-log/", PhoneSmsSentLogView.as_view(), name="phone-sms-log"),
-    # Custom OTP (new)
+    # Phone OTP
     path("phone/otp/send/", SendOtpView.as_view(), name="otp-send"),
     path("phone/otp/verify/", VerifyOtpView.as_view(), name="otp-verify"),
     path("phone/otp/complete/", CompletePhoneAuthView.as_view(), name="otp-complete"),

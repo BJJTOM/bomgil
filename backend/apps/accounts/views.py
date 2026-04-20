@@ -13,7 +13,7 @@ from apps.reviews.serializers import ReviewSerializer
 from apps.trails.models import Trail, TrailLike
 from apps.trails.serializers import TrailListSerializer
 
-from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, PhoneVerification, UserBadge
+from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, UserBadge
 
 
 def _client_ip(request):
@@ -36,16 +36,6 @@ class ProfileUpdateThrottle(UserRateThrottle):
 class FollowThrottle(UserRateThrottle):
     scope = 'follow'
     rate = '200/hour'
-
-
-class PhoneSendThrottle(UserRateThrottle):
-    scope = 'phone_send'
-    rate = '5/hour'
-
-
-class PhoneVerifyThrottle(UserRateThrottle):
-    scope = 'phone_verify'
-    rate = '10/hour'
 
 
 class PasswordChangeThrottle(UserRateThrottle):
@@ -158,82 +148,6 @@ class UserBadgesView(APIView):
             for b in badges
         ]
         return Response(data)
-
-
-# Phase 11: 휴대폰 인증
-class PhoneSendView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [PhoneSendThrottle]
-
-    def post(self, request):
-        phone = request.data.get("phone_number", "")
-        if not phone:
-            return Response({"error": "전화번호를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
-
-        code = "".join(random.choices(string.digits, k=6))
-        PhoneVerification.objects.create(
-            user=request.user, phone_number=phone, code=code
-        )
-
-        # TODO: integrate real SMS provider for production
-        logger.debug("SMS verification code generated for phone=%s", phone)
-
-        return Response({"message": "인증번호가 발송되었습니다."})
-
-
-class PhoneVerifyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [PhoneVerifyThrottle]
-
-    def post(self, request):
-        phone = request.data.get("phone_number", "")
-        code = request.data.get("code", "")
-
-        try:
-            verification = PhoneVerification.objects.filter(
-                user=request.user, phone_number=phone, code=code, is_verified=False
-            ).latest("created_at")
-        except PhoneVerification.DoesNotExist:
-            return Response(
-                {"error": "인증번호가 일치하지 않습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        verification.is_verified = True
-        verification.save(update_fields=["is_verified"])
-
-        user = request.user
-        user.phone_number = phone
-        user.is_verified = True
-        user.verification_level = max(user.verification_level, 2)
-        user.save(update_fields=["phone_number", "is_verified", "verification_level"])
-
-        # Award badge
-        UserBadge.objects.get_or_create(user=user, badge_type="verified")
-
-        return Response({"verified": True})
-
-
-class FirebasePhoneAuthThrottle(AnonRateThrottle):
-    rate = '20/hour'
-
-
-class PhoneSmsSentLogView(APIView):
-    """Log when client sends SMS verification request via Firebase."""
-    permission_classes = [permissions.AllowAny]
-    throttle_classes = [FirebasePhoneAuthThrottle]
-
-    def post(self, request):
-        phone = request.data.get('phone_number', '').strip()
-        if not phone:
-            return Response({"error": "phone_number required"}, status=400)
-        PhoneAuthLog.objects.create(
-            phone_number=phone,
-            event_type='sms_sent',
-            ip_address=_client_ip(request),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
-        )
-        return Response({"logged": True})
 
 
 class OtpSendThrottle(AnonRateThrottle):
@@ -505,114 +419,6 @@ class CompletePhoneAuthView(APIView):
             phone_number=phone,
             event_type='signup' if is_new else 'login',
             user=user,
-            nickname=user.nickname,
-            email=user.email,
-            ip_address=_client_ip(request),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
-        )
-
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'user': UserSerializer(user).data,
-            'is_new': is_new,
-        })
-
-
-class FirebasePhoneAuthView(APIView):
-    """Authenticate or register a user via Firebase phone ID token.
-
-    Body: { id_token: "...", nickname: "..." (optional, only for new users) }
-
-    Returns: { access, refresh, user, is_new }
-    """
-    permission_classes = [permissions.AllowAny]
-    throttle_classes = [FirebasePhoneAuthThrottle]
-
-    def post(self, request):
-        from .firebase_auth import verify_id_token
-
-        id_token = request.data.get('id_token', '').strip()
-        nickname = request.data.get('nickname', '').strip()
-
-        if not id_token:
-            return Response({"error": "id_token이 필요합니다."}, status=400)
-
-        decoded = verify_id_token(id_token)
-        if not decoded:
-            PhoneAuthLog.objects.create(
-                phone_number='', event_type='failed',
-                error_message='Invalid Firebase token',
-                ip_address=_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
-            )
-            return Response({"error": "유효하지 않은 인증 토큰입니다."}, status=401)
-
-        firebase_uid = decoded.get('uid', '')
-        phone_number = decoded.get('phone_number', '')
-
-        if not firebase_uid or not phone_number:
-            return Response({"error": "전화번호 정보를 찾을 수 없습니다."}, status=400)
-
-        # Lookup by firebase_uid first, then by phone_number
-        user = CustomUser.objects.filter(firebase_uid=firebase_uid).first()
-        if not user:
-            user = CustomUser.objects.filter(phone_number=phone_number).first()
-
-        is_new = False
-        if not user:
-            # Create new user
-            if not nickname:
-                # Auto-generate nickname from phone tail
-                nickname = f"user{phone_number[-4:]}"
-            # Ensure unique nickname
-            base = nickname
-            i = 1
-            while CustomUser.objects.filter(nickname=nickname).exists():
-                nickname = f"{base}{i}"
-                i += 1
-
-            username = f"phone_{firebase_uid[:20]}"
-            i2 = 1
-            while CustomUser.objects.filter(username=username).exists():
-                username = f"phone_{firebase_uid[:18]}{i2}"
-                i2 += 1
-
-            user = CustomUser.objects.create(
-                username=username,
-                nickname=nickname,
-                phone_number=phone_number,
-                phone_verified=True,
-                firebase_uid=firebase_uid,
-                is_verified=True,
-                verification_level=2,
-                email=f"{firebase_uid}@phone.moruwalk.com",
-            )
-            user.set_unusable_password()
-            user.save()
-            is_new = True
-        else:
-            # Update phone verification status
-            updated_fields = []
-            if not user.phone_verified:
-                user.phone_verified = True
-                updated_fields.append('phone_verified')
-            if not user.firebase_uid:
-                user.firebase_uid = firebase_uid
-                updated_fields.append('firebase_uid')
-            if user.phone_number != phone_number:
-                user.phone_number = phone_number
-                updated_fields.append('phone_number')
-            if updated_fields:
-                user.save(update_fields=updated_fields)
-
-        # Log the auth event
-        PhoneAuthLog.objects.create(
-            phone_number=phone_number,
-            event_type='signup' if is_new else 'login',
-            user=user,
-            firebase_uid=firebase_uid,
             nickname=user.nickname,
             email=user.email,
             ip_address=_client_ip(request),

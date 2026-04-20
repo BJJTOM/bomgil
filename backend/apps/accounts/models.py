@@ -165,19 +165,6 @@ class UserBadge(models.Model):
         return f"{self.user.nickname} - {self.get_badge_type_display()}"
 
 
-class PhoneVerification(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    phone_number = models.CharField(max_length=20)
-    code = models.CharField(max_length=6)
-    is_verified = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-        verbose_name = "휴대폰 인증"
-        verbose_name_plural = "휴대폰 인증"
-
-
 class PhoneOTP(models.Model):
     """6-digit OTP for phone verification (custom, no Firebase)."""
     phone_number = models.CharField(max_length=20, db_index=True)

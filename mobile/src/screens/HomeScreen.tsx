@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar,
   Modal,
   Image,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +30,9 @@ import { useThemeStore } from '../stores/theme';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40 - 10) / 2;
 
+// ---------------------------------------------------------------------------
+// Translations
+// ---------------------------------------------------------------------------
 const TRANSLATIONS: Record<string, Record<Language, string>> = {
   heroTitle: {
     ko: '걸으면 보이는 것들',
@@ -60,17 +64,18 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'どこを歩きますか？',
     zh: '你想去哪里走走？',
   },
-  popularTitle: {
-    ko: '인기 코스',
-    en: 'Popular Trails',
-    ja: '人気コース',
-    zh: '热门路线',
+  // Merged trail section — replaces popularTitle / recommendedTitle / todayTitle
+  trailSectionTitle: {
+    ko: '추천 코스',
+    en: 'Recommended Trails',
+    ja: 'おすすめコース',
+    zh: '推荐路线',
   },
-  popularSub: {
-    ko: '여행자들이 가장 사랑한 도보 코스',
-    en: 'Most loved walking trails by travelers',
-    ja: '旅行者に最も愛された散歩コース',
-    zh: '旅行者最喜爱的步行路线',
+  trailSectionSub: {
+    ko: '에디터 추천 & 인기 코스',
+    en: "Editor's picks & popular trails",
+    ja: '編集部おすすめ & 人気コース',
+    zh: '编辑推荐 & 热门路线',
   },
   viewAll: {
     ko: '전체보기',
@@ -78,40 +83,72 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'すべて見る',
     zh: '查看全部',
   },
-  ugcCTA: {
-    ko: '나만의 길을 공유해보세요',
-    en: 'Share your own trail',
-    ja: '自分だけの道を共有してください',
-    zh: '分享你自己的路线',
+  // UGC CTA — upgraded
+  ugcTitle: {
+    ko: '나만 아는 그 길, 공유해주세요',
+    en: 'Share the path only you know',
+    ja: 'あなただけが知る道を共有してください',
+    zh: '分享只有你知道的那条路',
+  },
+  ugcSubtitle: {
+    ko: '당신이 걸었던 길이 다른 여행자의 지도가 됩니다',
+    en: 'The path you walked becomes another traveler\'s map',
+    ja: 'あなたが歩いた道が他の旅人の地図になります',
+    zh: '你走过的路将成为其他旅行者的地图',
+  },
+  ugcCreateBtn: {
+    ko: '코스 등록',
+    en: 'Create Trail',
+    ja: 'コース登録',
+    zh: '注册路线',
   },
   ugcCommunityBtn: {
-    ko: '커뮤니티 둘러보기',
-    en: 'Browse Community',
-    ja: 'コミュニティを見る',
-    zh: '浏览社区',
+    ko: '커뮤니티',
+    en: 'Community',
+    ja: 'コミュニティ',
+    zh: '社区',
   },
-  recommendedTitle: {
-    ko: '오늘의 추천 코스',
-    en: "Today's Picks",
-    ja: '今日のおすすめコース',
-    zh: '今日推荐路线',
-  },
-  recommendedSub: {
-    ko: '지금 가장 인기 있는 코스를 걸어보세요',
-    en: 'Walk the most popular trails right now',
-    ja: '今一番人気のコースを歩いてみましょう',
-    zh: '走走现在最受欢迎的路线',
-  },
+  // Stats labels
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
   stories: { ko: '걸은 이야기', en: 'Stories', ja: '歩いた話', zh: '步行故事' },
   travelers: { ko: '여행자', en: 'Travelers', ja: '旅行者', zh: '旅行者' },
+  // Stats zero-state texts
+  zeroCountries: { ko: '베타', en: 'Beta', ja: 'Beta', zh: 'Beta' },
+  zeroTrails: { ko: '등록해주세요', en: 'Add yours', ja: '登録してね', zh: '快来注册' },
+  zeroStories: { ko: '첫 이야기', en: 'Be first', ja: '最初の話', zh: '成为第一个' },
+  zeroUsers: { ko: '함께해요', en: 'Join us', ja: '一緒に', zh: '一起来' },
+  // Empty state for trails section
+  emptyTrailsTitle: {
+    ko: '아직 코스가 없어요',
+    en: 'No trails yet',
+    ja: 'まだコースがありません',
+    zh: '还没有路线',
+  },
+  emptyTrailsSub: {
+    ko: '첫 번째 코스를 등록해보세요',
+    en: 'Be the first to create a trail',
+    ja: '最初のコースを登録してみましょう',
+    zh: '来注册第一条路线吧',
+  },
+  emptyTrailsCTA: {
+    ko: '코스 등록하기',
+    en: 'Create a Trail',
+    ja: 'コースを登録する',
+    zh: '注册路线',
+  },
+  // Series section
+  seriesTitle: { ko: '시리즈 도전', en: 'Series Challenges', ja: 'シリーズチャレンジ', zh: '系列挑战' },
+  seriesSub: { ko: '장거리 코스를 구간별로 완주', en: 'Multi-segment completion', ja: '長距離コースを区間ごとに踏破', zh: '分段完成长距离路线' },
 };
 
 function t(key: string, lang: Language): string {
   return TRANSLATIONS[key]?.[lang] || TRANSLATIONS[key]?.ko || key;
 }
 
+// ---------------------------------------------------------------------------
+// Country discover data
+// ---------------------------------------------------------------------------
 const DISCOVER_COUNTRIES = [
   { code: 'KR', name: '한국', emoji: '🇰🇷', desc: '서울, 제주, 부산...' },
   { code: 'JP', name: '일본', emoji: '🇯🇵', desc: '도쿄, 교토, 오사카...' },
@@ -123,6 +160,139 @@ const DISCOVER_COUNTRIES = [
   { code: 'ES', name: '스페인', emoji: '🇪🇸', desc: '바르셀로나, 산티아고...' },
 ];
 
+// ---------------------------------------------------------------------------
+// Animated count-up hook (ease-out over ~800ms)
+// ---------------------------------------------------------------------------
+function useCountUp(target: number, enabled: boolean): number {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    if (!enabled || target <= 0) {
+      setDisplay(target);
+      return;
+    }
+
+    let start = 0;
+    const duration = 800;
+    const startTime = Date.now();
+
+    const step = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      setDisplay(current);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    requestAnimationFrame(step);
+  }, [target, enabled]);
+
+  return display;
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton pulse placeholder for stats
+// ---------------------------------------------------------------------------
+function SkeletonPulse({ width: w, height: h, isDark }: { width: number; height: number; isDark: boolean }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={{
+        width: w,
+        height: h,
+        borderRadius: h / 2,
+        backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : '#E5E8EB',
+        opacity,
+      }}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Single stat item with loading / zero / count-up states
+// ---------------------------------------------------------------------------
+function StatItem({
+  rawValue,
+  isLoading,
+  label,
+  zeroKey,
+  language,
+  isDark,
+  textTertColor,
+}: {
+  rawValue: number | undefined;
+  isLoading: boolean;
+  label: string;
+  zeroKey: string;
+  language: Language;
+  isDark: boolean;
+  textTertColor: string;
+}) {
+  const numericValue = rawValue ?? 0;
+  const animatedValue = useCountUp(numericValue, !isLoading && numericValue > 0);
+
+  let content: React.ReactNode;
+
+  if (isLoading) {
+    content = <SkeletonPulse width={32} height={16} isDark={isDark} />;
+  } else if (numericValue === 0) {
+    content = (
+      <Text style={[styles.statValueText, isDark && { color: '#4ADE80' }, { fontSize: 13 }]}>
+        {t(zeroKey, language)}
+      </Text>
+    );
+  } else {
+    content = (
+      <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>
+        {animatedValue}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.statItem}>
+      {content}
+      <Text style={[styles.statLabel, { color: textTertColor }]}>{label}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Horizontal scroll fade hint (right edge)
+// ---------------------------------------------------------------------------
+function ScrollFadeHint({ isDark }: { isDark: boolean }) {
+  return (
+    <LinearGradient
+      colors={[
+        isDark ? 'rgba(10,10,10,0)' : 'rgba(250,250,250,0)',
+        isDark ? 'rgba(10,10,10,0.9)' : 'rgba(250,250,250,0.9)',
+      ]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      pointerEvents="none"
+      style={styles.scrollFade}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main HomeScreen
+// ---------------------------------------------------------------------------
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -135,7 +305,13 @@ export default function HomeScreen() {
   const textColor = isDark ? '#FFFFFF' : '#191F28';
   const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : '#B0B8C1';
 
-  const { data: platformStats } = useQuery({
+  // ---- Queries ----
+
+  const {
+    data: platformStats,
+    isLoading: isLoadingStats,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ['platform-stats'],
     queryFn: async () => {
       const { data } = await api.get('/stats/');
@@ -144,18 +320,10 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
-
-  const STATS = [
-    { value: String(platformStats?.countries || 0), label: t('registeredCountries', language) },
-    { value: String(platformStats?.trails || 0), label: t('courses', language) },
-    { value: String(platformStats?.stories || 0), label: t('stories', language) },
-    { value: String(platformStats?.users || 0), label: t('travelers', language) },
-  ];
-
   const {
     data: popularTrails,
-    isLoading,
-    refetch,
+    isLoading: isLoadingPopular,
+    refetch: refetchPopular,
     isRefetching,
   } = useQuery({
     queryKey: ['trails', 'popular'],
@@ -165,7 +333,11 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: recommendedTrails, isLoading: isLoadingRecommended } = useQuery({
+  const {
+    data: recommendedTrails,
+    isLoading: isLoadingRecommended,
+    refetch: refetchRecommended,
+  } = useQuery({
     queryKey: ['trails', 'recommended'],
     queryFn: async () => {
       const { data } = await api.get('/trails/', {
@@ -176,8 +348,11 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
-  // "오늘의 코스" — curated official trails. Shown at the top of home.
-  const { data: todayTrails, isLoading: isLoadingToday } = useQuery({
+  const {
+    data: todayTrails,
+    isLoading: isLoadingToday,
+    refetch: refetchToday,
+  } = useQuery({
     queryKey: ['trails', 'today'],
     queryFn: async () => {
       try {
@@ -190,8 +365,10 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Featured series for home screen "시리즈 도전" section.
-  const { data: featuredSeries } = useQuery({
+  const {
+    data: featuredSeries,
+    refetch: refetchSeries,
+  } = useQuery({
     queryKey: ['trail-series', 'featured'],
     queryFn: async () => {
       try {
@@ -204,15 +381,72 @@ export default function HomeScreen() {
     staleTime: 10 * 60 * 1000,
   });
 
+  // ---- Pull-to-refresh: refetch ALL queries ----
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchPopular(),
+        refetchStats(),
+        refetchRecommended(),
+        refetchToday(),
+        refetchSeries(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchPopular, refetchStats, refetchRecommended, refetchToday, refetchSeries]);
+
+  // ---- Merged trails: combine today + popular + recommended, deduplicate, max 8 ----
+  const mergedTrails = useMemo(() => {
+    const seen = new Set<number>();
+    const result: Trail[] = [];
+
+    const addTrails = (trails: Trail[] | undefined) => {
+      if (!trails) return;
+      for (const trail of trails) {
+        if (!seen.has(trail.id) && result.length < 8) {
+          seen.add(trail.id);
+          result.push(trail);
+        }
+      }
+    };
+
+    addTrails(todayTrails);
+    addTrails(popularTrails);
+    addTrails(recommendedTrails);
+
+    return result;
+  }, [todayTrails, popularTrails, recommendedTrails]);
+
+  const isMergedLoading = isLoadingPopular && isLoadingRecommended && isLoadingToday;
+  const hasMergedTrails = mergedTrails.length > 0;
+
+  // ---- Stats data ----
+  const statItems = [
+    { raw: platformStats?.countries, label: t('registeredCountries', language), zeroKey: 'zeroCountries' },
+    { raw: platformStats?.trails, label: t('courses', language), zeroKey: 'zeroTrails' },
+    { raw: platformStats?.stories, label: t('stories', language), zeroKey: 'zeroStories' },
+    { raw: platformStats?.users, label: t('travelers', language), zeroKey: 'zeroUsers' },
+  ];
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar barStyle="light-content" translucent={true} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing || isRefetching}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }>
-        {/* Hero Section — compact */}
+        {/* ============================================================= */}
+        {/* Hero Section                                                   */}
+        {/* ============================================================= */}
         <FadeInView delay={0}>
           <LinearGradient
             colors={['#1a3a1b', '#2D4A2E', '#1e442f']}
@@ -251,34 +485,34 @@ export default function HomeScreen() {
                 <Text style={styles.heroCTASecondaryText}>{t('shareCTA', language)}</Text>
               </TouchableOpacity>
             </View>
-
           </LinearGradient>
         </FadeInView>
 
-        {/* Stats bar — overlapping hero bottom */}
+        {/* ============================================================= */}
+        {/* Stats bar — overlapping hero bottom                            */}
+        {/* ============================================================= */}
         <View style={[styles.statsBar, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[0].value}</Text>
-            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[0].label}</Text>
-          </View>
-          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[1].value}</Text>
-            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[1].label}</Text>
-          </View>
-          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[2].value}</Text>
-            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[2].label}</Text>
-          </View>
-          <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, isDark && { color: '#4ADE80' }]}>{STATS[3].value}</Text>
-            <Text style={[styles.statLabel, { color: textTertColor }]}>{STATS[3].label}</Text>
-          </View>
+          {statItems.map((item, idx) => (
+            <React.Fragment key={item.zeroKey}>
+              {idx > 0 && (
+                <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
+              )}
+              <StatItem
+                rawValue={item.raw}
+                isLoading={isLoadingStats}
+                label={item.label}
+                zeroKey={item.zeroKey}
+                language={language}
+                isDark={isDark}
+                textTertColor={textTertColor}
+              />
+            </React.Fragment>
+          ))}
         </View>
 
-        {/* Discover by Country */}
+        {/* ============================================================= */}
+        {/* Discover by Country                                            */}
+        {/* ============================================================= */}
         <FadeInView delay={100}>
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>{t('discoverTitle', language)}</Text>
@@ -292,261 +526,223 @@ export default function HomeScreen() {
                     navigation.navigate('Explore', { country: country.code })
                   }>
                   <Text style={styles.countryEmoji}>{country.emoji}</Text>
-                  <Text style={[styles.countryName, { color: textColor }]}>{country.name}</Text>
-                  <Text style={styles.countryDesc} numberOfLines={1}>
-                    {country.desc}
-                  </Text>
+                  <View style={styles.countryTextWrap}>
+                    <Text style={[styles.countryName, { color: textColor }]}>{country.name}</Text>
+                    <Text style={styles.countryDesc} numberOfLines={1}>
+                      {country.desc}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         </FadeInView>
 
-        {/* Series Challenges — multi-segment progression */}
+        {/* ============================================================= */}
+        {/* Series Challenges                                              */}
+        {/* ============================================================= */}
         {featuredSeries && featuredSeries.length > 0 && (
           <FadeInView delay={140}>
             <View style={styles.trailSection}>
               <View style={styles.trailHeader}>
                 <View>
                   <Text style={[styles.sectionTitle, { color: textColor }]}>
-                    {language === 'ko' ? '시리즈 도전' : language === 'ja' ? 'シリーズチャレンジ' : language === 'zh' ? '系列挑战' : 'Series Challenges'}
+                    {t('seriesTitle', language)}
                   </Text>
                   <Text style={[styles.sectionSub, { color: textTertColor }]}>
-                    {language === 'ko' ? '장거리 코스를 구간별로 완주' : language === 'ja' ? '長距離コースを区間ごとに踏破' : language === 'zh' ? '分段完成长距离路线' : 'Multi-segment completion'}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate('TrailSeriesList')}>
-                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={featuredSeries}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.trailScroll}
-                keyExtractor={(item: any) => String(item.id)}
-                renderItem={({ item }: any) => {
-                  const pct = Math.min(100, item.progress_pct || 0);
-                  return (
-                    <TouchableOpacity
-                      style={[styles.seriesHomeCard, { backgroundColor: cardBg }]}
-                      activeOpacity={0.85}
-                      onPress={() =>
-                        navigation.navigate('TrailSeriesDetail', { slug: item.slug })
-                      }>
-                      <View style={styles.seriesHomeEmojiWrap}>
-                        <Text style={styles.seriesHomeEmoji}>
-                          {item.accent_emoji || '🚶'}
-                        </Text>
-                      </View>
-                      <Text
-                        style={[styles.seriesHomeTitle, { color: textColor }]}
-                        numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <Text
-                        style={[styles.seriesHomeSub, { color: textTertColor }]}
-                        numberOfLines={1}>
-                        {item.subtitle || item.region || ''}
-                      </Text>
-                      <View style={styles.seriesHomeProgressTrack}>
-                        <View
-                          style={[
-                            styles.seriesHomeProgressFill,
-                            { width: `${pct}%` },
-                          ]}
-                        />
-                      </View>
-                      <Text style={[styles.seriesHomeProgressLabel, { color: textTertColor }]}>
-                        {item.progress_completed}/{item.progress_total} · {pct}%
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            </View>
-          </FadeInView>
-        )}
-
-        {/* Today's Courses — curated official trails */}
-        {todayTrails && todayTrails.length > 0 && (
-          <FadeInView delay={150}>
-            <View style={styles.trailSection}>
-              <View style={styles.trailHeader}>
-                <View>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>
-                    {language === 'ko' ? '오늘의 코스' : language === 'ja' ? '今日のコース' : language === 'zh' ? '今日路线' : "Today's Picks"}
-                  </Text>
-                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
-                    {language === 'ko' ? '공식 큐레이션 · 지금 걷기 좋은' : language === 'ja' ? '公式キュレーション' : language === 'zh' ? '官方策划' : 'Official curation'}
+                    {t('seriesSub', language)}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate('Explore', { is_official: 'true' })
-                  }>
-                  <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+                  style={styles.viewAllBtn}
+                  onPress={() => navigation.navigate('TrailSeriesList')}>
+                  <Text style={[styles.viewAllText, isDark && { color: '#4ADE80' }]}>
+                    {t('viewAll', language)}
+                  </Text>
+                  <Feather name="arrow-right" size={12} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginLeft: 2 }} />
                 </TouchableOpacity>
               </View>
-              <FlatList
-                data={todayTrails}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.trailScroll}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => (
-                  <View style={styles.trailCardWrap}>
-                    <TrailCard
-                      trail={item}
-                      compact
-                      onPress={() =>
-                        navigation.navigate('TrailDetail', { id: item.id })
-                      }
-                    />
-                  </View>
-                )}
-              />
+              <View>
+                <FlatList
+                  data={featuredSeries}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trailScroll}
+                  keyExtractor={(item: any) => String(item.id)}
+                  renderItem={({ item }: any) => {
+                    const pct = Math.min(100, item.progress_pct || 0);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.seriesHomeCard, { backgroundColor: cardBg }]}
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          navigation.navigate('TrailSeriesDetail', { slug: item.slug })
+                        }>
+                        <View style={[styles.seriesHomeEmojiWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
+                          <Text style={styles.seriesHomeEmoji}>
+                            {item.accent_emoji || '🚶'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.seriesHomeTitle, { color: textColor }]}
+                          numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text
+                          style={[styles.seriesHomeSub, { color: textTertColor }]}
+                          numberOfLines={1}>
+                          {item.subtitle || item.region || ''}
+                        </Text>
+                        <View style={[styles.seriesHomeProgressTrack, isDark && { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+                          <View
+                            style={[
+                              styles.seriesHomeProgressFill,
+                              { width: `${pct}%` },
+                              isDark && { backgroundColor: '#4ADE80' },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.seriesHomeProgressLabel, { color: textTertColor }]}>
+                          {item.progress_completed}/{item.progress_total} · {pct}%
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                <ScrollFadeHint isDark={isDark} />
+              </View>
             </View>
           </FadeInView>
         )}
 
-        {/* Popular Trails */}
+        {/* ============================================================= */}
+        {/* Merged Trail Section (today + popular + recommended)           */}
+        {/* ============================================================= */}
         <FadeInView delay={200}>
           <View style={styles.trailSection}>
             <View style={styles.trailHeader}>
               <View>
-                <Text style={[styles.sectionTitle, { color: textColor }]}>{t('popularTitle', language)}</Text>
-                <Text style={[styles.sectionSub, { color: textTertColor }]}>{t('popularSub', language)}</Text>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                  {t('trailSectionTitle', language)}
+                </Text>
+                <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                  {t('trailSectionSub', language)}
+                </Text>
               </View>
               <TouchableOpacity
+                style={styles.viewAllBtn}
                 onPress={() =>
                   navigation.navigate('Explore', { ordering: '-like_count' })
                 }>
-                <Text style={styles.viewAllText}>{t('viewAll', language)}</Text>
+                <Text style={[styles.viewAllText, isDark && { color: '#4ADE80' }]}>
+                  {t('viewAll', language)}
+                </Text>
+                <Feather name="arrow-right" size={12} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginLeft: 2 }} />
               </TouchableOpacity>
             </View>
-            {isLoading ? (
+
+            {isMergedLoading ? (
+              /* Skeleton loading */
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.trailScroll}>
                 {[1, 2, 3].map((i) => (
-                  <View key={i} style={styles.skeletonCard} />
+                  <View
+                    key={i}
+                    style={[styles.skeletonCard, isDark && { backgroundColor: '#1e1e1e' }]}
+                  />
                 ))}
               </ScrollView>
+            ) : hasMergedTrails ? (
+              /* Trail cards */
+              <View>
+                <FlatList
+                  data={mergedTrails}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trailScroll}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={({ item }) => (
+                    <View style={styles.trailCardWrap}>
+                      <TrailCard
+                        trail={item}
+                        compact
+                        onPress={() =>
+                          navigation.navigate('TrailDetail', { id: item.id })
+                        }
+                      />
+                    </View>
+                  )}
+                />
+                <ScrollFadeHint isDark={isDark} />
+              </View>
             ) : (
-              <FlatList
-                data={popularTrails?.slice(0, 6)}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.trailScroll}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => (
-                  <View style={styles.trailCardWrap}>
-                    <TrailCard
-                      trail={item}
-                      compact
-                      onPress={() =>
-                        navigation.navigate('TrailDetail', { id: item.id })
-                      }
-                    />
-                  </View>
-                )}
-              />
+              /* Empty state */
+              <View style={[styles.emptyCard, { backgroundColor: isDark ? '#1a1a1a' : colors.primary50 }]}>
+                <Text style={styles.emptyEmoji}>🥾</Text>
+                <Text style={[styles.emptyTitle, { color: textColor }]}>
+                  {t('emptyTrailsTitle', language)}
+                </Text>
+                <Text style={[styles.emptySub, { color: textTertColor }]}>
+                  {t('emptyTrailsSub', language)}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.emptyCTA, isDark && { backgroundColor: '#4ADE80' }]}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('TrailCreate')}>
+                  <Feather name="plus" size={15} color={isDark ? '#0a0a0a' : '#FFFFFF'} style={{ marginRight: 6 }} />
+                  <Text style={[styles.emptyCTAText, isDark && { color: '#0a0a0a' }]}>
+                    {t('emptyTrailsCTA', language)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </FadeInView>
 
-        {/* Recommended Trails */}
-        {(isLoadingRecommended || (recommendedTrails && recommendedTrails.length > 0)) && (
-          <FadeInView delay={300}>
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Feather name="star" size={18} color={isDark ? '#4ADE80' : '#2D4A2E'} />
-                <View style={{ marginLeft: 8, flex: 1 }}>
-                  <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
-                    {t('recommendedTitle', language)}
-                  </Text>
-                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
-                    {t('recommendedSub', language)}
-                  </Text>
-                </View>
+        {/* ============================================================= */}
+        {/* UGC CTA — compelling conversion card                           */}
+        {/* ============================================================= */}
+        <FadeInView delay={300}>
+          <LinearGradient
+            colors={isDark ? ['rgba(74,222,128,0.08)', 'rgba(74,222,128,0.02)'] : [colors.primary50, '#FFFFFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={[styles.ugcCard, isDark && { borderColor: 'rgba(74,222,128,0.15)' }]}>
+            <View style={styles.ugcIconRow}>
+              <View style={[styles.ugcIconWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.12)' }]}>
+                <Feather name="map" size={22} color={isDark ? '#4ADE80' : '#2D4A2E'} />
               </View>
-              {isLoadingRecommended ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 12, paddingTop: 16, paddingBottom: 12, paddingRight: 20 }}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={[styles.recCardSkeleton, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}>
-                      <View style={[styles.recCardSkeletonImage, { backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                      <View style={{ padding: 12 }}>
-                        <View style={[styles.skeletonLine, { width: 120, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                        <View style={[styles.skeletonLine, { width: 80, marginTop: 8, backgroundColor: isDark ? '#2a2a2a' : '#E5E8EB' }]} />
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12, paddingTop: 16, paddingBottom: 12, paddingRight: 20 }}>
-                {(recommendedTrails || []).slice(0, 3).map((trail) => (
-                  <TouchableOpacity
-                    key={trail.id}
-                    style={[styles.recCard, { backgroundColor: cardBg }]}
-                    activeOpacity={0.8}
-                    onPress={() => navigation.navigate('TrailDetail', { id: trail.id })}>
-                    {trail.cover_image || trail.thumbnail_url ? (
-                      <Image
-                        source={{ uri: trail.cover_image || trail.thumbnail_url }}
-                        style={styles.recCardImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={styles.recCardImagePlaceholder}>
-                        <Feather name="map-pin" size={24} color="#B0B8C1" />
-                      </View>
-                    )}
-                    <View style={styles.recCardBody}>
-                      <Text style={[styles.recCardTitle, { color: textColor }]} numberOfLines={1}>
-                        {trail.title}
-                      </Text>
-                      <View style={styles.recCardMeta}>
-                        <Feather name="map" size={11} color={textTertColor} />
-                        <Text style={[styles.recCardMetaText, { color: textTertColor }]}>
-                          {trail.distance_km ? `${(parseFloat(String(trail.distance_km)) || 0).toFixed(1)}km` : ''}
-                          {trail.region ? ` · ${trail.region}` : ''}
-                        </Text>
-                      </View>
-                      <View style={styles.recCardMeta}>
-                        <Feather name="heart" size={11} color="#FF4B4B" />
-                        <Text style={[styles.recCardMetaText, { color: textTertColor }]}>
-                          {trail.like_count ?? 0}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              )}
             </View>
-          </FadeInView>
-        )}
-
-        {/* Recent Community Posts */}
-        {/* UGC CTA — single compact line */}
-        <View style={[styles.ugcRow, isDark && { backgroundColor: '#1a1a1a' }]}>
-          <Feather name="edit-3" size={16} color="#8B95A1" style={{ marginRight: 8 }} />
-          <Text style={[styles.ugcText, { flex: 1 }]}>{t('ugcCTA', language)}</Text>
-          <TouchableOpacity
-            style={styles.ugcBtn}
-            onPress={() => navigation.navigate('Community')}
-            activeOpacity={0.85}>
-            <Text style={styles.ugcBtnText}>{t('ugcCommunityBtn', language)}</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.ugcTitle, { color: textColor }]}>
+              {t('ugcTitle', language)}
+            </Text>
+            <Text style={[styles.ugcSubtitle, { color: textTertColor }]}>
+              {t('ugcSubtitle', language)}
+            </Text>
+            <View style={styles.ugcButtonRow}>
+              <TouchableOpacity
+                style={[styles.ugcPrimaryBtn, isDark && { backgroundColor: '#4ADE80' }]}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('TrailCreate')}>
+                <Feather name="plus-circle" size={14} color={isDark ? '#0a0a0a' : '#FFFFFF'} style={{ marginRight: 6 }} />
+                <Text style={[styles.ugcPrimaryBtnText, isDark && { color: '#0a0a0a' }]}>
+                  {t('ugcCreateBtn', language)}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.ugcSecondaryBtn, isDark && { borderColor: 'rgba(255,255,255,0.15)' }]}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Community')}>
+                <Feather name="users" size={14} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginRight: 6 }} />
+                <Text style={[styles.ugcSecondaryBtnText, isDark && { color: '#4ADE80' }]}>
+                  {t('ugcCommunityBtn', language)}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </FadeInView>
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -556,7 +752,9 @@ export default function HomeScreen() {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Language Selection Modal */}
+      {/* ============================================================= */}
+      {/* Language Selection Modal                                        */}
+      {/* ============================================================= */}
       <Modal visible={showLangModal} transparent animationType="fade">
         <TouchableOpacity
           style={styles.modalOverlay}
@@ -572,11 +770,15 @@ export default function HomeScreen() {
             ]).map((lang) => (
               <TouchableOpacity
                 key={lang.code}
-                style={[styles.langItem, language === lang.code && styles.langItemActive]}
+                style={[
+                  styles.langItem,
+                  language === lang.code && styles.langItemActive,
+                  isDark && language === lang.code && { backgroundColor: 'rgba(255,255,255,0.08)' },
+                ]}
                 onPress={() => { setLanguage(lang.code); setShowLangModal(false); }}>
                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                <Text style={styles.langLabel}>{lang.label}</Text>
-                {language === lang.code && <Text style={styles.langCheck}>✓</Text>}
+                <Text style={[styles.langLabel, isDark && { color: '#FFFFFF' }]}>{lang.label}</Text>
+                {language === lang.code && <Text style={[styles.langCheck, isDark && { color: '#4ADE80' }]}>✓</Text>}
               </TouchableOpacity>
             ))}
           </View>
@@ -586,13 +788,16 @@ export default function HomeScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
 
-  // Hero — shorter, 220px feel
+  // Hero
   hero: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -618,9 +823,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  langButtonText: {
-    fontSize: 15,
   },
   heroTitle: {
     fontSize: 28,
@@ -670,7 +872,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Stats bar — white card overlapping hero bottom
+  // Stats bar
   statsBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -684,15 +886,23 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 36,
   },
   statDivider: {
     width: 1,
     height: 28,
     backgroundColor: '#F2F4F6',
+    alignSelf: 'center',
   },
   statValue: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#2D4A2E',
+  },
+  statValueText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#2D4A2E',
   },
   statLabel: {
@@ -719,7 +929,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Country Grid — no borders, subtle bg
+  // Country Grid — vertical layout for name/desc
   countryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -740,13 +950,16 @@ const styles = StyleSheet.create({
   countryEmoji: {
     fontSize: 24,
   },
+  countryTextWrap: {
+    flex: 1,
+  },
   countryName: {
     fontSize: 13,
     fontWeight: '600',
     color: '#191F28',
+    marginBottom: 2,
   },
   countryDesc: {
-    flex: 1,
     fontSize: 10,
     color: '#B0B8C1',
   },
@@ -763,6 +976,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   viewAllText: {
     fontSize: 13,
     color: '#2D4A2E',
@@ -776,6 +993,17 @@ const styles = StyleSheet.create({
   trailCardWrap: {
     width: 260,
   },
+
+  // Scroll fade hint
+  scrollFade: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 12,
+    width: 32,
+  },
+
+  // Series cards
   seriesHomeCard: {
     width: 240,
     padding: 16,
@@ -785,69 +1013,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
-  },
-  // Daily goal widget — sits above series section
-  goalWidget: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  goalWidgetTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  goalWidgetLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  goalWidgetValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  goalWidgetUnit: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  goalStreakWrap: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  goalStreakEmoji: { fontSize: 20 },
-  goalStreakValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  goalStreakLabel: {
-    fontSize: 9,
-    fontWeight: '500',
-    marginTop: -2,
-  },
-  goalWidgetTrack: {
-    height: 8,
-    backgroundColor: '#EEF1F4',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  goalWidgetFill: {
-    height: '100%',
-    backgroundColor: '#2D4A2E',
-    borderRadius: 4,
-  },
-  goalWidgetPct: {
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'right',
-    marginTop: 6,
   },
   seriesHomeEmojiWrap: {
     width: 44,
@@ -886,108 +1051,122 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+
+  // Skeleton
   skeletonCard: {
     width: 260,
     height: 180,
     borderRadius: 16,
     backgroundColor: '#F7F8FA',
   },
-  recCardSkeleton: {
-    width: 220,
-    borderRadius: 16,
-    overflow: 'hidden',
+
+  // Empty state for merged trails
+  emptyCard: {
+    marginHorizontal: 20,
+    borderRadius: 18,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    alignItems: 'center',
   },
-  recCardSkeletonImage: {
-    width: '100%',
-    height: 120,
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
   },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 6,
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  skeletonCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  emptySub: {
+    fontSize: 13,
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 18,
   },
-  // UGC — single compact row
-  ugcRow: {
+  emptyCTA: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 20,
-    marginTop: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#F7F8FA',
-    borderRadius: 16,
-  },
-  ugcText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#8B95A1',
-    flex: 1,
-    marginRight: 12,
-  },
-  ugcBtn: {
     backgroundColor: '#2D4A2E',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 14,
   },
-  ugcBtnText: {
+  emptyCTAText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
 
-  // Section header with icon
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // UGC CTA card
+  ugcCard: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 18,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
   },
-
-  // Recommended trail cards
-  recCard: {
-    width: 220,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+  ugcIconRow: {
+    marginBottom: 14,
   },
-  recCardImage: {
-    width: '100%',
-    height: 120,
-  },
-  recCardImagePlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#F2F4F6',
+  ugcIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.primary50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recCardBody: {
-    padding: 12,
-  },
-  recCardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#191F28',
+  ugcTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
     marginBottom: 6,
   },
-  recCardMeta: {
+  ugcSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  ugcButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  ugcPrimaryBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    justifyContent: 'center',
+    backgroundColor: '#2D4A2E',
+    paddingVertical: 12,
+    borderRadius: 14,
   },
-  recCardMetaText: {
-    fontSize: 11,
-    color: '#B0B8C1',
+  ugcPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  ugcSecondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
+  },
+  ugcSecondaryBtnText: {
+    color: '#2D4A2E',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Section header with icon (kept for compatibility)
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   // Footer

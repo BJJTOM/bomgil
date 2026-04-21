@@ -23,6 +23,7 @@ import { colors } from '../theme/colors';
 import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
+import WeeklyInsights from '../components/WeeklyInsights';
 import { useLanguageStore, Language } from '../stores/language';
 import { useAuthStore } from '../stores/auth';
 import { useThemeStore } from '../stores/theme';
@@ -484,6 +485,15 @@ export default function HomeScreen() {
             </React.Fragment>
           ))}
         </View>
+
+        {/* ============================================================= */}
+        {/* Weekly AI Insights (authenticated users only)                  */}
+        {/* ============================================================= */}
+        {isAuthenticated && (
+          <FadeInView delay={50}>
+            <WeeklyInsights />
+          </FadeInView>
+        )}
 
         {/* ============================================================= */}
         {/* Discover by Country                                            */}

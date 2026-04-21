@@ -383,6 +383,24 @@ class ActivityMergeView(APIView):
         )
 
 
+class WeeklyInsightsView(APIView):
+    """GET /activities/weekly-insights/ — AI-powered weekly coaching report."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.core.cache import cache
+        from .ai_coaching import generate_weekly_insights
+
+        cache_key = f"weekly_insights:{request.user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        insights = generate_weekly_insights(request.user)
+        cache.set(cache_key, insights, timeout=3600)  # 1 hour
+        return Response(insights)
+
+
 class TrailActivitiesView(generics.ListAPIView):
     serializer_class = ActivityTrackListSerializer
 

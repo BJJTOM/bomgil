@@ -9,6 +9,7 @@ import { TrailCardSkeleton } from "@/components/ui/Skeleton";
 import { useT, useLanguageStore, LANGUAGES } from "@/stores/language";
 import api from "@/lib/api";
 import { Footer } from "@/components/Footer";
+import { WeeklyInsights } from "@/components/WeeklyInsights";
 
 const DISCOVER_COUNTRIES = [
   { code: "KR", name: "Korea", nameKo: "한국", nameEn: "Korea", nameJa: "韓国", nameZh: "韩国", emoji: "🇰🇷", desc: { ko: "서울, 제주, 부산...", en: "Seoul, Jeju, Busan...", ja: "ソウル, 済州, 釜山...", zh: "首尔, 济州, 釜山..." } },
@@ -287,6 +288,11 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* Weekly AI Insights (authenticated users only) */}
+      <section className="max-w-4xl mx-auto px-5 py-6">
+        <WeeklyInsights />
+      </section>
 
       {/* Popular Trails */}
       <section className="bg-surface py-8 md:py-14">

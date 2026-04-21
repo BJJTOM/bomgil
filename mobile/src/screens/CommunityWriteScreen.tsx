@@ -35,8 +35,38 @@ export default function CommunityWriteScreen() {
   const [content, setContent] = useState('');
   const [mood, setMood] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const canSubmit = content.trim().length > 0 && !submitting;
+
+  const handleAiGenerate = async () => {
+    if (aiLoading) return;
+    setAiLoading(true);
+    try {
+      const { data } = await api.post('/stories/ai/generate/', {
+        trail_title: title.trim() || '',
+        distance_km: 0,
+        mood: mood || 'happy',
+        user_notes: content.trim(),
+        language: 'ko',
+        photo_count: 0,
+      });
+      if (data.content) {
+        setContent(data.content);
+      }
+      if (data.title_suggestion && !title.trim()) {
+        setTitle(data.title_suggestion);
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.status === 429
+          ? 'AI 사용 횟수를 초과했어요. 잠시 후 다시 시도해주세요.'
+          : 'AI 이야기 생성에 실패했어요. 다시 시도해주세요.';
+      Alert.alert('알림', msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -96,6 +126,24 @@ export default function CommunityWriteScreen() {
           onChangeText={setTitle}
           maxLength={100}
         />
+
+        {/* AI Assist Button */}
+        <View style={styles.aiRow}>
+          <TouchableOpacity
+            style={[styles.aiBtn, aiLoading && styles.aiBtnLoading]}
+            onPress={handleAiGenerate}
+            disabled={aiLoading}
+            activeOpacity={0.7}>
+            {aiLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.aiBtnIcon}>✨</Text>
+            )}
+            <Text style={styles.aiBtnText}>
+              {aiLoading ? 'AI가 이야기를 작성하고 있어요...' : 'AI 도움받기'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Content Input */}
         <TextInput
@@ -195,6 +243,30 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
+  },
+  aiRow: {
+    flexDirection: 'row',
+    paddingTop: 12,
+  },
+  aiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.primary50,
+    gap: 6,
+  },
+  aiBtnLoading: {
+    opacity: 0.7,
+  },
+  aiBtnIcon: {
+    fontSize: 14,
+  },
+  aiBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   contentInput: {
     fontSize: 15,

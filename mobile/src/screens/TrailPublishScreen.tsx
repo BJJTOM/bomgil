@@ -196,6 +196,8 @@ export default function TrailPublishScreen() {
   const [newSpotDesc, setNewSpotDesc] = useState('');
   const [newSpotImageUri, setNewSpotImageUri] = useState('');
   const [newSpotLocation, setNewSpotLocation] = useState('');
+  // AI description generation
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   // Progress text shown on the submit button during uploads (null = idle)
   const [progressText, setProgressText] = useState<string | null>(null);
   // Hold post-submit navigation timer so we can cancel on unmount
@@ -314,6 +316,47 @@ export default function TrailPublishScreen() {
   const removeSpot = useCallback((idx: number) => {
     setSpots(prev => prev.filter((_, i) => i !== idx));
   }, []);
+
+  const handleGenerateAIDescription = useCallback(async () => {
+    if (!name.trim()) {
+      showPrettyAlert('warning', '코스 이름을 먼저 입력해주세요', 'AI가 설명을 작성하려면 이름이 필요해요.');
+      return;
+    }
+    setIsGeneratingAI(true);
+    try {
+      const payload: Record<string, any> = {
+        title: name.trim(),
+        distance_km: parseFloat(distance.toFixed(2)),
+        difficulty,
+        region: manualRegion.trim(),
+        country,
+      };
+      if (elevationGain > 0) {
+        payload.elevation_gain = Math.round(elevationGain);
+      }
+      if (pathData && pathData.length >= 2) {
+        const roundedPath = pathData.map((c: [number, number]) => [
+          parseFloat(c[0].toFixed(6)),
+          parseFloat(c[1].toFixed(6)),
+        ]);
+        payload.path_data = { type: 'LineString', coordinates: roundedPath };
+      }
+      const { data } = await api.post('/trails/ai/generate-description/', payload);
+      if (data.description_ko) {
+        setDescription(data.description_ko);
+        showPrettyAlert('success', 'AI 설명이 생성되었어요', '수정 후 사용하셔도 좋아요.');
+      }
+    } catch (err: any) {
+      const errStatus = err?.response?.status;
+      if (errStatus === 429) {
+        showPrettyAlert('warning', 'AI 생성 횟수 초과', '잠시 후 다시 시도해주세요.');
+      } else {
+        showPrettyAlert('info', 'AI 생성에 실패했어요', '직접 작성해주세요.');
+      }
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [name, distance, difficulty, manualRegion, country, elevationGain, pathData, showPrettyAlert]);
 
   const saveDraft = useCallback(async () => {
     const draft = {
@@ -674,7 +717,23 @@ export default function TrailPublishScreen() {
         />
 
         {/* 4. Description */}
-        <Text style={styles.fieldLabel}>설명</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.fieldLabel}>설명</Text>
+          <TouchableOpacity
+            style={styles.aiBtn}
+            onPress={handleGenerateAIDescription}
+            disabled={isGeneratingAI}
+            activeOpacity={0.7}>
+            {isGeneratingAI ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <ActivityIndicator size="small" color="#7C3AED" />
+                <Text style={styles.aiBtnText}>AI 작성 중...</Text>
+              </View>
+            ) : (
+              <Text style={styles.aiBtnText}>{'\u2728'} AI 설명 생성</Text>
+            )}
+          </TouchableOpacity>
+        </View>
         <TextInput
           style={[styles.input, styles.multilineInput]}
           placeholder="코스에 대한 설명을 적어주세요"
@@ -1335,5 +1394,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  aiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+  },
+  aiBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#7C3AED',
   },
 });

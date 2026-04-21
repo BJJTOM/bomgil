@@ -1,10 +1,61 @@
 """Stories admin — moderation panel for WalkStory + comments."""
 from django.contrib import admin
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.html import format_html
 from django.urls import reverse
 
+from apps.moderation.models import AIModerationLog
+
 from .models import StoryComment, StoryPhoto, WalkStory, StoryLike, CommentLike, Notification
+
+
+class AIFlaggedFilter(admin.SimpleListFilter):
+    """Filter content by AI moderation result."""
+    title = "AI 모더레이션"
+    parameter_name = "ai_flag"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("flagged", "AI 차단/검토"),
+            ("rejected", "AI 차단"),
+            ("review", "AI 검토 필요"),
+            ("approved", "AI 승인"),
+        ]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        ct = ContentType.objects.get_for_model(queryset.model)
+        logs = AIModerationLog.objects.filter(content_type=ct)
+        if self.value() == "flagged":
+            ids = logs.filter(action__in=["reject", "review"]).values_list("object_id", flat=True)
+        elif self.value() == "rejected":
+            ids = logs.filter(action="reject").values_list("object_id", flat=True)
+        elif self.value() == "review":
+            ids = logs.filter(action="review").values_list("object_id", flat=True)
+        elif self.value() == "approved":
+            ids = logs.filter(action="approve").values_list("object_id", flat=True)
+        else:
+            return queryset
+        return queryset.filter(pk__in=ids)
+
+
+def _ai_badge(obj):
+    """Show the latest AI moderation result as a colored badge."""
+    ct = ContentType.objects.get_for_model(obj)
+    log = AIModerationLog.objects.filter(content_type=ct, object_id=obj.pk).order_by("-created_at").first()
+    if not log:
+        return format_html('<span style="color:#9CA3AF;font-size:11px;">-</span>')
+    colors = {"approve": "#22C55E", "review": "#F59E0B", "reject": "#EF4444", "error": "#9CA3AF"}
+    labels = {"approve": "OK", "review": "검토", "reject": "차단", "error": "오류"}
+    bg = colors.get(log.action, "#9CA3AF")
+    label = labels.get(log.action, log.action)
+    return format_html(
+        '<span style="color:#fff;background:{};padding:2px 6px;'
+        'border-radius:8px;font-size:10px;font-weight:600;">{}</span>',
+        bg, label,
+    )
 
 
 @admin.action(description="🚫 선택한 항목 숨김")
@@ -44,8 +95,8 @@ class StoryPhotoInline(admin.TabularInline):
 
 @admin.register(WalkStory)
 class WalkStoryAdmin(admin.ModelAdmin):
-    list_display = ["id", "title_or_default", "author_display", "mood", "like_count", "comment_count", "is_public", "status_badge", "created_at"]
-    list_filter = ["mood", "is_public", "is_hidden", "created_at"]
+    list_display = ["id", "title_or_default", "author_display", "mood", "like_count", "comment_count", "is_public", "status_badge", "ai_status", "created_at"]
+    list_filter = ["mood", "is_public", "is_hidden", AIFlaggedFilter, "created_at"]
     search_fields = ["title", "content", "author__nickname"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
@@ -66,11 +117,15 @@ class WalkStoryAdmin(admin.ModelAdmin):
     def status_badge(self, obj):
         return hidden_badge(obj)
 
+    @admin.display(description="AI")
+    def ai_status(self, obj):
+        return _ai_badge(obj)
+
 
 @admin.register(StoryComment)
 class StoryCommentAdmin(admin.ModelAdmin):
-    list_display = ["id", "short_content", "author_display", "story", "parent", "like_count", "status_badge", "created_at"]
-    list_filter = ["is_hidden", "created_at"]
+    list_display = ["id", "short_content", "author_display", "story", "parent", "like_count", "status_badge", "ai_status", "created_at"]
+    list_filter = ["is_hidden", AIFlaggedFilter, "created_at"]
     search_fields = ["content", "author__nickname"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
@@ -89,6 +144,10 @@ class StoryCommentAdmin(admin.ModelAdmin):
     @admin.display(description="상태", ordering="is_hidden")
     def status_badge(self, obj):
         return hidden_badge(obj)
+
+    @admin.display(description="AI")
+    def ai_status(self, obj):
+        return _ai_badge(obj)
 
 
 @admin.register(StoryLike)

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTrails, usePopularTrails } from "@/hooks/useTrails";
@@ -8,6 +8,7 @@ import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
 import { ExploreMap } from "@/components/ExploreMap";
 import { useT } from "@/stores/language";
+import api from "@/lib/api";
 import type { Trail } from "@/types";
 
 // --- Skeleton Loading Component ---
@@ -231,11 +232,67 @@ export default function ExplorePage() {
   );
 }
 
+// AI Search placeholder text per language
+const AI_SEARCH_PLACEHOLDERS: Record<string, string> = {
+  ko: "어떤 코스를 찾고 계세요?",
+  en: "What kind of trail are you looking for?",
+  ja: "どんなコースをお探しですか？",
+  zh: "您在找什么样的路线？",
+};
+
+const AI_SEARCH_LABELS: Record<string, string> = {
+  ko: "AI 검색",
+  en: "AI Search",
+  ja: "AI検索",
+  zh: "AI搜索",
+};
+
 function ExploreContent() {
   const searchParams = useSearchParams();
   const { t, language } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("-like_count");
+
+  // AI Search state
+  const [aiMode, setAiMode] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiResults, setAiResults] = useState<Trail[]>([]);
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // Check if AI search is available on mount
+  useEffect(() => {
+    api
+      .get("/trails/ai-search/")
+      .then((res) => setAiAvailable(res.data?.available === true))
+      .catch(() => setAiAvailable(false));
+  }, []);
+
+  const handleAiSearch = useCallback(async () => {
+    const q = aiQuery.trim();
+    if (!q) return;
+    setAiLoading(true);
+    setAiSummary("");
+    setAiResults([]);
+    try {
+      const { data } = await api.post("/trails/ai-search/", {
+        query: q,
+        language,
+      });
+      setAiResults(data.results || []);
+      setAiSummary(data.search_summary || "");
+    } catch {
+      setAiSummary(
+        language === "ko"
+          ? "AI 검색에 실패했어요. 다시 시도해주세요."
+          : "AI search failed. Please try again."
+      );
+      setAiResults([]);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiQuery, language]);
 
   const FILTER_CONFIG = [
     {
@@ -399,58 +456,115 @@ function ExploreContent() {
             ))}
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("explore.searchPlaceholder")}
-              aria-label={t("explore.searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-2.5 rounded-[12px] bg-[#F7F8FA] border-none text-[13px] focus:outline-none focus:ring-2 focus:ring-[#2D4A2E]/20 placeholder:text-[#B0B8C1] transition-all"
-            />
-            {search && (
+          {/* Search + AI Toggle */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              {aiMode ? (
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px]" aria-hidden="true">&#10024;</span>
+              ) : (
+                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              )}
+              <input
+                type="text"
+                value={aiMode ? aiQuery : search}
+                onChange={(e) =>
+                  aiMode ? setAiQuery(e.target.value) : setSearch(e.target.value)
+                }
+                onKeyDown={(e) => {
+                  if (aiMode && e.key === "Enter") {
+                    e.preventDefault();
+                    handleAiSearch();
+                  }
+                }}
+                placeholder={
+                  aiMode
+                    ? AI_SEARCH_PLACEHOLDERS[language] || AI_SEARCH_PLACEHOLDERS.ko
+                    : t("explore.searchPlaceholder")
+                }
+                aria-label={aiMode ? "AI search" : t("explore.searchPlaceholder")}
+                className={`w-full pl-10 pr-4 py-2.5 rounded-[12px] border-none text-[13px] focus:outline-none focus:ring-2 placeholder:text-[#B0B8C1] transition-all ${
+                  aiMode
+                    ? "bg-[#F0F0FF] focus:ring-[#6C5CE7]/20"
+                    : "bg-[#F7F8FA] focus:ring-[#2D4A2E]/20"
+                }`}
+              />
+              {(aiMode ? aiQuery : search) && (
+                <button
+                  onClick={() => (aiMode ? setAiQuery("") : setSearch(""))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#B0B8C1]/30 flex items-center justify-center"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {/* AI toggle button — only shown when AI is available */}
+            {aiAvailable && (
               <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#B0B8C1]/30 flex items-center justify-center"
+                onClick={() => {
+                  setAiMode(!aiMode);
+                  setAiResults([]);
+                  setAiSummary("");
+                  setAiQuery("");
+                }}
+                className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-[12px] text-[12px] font-semibold transition-all ${
+                  aiMode
+                    ? "bg-[#6C5CE7] text-white shadow-sm"
+                    : "bg-[#F7F8FA] text-[#8B95A1] hover:bg-[#EEF0F4]"
+                }`}
+                title={AI_SEARCH_LABELS[language] || AI_SEARCH_LABELS.ko}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <span className="text-[13px]">&#10024;</span>
+                <span>{AI_SEARCH_LABELS[language] || AI_SEARCH_LABELS.ko}</span>
               </button>
             )}
           </div>
 
-          {/* Filter chips + sort */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-nowrap">
-            <FilterBar
-              filters={FILTER_CONFIG}
-              selected={filters}
-              onChange={handleFilterChange}
-            />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="flex-shrink-0 text-[12px] bg-[#F7F8FA] border-none rounded-[20px] px-3 py-1.5 font-medium text-[#8B95A1] focus:outline-none appearance-none cursor-pointer"
-              style={{ WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23B0B8C1' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", paddingRight: "28px" }}
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={clearAllFilters}
-                className="flex-shrink-0 text-[11px] text-[#2D4A2E] font-medium whitespace-nowrap"
+          {/* Filter chips + sort (hidden in AI mode) */}
+          {!aiMode && (
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-nowrap">
+              <FilterBar
+                filters={FILTER_CONFIG}
+                selected={filters}
+                onChange={handleFilterChange}
+              />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="flex-shrink-0 text-[12px] bg-[#F7F8FA] border-none rounded-[20px] px-3 py-1.5 font-medium text-[#8B95A1] focus:outline-none appearance-none cursor-pointer"
+                style={{ WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23B0B8C1' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", paddingRight: "28px" }}
               >
-                {t("common.reset")}
-              </button>
-            )}
-          </div>
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="flex-shrink-0 text-[11px] text-[#2D4A2E] font-medium whitespace-nowrap"
+                >
+                  {t("common.reset")}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* AI mode hint */}
+          {aiMode && (
+            <p className="text-[11px] text-[#8B95A1] pl-1">
+              {language === "ko"
+                ? "예: \"서울 근처 가을에 좋은 쉬운 코스\", \"조용한 해안길 3km 이하\""
+                : language === "ja"
+                  ? "例: \"東京近くの簡単なコース\", \"海岸沿いの3km以下のコース\""
+                  : language === "zh"
+                    ? "例: \"首尔附近简单的路线\", \"海边3公里以下的路线\""
+                    : "e.g. \"easy coastal trail under 3km\", \"autumn trails near Seoul\""}
+            </p>
+          )}
         </div>}
       </div>
 
@@ -465,71 +579,135 @@ function ExploreContent() {
       )}
 
       {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 py-5">
-        {/* Trail count + view toggle */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[13px] text-[#8B95A1]">
-            {isLoading
-              ? t("explore.searching")
-              : t("explore.found").replace("{count}", String(trails.length))}
-          </p>
-
-          {/* List / Map toggle */}
-          <div className="flex rounded-pill overflow-hidden border border-[#F2F4F6] shadow-soft">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
-                viewMode === "list"
-                  ? "bg-primary text-white"
-                  : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-              {t("explore.viewList")}
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
-                viewMode === "map"
-                  ? "bg-primary text-white"
-                  : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                <line x1="8" y1="2" x2="8" y2="18" />
-                <line x1="16" y1="6" x2="16" y2="22" />
-              </svg>
-              {t("explore.viewMap")}
-            </button>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <SkeletonGrid />
-        ) : trails.length === 0 ? (
-          <ExploreEmptyState
-            hasActiveFilters={activeFilterCount > 0 || !!search.trim()}
-            language={language}
-            onClearFilters={clearAllFilters}
-            popularTrails={popularTrails}
-          />
-        ) : viewMode === "list" ? (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {trails.map((trail) => (
-              <div key={trail.id} id={`trail-${trail.id}`}>
-                <TrailCard trail={trail} />
+        {/* AI search results */}
+        {aiMode ? (
+          <>
+            {/* AI search summary */}
+            {aiSummary && (
+              <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-[12px] bg-[#F0F0FF] border border-[#E0DFFF]">
+                <span className="text-[14px] flex-shrink-0 mt-0.5">&#10024;</span>
+                <p className="text-[13px] text-[#4A4A6A] font-medium leading-relaxed">{aiSummary}</p>
               </div>
-            ))}
-          </div>
+            )}
+
+            {aiLoading ? (
+              <SkeletonGrid />
+            ) : aiResults.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[13px] text-[#8B95A1]">
+                    {t("explore.found").replace("{count}", String(aiResults.length))}
+                  </p>
+                </div>
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {aiResults.map((trail) => (
+                    <div key={trail.id} id={`trail-${trail.id}`}>
+                      <TrailCard trail={trail} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : aiQuery.trim() && !aiLoading ? (
+              <ExploreEmptyState
+                hasActiveFilters={true}
+                language={language}
+                onClearFilters={() => { setAiQuery(""); setAiResults([]); setAiSummary(""); }}
+                popularTrails={popularTrails}
+              />
+            ) : (
+              <div className="flex flex-col items-center pt-16 pb-8 text-center">
+                <span className="text-[40px] mb-4">&#10024;</span>
+                <h3 className="text-[16px] font-bold text-gray-900 mb-2">
+                  {language === "ko"
+                    ? "자연스럽게 말해보세요"
+                    : language === "ja"
+                      ? "自然に話してみてください"
+                      : language === "zh"
+                        ? "用自然语言搜索"
+                        : "Search in natural language"}
+                </h3>
+                <p className="text-[13px] text-[#8B95A1] max-w-xs">
+                  {language === "ko"
+                    ? "원하는 코스를 자유롭게 설명해보세요. AI가 맞는 코스를 찾아드려요."
+                    : language === "ja"
+                      ? "お探しのコースを自由に説明してください。AIがぴったりのコースを見つけます。"
+                      : language === "zh"
+                        ? "自由描述您想要的路线，AI会帮您找到合适的路线。"
+                        : "Describe the trail you want in your own words. AI will find the best match."}
+                </p>
+              </div>
+            )}
+          </>
         ) : (
-          <ExploreMap trails={trails} />
+          <>
+            {/* Regular search results */}
+            {/* Trail count + view toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] text-[#8B95A1]">
+                {isLoading
+                  ? t("explore.searching")
+                  : t("explore.found").replace("{count}", String(trails.length))}
+              </p>
+
+              {/* List / Map toggle */}
+              <div className="flex rounded-pill overflow-hidden border border-[#F2F4F6] shadow-soft">
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                    viewMode === "list"
+                      ? "bg-primary text-white"
+                      : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
+                  }`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                  {t("explore.viewList")}
+                </button>
+                <button
+                  onClick={() => setViewMode("map")}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                    viewMode === "map"
+                      ? "bg-primary text-white"
+                      : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
+                  }`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                    <line x1="8" y1="2" x2="8" y2="18" />
+                    <line x1="16" y1="6" x2="16" y2="22" />
+                  </svg>
+                  {t("explore.viewMap")}
+                </button>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <SkeletonGrid />
+            ) : trails.length === 0 ? (
+              <ExploreEmptyState
+                hasActiveFilters={activeFilterCount > 0 || !!search.trim()}
+                language={language}
+                onClearFilters={clearAllFilters}
+                popularTrails={popularTrails}
+              />
+            ) : viewMode === "list" ? (
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {trails.map((trail) => (
+                  <div key={trail.id} id={`trail-${trail.id}`}>
+                    <TrailCard trail={trail} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ExploreMap trails={trails} />
+            )}
+          </>
         )}
       </div>}
     </div>

@@ -117,6 +117,8 @@ export default function NewTrailPage() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [isCircular, setIsCircular] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiToast, setAiToast] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -302,6 +304,46 @@ export default function NewTrailPage() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const handleGenerateAIDescription = async () => {
+    if (!form.title.trim()) {
+      setAiToast("코스 제목을 먼저 입력해주세요.");
+      setTimeout(() => setAiToast(null), 3000);
+      return;
+    }
+    setIsGeneratingAI(true);
+    setAiToast(null);
+    try {
+      const payload: Record<string, any> = {
+        title: form.title,
+        distance_km: parseFloat(form.distance_km) || 0,
+        difficulty: form.difficulty,
+        trail_type: form.trail_type,
+        region: form.region,
+        country: form.country,
+      };
+      if (form.elevation_gain) {
+        payload.elevation_gain = parseInt(form.elevation_gain) || null;
+      }
+      if (pathCoords.length >= 2) {
+        payload.path_data = { type: "LineString", coordinates: pathCoords };
+      }
+      const { data } = await api.post("/trails/ai/generate-description/", payload);
+      if (data.description_ko) {
+        updateForm("description", data.description_ko);
+      }
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 429) {
+        setAiToast("AI 생성 횟수를 초과했어요. 잠시 후 다시 시도해주세요.");
+      } else {
+        setAiToast("AI 생성에 실패했어요. 직접 작성해주세요.");
+      }
+      setTimeout(() => setAiToast(null), 4000);
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   const validate = (): string[] => {
@@ -530,7 +572,31 @@ export default function NewTrailPage() {
                     maxLength={1000}
                     className="input-field resize-none"
                   />
-                  <CharCount current={form.description.length} max={1000} />
+                  <div className="flex items-center justify-between mt-1">
+                    <button
+                      type="button"
+                      onClick={handleGenerateAIDescription}
+                      disabled={isGeneratingAI}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-600 rounded-full text-xs font-medium hover:bg-violet-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingAI ? (
+                        <>
+                          <span className="inline-block w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                          AI가 설명을 작성하고 있어요...
+                        </>
+                      ) : (
+                        <>
+                          {"✨"} AI 설명 생성
+                        </>
+                      )}
+                    </button>
+                    <CharCount current={form.description.length} max={1000} />
+                  </div>
+                  {aiToast && (
+                    <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 animate-fade-in">
+                      {aiToast}
+                    </div>
+                  )}
                 </Field>
               </div>
             </SectionCard>

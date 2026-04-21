@@ -15,6 +15,9 @@ from .rankings import (
     WeeklyPopularView,
 )
 from .views import (
+    AISearchView,
+    ForYouView,
+    GenerateAIDescriptionView,
     MyBookmarksView,
     MyCompletionsView,
     MyStampsView,
@@ -41,10 +44,15 @@ urlpatterns = [
     path("collections/<int:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
     # Recommendations
     path("recommended/", RecommendedTrailsView.as_view(), name="trail-recommended"),
+    path("for-you/", ForYouView.as_view(), name="trail-for-you"),
     # Me: bookmarks, completions, stamps
     path("me/bookmarks/", MyBookmarksView.as_view(), name="trail-my-bookmarks"),
     path("me/completions/", MyCompletionsView.as_view(), name="trail-my-completions"),
     path("me/stamps/", MyStampsView.as_view(), name="trail-my-stamps"),
+    # AI description generation
+    path("ai/generate-description/", GenerateAIDescriptionView.as_view(), name="trail-ai-description"),
+    # AI natural language search
+    path("ai-search/", AISearchView.as_view(), name="trail-ai-search"),
     # GPX import / export
     path("import-gpx/", GpxImportView.as_view(), name="trail-import-gpx"),
     path("<int:pk>/gpx/", GpxExportView.as_view(), name="trail-gpx-export"),

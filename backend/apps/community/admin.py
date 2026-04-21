@@ -10,9 +10,12 @@ Every content model gets:
   - clickable author links to the user admin
 """
 from django.contrib import admin
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.html import format_html
 from django.urls import reverse
+
+from apps.moderation.models import AIModerationLog
 
 from .models import (
     Post, PostImage, PostComment, PostLike, CommentLike, PostBookmark,
@@ -21,6 +24,37 @@ from .models import (
     Challenge, ChallengeParticipant,
     Notice, SiteConfig,
 )
+
+
+class AIFlaggedFilter(admin.SimpleListFilter):
+    """Filter content by AI moderation result."""
+    title = "AI 모더레이션"
+    parameter_name = "ai_flag"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("flagged", "AI 차단/검토"),
+            ("rejected", "AI 차단"),
+            ("review", "AI 검토 필요"),
+            ("approved", "AI 승인"),
+        ]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        ct = ContentType.objects.get_for_model(queryset.model)
+        logs = AIModerationLog.objects.filter(content_type=ct)
+        if self.value() == "flagged":
+            ids = logs.filter(action__in=["reject", "review"]).values_list("object_id", flat=True)
+        elif self.value() == "rejected":
+            ids = logs.filter(action="reject").values_list("object_id", flat=True)
+        elif self.value() == "review":
+            ids = logs.filter(action="review").values_list("object_id", flat=True)
+        elif self.value() == "approved":
+            ids = logs.filter(action="approve").values_list("object_id", flat=True)
+        else:
+            return queryset
+        return queryset.filter(pk__in=ids)
 
 
 # ── Reusable hide/unhide actions ────────────────────────────────────
@@ -59,6 +93,33 @@ def hidden_badge(obj):
     return format_html('<span style="color:#22C55E;font-size:11px;font-weight:600;">공개</span>')
 
 
+def _ai_badge(obj):
+    """Show the latest AI moderation result as a colored badge."""
+    ct = ContentType.objects.get_for_model(obj)
+    log = AIModerationLog.objects.filter(content_type=ct, object_id=obj.pk).order_by("-created_at").first()
+    if not log:
+        return format_html('<span style="color:#9CA3AF;font-size:11px;">-</span>')
+    colors = {
+        "approve": "#22C55E",
+        "review": "#F59E0B",
+        "reject": "#EF4444",
+        "error": "#9CA3AF",
+    }
+    labels = {
+        "approve": "OK",
+        "review": "검토",
+        "reject": "차단",
+        "error": "오류",
+    }
+    bg = colors.get(log.action, "#9CA3AF")
+    label = labels.get(log.action, log.action)
+    return format_html(
+        '<span style="color:#fff;background:{};padding:2px 6px;'
+        'border-radius:8px;font-size:10px;font-weight:600;">{}</span>',
+        bg, label,
+    )
+
+
 # ── Post ────────────────────────────────────────────────────────────
 class PostImageInline(admin.TabularInline):
     model = PostImage
@@ -69,9 +130,9 @@ class PostImageInline(admin.TabularInline):
 class PostAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'title', 'author_display', 'category', 'like_count',
-        'comment_count', 'view_count', 'status_badge', 'created_at',
+        'comment_count', 'view_count', 'status_badge', 'ai_status', 'created_at',
     ]
-    list_filter = ['category', 'is_hidden', 'is_pinned', 'created_at']
+    list_filter = ['category', 'is_hidden', 'is_pinned', AIFlaggedFilter, 'created_at']
     search_fields = ['title', 'content', 'author__nickname', 'author__username']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
@@ -88,11 +149,15 @@ class PostAdmin(admin.ModelAdmin):
     def status_badge(self, obj):
         return hidden_badge(obj)
 
+    @admin.display(description='AI')
+    def ai_status(self, obj):
+        return _ai_badge(obj)
+
 
 @admin.register(PostComment)
 class PostCommentAdmin(admin.ModelAdmin):
-    list_display = ['id', 'short_content', 'author_display', 'post', 'parent', 'like_count', 'status_badge', 'created_at']
-    list_filter = ['is_hidden', 'is_deleted', 'created_at']
+    list_display = ['id', 'short_content', 'author_display', 'post', 'parent', 'like_count', 'status_badge', 'ai_status', 'created_at']
+    list_filter = ['is_hidden', 'is_deleted', AIFlaggedFilter, 'created_at']
     search_fields = ['content', 'author__nickname']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
@@ -115,6 +180,10 @@ class PostCommentAdmin(admin.ModelAdmin):
         if obj.is_deleted:
             return format_html('<span style="color:#fff;background:#9CA3AF;padding:2px 8px;border-radius:8px;font-size:11px;">유저삭제</span>')
         return format_html('<span style="color:#22C55E;font-size:11px;">공개</span>')
+
+    @admin.display(description='AI')
+    def ai_status(self, obj):
+        return _ai_badge(obj)
 
 
 @admin.register(PostLike)
@@ -191,8 +260,8 @@ class GroupMemberAdmin(admin.ModelAdmin):
 
 @admin.register(GroupMessage)
 class GroupMessageAdmin(admin.ModelAdmin):
-    list_display = ['id', 'short_content', 'sender_display', 'group', 'status_badge', 'created_at']
-    list_filter = ['is_hidden', 'created_at']
+    list_display = ['id', 'short_content', 'sender_display', 'group', 'status_badge', 'ai_status', 'created_at']
+    list_filter = ['is_hidden', AIFlaggedFilter, 'created_at']
     search_fields = ['content', 'sender__nickname', 'group__name']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
@@ -211,6 +280,10 @@ class GroupMessageAdmin(admin.ModelAdmin):
     @admin.display(description='상태', ordering='is_hidden')
     def status_badge(self, obj):
         return hidden_badge(obj)
+
+    @admin.display(description='AI')
+    def ai_status(self, obj):
+        return _ai_badge(obj)
 
 
 # ── Challenge ───────────────────────────────────────────────────────

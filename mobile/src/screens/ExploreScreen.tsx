@@ -135,6 +135,42 @@ export default function ExploreScreen() {
   const [showSortModal, setShowSortModal] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // AI Search state
+  const [aiMode, setAiMode] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResults, setAiResults] = useState<Trail[]>([]);
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // Check if AI search is available on mount
+  useEffect(() => {
+    api.get('/trails/ai-search/')
+      .then((res) => setAiAvailable(res.data?.available === true))
+      .catch(() => setAiAvailable(false));
+  }, []);
+
+  const handleAiSearch = useCallback(async () => {
+    const q = aiQuery.trim();
+    if (!q) return;
+    setAiLoading(true);
+    setAiSummary('');
+    setAiResults([]);
+    try {
+      const { data } = await api.post('/trails/ai-search/', {
+        query: q,
+        language: 'ko',
+      });
+      setAiResults(data.results || []);
+      setAiSummary(data.search_summary || '');
+    } catch {
+      setAiSummary('AI 검색에 실패했어요. 다시 시도해주세요.');
+      setAiResults([]);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiQuery]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -322,19 +358,24 @@ export default function ExploreScreen() {
         {activeTab === 'courses' && (
           <>
             {searchVisible && (
-              <View style={[styles.searchBar, { backgroundColor: chipBg }]}>
-                <Feather name="search" size={16} color={textTertColor} style={{ marginRight: 8 }} />
+              <View style={[styles.searchBar, { backgroundColor: aiMode ? '#F0F0FF' : chipBg }]}>
+                {aiMode ? (
+                  <Text style={{ fontSize: 14, marginRight: 8 }}>{'\u2728'}</Text>
+                ) : (
+                  <Feather name="search" size={16} color={textTertColor} style={{ marginRight: 8 }} />
+                )}
                 <TextInput
                   style={[styles.searchInput, { color: textColor }]}
-                  placeholder="코스, 지역, 키워드 검색..."
+                  placeholder={aiMode ? '어떤 코스를 찾고 계세요?' : '코스, 지역, 키워드 검색...'}
                   placeholderTextColor={textTertColor}
-                  value={search}
-                  onChangeText={setSearch}
+                  value={aiMode ? aiQuery : search}
+                  onChangeText={aiMode ? setAiQuery : setSearch}
                   returnKeyType="search"
+                  onSubmitEditing={aiMode ? handleAiSearch : undefined}
                   autoFocus
                 />
-                {search ? (
-                  <TouchableOpacity onPress={() => setSearch('')} style={styles.clearBtn}>
+                {(aiMode ? aiQuery : search) ? (
+                  <TouchableOpacity onPress={() => aiMode ? setAiQuery('') : setSearch('')} style={styles.clearBtn}>
                     <Feather name="x" size={16} color={textTertColor} />
                   </TouchableOpacity>
                 ) : null}
@@ -343,57 +384,86 @@ export default function ExploreScreen() {
 
         {/* Filter Row */}
         <View style={[styles.filterRow, { borderTopColor: borderColor }]}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-            style={{ flex: 1 }}>
-            {FILTER_CHIPS.map((filter) => {
-              const isActive = !!filters[filter.key];
-              const activeLabel = isActive
-                ? filter.options.find((o) => o.value === filters[filter.key])
-                    ?.label
-                : null;
-              return (
-                <TouchableOpacity
-                  key={filter.key}
-                  style={[styles.chip, { backgroundColor: chipBg }, isActive && styles.chipActive]}
-                  onPress={() =>
-                    setExpandedFilter(
-                      expandedFilter === filter.key ? null : filter.key,
-                    )
-                  }
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: textSecColor },
-                      isActive && styles.chipTextActive,
-                    ]}>
-                    {activeLabel || filter.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.chipArrow,
-                      { color: textTertColor },
-                      isActive && styles.chipTextActive,
-                    ]}>
-                    {' ▾'}
-                  </Text>
+          {!aiMode ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+              style={{ flex: 1 }}>
+              {FILTER_CHIPS.map((filter) => {
+                const isActive = !!filters[filter.key];
+                const activeLabel = isActive
+                  ? filter.options.find((o) => o.value === filters[filter.key])
+                      ?.label
+                  : null;
+                return (
+                  <TouchableOpacity
+                    key={filter.key}
+                    style={[styles.chip, { backgroundColor: chipBg }, isActive && styles.chipActive]}
+                    onPress={() =>
+                      setExpandedFilter(
+                        expandedFilter === filter.key ? null : filter.key,
+                      )
+                    }
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: textSecColor },
+                        isActive && styles.chipTextActive,
+                      ]}>
+                      {activeLabel || filter.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.chipArrow,
+                        { color: textTertColor },
+                        isActive && styles.chipTextActive,
+                      ]}>
+                      {' \u25BE'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {activeFilterCount > 0 && (
+                <TouchableOpacity onPress={clearAllFilters} style={styles.resetBtn}>
+                  <Text style={styles.resetText}>초기화</Text>
                 </TouchableOpacity>
-              );
-            })}
-            {activeFilterCount > 0 && (
-              <TouchableOpacity onPress={clearAllFilters} style={styles.resetBtn}>
-                <Text style={styles.resetText}>초기화</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
+              )}
+            </ScrollView>
+          ) : (
+            <View style={{ flex: 1, paddingHorizontal: 20 }}>
+              <Text style={{ fontSize: 11, color: textTertColor }}>
+                예: "서울 근처 가을에 좋은 쉬운 코스", "해안길 3km 이하"
+              </Text>
+            </View>
+          )}
           <TouchableOpacity onPress={() => setShowSortModal(true)} style={[styles.sortBtn, { backgroundColor: chipBg }]} activeOpacity={0.7}>
             <Text style={[styles.sortBtnText, { color: textSecColor }]}>
-              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' ▾'}
+              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' \u25BE'}
             </Text>
           </TouchableOpacity>
+          {/* AI toggle button */}
+          {aiAvailable && (
+            <TouchableOpacity
+              onPress={() => {
+                setAiMode(!aiMode);
+                setAiResults([]);
+                setAiSummary('');
+                setAiQuery('');
+                if (!searchVisible) setSearchVisible(true);
+              }}
+              style={[
+                styles.aiToggleBtn,
+                { backgroundColor: aiMode ? '#6C5CE7' : chipBg },
+              ]}
+              activeOpacity={0.7}>
+              <Text style={{ fontSize: 12 }}>{'\u2728'}</Text>
+              <Text style={[styles.aiToggleBtnText, { color: aiMode ? '#FFFFFF' : textSecColor }]}>
+                AI
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => setSearchVisible(!searchVisible)} style={styles.searchToggleSmall}>
             <Feather name="search" size={16} color={searchVisible ? colors.primary : textTertColor} />
           </TouchableOpacity>
@@ -584,6 +654,57 @@ export default function ExploreScreen() {
             );
           }}
         />
+      ) : aiMode ? (
+      <>
+        {/* AI Search Results */}
+        {aiSummary ? (
+          <View style={[styles.aiSummaryBanner, { backgroundColor: isDark ? '#2a2a3e' : '#F0F0FF' }]}>
+            <Text style={{ fontSize: 14, marginRight: 6 }}>{'\u2728'}</Text>
+            <Text style={[styles.aiSummaryText, { color: isDark ? '#c0bfff' : '#4A4A6A' }]}>{aiSummary}</Text>
+          </View>
+        ) : null}
+
+        {aiLoading ? (
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color="#6C5CE7" />
+            <Text style={[styles.emptyDesc, { color: textTertColor, marginTop: 12 }]}>AI가 코스를 찾고 있어요...</Text>
+          </View>
+        ) : aiResults.length > 0 ? (
+          <>
+            <View style={styles.resultHeader}>
+              <Text style={[styles.resultCount, { color: textTertColor }]}>
+                {`${aiResults.length}개 코스`}
+              </Text>
+            </View>
+            <FlatList
+              data={aiResults}
+              keyExtractor={(item) => `ai-${item.id}`}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              numColumns={width > 600 ? 2 : 1}
+              key={width > 600 ? 'ai-two-col' : 'ai-one-col'}
+              renderItem={renderTrailCard}
+              ListEmptyComponent={null}
+            />
+          </>
+        ) : aiQuery.trim() && !aiLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>{'\u2728'}</Text>
+            <Text style={[styles.emptyTitle, { color: textColor }]}>검색 결과가 없어요</Text>
+            <Text style={[styles.emptyDesc, { color: textTertColor }]}>
+              다른 표현으로 검색해보세요
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 40, marginBottom: 16 }}>{'\u2728'}</Text>
+            <Text style={[styles.emptyTitle, { color: textColor }]}>자연스럽게 말해보세요</Text>
+            <Text style={[styles.emptyDesc, { color: textTertColor }]}>
+              원하는 코스를 자유롭게 설명해보세요.{'\n'}AI가 맞는 코스를 찾아드려요.
+            </Text>
+          </View>
+        )}
+      </>
       ) : (
       <>
       {/* Result Count */}
@@ -600,7 +721,7 @@ export default function ExploreScreen() {
         </View>
       ) : isError ? (
         <View style={styles.loadingCenter}>
-          <Text style={{ fontSize: 44, marginBottom: 12 }}>⚠️</Text>
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
           <Text style={[styles.emptyTitle, { color: textColor }]}>네트워크 오류</Text>
           <Text style={[styles.emptyDesc, { color: textTertColor, marginBottom: 16 }]}>
             코스를 불러오지 못했어요
@@ -1037,5 +1158,36 @@ const styles = StyleSheet.create({
   pageInfo: {
     fontSize: 15,
     fontWeight: '600',
+  },
+
+  // AI Search styles
+  aiToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    gap: 3,
+  },
+  aiToggleBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  aiSummaryBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0DFFF',
+  },
+  aiSummaryText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
 });

@@ -17,6 +17,7 @@ export default function CommunityWritePage() {
   const [mood, setMood] = useState("happy");
   const [trailId, setTrailId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
 
   const MOODS = [
@@ -34,6 +35,38 @@ export default function CommunityWritePage() {
       return data.results ?? data;
     },
   });
+
+  const selectedTrail = trails.find((tr: Trail) => tr.id === trailId);
+
+  const handleAiGenerate = async () => {
+    if (aiLoading) return;
+    setAiLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post("/stories/ai/generate/", {
+        trail_title: selectedTrail?.title || "",
+        distance_km: selectedTrail?.distance_km || 0,
+        mood,
+        user_notes: content.trim(),
+        language: "ko",
+        photo_count: 0,
+      });
+      if (data.content) {
+        setContent(data.content);
+      }
+      if (data.title_suggestion && !title.trim()) {
+        setTitle(data.title_suggestion);
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.status === 429
+          ? "AI 사용 횟수를 초과했어요. 잠시 후 다시 시도해주세요."
+          : "AI 이야기 생성에 실패했어요. 다시 시도해주세요.";
+      setError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -107,6 +140,24 @@ export default function CommunityWritePage() {
 
         {/* Content */}
         <div className="card p-4 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={handleAiGenerate}
+              disabled={aiLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+            >
+              {aiLoading ? (
+                <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <span>&#10024;</span>
+              )}
+              {aiLoading ? "AI가 이야기를 작성하고 있어요..." : "AI 도움받기"}
+            </button>
+          </div>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}

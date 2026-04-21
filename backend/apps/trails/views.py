@@ -2,10 +2,11 @@ from decimal import Decimal
 
 from django.db.models import Count, F, Sum
 from django.utils import timezone
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, permissions, serializers as drf_serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+from rest_framework.views import APIView
 
 from apps.spots.serializers import SpotSerializer
 from config.permissions import IsOwnerOrReadOnly
@@ -426,13 +427,61 @@ class TrailViewSet(viewsets.ModelViewSet):
 
 
 class RecommendedTrailsView(generics.ListAPIView):
+    """Personalized trail recommendations for authenticated users.
+
+    Uses the scoring engine from recommendations.py.  Results are
+    cached per user for 5 minutes inside the engine.
+    """
     serializer_class = TrailListSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         from .recommendations import get_recommendations
-        qs = get_recommendations(self.request.user)
-        return qs.select_related("author").prefetch_related("tags")
+        return get_recommendations(self.request.user)
+
+
+class ForYouView(generics.GenericAPIView):
+    """GET /api/v1/trails/for-you/
+
+    Personalized 'For You' recommendations with reason strings.
+    - Authenticated users: full scoring engine with preference/social/activity signals.
+    - Anonymous users: popularity + seasonal + image scoring.
+
+    Each trail in the response includes a ``recommendation_reason`` dict
+    with localized strings (ko, en, ja, zh).
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = TrailListSerializer
+
+    def get(self, request):
+        from .recommendations import (
+            get_anonymous_recommendations,
+            get_personalized_recommendations,
+        )
+
+        try:
+            limit = max(1, min(20, int(request.query_params.get("limit", "10"))))
+        except (TypeError, ValueError):
+            limit = 10
+
+        if request.user.is_authenticated:
+            results = get_personalized_recommendations(request.user, limit=limit)
+        else:
+            results = get_anonymous_recommendations(limit=limit)
+
+        # Serialize trails using the standard TrailListSerializer
+        trails = [r["trail"] for r in results]
+        serializer = self.get_serializer(trails, many=True)
+
+        # Attach recommendation metadata to each serialized trail
+        data = serializer.data
+        for i, item in enumerate(data):
+            if i < len(results):
+                item["recommendation_score"] = results[i]["score"]
+                item["recommendation_reason"] = results[i]["reasons"]
+                item["recommendation_reason_key"] = results[i]["reason_key"]
+
+        return Response(data)
 
 
 class MyBookmarksView(generics.ListAPIView):
@@ -516,3 +565,142 @@ class TagListView(generics.ListAPIView):
     serializer_class = TagSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
+
+
+# ---------------------------------------------------------------------------
+# AI Description Generation
+# ---------------------------------------------------------------------------
+
+class AIDescriptionThrottle(UserRateThrottle):
+    scope = "ai_description"
+    rate = "10/hour"
+
+
+class AIDescriptionInputSerializer(drf_serializers.Serializer):
+    title = drf_serializers.CharField(max_length=100)
+    distance_km = drf_serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=0
+    )
+    difficulty = drf_serializers.ChoiceField(
+        choices=["easy", "moderate", "hard"], required=False, default="moderate"
+    )
+    elevation_gain = drf_serializers.IntegerField(required=False, allow_null=True)
+    trail_type = drf_serializers.ChoiceField(
+        choices=["urban", "coastal", "village", "cultural", "nature", "mixed"],
+        required=False,
+        default="mixed",
+    )
+    region = drf_serializers.CharField(max_length=50, required=False, default="")
+    country = drf_serializers.CharField(max_length=2, required=False, default="KR")
+    path_data = drf_serializers.JSONField(required=False, default=dict)
+
+
+class GenerateAIDescriptionView(APIView):
+    """POST /api/v1/trails/ai/generate-description/
+
+    Accepts trail metadata and returns AI-generated descriptions in
+    Korean, English, and Japanese, plus suggested tags and best-season reasoning.
+
+    Requires authentication. Rate-limited to 10 requests per hour per user.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AIDescriptionThrottle]
+
+    def post(self, request):
+        serializer = AIDescriptionInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from .ai_utils import generate_trail_description
+
+        trail_data = serializer.validated_data
+        # Convert Decimal to float for JSON serialization in the prompt
+        if trail_data.get("distance_km") is not None:
+            trail_data["distance_km"] = float(trail_data["distance_km"])
+
+        result = generate_trail_description(trail_data)
+
+        if not result:
+            return Response(
+                {"detail": "AI description generation failed. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(result, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# AI Natural Language Search
+# ---------------------------------------------------------------------------
+
+class AISearchThrottle(UserRateThrottle):
+    scope = "ai_search"
+    rate = "60/hour"
+
+
+class AISearchInputSerializer(drf_serializers.Serializer):
+    query = drf_serializers.CharField(max_length=300)
+    language = drf_serializers.ChoiceField(
+        choices=["ko", "en", "ja", "zh"], required=False, default="ko"
+    )
+
+
+class AISearchView(APIView):
+    """POST /api/v1/trails/ai-search/
+
+    Natural language trail search. Parses a conversational query
+    using Claude and returns matching trails with a summary.
+
+    No authentication required (public search).
+    Rate-limited to 60 requests per hour.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AISearchThrottle]
+
+    def post(self, request):
+        serializer = AISearchInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        query = serializer.validated_data["query"]
+        language = serializer.validated_data["language"]
+
+        from .ai_search import (
+            build_search_queryset,
+            generate_search_summary,
+            parse_search_intent,
+        )
+
+        # Step 1: Parse natural language into structured filters
+        intent = parse_search_intent(query, language)
+
+        # Step 2: Build ORM query and get results
+        trails_qs = build_search_queryset(intent)
+        trails_list = list(trails_qs)
+
+        # Step 3: Serialize results
+        trail_serializer = TrailListSerializer(
+            trails_list, many=True, context={"request": request}
+        )
+
+        # Step 4: Generate search summary
+        search_summary = generate_search_summary(intent, len(trails_list), language)
+
+        return Response(
+            {
+                "search_summary": search_summary,
+                "intent": intent,
+                "count": len(trails_list),
+                "results": trail_serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def get(self, request):
+        """GET /api/v1/trails/ai-search/ — check if AI search is available."""
+        from .ai_search import is_ai_search_available
+
+        return Response(
+            {"available": is_ai_search_available()},
+            status=status.HTTP_200_OK,
+        )

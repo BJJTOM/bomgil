@@ -208,6 +208,7 @@ REST_FRAMEWORK = {
         "password_change": "10/hour",
         "fcm_token": "60/hour",
         "account_delete": "5/hour",
+        "ai_story_generate": "20/hour",
         "notification_action": "120/hour",
         "guest_login": "10/hour",
     },

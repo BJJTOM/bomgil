@@ -18,15 +18,18 @@ from .models import (
     SafetyReport,
     WalkPlan,
 )
+from .matching import compute_compatibility, get_suggested_companions
 from .serializers import (
     ChatMessageCreateSerializer,
     ChatMessageSerializer,
     ChatRoomSerializer,
     CompanionRequestCreateSerializer,
     CompanionRequestSerializer,
+    CompanionRequestWithScoreSerializer,
     CompanionReviewCreateSerializer,
     CompanionReviewSerializer,
     SafetyReportSerializer,
+    SuggestedCompanionSerializer,
     WalkPlanCreateSerializer,
     WalkPlanDetailSerializer,
     WalkPlanListSerializer,
@@ -178,6 +181,69 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
         qs = plan.requests.select_related("requester")
         return Response(CompanionRequestSerializer(qs, many=True).data)
 
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[permissions.IsAuthenticated],
+        url_path="suggested-companions",
+    )
+    def suggested_companions(self, request, pk=None):
+        """Return top 10 users ranked by compatibility score for this walk plan."""
+        plan = self.get_object()
+        if plan.user != request.user:
+            return Response({"error": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+        if plan.companion_status not in ("open",):
+            return Response(
+                {"error": "동행 구하는 중인 일정만 추천을 받을 수 있습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lang = getattr(request.user, "preferred_language", "ko") or "ko"
+        limit = min(int(request.query_params.get("limit", 10)), 20)
+        suggestions = get_suggested_companions(plan, limit=limit, lang=lang)
+        serializer = SuggestedCompanionSerializer(suggestions, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[permissions.IsAuthenticated],
+        url_path="scored-requests",
+    )
+    def scored_requests(self, request, pk=None):
+        """Incoming requests with compatibility scores.
+
+        Same as the `requests` action but each request includes
+        `compatibility_score` and `compatibility_reasons`.
+        """
+        plan = self.get_object()
+        if plan.user != request.user:
+            return Response({"error": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        lang = getattr(request.user, "preferred_language", "ko") or "ko"
+        qs = plan.requests.filter(status="pending").select_related("requester")
+
+        results = []
+        for comp_req in qs:
+            compat = compute_compatibility(
+                request.user, comp_req.requester, walk_plan=plan, lang=lang,
+            )
+            results.append({
+                "id": comp_req.id,
+                "requester": comp_req.requester,
+                "walk_plan": comp_req.walk_plan_id,
+                "message": comp_req.message,
+                "status": comp_req.status,
+                "created_at": comp_req.created_at,
+                "compatibility_score": compat["score"],
+                "compatibility_reasons": compat["reasons"],
+            })
+
+        # Sort by compatibility score descending
+        results.sort(key=lambda x: x["compatibility_score"], reverse=True)
+        serializer = CompanionRequestWithScoreSerializer(results, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def companion_review(self, request, pk=None):
         plan = self.get_object()
@@ -206,6 +272,42 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
             reviewed.save(update_fields=["companion_rating"])
 
         return Response(CompanionReviewSerializer(review).data, status=status.HTTP_201_CREATED)
+
+
+class CompatibilityCheckView(APIView):
+    """Check compatibility score between the current user and another user.
+
+    GET /api/v1/compatibility/<user_id>/
+    Optionally accepts ?walk_plan=<id> to include availability scoring.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        from apps.accounts.models import CustomUser
+
+        try:
+            other_user = CustomUser.objects.get(pk=user_id, is_active=True)
+        except CustomUser.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if other_user.pk == request.user.pk:
+            return Response(
+                {"error": "자기 자신과의 호환성은 확인할 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        walk_plan = None
+        wp_id = request.query_params.get("walk_plan")
+        if wp_id:
+            try:
+                walk_plan = WalkPlan.objects.get(pk=wp_id)
+            except WalkPlan.DoesNotExist:
+                pass
+
+        lang = getattr(request.user, "preferred_language", "ko") or "ko"
+        compat = compute_compatibility(request.user, other_user, walk_plan=walk_plan, lang=lang)
+        return Response(compat)
 
 
 class CompanionRequestAcceptView(APIView):

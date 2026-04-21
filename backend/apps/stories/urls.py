@@ -2,6 +2,7 @@ from django.urls import path
 
 from .translation_api import TranslateView
 from .views import (
+    AIStoryGenerateView,
     CommentLikeView,
     CommentReplyView,
     NotificationListView,
@@ -20,6 +21,7 @@ from .views import (
 urlpatterns = [
     path("", StoryFeedView.as_view(), name="story-feed"),
     path("create/", StoryCreateView.as_view(), name="story-create"),
+    path("ai/generate/", AIStoryGenerateView.as_view(), name="ai-story-generate"),
     path("<int:pk>/", StoryDetailView.as_view(), name="story-detail"),
     path("<int:pk>/like/", StoryLikeView.as_view(), name="story-like"),
     path("<int:pk>/comments/", StoryCommentListView.as_view(), name="story-comments"),

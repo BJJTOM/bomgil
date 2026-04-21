@@ -273,3 +273,53 @@ class NotificationReadAllView(APIView):
     def post(self, request):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return Response({"success": True})
+
+
+class AIStoryGenerateView(APIView):
+    """Generate a walking story from brief user input using AI."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "ai_story_generate"
+
+    def post(self, request):
+        trail_title = request.data.get("trail_title", "")
+        distance_km = request.data.get("distance_km", 0)
+        mood = request.data.get("mood", "happy")
+        user_notes = request.data.get("user_notes", "")
+        language = request.data.get("language", "ko")
+        photo_count = request.data.get("photo_count", 0)
+
+        # Validate mood
+        valid_moods = {"happy", "peaceful", "exciting", "touching", "funny"}
+        if mood not in valid_moods:
+            mood = "happy"
+
+        # Coerce distance
+        try:
+            distance_km = float(distance_km)
+        except (TypeError, ValueError):
+            distance_km = 0
+
+        try:
+            photo_count = int(photo_count)
+        except (TypeError, ValueError):
+            photo_count = 0
+
+        from .ai_writer import generate_story
+
+        result = generate_story(
+            trail_title=str(trail_title)[:200],
+            distance_km=distance_km,
+            mood=mood,
+            user_notes=str(user_notes)[:500],
+            language=str(language)[:5],
+            photo_count=photo_count,
+        )
+
+        if not result:
+            return Response(
+                {"error": "AI 이야기 생성에 실패했습니다. 잠시 후 다시 시도해주세요."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(result)

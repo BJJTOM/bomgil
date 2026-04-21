@@ -155,3 +155,43 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 class ChatMessageCreateSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=500)
+
+
+# ── Companion matching serializers ──────────────────────────────
+
+
+class CompatibilityBreakdownSerializer(serializers.Serializer):
+    walking_style = serializers.FloatField()
+    pace_match = serializers.FloatField()
+    social_signals = serializers.FloatField()
+    reputation = serializers.FloatField()
+    availability = serializers.FloatField()
+
+
+class CompatibilitySerializer(serializers.Serializer):
+    score = serializers.FloatField()
+    reasons = serializers.ListField(child=serializers.CharField())
+    breakdown = CompatibilityBreakdownSerializer()
+
+
+class SuggestedCompanionSerializer(serializers.Serializer):
+    user = UserPublicSerializer()
+    compatibility = CompatibilitySerializer()
+
+
+class CompanionRequestWithScoreSerializer(serializers.Serializer):
+    """CompanionRequest with compatibility score attached.
+
+    Accepts a dict with model instance fields plus computed score data.
+    """
+
+    id = serializers.IntegerField(read_only=True)
+    requester = UserPublicSerializer(read_only=True)
+    walk_plan = serializers.IntegerField(read_only=True)
+    message = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    compatibility_score = serializers.FloatField(read_only=True)
+    compatibility_reasons = serializers.ListField(
+        child=serializers.CharField(), read_only=True,
+    )

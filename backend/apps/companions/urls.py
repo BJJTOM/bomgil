@@ -5,6 +5,7 @@ from .views import (
     ChatMessageCreateView,
     ChatMessageListView,
     ChatRoomListView,
+    CompatibilityCheckView,
     CompanionRequestAcceptView,
     CompanionRequestRejectView,
     MyCompanionRequestsView,
@@ -39,6 +40,12 @@ urlpatterns = [
         "users/<str:nickname>/companion-reviews/",
         UserCompanionReviewsView.as_view(),
         name="user-companion-reviews",
+    ),
+    # Compatibility
+    path(
+        "compatibility/<int:user_id>/",
+        CompatibilityCheckView.as_view(),
+        name="compatibility-check",
     ),
     # Safety
     path("safety-reports/", SafetyReportCreateView.as_view(), name="safety-report-create"),

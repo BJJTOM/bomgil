@@ -97,7 +97,7 @@ export default function TrailDetailPage() {
     if (tabContentRef.current) {
       const offset = tabBarRef.current?.getBoundingClientRect().bottom ?? 0;
       const contentTop = tabContentRef.current.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: contentTop - offset + window.scrollY - 8, behavior: "smooth" });
+      window.scrollTo({ top: contentTop - offset - 8, behavior: "smooth" });
     }
   }, []);
 

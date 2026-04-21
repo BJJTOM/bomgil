@@ -570,6 +570,429 @@ TRAILS = [
         "walking_surface": "paved",
         "transport_access": "부산 지하철 1호선 남포역에서 8·30·88번 버스",
     },
+    # --- ASIA TRAILS: KYOTO, JAPAN ---
+    {
+        "title": "철학의 길",
+        "title_en": "Philosopher's Path",
+        "description": (
+            "은각사에서 난젠지까지 이어지는 약 2km의 수로변 산책로. "
+            "벚꽃 시즌에는 양쪽 가로수가 수로 위로 꽃잎 터널을 만들어 "
+            "교토에서 가장 인기 있는 산책 코스로 꼽힌다."
+        ),
+        "description_en": (
+            "A serene 2km canal-side path connecting Ginkaku-ji to Nanzen-ji. "
+            "Cherry blossoms form a tunnel over the waterway in spring, making it "
+            "one of Kyoto's most beloved walking routes."
+        ),
+        "region": "Kyoto, Japan",
+        "country": "JP",
+        "distance_km": Decimal("2.0"),
+        "estimated_minutes": 40,
+        "difficulty": "easy",
+        "elevation_gain": 20,
+        "start_lat": Decimal("35.027300"),
+        "start_lng": Decimal("135.797800"),
+        "end_lat": Decimal("35.015200"),
+        "end_lng": Decimal("135.793400"),
+        "trail_type": "cultural",
+        "best_season": "spring",
+        "walking_surface": "paved",
+        "transport_access": "시내버스 5번·17번 은각사 정류장 하차",
+    },
+    {
+        "title": "기온 거리 산책",
+        "title_en": "Gion District Walk",
+        "description": (
+            "교토의 전통 게이샤 거리인 기온을 중심으로 야사카 신사, "
+            "하나미코지 골목, 시라카와 수로를 따라 걷는 약 3km 코스. "
+            "저녁 무렵 등불이 켜지면 교토의 옛 정취가 가장 짙어진다."
+        ),
+        "description_en": (
+            "A 3km cultural walk through Kyoto's iconic Gion geisha district, "
+            "passing Yasaka Shrine, Hanamikoji alley, and the lantern-lit "
+            "Shirakawa canal — best experienced at dusk."
+        ),
+        "region": "Kyoto, Japan",
+        "country": "JP",
+        "distance_km": Decimal("3.0"),
+        "estimated_minutes": 60,
+        "difficulty": "easy",
+        "elevation_gain": 10,
+        "start_lat": Decimal("35.003600"),
+        "start_lng": Decimal("135.778700"),
+        "end_lat": Decimal("35.006900"),
+        "end_lng": Decimal("135.774200"),
+        "trail_type": "cultural",
+        "best_season": "all",
+        "walking_surface": "paved",
+        "transport_access": "게이한 기온시조역 하차 도보 3분",
+    },
+    {
+        "title": "후시미이나리 등산로",
+        "title_en": "Fushimi Inari Trail",
+        "description": (
+            "천 개의 붉은 도리이가 이어지는 후시미이나리 대사의 이나리산 "
+            "등산로. 산 정상(233m)까지 왕복 약 4km이며 중간중간 교토 "
+            "시가지를 내려다보는 전망 포인트가 있다."
+        ),
+        "description_en": (
+            "A 4km round-trip hike through thousands of vermillion torii gates "
+            "at Fushimi Inari Taisha, climbing to the 233m summit of Mount Inari "
+            "with panoramic views of Kyoto along the way."
+        ),
+        "region": "Kyoto, Japan",
+        "country": "JP",
+        "distance_km": Decimal("4.0"),
+        "estimated_minutes": 90,
+        "difficulty": "moderate",
+        "elevation_gain": 233,
+        "start_lat": Decimal("34.967100"),
+        "start_lng": Decimal("135.772700"),
+        "end_lat": Decimal("34.967100"),
+        "end_lng": Decimal("135.772700"),
+        "trail_type": "nature",
+        "best_season": "all",
+        "walking_surface": "mixed",
+        "transport_access": "JR 나라선 이나리역 하차 바로 앞",
+    },
+    {
+        "title": "아라시야마 대나무숲 코스",
+        "title_en": "Arashiyama Bamboo Grove Walk",
+        "description": (
+            "도게츠교에서 출발해 대나무숲 구간을 지나 오코치산소 정원과 "
+            "노노미야 신사까지 이어지는 약 5km 코스. 대나무 사이로 스며드는 "
+            "빛과 바람 소리가 교토에서만 느낄 수 있는 감각을 선사한다."
+        ),
+        "description_en": (
+            "A 5km walk starting from Togetsukyo Bridge through the towering "
+            "bamboo groves, passing Okochi Sanso garden and Nonomiya Shrine — "
+            "sunlight filtering through bamboo creates an otherworldly atmosphere."
+        ),
+        "region": "Kyoto, Japan",
+        "country": "JP",
+        "distance_km": Decimal("5.0"),
+        "estimated_minutes": 100,
+        "difficulty": "easy",
+        "elevation_gain": 40,
+        "start_lat": Decimal("35.009500"),
+        "start_lng": Decimal("135.677800"),
+        "end_lat": Decimal("35.017800"),
+        "end_lng": Decimal("135.672100"),
+        "trail_type": "nature",
+        "best_season": "all",
+        "walking_surface": "mixed",
+        "transport_access": "JR 사가아라시야마역 하차 도보 10분",
+    },
+    {
+        "title": "히가시야마 산책",
+        "title_en": "Higashiyama Walk",
+        "description": (
+            "기요미즈데라에서 출발해 산넨자카·니넨자카 돌계단 골목을 "
+            "따라 야사카 탑과 고다이지까지 내려오는 약 3.5km 코스. "
+            "전통 목조 건물과 도자기 가게가 즐비한 교토의 대표 구시가지 구간이다."
+        ),
+        "description_en": (
+            "A 3.5km walk from Kiyomizu-dera down the charming stone-paved "
+            "lanes of Sannenzaka and Ninenzaka, past Yasaka Pagoda to Kodai-ji — "
+            "the heart of Kyoto's historic Higashiyama district."
+        ),
+        "region": "Kyoto, Japan",
+        "country": "JP",
+        "distance_km": Decimal("3.5"),
+        "estimated_minutes": 70,
+        "difficulty": "easy",
+        "elevation_gain": 50,
+        "start_lat": Decimal("34.994800"),
+        "start_lng": Decimal("135.785000"),
+        "end_lat": Decimal("35.000200"),
+        "end_lng": Decimal("135.780800"),
+        "trail_type": "cultural",
+        "best_season": "fall",
+        "walking_surface": "paved",
+        "transport_access": "시내버스 206번 기요미즈미치 정류장 하차",
+    },
+    # --- ASIA TRAILS: TAIPEI, TAIWAN ---
+    {
+        "title": "지우펀 올드 스트리트",
+        "title_en": "Jiufen Old Street",
+        "description": (
+            "옛 금광 마을 지우펀의 좁은 돌계단과 홍등 골목을 따라 걷는 약 3km 코스. "
+            "산비탈에 자리한 찻집과 먹거리 노점이 이어지고 골목 끝에서 바다 전망이 "
+            "열린다. 비 오는 날의 운무 낀 풍경이 특히 유명하다."
+        ),
+        "description_en": (
+            "A 3km walk through the narrow stone steps and red-lantern alleys "
+            "of Jiufen, a former gold-mining village. Hilltop teahouses and "
+            "street food stalls line the way, ending with sweeping ocean views."
+        ),
+        "region": "Taipei, Taiwan",
+        "country": "TW",
+        "distance_km": Decimal("3.0"),
+        "estimated_minutes": 75,
+        "difficulty": "moderate",
+        "elevation_gain": 120,
+        "start_lat": Decimal("25.109400"),
+        "start_lng": Decimal("121.844700"),
+        "end_lat": Decimal("25.107600"),
+        "end_lng": Decimal("121.843200"),
+        "trail_type": "cultural",
+        "best_season": "fall",
+        "walking_surface": "paved",
+        "transport_access": "타이베이역에서 버스 1062번 지우펀 라오지에 하차",
+    },
+    {
+        "title": "디화제 역사거리",
+        "title_en": "Dihua Street Heritage Walk",
+        "description": (
+            "다다오청 구시가의 바로크풍 건물과 한약방, 직물 상점이 늘어선 "
+            "약 2.5km의 역사 거리 산책. 타이베이에서 가장 오래된 상업 지구로 "
+            "리노베이션된 카페와 공방이 새로운 활기를 더한다."
+        ),
+        "description_en": (
+            "A 2.5km heritage walk through Dadaocheng's Baroque-style shophouses, "
+            "traditional herbal medicine shops, and renovated cafes on Dihua Street — "
+            "Taipei's oldest commercial district reinvented."
+        ),
+        "region": "Taipei, Taiwan",
+        "country": "TW",
+        "distance_km": Decimal("2.5"),
+        "estimated_minutes": 50,
+        "difficulty": "easy",
+        "elevation_gain": 5,
+        "start_lat": Decimal("25.055700"),
+        "start_lng": Decimal("121.510100"),
+        "end_lat": Decimal("25.062200"),
+        "end_lng": Decimal("121.509600"),
+        "trail_type": "cultural",
+        "best_season": "all",
+        "walking_surface": "paved",
+        "transport_access": "MRT 다치아오터우역 하차 도보 5분",
+    },
+    {
+        "title": "단수이 해안 산책",
+        "title_en": "Tamsui Waterfront Walk",
+        "description": (
+            "단수이 MRT역에서 어인부두까지 이어지는 약 4km의 강변 산책로. "
+            "석양 무렵 단수이강 위로 물드는 노을이 타이베이 근교 최고의 "
+            "일몰 풍경으로 꼽히며 길가 노점의 아게이와 텐푸라가 유명하다."
+        ),
+        "description_en": (
+            "A 4km riverside promenade from Tamsui MRT to Fisherman's Wharf, "
+            "famous for its stunning sunsets over the Tamsui River and beloved "
+            "street snacks like agei and tempura along the way."
+        ),
+        "region": "Taipei, Taiwan",
+        "country": "TW",
+        "distance_km": Decimal("4.0"),
+        "estimated_minutes": 70,
+        "difficulty": "easy",
+        "elevation_gain": 5,
+        "start_lat": Decimal("25.169700"),
+        "start_lng": Decimal("121.439800"),
+        "end_lat": Decimal("25.183400"),
+        "end_lng": Decimal("121.415600"),
+        "trail_type": "urban",
+        "best_season": "all",
+        "walking_surface": "paved",
+        "transport_access": "MRT 단수이역 하차 바로 앞",
+    },
+    {
+        "title": "시먼딩 → 용캉제 야간 산책",
+        "title_en": "Ximending to Yongkang Night Walk",
+        "description": (
+            "타이베이의 번화가 시먼딩에서 출발해 중정기념당을 지나 "
+            "용캉제 먹거리 골목까지 이어지는 약 3km의 야간 도심 산책. "
+            "네온 간판과 망고빙수 노점, 길거리 공연이 어우러진다."
+        ),
+        "description_en": (
+            "A 3km night stroll from the neon-lit Ximending district, past "
+            "Chiang Kai-shek Memorial Hall, to the foodie haven of Yongkang Street — "
+            "mango shaved ice and street performers included."
+        ),
+        "region": "Taipei, Taiwan",
+        "country": "TW",
+        "distance_km": Decimal("3.0"),
+        "estimated_minutes": 60,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("25.042200"),
+        "start_lng": Decimal("121.508100"),
+        "end_lat": Decimal("25.033100"),
+        "end_lng": Decimal("121.529200"),
+        "trail_type": "urban",
+        "best_season": "all",
+        "walking_surface": "paved",
+        "transport_access": "MRT 시먼역 6번 출구",
+    },
+    {
+        "title": "샹산 하이킹",
+        "title_en": "Xiangshan / Elephant Mountain Hike",
+        "description": (
+            "타이베이 101을 가장 가까이에서 내려다볼 수 있는 약 2km의 "
+            "도심 하이킹 코스. 계단 구간이 가파르지만 20분이면 전망대에 "
+            "도착하며 야경 시간대에 특히 인기가 높다."
+        ),
+        "description_en": (
+            "A short but steep 2km urban hike offering the closest panoramic "
+            "view of Taipei 101. Just 20 minutes to the viewpoint, it's "
+            "especially popular for golden hour and night skyline shots."
+        ),
+        "region": "Taipei, Taiwan",
+        "country": "TW",
+        "distance_km": Decimal("2.0"),
+        "estimated_minutes": 45,
+        "difficulty": "moderate",
+        "elevation_gain": 140,
+        "start_lat": Decimal("25.027100"),
+        "start_lng": Decimal("121.570900"),
+        "end_lat": Decimal("25.025500"),
+        "end_lng": Decimal("121.572600"),
+        "trail_type": "nature",
+        "best_season": "all",
+        "walking_surface": "mixed",
+        "transport_access": "MRT 샹산역 2번 출구 도보 5분",
+    },
+    # --- ASIA TRAILS: BANGKOK & CHIANG MAI, THAILAND ---
+    {
+        "title": "카오산 로드 → 왕궁 산책",
+        "title_en": "Khaosan Road to Grand Palace Walk",
+        "description": (
+            "배낭여행자의 성지 카오산 로드에서 출발해 프라 아팃 거리를 지나 "
+            "방콕 왕궁과 왓 프라깨우까지 걷는 약 3km 코스. 노점과 사원, "
+            "차오프라야강 풍경이 짧은 거리 안에 모두 담겨 있다."
+        ),
+        "description_en": (
+            "A 3km walk from the legendary Khaosan Road backpacker strip, "
+            "along Phra Athit Road to the Grand Palace and Wat Phra Kaew — "
+            "street food, temples, and river views all in one route."
+        ),
+        "region": "Bangkok & Chiang Mai, Thailand",
+        "country": "TH",
+        "distance_km": Decimal("3.0"),
+        "estimated_minutes": 60,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("13.758900"),
+        "start_lng": Decimal("100.497600"),
+        "end_lat": Decimal("13.751000"),
+        "end_lng": Decimal("100.491400"),
+        "trail_type": "cultural",
+        "best_season": "winter",
+        "walking_surface": "paved",
+        "transport_access": "차오프라야 익스프레스 보트 프라 아팃 선착장",
+    },
+    {
+        "title": "차이나타운 야워랏 야간 산책",
+        "title_en": "Yaowarat Chinatown Night Walk",
+        "description": (
+            "방콕 차이나타운의 중심 야워랏 로드를 따라 걷는 약 2.5km의 "
+            "야간 산책. 네온 간판 아래 해산물 노점과 딤섬 가게가 쏟아지고 "
+            "골목마다 금은방과 한약방이 이어지는 감각적인 코스다."
+        ),
+        "description_en": (
+            "A 2.5km night walk along Yaowarat Road in Bangkok's Chinatown. "
+            "Neon signs illuminate seafood stalls and dim sum shops while "
+            "gold traders and herbal pharmacies fill every side alley."
+        ),
+        "region": "Bangkok & Chiang Mai, Thailand",
+        "country": "TH",
+        "distance_km": Decimal("2.5"),
+        "estimated_minutes": 50,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("13.740800"),
+        "start_lng": Decimal("100.510200"),
+        "end_lat": Decimal("13.738600"),
+        "end_lng": Decimal("100.497800"),
+        "trail_type": "urban",
+        "best_season": "winter",
+        "walking_surface": "paved",
+        "transport_access": "MRT 왓 망콘역 1번 출구",
+    },
+    {
+        "title": "치앙마이 올드시티 사원 순례",
+        "title_en": "Chiang Mai Old City Temple Walk",
+        "description": (
+            "치앙마이 구시가지의 해자 안쪽을 따라 왓 체디루앙, 왓 프라싱, "
+            "왓 치앙만 등 주요 사원 5곳을 잇는 약 4km 코스. 란나 양식의 "
+            "불탑과 골목길 카페가 번갈아 나타나 산책 리듬이 좋다."
+        ),
+        "description_en": (
+            "A 4km temple-hopping walk inside Chiang Mai's moat, linking "
+            "Wat Chedi Luang, Wat Phra Singh, and Wat Chiang Man among others — "
+            "Lanna-style stupas and hidden cafes at every turn."
+        ),
+        "region": "Bangkok & Chiang Mai, Thailand",
+        "country": "TH",
+        "distance_km": Decimal("4.0"),
+        "estimated_minutes": 80,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("18.787600"),
+        "start_lng": Decimal("98.986100"),
+        "end_lat": Decimal("18.793700"),
+        "end_lng": Decimal("98.981800"),
+        "trail_type": "cultural",
+        "best_season": "winter",
+        "walking_surface": "paved",
+        "transport_access": "치앙마이 공항에서 쏭태우 15분",
+    },
+    {
+        "title": "치앙마이 선데이 마켓 코스",
+        "title_en": "Chiang Mai Sunday Walking Street Market",
+        "description": (
+            "일요일 저녁 타패 게이트에서 왓 프라싱까지 약 2km에 걸쳐 열리는 "
+            "선데이 마켓을 따라 걷는 코스. 수공예품, 길거리 음식, 라이브 음악이 "
+            "이어지며 치앙마이의 야간 문화를 가장 가까이 체험할 수 있다."
+        ),
+        "description_en": (
+            "A 2km stroll through Chiang Mai's famous Sunday Walking Street, "
+            "running from Tha Phae Gate to Wat Phra Singh — packed with "
+            "handicrafts, street food, and live music every Sunday evening."
+        ),
+        "region": "Bangkok & Chiang Mai, Thailand",
+        "country": "TH",
+        "distance_km": Decimal("2.0"),
+        "estimated_minutes": 50,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("18.787000"),
+        "start_lng": Decimal("98.993500"),
+        "end_lat": Decimal("18.788800"),
+        "end_lng": Decimal("98.981400"),
+        "trail_type": "urban",
+        "best_season": "winter",
+        "walking_surface": "paved",
+        "transport_access": "타패 게이트 앞 쏭태우 하차",
+    },
+    {
+        "title": "님만해민 카페거리 산책",
+        "title_en": "Nimman Cafe Street Walk",
+        "description": (
+            "치앙마이 대학 인근 님만해민 거리의 카페와 부티크 숍을 따라 "
+            "걷는 약 3km 코스. 소이(골목)마다 개성 있는 카페가 숨어 있어 "
+            "오후 산책과 커피 한 잔을 함께 즐기기 좋다."
+        ),
+        "description_en": (
+            "A 3km cafe-hopping walk along Nimmanhaemin Road near Chiang Mai "
+            "University. Each soi (alley) hides unique cafes and boutiques — "
+            "perfect for a leisurely afternoon stroll with coffee."
+        ),
+        "region": "Bangkok & Chiang Mai, Thailand",
+        "country": "TH",
+        "distance_km": Decimal("3.0"),
+        "estimated_minutes": 60,
+        "difficulty": "easy",
+        "elevation_gain": 0,
+        "start_lat": Decimal("18.796800"),
+        "start_lng": Decimal("98.967200"),
+        "end_lat": Decimal("18.800200"),
+        "end_lng": Decimal("98.968900"),
+        "trail_type": "urban",
+        "best_season": "winter",
+        "walking_surface": "paved",
+        "transport_access": "치앙마이 공항에서 쏭태우 10분 / MAYA 몰 앞",
+    },
 ]
 
 
@@ -623,7 +1046,7 @@ class Command(BaseCommand):
             defaults = {
                 **data,
                 "author": system_user,
-                "country": "KR",
+                "country": data.get("country", "KR"),
                 "status": "approved",
                 "is_official": True,
                 "source": "moru_curated",

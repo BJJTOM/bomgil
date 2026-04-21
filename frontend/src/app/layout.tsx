@@ -13,12 +13,11 @@ const THEME_BOOTSTRAP_SCRIPT = `
 (function() {
   try {
     var saved = localStorage.getItem('moru-theme');
-    var mode = 'system';
+    var mode = 'light';
     if (saved) {
-      try { mode = (JSON.parse(saved).state || {}).mode || 'system'; } catch (e) {}
+      try { mode = (JSON.parse(saved).state || {}).mode || 'light'; } catch (e) {}
     }
-    var isDark = mode === 'dark' ||
-      (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var isDark = mode === 'dark';
     if (isDark) document.documentElement.classList.add('dark');
   } catch (e) {}
 })();

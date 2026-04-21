@@ -946,7 +946,7 @@ export default function TrailDetailPage() {
                         </label>
                       )}
                       {reviewPreviews.map((url, i) => (
-                        <div key={i} className="relative">
+                        <div key={`${url}-${i}`} className="relative">
                           <img src={url} alt="" className="w-[72px] h-[72px] rounded-xl object-cover" />
                           <button onClick={() => removeReviewImage(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>

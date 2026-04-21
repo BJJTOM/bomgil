@@ -829,7 +829,7 @@ function TrailDetailScreenInner() {
               <View style={styles.reviewImageSection}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {reviewImages.map((img, idx) => (
-                    <View key={idx} style={styles.reviewImageThumbWrap}>
+                    <View key={`${img.uri}-${idx}`} style={styles.reviewImageThumbWrap}>
                       <Image source={{ uri: img.uri }} style={styles.reviewImageThumb} resizeMode="cover" />
                       <TouchableOpacity
                         style={styles.reviewImageRemove}

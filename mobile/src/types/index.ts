@@ -79,6 +79,18 @@ export interface Trail {
   source_url?: string;
   avg_rating?: number | null;
   review_count?: number;
+  completion_count?: number;
+  segments?: TrailSegment[];
+}
+
+export interface TrailSegment {
+  id: number;
+  order: number;
+  start_name: string;
+  end_name: string;
+  distance_km: number;
+  duration_minutes: number;
+  description?: string;
 }
 
 export interface TrailConditionReport {

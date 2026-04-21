@@ -197,7 +197,7 @@ export function WeeklyInsights() {
                 <ul className="space-y-1.5 mb-4">
                   {data.highlights.map((h, idx) => (
                     <li
-                      key={idx}
+                      key={`highlight-${idx}-${h.slice(0, 20)}`}
                       className="flex items-start gap-2 text-[13px] text-text-secondary leading-[1.5]"
                     >
                       <span className="text-primary dark:text-emerald-400 font-bold mt-[1px]">

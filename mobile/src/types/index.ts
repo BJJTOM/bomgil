@@ -441,3 +441,27 @@ export interface CompanionRequest {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
 }
+
+// ──────────────────────────────────────
+// Stamps
+// ──────────────────────────────────────
+
+export interface StampPoint {
+  id: number;
+  trail: number;
+  name: string;
+  emoji: string;
+  lat: string;
+  lng: string;
+  order: number;
+  is_collected: boolean;
+  collected_at: string | null;
+}
+
+export interface CollectedStamp {
+  id: number;
+  stamp: StampPoint;
+  trail_id: number;
+  trail_title: string;
+  collected_at: string;
+}

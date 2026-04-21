@@ -50,7 +50,11 @@ import { Trail, Spot, Review } from '../types';
 import { saveTrailOffline, isSaved, getSavedTrail } from '../utils/offlineStorage';
 import SafeMapView from '../components/SafeMapView';
 import { ElevationProfile } from '../components/ElevationProfile';
+import { TrailSegments } from '../components/TrailSegments';
+import { TrailConditionBanner } from '../components/TrailConditionBanner';
+import StampBook from '../components/StampBook';
 import { useThemeStore } from '../stores/theme';
+import { useAuthStore } from '../stores/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -118,6 +122,7 @@ function TrailDetailScreenInner() {
   const scrollRef = useRef<ScrollView>(null);
   const trailId = route.params?.id ?? route.params?.trailId;
   const { isDark } = useThemeStore();
+  const currentUser = useAuthStore((s) => s.user);
 
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
@@ -470,6 +475,29 @@ function TrailDetailScreenInner() {
               </View>
             </View>
           )}
+          {/* Certificate + Edit buttons */}
+          {(trail.is_completed || (currentUser && trail.author?.id === currentUser.id)) && (
+            <View style={styles.trailActionBtnsRow}>
+              {trail.is_completed && (
+                <TouchableOpacity
+                  style={styles.trailActionBtn}
+                  onPress={() => navigation.navigate('Certificate', { trailId: trail.id })}
+                  activeOpacity={0.7}>
+                  <Feather name="award" size={16} color={colors.primary} />
+                  <Text style={styles.trailActionBtnText}>인증서 보기</Text>
+                </TouchableOpacity>
+              )}
+              {currentUser && trail.author?.id === currentUser.id && (
+                <TouchableOpacity
+                  style={styles.trailActionBtn}
+                  onPress={() => navigation.navigate('TrailEdit', { trailId: trail.id })}
+                  activeOpacity={0.7}>
+                  <Feather name="edit-2" size={16} color={colors.primary} />
+                  <Text style={styles.trailActionBtnText}>수정</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionIconBtn} onPress={() => likeMutation.mutate()} activeOpacity={0.7}>
               <Feather name="heart" size={22} color={trail.is_liked ? '#FF4B4B' : '#8B95A1'} />
@@ -505,37 +533,26 @@ function TrailDetailScreenInner() {
         </View>
 
         {/* ===== 3b. Latest Condition Banner ===== */}
-        {(() => {
-          const lc = (trail as any).latest_condition;
-          if (!lc) return null;
-          const created = new Date(lc.created_at);
-          const hoursAgo = Math.floor((Date.now() - created.getTime()) / 3600000);
-          const freshLabel =
-            hoursAgo < 1 ? '방금 전' :
-            hoursAgo < 24 ? `${hoursAgo}시간 전` :
-            `${Math.floor(hoursAgo / 24)}일 전`;
-          return (
-            <TouchableOpacity
-              style={[styles.conditionBanner, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}
-              onPress={() => navigation.navigate('TrailConditions', { id: trail.id })}
-              activeOpacity={0.85}>
-              <View style={styles.conditionIconWrap}>
-                <Feather name="alert-circle" size={18} color="#B45309" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.conditionBannerTitle} numberOfLines={1}>
-                  {lc.tag_display || lc.tag} · {freshLabel}
-                </Text>
-                {!!lc.note && (
-                  <Text style={styles.conditionBannerNote} numberOfLines={2}>
-                    {lc.note}
-                  </Text>
-                )}
-              </View>
-              <Feather name="chevron-right" size={18} color="#B45309" />
-            </TouchableOpacity>
-          );
-        })()}
+        <TrailConditionBanner
+          condition={(() => {
+            const lc = (trail as any).latest_condition;
+            if (!lc) return null;
+            // Normalize: the API may return a single tag string or a tags array
+            const tags: string[] = Array.isArray(lc.tags)
+              ? lc.tags
+              : lc.tag
+                ? [lc.tag]
+                : [];
+            return {
+              tags,
+              note: lc.note || '',
+              image: lc.image || null,
+              reporter_nickname: lc.user?.nickname || lc.reporter_nickname || '',
+              created_at: lc.created_at,
+              helpful_count: lc.helpful_count ?? 0,
+            };
+          })()}
+        />
 
         {/* ===== 4. Description ===== */}
         <View style={styles.section}>
@@ -686,6 +703,9 @@ function TrailDetailScreenInner() {
           )}
         </TouchableOpacity>
 
+        {/* ===== 5b. Trail Segments ===== */}
+        <TrailSegments segments={(trail as any).segments} />
+
         {/* ===== 6. Spots ===== */}
         {(spots || []).length > 0 && (
           <View style={styles.section}>
@@ -749,6 +769,9 @@ function TrailDetailScreenInner() {
             )}
           </View>
         )}
+
+        {/* ===== 6b. Stamp Collection ===== */}
+        <StampBook trailId={trail.id} />
 
         {/* ===== 7. Reviews ===== */}
         <View style={styles.section}>
@@ -1281,6 +1304,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  trailActionBtnsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  trailActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2D4A2E',
+    backgroundColor: 'rgba(45,74,46,0.06)',
+  },
+  trailActionBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2D4A2E',
   },
   conditionBanner: {
     flexDirection: 'row',

@@ -192,6 +192,7 @@ export default function SettingsScreen() {
             { icon: 'heart', label: t.profile.likes, onPress: () => navigation.navigate('LikedTrails') },
             { icon: 'bookmark', label: '저장한 코스', onPress: () => navigation.navigate('BookmarkedTrails') },
             { icon: 'flag', label: '시리즈 도전', onPress: () => navigation.navigate('TrailSeriesList') },
+            { icon: 'award', label: '내 스탬프', onPress: () => navigation.navigate('MyStamps') },
             { icon: 'download', label: t.profile.courses, onPress: () => navigation.navigate('SavedTrails') },
             { icon: 'upload', label: 'GPX', onPress: handleGpxImport },
             { icon: 'crosshair', label: '보폭 보정', onPress: () => navigation.navigate('StrideCalibration') },

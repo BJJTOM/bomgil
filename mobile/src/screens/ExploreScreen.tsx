@@ -14,7 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
@@ -152,44 +152,36 @@ export default function ExploreScreen() {
     return params;
   }, [filters, debouncedSearch, sortBy]);
 
-  // Filtered query (with search param for API) — infinite scroll pagination.
-  // Lets react-query surface isError so we can render a retry CTA
-  // instead of silently showing an empty list.
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Reset page when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [queryParams.search, queryParams.ordering, queryParams.country, queryParams.difficulty, queryParams.trail_type, queryParams.best_season]);
+
+  // Filtered query with pagination
   const {
     data,
     isLoading,
     isError,
     refetch,
     isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['trails', queryParams],
-    queryFn: async ({ pageParam }) => {
+  } = useQuery({
+    queryKey: ['trails', queryParams, currentPage],
+    queryFn: async () => {
       const { data: res } = await api.get('/trails/', {
-        params: { ...queryParams, page: pageParam, page_size: 20 },
+        params: { ...queryParams, page: currentPage, page_size: PAGE_SIZE },
       });
       return res;
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage: any) => {
-      if (lastPage?.next) {
-        try {
-          const url = new URL(lastPage.next);
-          const nextPage = url.searchParams.get('page');
-          return nextPage ? Number(nextPage) : undefined;
-        } catch {
-          // If URL parsing fails, try regex extraction
-          const match = lastPage.next.match(/[?&]page=(\d+)/);
-          return match ? Number(match[1]) : undefined;
-        }
-      }
-      return undefined;
     },
     retry: 1,
     staleTime: 30000,
   });
+
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // Also load all trails for client-side tag search
   const { data: allData } = useQuery({
@@ -225,10 +217,7 @@ export default function ExploreScreen() {
   }, []);
 
   const trails = useMemo(() => {
-    // Flatten all pages from infinite query
-    const apiResults: Trail[] = data?.pages
-      ? data.pages.flatMap((page: any) => page?.results ?? (Array.isArray(page) ? page : []))
-      : [];
+    const apiResults: Trail[] = data?.results ?? (Array.isArray(data) ? data : []);
 
     let result: Trail[];
 
@@ -600,7 +589,7 @@ export default function ExploreScreen() {
       {/* Result Count */}
       <View style={styles.resultHeader}>
         <Text style={[styles.resultCount, { color: textTertColor }]}>
-          {isLoading ? '검색 중...' : `${data?.pages?.[0]?.count ?? trails.length}개 코스`}
+          {isLoading ? '검색 중...' : `${totalCount}개 코스`}
         </Text>
       </View>
 
@@ -632,18 +621,28 @@ export default function ExploreScreen() {
           numColumns={width > 600 ? 2 : 1}
           key={width > 600 ? 'two-col' : 'one-col'}
           refreshControl={
-            <RefreshControl refreshing={isRefetching && !isFetchingNextPage} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
           ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={colors.primary} />
+            totalPages > 1 ? (
+              <View style={[styles.pagination, isDark && { borderTopColor: 'rgba(255,255,255,0.08)' }]}>
+                <TouchableOpacity
+                  style={[styles.pageBtn, currentPage <= 1 && styles.pageBtnDisabled]}
+                  disabled={currentPage <= 1}
+                  onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  activeOpacity={0.7}>
+                  <Feather name="chevron-left" size={18} color={currentPage <= 1 ? (isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB') : (isDark ? '#FFFFFF' : '#191F28')} />
+                </TouchableOpacity>
+                <Text style={[styles.pageInfo, { color: isDark ? '#FFFFFF' : '#191F28' }]}>
+                  {currentPage} / {totalPages}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.pageBtn, currentPage >= totalPages && styles.pageBtnDisabled]}
+                  disabled={currentPage >= totalPages}
+                  onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  activeOpacity={0.7}>
+                  <Feather name="chevron-right" size={18} color={currentPage >= totalPages ? (isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB') : (isDark ? '#FFFFFF' : '#191F28')} />
+                </TouchableOpacity>
               </View>
             ) : null
           }
@@ -1012,5 +1011,31 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginTop: 8,
+    marginBottom: 80,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F4F6',
+    gap: 20,
+  },
+  pageBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F2F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
+  },
+  pageInfo: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

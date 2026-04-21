@@ -514,83 +514,6 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* ============================================================= */}
-        {/* Series Challenges                                              */}
-        {/* ============================================================= */}
-        {featuredSeries && featuredSeries.length > 0 && (
-          <FadeInView delay={140}>
-            <View style={styles.trailSection}>
-              <View style={styles.trailHeader}>
-                <View>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>
-                    {t('seriesTitle', language)}
-                  </Text>
-                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
-                    {t('seriesSub', language)}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.viewAllBtn}
-                  onPress={() => navigation.navigate('TrailSeriesList')}>
-                  <Text style={[styles.viewAllText, isDark && { color: '#4ADE80' }]}>
-                    {t('viewAll', language)}
-                  </Text>
-                  <Feather name="arrow-right" size={12} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginLeft: 2 }} />
-                </TouchableOpacity>
-              </View>
-              <View>
-                <FlatList
-                  data={featuredSeries}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.trailScroll}
-                  keyExtractor={(item: any) => String(item.id)}
-                  renderItem={({ item }: any) => {
-                    const pct = Math.min(100, item.progress_pct || 0);
-                    return (
-                      <TouchableOpacity
-                        style={[styles.seriesHomeCard, { backgroundColor: cardBg }]}
-                        activeOpacity={0.85}
-                        onPress={() =>
-                          navigation.navigate('TrailSeriesDetail', { slug: item.slug })
-                        }>
-                        <View style={[styles.seriesHomeEmojiWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
-                          <Text style={styles.seriesHomeEmoji}>
-                            {item.accent_emoji || '🚶'}
-                          </Text>
-                        </View>
-                        <Text
-                          style={[styles.seriesHomeTitle, { color: textColor }]}
-                          numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text
-                          style={[styles.seriesHomeSub, { color: textTertColor }]}
-                          numberOfLines={1}>
-                          {item.subtitle || item.region || ''}
-                        </Text>
-                        <View style={[styles.seriesHomeProgressTrack, isDark && { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
-                          <View
-                            style={[
-                              styles.seriesHomeProgressFill,
-                              { width: `${pct}%` },
-                              isDark && { backgroundColor: '#4ADE80' },
-                            ]}
-                          />
-                        </View>
-                        <Text style={[styles.seriesHomeProgressLabel, { color: textTertColor }]}>
-                          {item.progress_completed}/{item.progress_total} · {pct}%
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-                <ScrollFadeHint isDark={isDark} />
-              </View>
-            </View>
-          </FadeInView>
-        )}
-
-        {/* ============================================================= */}
         {/* Merged Trail Section (today + popular + recommended)           */}
         {/* ============================================================= */}
         <FadeInView delay={200}>
@@ -675,6 +598,83 @@ export default function HomeScreen() {
             )}
           </View>
         </FadeInView>
+
+        {/* ============================================================= */}
+        {/* Series Challenges                                              */}
+        {/* ============================================================= */}
+        {featuredSeries && featuredSeries.length > 0 && (
+          <FadeInView delay={200}>
+            <View style={styles.trailSection}>
+              <View style={styles.trailHeader}>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    {t('seriesTitle', language)}
+                  </Text>
+                  <Text style={[styles.sectionSub, { color: textTertColor }]}>
+                    {t('seriesSub', language)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.viewAllBtn}
+                  onPress={() => navigation.navigate('TrailSeriesList')}>
+                  <Text style={[styles.viewAllText, isDark && { color: '#4ADE80' }]}>
+                    {t('viewAll', language)}
+                  </Text>
+                  <Feather name="arrow-right" size={12} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
+              </View>
+              <View>
+                <FlatList
+                  data={featuredSeries}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trailScroll}
+                  keyExtractor={(item: any) => String(item.id)}
+                  renderItem={({ item }: any) => {
+                    const pct = Math.min(100, item.progress_pct || 0);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.seriesHomeCard, { backgroundColor: cardBg }]}
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          navigation.navigate('TrailSeriesDetail', { slug: item.slug })
+                        }>
+                        <View style={[styles.seriesHomeEmojiWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
+                          <Text style={styles.seriesHomeEmoji}>
+                            {item.accent_emoji || '🚶'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.seriesHomeTitle, { color: textColor }]}
+                          numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text
+                          style={[styles.seriesHomeSub, { color: textTertColor }]}
+                          numberOfLines={1}>
+                          {item.subtitle || item.region || ''}
+                        </Text>
+                        <View style={[styles.seriesHomeProgressTrack, isDark && { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+                          <View
+                            style={[
+                              styles.seriesHomeProgressFill,
+                              { width: `${pct}%` },
+                              isDark && { backgroundColor: '#4ADE80' },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.seriesHomeProgressLabel, { color: textTertColor }]}>
+                          {item.progress_completed}/{item.progress_total} · {pct}%
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                <ScrollFadeHint isDark={isDark} />
+              </View>
+            </View>
+          </FadeInView>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>

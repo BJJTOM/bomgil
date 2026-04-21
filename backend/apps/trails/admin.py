@@ -6,14 +6,17 @@ from django.urls import reverse
 
 from .collections import Collection
 from .models import (
+    StampPoint,
     Tag,
     Trail,
     TrailBookmark,
     TrailCompletion,
     TrailCondition,
     TrailLike,
+    TrailSegment,
     TrailSeries,
     TrailSeriesTrail,
+    UserStamp,
 )
 
 
@@ -53,6 +56,20 @@ def author_link(obj):
     return format_html('<a href="{}">{}</a>', url, user.nickname or user.username)
 
 
+class TrailSegmentInline(admin.TabularInline):
+    model = TrailSegment
+    extra = 1
+    fields = ["order", "start_name", "end_name", "distance_km", "duration_minutes", "description"]
+    ordering = ["order"]
+
+
+class StampPointInline(admin.TabularInline):
+    model = StampPoint
+    extra = 1
+    fields = ["order", "emoji", "name", "lat", "lng", "radius_meters", "description"]
+    ordering = ["order"]
+
+
 @admin.register(Trail)
 class TrailAdmin(admin.ModelAdmin):
     list_display = [
@@ -67,6 +84,7 @@ class TrailAdmin(admin.ModelAdmin):
     readonly_fields = ["view_count", "like_count", "hidden_at", "created_at", "updated_at"]
     actions = [hide_selected_trails, unhide_selected_trails, approve_selected, reject_selected]
     list_per_page = 50
+    inlines = [TrailSegmentInline, StampPointInline]
     fieldsets = (
         ("기본 정보", {
             "fields": ("title", "title_en", "title_ja", "description", "description_en", "description_ja",
@@ -168,6 +186,25 @@ class TrailConditionAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
     autocomplete_fields = ["user", "trail"]
+
+
+@admin.register(StampPoint)
+class StampPointAdmin(admin.ModelAdmin):
+    list_display = ["trail", "emoji", "name", "order", "radius_meters"]
+    list_filter = ["trail"]
+    search_fields = ["name", "trail__title"]
+    ordering = ["trail", "order"]
+    autocomplete_fields = ["trail"]
+
+
+@admin.register(UserStamp)
+class UserStampAdmin(admin.ModelAdmin):
+    list_display = ["user", "stamp_point", "collected_at"]
+    list_filter = ["collected_at"]
+    search_fields = ["user__nickname", "stamp_point__name", "stamp_point__trail__title"]
+    date_hierarchy = "collected_at"
+    ordering = ["-collected_at"]
+    readonly_fields = ["user", "stamp_point", "collected_at", "activity"]
 
 
 @admin.register(Collection)

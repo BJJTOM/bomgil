@@ -1,6 +1,8 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .certificate import generate_certificate
+from .gpx_export import GpxExportView
 from .gpx_import import GpxImportView
 from .og_image import generate_og_image
 from .rankings import (
@@ -15,6 +17,7 @@ from .rankings import (
 from .views import (
     MyBookmarksView,
     MyCompletionsView,
+    MyStampsView,
     RecommendedTrailsView,
     TagListView,
     TrailSeriesViewSet,
@@ -38,13 +41,17 @@ urlpatterns = [
     path("collections/<int:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
     # Recommendations
     path("recommended/", RecommendedTrailsView.as_view(), name="trail-recommended"),
-    # Me: bookmarks and completions
+    # Me: bookmarks, completions, stamps
     path("me/bookmarks/", MyBookmarksView.as_view(), name="trail-my-bookmarks"),
     path("me/completions/", MyCompletionsView.as_view(), name="trail-my-completions"),
-    # GPX import
+    path("me/stamps/", MyStampsView.as_view(), name="trail-my-stamps"),
+    # GPX import / export
     path("import-gpx/", GpxImportView.as_view(), name="trail-import-gpx"),
+    path("<int:pk>/gpx/", GpxExportView.as_view(), name="trail-gpx-export"),
     # OG Image
     path("<int:pk>/og-image/", generate_og_image, name="trail-og-image"),
+    # Completion certificate
+    path("<int:pk>/certificate/", generate_certificate, name="trail-certificate"),
     # Router
     path("", include(router.urls)),
 ]

@@ -57,6 +57,13 @@ const SPOT_TYPES = [
   { value: "accommodation", label: "숙소", emoji: "\uD83C\uDFE8" },
   { value: "transport", label: "교통", emoji: "\uD83D\uDE89" },
   { value: "tip", label: "꿀팁", emoji: "\uD83D\uDCA1" },
+  { value: "toilet", label: "화장실", emoji: "\uD83D\uDEBB" },
+  { value: "water", label: "식수대", emoji: "\uD83D\uDEB0" },
+  { value: "store", label: "편의점/매점", emoji: "\uD83C\uDFEA" },
+  { value: "pharmacy", label: "약국", emoji: "\uD83D\uDC8A" },
+  { value: "hospital", label: "병원/의원", emoji: "\uD83C\uDFE5" },
+  { value: "police", label: "경찰서/파출소", emoji: "\uD83D\uDC6E" },
+  { value: "parking", label: "주차장", emoji: "\uD83C\uDD7F\uFE0F" },
   { value: "end", label: "도착", emoji: "\uD83C\uDFC1" },
 ];
 

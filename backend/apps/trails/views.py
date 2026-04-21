@@ -13,6 +13,7 @@ from config.throttles import TrailCreateThrottle
 from config.validators import validate_image_file
 
 from .models import (
+    StampPoint,
     Tag,
     Trail,
     TrailBookmark,
@@ -20,8 +21,10 @@ from .models import (
     TrailCondition,
     TrailLike,
     TrailSeries,
+    UserStamp,
 )
 from .serializers import (
+    StampPointSerializer,
     TagSerializer,
     TrailBookmarkSerializer,
     TrailCompletionSerializer,
@@ -32,6 +35,7 @@ from .serializers import (
     TrailListSerializer,
     TrailSeriesDetailSerializer,
     TrailSeriesListSerializer,
+    UserStampSerializer,
 )
 
 
@@ -241,6 +245,105 @@ class TrailViewSet(viewsets.ModelViewSet):
         serializer = SpotSerializer(spots, many=True, context={"request": request})
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def stamps(self, request, pk=None):
+        """List stamp points for a trail."""
+        trail = self.get_object()
+        qs = trail.stamp_points.all().order_by("order")
+        serializer = StampPointSerializer(
+            qs, many=True, context={"request": request},
+        )
+        return Response(serializer.data)
+
+    @action(
+        detail=True, methods=["post"],
+        url_path=r"stamps/(?P<stamp_id>\d+)/collect",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def collect_stamp(self, request, pk=None, stamp_id=None):
+        """Collect a stamp point if the user is within radius.
+
+        Expects JSON body: {"lat": ..., "lng": ...}
+        Optionally: {"lat": ..., "lng": ..., "activity_id": ...}
+        """
+        import math
+
+        trail = self.get_object()
+        try:
+            stamp_point = trail.stamp_points.get(pk=stamp_id)
+        except StampPoint.DoesNotExist:
+            return Response(
+                {"detail": "스탬프 포인트를 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Parse user location
+        user_lat = request.data.get("lat")
+        user_lng = request.data.get("lng")
+        if user_lat is None or user_lng is None:
+            return Response(
+                {"detail": "lat, lng 좌표가 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user_lat = float(user_lat)
+            user_lng = float(user_lng)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "lat, lng는 유효한 숫자여야 합니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Haversine distance check
+        stamp_lat = float(stamp_point.lat)
+        stamp_lng = float(stamp_point.lng)
+        R = 6371000  # Earth radius in meters
+        phi1 = math.radians(user_lat)
+        phi2 = math.radians(stamp_lat)
+        dphi = math.radians(stamp_lat - user_lat)
+        dlambda = math.radians(stamp_lng - user_lng)
+        a = (
+            math.sin(dphi / 2) ** 2
+            + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        )
+        distance_m = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        if distance_m > stamp_point.radius_meters:
+            return Response(
+                {
+                    "detail": f"스탬프 포인트에서 너무 멀어요. ({int(distance_m)}m / {stamp_point.radius_meters}m 이내 필요)",
+                    "distance_m": round(distance_m, 1),
+                    "radius_m": stamp_point.radius_meters,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Optional activity link
+        activity = None
+        activity_id = request.data.get("activity_id")
+        if activity_id:
+            from apps.activities.models import ActivityTrack
+            activity = ActivityTrack.objects.filter(
+                pk=activity_id, user=request.user,
+            ).first()
+
+        user_stamp, created = UserStamp.objects.get_or_create(
+            user=request.user,
+            stamp_point=stamp_point,
+            defaults={"activity": activity},
+        )
+
+        return Response(
+            {
+                "collected": True,
+                "created": created,
+                "stamp": StampPointSerializer(
+                    stamp_point, context={"request": request},
+                ).data,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["get"])
     def popular(self, request):
         qs = Trail.objects.filter(status="approved", is_hidden=False).select_related("author").prefetch_related("tags")
@@ -392,6 +495,20 @@ class TrailSeriesViewSet(viewsets.ReadOnlyModelViewSet):
             qs, many=True, context={"request": request},
         )
         return Response(serializer.data)
+
+
+class MyStampsView(generics.ListAPIView):
+    """List all stamps collected by the current user."""
+    serializer_class = UserStampSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            UserStamp.objects
+            .filter(user=self.request.user)
+            .select_related("stamp_point", "stamp_point__trail")
+        )
 
 
 class TagListView(generics.ListAPIView):

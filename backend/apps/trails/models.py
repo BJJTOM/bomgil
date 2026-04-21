@@ -133,6 +133,34 @@ class Trail(models.Model):
         return self.title
 
 
+class TrailSegment(models.Model):
+    """A named segment within a trail, describing distance and time
+    between two waypoints.
+
+    Used on the trail detail page to show a step-by-step breakdown
+    (e.g. 선유스카이라인 → 대봉전망대  1.1km · 60분).
+    """
+
+    trail = models.ForeignKey(
+        Trail, on_delete=models.CASCADE, related_name="segments"
+    )
+    order = models.PositiveIntegerField()
+    start_name = models.CharField(max_length=100)
+    end_name = models.CharField(max_length=100)
+    distance_km = models.DecimalField(max_digits=5, decimal_places=2)
+    duration_minutes = models.PositiveIntegerField()
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["order"]
+        unique_together = ["trail", "order"]
+        verbose_name = "구간"
+        verbose_name_plural = "구간"
+
+    def __str__(self):
+        return f"{self.trail.title} · {self.start_name} → {self.end_name}"
+
+
 class TrailLike(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trail_likes"
@@ -343,3 +371,70 @@ class TrailCompletion(models.Model):
 
     def __str__(self):
         return f"{self.user_id} completed trail {self.trail_id}"
+
+
+class StampPoint(models.Model):
+    """A collectible stamp location on a trail.
+
+    Each trail can define multiple stamp points along its route.
+    When users walk near a stamp point (within radius_meters), they
+    can collect it. Collecting all stamps on a trail is a mini
+    completion challenge.
+    """
+
+    trail = models.ForeignKey(
+        Trail, on_delete=models.CASCADE, related_name="stamp_points"
+    )
+    name = models.CharField(max_length=100)
+    lat = models.DecimalField(max_digits=9, decimal_places=6)
+    lng = models.DecimalField(max_digits=9, decimal_places=6)
+    radius_meters = models.PositiveIntegerField(default=50, help_text="수집 가능 반경 (미터)")
+    description = models.TextField(max_length=300, blank=True, default="")
+    emoji = models.CharField(max_length=4, default="📍")
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["trail", "order"]
+        verbose_name = "스탬프 포인트"
+        verbose_name_plural = "스탬프 포인트"
+        indexes = [
+            models.Index(fields=["trail", "order"]),
+        ]
+
+    def __str__(self):
+        return f"{self.trail.title} · {self.name}"
+
+
+class UserStamp(models.Model):
+    """A record that a user collected a specific stamp point.
+
+    Created when the user's GPS position falls within the stamp point's
+    radius. Optionally linked to the ActivityTrack that was active at
+    the time of collection.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stamps"
+    )
+    stamp_point = models.ForeignKey(
+        StampPoint, on_delete=models.CASCADE, related_name="collections"
+    )
+    collected_at = models.DateTimeField(auto_now_add=True)
+    activity = models.ForeignKey(
+        "activities.ActivityTrack",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="stamps",
+    )
+
+    class Meta:
+        unique_together = ["user", "stamp_point"]
+        ordering = ["-collected_at"]
+        verbose_name = "수집한 스탬프"
+        verbose_name_plural = "수집한 스탬프"
+        indexes = [
+            models.Index(fields=["user", "-collected_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} collected {self.stamp_point.name}"

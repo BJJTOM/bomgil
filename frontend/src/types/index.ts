@@ -63,8 +63,19 @@ export interface Trail {
   total_days: number | null;
   transport_access: string;
   walking_surface: "paved" | "mixed" | "unpaved";
+  segments?: TrailSegment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface TrailSegment {
+  id: number;
+  order: number;
+  start_name: string;
+  end_name: string;
+  distance_km: string;
+  duration_minutes: number;
+  description: string;
 }
 
 export type TrailType = "urban" | "coastal" | "village" | "cultural" | "nature" | "mixed";
@@ -172,7 +183,7 @@ export interface UserBadge {
 
 export interface GeoJSONLineString {
   type: "LineString";
-  coordinates: [number, number][];
+  coordinates: ([number, number] | [number, number, number])[];
 }
 
 export interface Spot {
@@ -206,6 +217,19 @@ export type SpotType =
   | "rest"
   | "view"
   | "danger"
+  | "market"
+  | "gallery"
+  | "temple"
+  | "accommodation"
+  | "transport"
+  | "tip"
+  | "toilet"
+  | "water"
+  | "store"
+  | "pharmacy"
+  | "hospital"
+  | "police"
+  | "parking"
   | "end";
 
 export interface SpotImage {

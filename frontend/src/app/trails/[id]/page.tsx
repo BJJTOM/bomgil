@@ -13,12 +13,15 @@ import { SpotTimeline } from "@/components/SpotTimeline";
 import { ReviewCard } from "@/components/ReviewCard";
 import { MapView } from "@/components/MapView";
 import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
+import { StampBook } from "@/components/StampBook";
+import { ElevationProfile } from "@/components/ElevationProfile";
 import { ShareButton } from "@/components/ShareButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDistance, formatDuration, SEASON_LABELS, SPOT_TYPE_LABELS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { useT } from "@/stores/language";
-import type { Trail, Spot, ActivityTrack } from "@/types";
+import { TrailSegments } from "@/components/TrailSegments";
+import type { Trail, Spot, ActivityTrack, TrailSegment } from "@/types";
 
 export default function TrailDetailPage() {
   const { id } = useParams();
@@ -44,6 +47,9 @@ export default function TrailDetailPage() {
   const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [certBlobUrl, setCertBlobUrl] = useState<string | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
   const createReview = useCreateReview(trailId);
 
   // Check saved status from localStorage
@@ -166,8 +172,57 @@ export default function TrailDetailPage() {
   const likeLabel = language === "ko" ? "좋아요" : language === "ja" ? "いいね" : language === "zh" ? "点赞" : "Like";
   const shareLabel = language === "ko" ? "공유" : language === "ja" ? "共有" : language === "zh" ? "分享" : "Share";
   const saveLabel = language === "ko" ? "저장" : language === "ja" ? "保存" : language === "zh" ? "收藏" : "Save";
+  const gpxLabel = language === "ko" ? "GPX 다운로드" : language === "ja" ? "GPXダウンロード" : language === "zh" ? "下载GPX" : "GPX Download";
   const walkLabel = language === "ko" ? "앱에서 걷기" : language === "ja" ? "アプリで歩く" : language === "zh" ? "在应用中步行" : "Walk in app";
   const moreLabel = language === "ko" ? "더보기" : language === "ja" ? "もっと見る" : language === "zh" ? "查看更多" : "Show more";
+
+  const handleGpxDownload = () => {
+    const apiBase =
+      process.env.NODE_ENV === "development"
+        ? "/api/v1"
+        : process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
+    window.open(`${apiBase}/trails/${trailId}/gpx/`, "_blank");
+  };
+
+  const certLabel = language === "ko" ? "인증서 보기" : language === "ja" ? "証明書を見る" : language === "zh" ? "查看证书" : "View Certificate";
+  const certDownloadLabel = language === "ko" ? "다운로드" : language === "ja" ? "ダウンロード" : language === "zh" ? "下载" : "Download";
+  const certCloseLabel = language === "ko" ? "닫기" : language === "ja" ? "閉じる" : language === "zh" ? "关闭" : "Close";
+
+  const loadCertificate = async () => {
+    if (certBlobUrl) {
+      setShowCertificate(true);
+      return;
+    }
+    setCertLoading(true);
+    try {
+      const api = (await import("@/lib/api")).default;
+      const response = await api.get(`/trails/${trailId}/certificate/`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      setCertBlobUrl(url);
+      setShowCertificate(true);
+    } catch {
+      alert(language === "ko" ? "인증서를 불러올 수 없습니다." : "Failed to load certificate.");
+    } finally {
+      setCertLoading(false);
+    }
+  };
+
+  const handleCertificateDownload = () => {
+    if (!certBlobUrl) return;
+    const a = document.createElement("a");
+    a.href = certBlobUrl;
+    a.download = `moru-certificate-${trailId}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleCertificateNewTab = () => {
+    if (!certBlobUrl) return;
+    window.open(certBlobUrl, "_blank");
+  };
 
   return (
     <div className="md:pt-16" style={{ backgroundColor: "var(--c-warm)" }}>
@@ -234,6 +289,31 @@ export default function TrailDetailPage() {
           <button onClick={handleToggleSave} className={`flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium ${isSaved ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-white border border-border-default text-text-primary"}`}>
             {isSaved ? "🔖 저장됨" : "🔖 " + saveLabel}
           </button>
+          <button
+            onClick={handleGpxDownload}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-[20px] text-[12px] font-medium bg-white border border-border-default text-text-secondary hover:text-text-primary hover:border-gray-400 transition-colors"
+            title={gpxLabel}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            GPX
+          </button>
+          {isAuthenticated && (tr as any).is_completed && (
+            <button
+              onClick={loadCertificate}
+              disabled={certLoading}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-[13px] font-medium bg-[#f0f7f0] text-primary border border-[#A8E6CF] hover:bg-[#d9eed9] transition-colors disabled:opacity-50"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="6" />
+                <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
+              </svg>
+              {certLoading ? "..." : certLabel}
+            </button>
+          )}
           <a
             href="/"
             onClick={(e) => {
@@ -301,6 +381,23 @@ export default function TrailDetailPage() {
           theme="dark"
         />
 
+        {/* Elevation Profile */}
+        {tr.path_data && tr.path_data.coordinates.length >= 2 && (
+          <div className="mb-6">
+            <ElevationProfile pathData={tr.path_data} />
+          </div>
+        )}
+
+        {/* Segments — distance/time breakdown */}
+        {tr.segments && tr.segments.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-[17px] font-bold text-text-primary mb-4">구간별 거리·시간</h2>
+            <div className="card p-5">
+              <TrailSegments segments={tr.segments} />
+            </div>
+          </div>
+        )}
+
         {/* Spots — max 3, then "more" */}
         {spots.length > 0 && (
           <div className="mb-6">
@@ -316,6 +413,9 @@ export default function TrailDetailPage() {
             )}
           </div>
         )}
+
+        {/* Stamp Book */}
+        <StampBook trailId={trailId} />
 
         {/* Reviews — no rating distribution chart */}
         <div className="mb-6">
@@ -507,6 +607,49 @@ export default function TrailDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* Certificate Modal */}
+      {showCertificate && certBlobUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowCertificate(false)}
+        >
+          <div
+            className="bg-white rounded-[20px] shadow-xl max-w-[640px] w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Certificate image */}
+            <div className="relative bg-[#f8faf8] p-4">
+              <img
+                src={certBlobUrl}
+                alt="Completion Certificate"
+                className="w-full rounded-[12px]"
+              />
+            </div>
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-default">
+              <button
+                onClick={() => setShowCertificate(false)}
+                className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-bg-secondary rounded-[14px] transition-colors"
+              >
+                {certCloseLabel}
+              </button>
+              <button
+                onClick={handleCertificateNewTab}
+                className="px-4 py-2 text-[13px] font-medium text-primary bg-[#f0f7f0] rounded-[14px] hover:bg-[#d9eed9] transition-colors"
+              >
+                {language === "ko" ? "새 탭에서 보기" : "Open in new tab"}
+              </button>
+              <button
+                onClick={handleCertificateDownload}
+                className="px-5 py-2 bg-primary text-white rounded-[14px] text-[13px] font-semibold"
+              >
+                {certDownloadLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,6 +37,13 @@ export const SPOT_TYPE_LABELS: Record<string, { label: string; emoji: string }> 
   accommodation: { label: "숙소", emoji: "🏨" },
   transport: { label: "교통편", emoji: "🚌" },
   tip: { label: "꿀팁", emoji: "💡" },
+  toilet: { label: "화장실", emoji: "🚻" },
+  water: { label: "식수대", emoji: "🚰" },
+  store: { label: "편의점/매점", emoji: "🛒" },
+  pharmacy: { label: "약국", emoji: "💊" },
+  hospital: { label: "병원/의원", emoji: "🏥" },
+  police: { label: "경찰서", emoji: "👮" },
+  parking: { label: "주차장", emoji: "🅿️" },
   end: { label: "도착", emoji: "🏁" },
 };
 

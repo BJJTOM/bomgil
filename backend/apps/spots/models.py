@@ -17,6 +17,13 @@ class Spot(models.Model):
         ("accommodation", "숙소"),
         ("transport", "교통편"),
         ("tip", "꿀팁 포인트"),
+        ("toilet", "화장실"),
+        ("water", "식수대"),
+        ("store", "편의점/매점"),
+        ("pharmacy", "약국"),
+        ("hospital", "병원/의원"),
+        ("police", "경찰서/파출소"),
+        ("parking", "주차장"),
         ("end", "도착"),
     ]
     STATUS_CHOICES = [

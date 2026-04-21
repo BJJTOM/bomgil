@@ -7,14 +7,17 @@ from rest_framework import serializers
 from apps.accounts.serializers import UserPublicSerializer
 
 from .models import (
+    StampPoint,
     Tag,
     Trail,
     TrailBookmark,
     TrailCompletion,
     TrailCondition,
     TrailLike,
+    TrailSegment,
     TrailSeries,
     TrailSeriesTrail,
+    UserStamp,
 )
 
 
@@ -28,6 +31,12 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["id", "name", "name_en", "name_ja"]
+
+
+class TrailSegmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrailSegment
+        fields = ["id", "order", "start_name", "end_name", "distance_km", "duration_minutes", "description"]
 
 
 def _get_cached_cover_image_url(trail):
@@ -132,6 +141,8 @@ class TrailDetailSerializer(serializers.ModelSerializer):
     # Series this trail is a member of — surfaced as chips on the
     # mobile detail header so users can navigate to the parent series.
     series = serializers.SerializerMethodField()
+    # Segment-based distance/time breakdown for the trail detail page.
+    segments = TrailSegmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Trail
@@ -425,3 +436,43 @@ class TrailCreateSerializer(serializers.ModelSerializer):
         if all_tags:
             trail.tags.set(all_tags)
         return trail
+
+
+# --- Stamps ---------------------------------------------------------------
+
+class StampPointSerializer(serializers.ModelSerializer):
+    is_collected = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StampPoint
+        fields = [
+            "id", "trail", "name", "lat", "lng", "radius_meters",
+            "description", "emoji", "order", "is_collected",
+        ]
+        read_only_fields = ["id", "trail"]
+
+    def get_is_collected(self, obj):
+        request = self.context.get("request")
+        if not (request and request.user.is_authenticated):
+            return False
+        # Bulk set cached on context to avoid N queries
+        key = "_collected_stamp_ids"
+        if key not in self.context:
+            trail_stamp_ids = list(
+                StampPoint.objects.filter(trail=obj.trail).values_list("id", flat=True)
+            )
+            self.context[key] = set(
+                UserStamp.objects.filter(
+                    user=request.user, stamp_point_id__in=trail_stamp_ids,
+                ).values_list("stamp_point_id", flat=True)
+            )
+        return obj.pk in self.context[key]
+
+
+class UserStampSerializer(serializers.ModelSerializer):
+    stamp_point = StampPointSerializer(read_only=True)
+
+    class Meta:
+        model = UserStamp
+        fields = ["id", "stamp_point", "collected_at", "activity"]
+        read_only_fields = ["id", "collected_at"]

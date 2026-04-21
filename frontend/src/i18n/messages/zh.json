@@ -76,7 +76,9 @@
     "typeVillage": "乡村",
     "typeCultural": "文化",
     "typeNature": "自然",
-    "typeMixed": "综合"
+    "typeMixed": "综合",
+    "viewList": "列表",
+    "viewMap": "地图"
   },
   "filter": {
     "region": "\u5730\u533A",

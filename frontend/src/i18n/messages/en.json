@@ -76,7 +76,9 @@
     "typeVillage": "Village",
     "typeCultural": "Cultural",
     "typeNature": "Nature",
-    "typeMixed": "Mixed"
+    "typeMixed": "Mixed",
+    "viewList": "List",
+    "viewMap": "Map"
   },
   "filter": {
     "region": "Region",

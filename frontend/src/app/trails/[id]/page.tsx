@@ -21,6 +21,7 @@ import { formatDistance, formatDuration, SPOT_TYPE_LABELS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
+import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── Tab Types ───────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ const TABS: TabConfig[] = [
 export default function TrailDetailPage() {
   const { id } = useParams();
   const trailId = Number(id);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { t, language } = useT();
 
   const { data: trail, isLoading: trailLoading } = useTrail(trailId);
@@ -390,6 +391,19 @@ export default function TrailDetailPage() {
               </svg>
               GPX
             </button>
+            {/* Edit button — only visible to trail author */}
+            {isAuthenticated && user && tr.author && user.id === tr.author.id && (
+              <Link
+                href={`/trails/${trailId}/edit`}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium bg-white border border-border-default text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                {language === "ko" ? "수정" : language === "ja" ? "編集" : language === "zh" ? "编辑" : "Edit"}
+              </Link>
+            )}
             <span className="ml-auto text-[11px] text-text-tertiary whitespace-nowrap flex-shrink-0">
               👁️ {tr.view_count}
             </span>
@@ -425,6 +439,9 @@ export default function TrailDetailPage() {
         {/* ─── Tab 1: Overview ─── */}
         {activeTab === "overview" && (
           <div className="animate-fade-in space-y-6">
+            {/* Trail Condition Banner */}
+            <TrailConditionBanner condition={tr.latest_condition} language={language} />
+
             {/* Description */}
             <section>
               <h2 className="text-[17px] font-bold text-text-primary mb-2">{t("trail.description")}</h2>

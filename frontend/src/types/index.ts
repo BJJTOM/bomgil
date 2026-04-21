@@ -64,8 +64,26 @@ export interface Trail {
   transport_access: string;
   walking_surface: "paved" | "mixed" | "unpaved";
   segments?: TrailSegment[];
+  // Condition reports (from TrailDetailSerializer)
+  latest_condition?: TrailConditionReport | null;
+  condition_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export type TrailConditionTag =
+  | "muddy" | "icy" | "overgrown" | "flooded" | "closed"
+  | "construction" | "fallen_trees" | "bugs" | "crowded" | "clear" | "other";
+
+export interface TrailConditionReport {
+  id: number;
+  user: User;
+  tag: TrailConditionTag;
+  tag_display: string;
+  note: string;
+  image: string | null;
+  helpful_count: number;
+  created_at: string;
 }
 
 export interface TrailSegment {

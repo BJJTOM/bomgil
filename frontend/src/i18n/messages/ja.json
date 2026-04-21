@@ -76,7 +76,9 @@
     "typeVillage": "村",
     "typeCultural": "文化",
     "typeNature": "自然",
-    "typeMixed": "複合"
+    "typeMixed": "複合",
+    "viewList": "リスト",
+    "viewMap": "地図"
   },
   "filter": {
     "region": "地域",

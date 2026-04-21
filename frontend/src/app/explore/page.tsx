@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useTrails, usePopularTrails } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
+import { ExploreMap } from "@/components/ExploreMap";
 import { useT } from "@/stores/language";
 import type { Trail } from "@/types";
 
@@ -355,6 +356,7 @@ function ExploreContent() {
   };
 
   const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   return (
     <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
@@ -463,13 +465,50 @@ function ExploreContent() {
       )}
 
       {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 py-5">
-        {/* Trail count */}
+        {/* Trail count + view toggle */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] text-[#8B95A1]">
             {isLoading
               ? t("explore.searching")
               : t("explore.found").replace("{count}", String(trails.length))}
           </p>
+
+          {/* List / Map toggle */}
+          <div className="flex rounded-pill overflow-hidden border border-[#F2F4F6] shadow-soft">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                viewMode === "list"
+                  ? "bg-primary text-white"
+                  : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              {t("explore.viewList")}
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                viewMode === "map"
+                  ? "bg-primary text-white"
+                  : "bg-surface text-text-secondary hover:bg-[#F7F8FA]"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                <line x1="8" y1="2" x2="8" y2="18" />
+                <line x1="16" y1="6" x2="16" y2="22" />
+              </svg>
+              {t("explore.viewMap")}
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -481,7 +520,7 @@ function ExploreContent() {
             onClearFilters={clearAllFilters}
             popularTrails={popularTrails}
           />
-        ) : (
+        ) : viewMode === "list" ? (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {trails.map((trail) => (
               <div key={trail.id} id={`trail-${trail.id}`}>
@@ -489,6 +528,8 @@ function ExploreContent() {
               </div>
             ))}
           </div>
+        ) : (
+          <ExploreMap trails={trails} />
         )}
       </div>}
     </div>

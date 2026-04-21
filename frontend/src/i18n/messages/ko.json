@@ -76,7 +76,9 @@
     "typeVillage": "마을",
     "typeCultural": "문화",
     "typeNature": "자연",
-    "typeMixed": "복합"
+    "typeMixed": "복합",
+    "viewList": "목록",
+    "viewMap": "지도"
   },
   "filter": {
     "region": "지역",

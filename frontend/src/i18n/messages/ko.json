@@ -344,7 +344,17 @@
     "region": "지역별",
     "guides": "인기 가이드",
     "trails": "코스",
-    "totalLikes": "총 좋아요"
+    "totalLikes": "총 좋아요",
+    "emptyWeeklyTitle": "이번 주 기록이 아직 없어요",
+    "emptyWeeklyDesc": "산책을 기록하고 랭킹에 도전해보세요!",
+    "emptyMonthlyTitle": "이번 달 기록이 아직 없어요",
+    "emptyMonthlyDesc": "산책을 기록하고 랭킹에 도전해보세요!",
+    "emptyRegionTitle": "이 지역의 걷기 기록이 아직 없어요",
+    "emptyRegionDesc": "첫 번째 기록을 남겨보세요",
+    "emptyGuidesTitle": "아직 인기 가이드가 없어요",
+    "emptyGuidesDesc": "코스를 등록하고 가이드가 되어보세요!",
+    "startRecording": "기록 시작하기",
+    "registerTrail": "코스 등록하기"
   },
   "register": {
     "joinTitle": "Moru에 합류하세요",

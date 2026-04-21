@@ -237,6 +237,14 @@ class ChallengeParticipantAdmin(admin.ModelAdmin):
 class SiteConfigAdmin(admin.ModelAdmin):
     list_display = ['__str__', 'instagram_url', 'threads_url', 'youtube_url', 'updated_at']
     readonly_fields = ['updated_at']
+    fieldsets = [
+        ('소셜 링크', {'fields': ['instagram_url', 'threads_url', 'youtube_url']}),
+        ('사업자 정보', {'fields': [
+            'business_name', 'representative', 'business_number',
+            'location_service_number', 'telecom_number', 'contact_email',
+        ]}),
+        ('기타', {'fields': ['updated_at']}),
+    ]
 
     def has_add_permission(self, request):
         return not SiteConfig.objects.exists()

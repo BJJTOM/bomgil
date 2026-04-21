@@ -306,6 +306,15 @@ class SiteConfig(models.Model):
     instagram_url = models.URLField(blank=True, default='')
     threads_url = models.URLField(blank=True, default='')
     youtube_url = models.URLField(blank=True, default='')
+
+    # Business info (Korean law disclosures)
+    business_name = models.CharField(max_length=100, default='모루', verbose_name='상호')
+    representative = models.CharField(max_length=50, blank=True, default='', verbose_name='대표')
+    business_number = models.CharField(max_length=50, blank=True, default='', verbose_name='사업자등록번호')
+    location_service_number = models.CharField(max_length=50, blank=True, default='', verbose_name='위치기반서비스 신고번호')
+    telecom_number = models.CharField(max_length=50, blank=True, default='', verbose_name='통신판매업 신고번호')
+    contact_email = models.CharField(max_length=100, default='contact@moruwalk.com', verbose_name='이메일')
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

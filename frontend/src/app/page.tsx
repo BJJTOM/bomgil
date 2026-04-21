@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePopularTrails } from "@/hooks/useTrails";
@@ -22,6 +22,34 @@ const DISCOVER_COUNTRIES = [
 ];
 
 
+function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const [display, setDisplay] = useState(0);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (hasAnimated.current) {
+      setDisplay(value);
+      return;
+    }
+    hasAnimated.current = true;
+    const duration = 1200;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * value));
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [value]);
+
+  const formatted = display >= 1000 ? `${(display / 1000).toFixed(1)}K` : String(display);
+  return <span>{formatted}{suffix}</span>;
+}
+
 export default function Home() {
   const { data: popularTrails, isLoading: trailsLoading } = usePopularTrails();
   const { t, language } = useT();
@@ -38,12 +66,6 @@ export default function Home() {
     queryFn: async () => (await api.get("/stats/")).data,
     staleTime: 5 * 60 * 1000,
   });
-
-  const formatNum = (n: number | undefined) => {
-    if (n == null) return "—";
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-    return String(n);
-  };
 
   const heroSubTexts: Record<string, string> = {
     ko: "전 세계 도보여행 코스를 발견하고, 나만의 길을 공유하세요.\n당신의 발걸음이 누군가의 여행이 됩니다.",
@@ -73,18 +95,18 @@ export default function Home() {
     zh: "旅行者最喜爱的步行路线",
   };
 
-  const storyTexts: Record<string, { title: string; sub: string }> = {
-    ko: { title: "걸은 이야기", sub: "전 세계 도보여행자들의 생생한 후기" },
-    en: { title: "Walking Stories", sub: "Real stories from walking travelers around the world" },
-    ja: { title: "歩いた物語", sub: "世界中の散歩旅行者のリアルな体験談" },
-    zh: { title: "行走故事", sub: "来自世界各地步行旅行者的真实故事" },
+  const emptyTrailsTexts: Record<string, { title: string; sub: string; cta: string }> = {
+    ko: { title: "아직 인기 코스가 없어요", sub: "첫 번째 코스를 등록하고 여행자들과 공유해보세요", cta: "코스 등록하기" },
+    en: { title: "No popular trails yet", sub: "Create the first trail and share it with travelers", cta: "Create a Trail" },
+    ja: { title: "まだ人気コースがありません", sub: "最初のコースを登録して旅行者と共有しましょう", cta: "コースを登録" },
+    zh: { title: "还没有热门路线", sub: "创建第一条路线并与旅行者分享", cta: "创建路线" },
   };
 
-  const noStoryTexts: Record<string, { title: string; sub: string }> = {
-    ko: { title: "아직 이야기가 없어요", sub: "도보여행 후 첫 번째 이야기를 남겨보세요" },
-    en: { title: "No stories yet", sub: "Share your first walking story" },
-    ja: { title: "まだ物語がありません", sub: "散歩の後、最初の物語を残してください" },
-    zh: { title: "还没有故事", sub: "分享你的第一个行走故事" },
+  const zeroStatTexts: Record<string, { countries: string; trails: string; stories: string; users: string }> = {
+    ko: { countries: "베타 운영 중", trails: "첫 코스를 등록해주세요", stories: "첫 이야기를 남겨주세요", users: "함께해요" },
+    en: { countries: "Beta", trails: "Be the first to create a trail", stories: "Share the first story", users: "Join us" },
+    ja: { countries: "ベータ運営中", trails: "最初のコースを登録してください", stories: "最初の物語を残してください", users: "一緒に" },
+    zh: { countries: "测试中", trails: "创建第一条路线", stories: "留下第一个故事", users: "一起来" },
   };
 
   const ctaBadgeTexts: Record<string, string> = {
@@ -125,7 +147,6 @@ export default function Home() {
 
 
   const countryUnit = language === "ko" ? "개국" : language === "ja" ? "ヶ国" : language === "zh" ? "国" : "";
-  const countryStatsLabel = platformStats ? `${platformStats.countries}${countryUnit}` : "—";
 
   return (
     <div className="bg-warm" style={{ backgroundColor: "var(--c-warm)" }}>
@@ -193,13 +214,43 @@ export default function Home() {
         <div className="max-w-4xl mx-auto -mt-8 px-5 relative z-10">
           <div className="card shadow-card grid grid-cols-4 divide-x divide-border-light">
             {[
-              { value: countryStatsLabel, label: statsTexts[language]?.countries ?? statsTexts.en.countries },
-              { value: formatNum(platformStats?.trails), label: statsTexts[language]?.trails ?? statsTexts.en.trails },
-              { value: formatNum(platformStats?.stories), label: statsTexts[language]?.stories ?? statsTexts.en.stories },
-              { value: formatNum(platformStats?.users), label: statsTexts[language]?.travelers ?? statsTexts.en.travelers },
+              {
+                key: "countries" as const,
+                value: platformStats?.countries,
+                label: statsTexts[language]?.countries ?? statsTexts.en.countries,
+                suffix: countryUnit,
+              },
+              {
+                key: "trails" as const,
+                value: platformStats?.trails,
+                label: statsTexts[language]?.trails ?? statsTexts.en.trails,
+                suffix: "",
+              },
+              {
+                key: "stories" as const,
+                value: platformStats?.stories,
+                label: statsTexts[language]?.stories ?? statsTexts.en.stories,
+                suffix: "",
+              },
+              {
+                key: "users" as const,
+                value: platformStats?.users,
+                label: statsTexts[language]?.travelers ?? statsTexts.en.travelers,
+                suffix: "",
+              },
             ].map((stat) => (
               <div key={stat.label} className="py-4 text-center">
-                <div className="text-[18px] md:text-[22px] font-bold font-en text-primary">{stat.value}</div>
+                <div className="text-[18px] md:text-[22px] font-bold font-en text-primary">
+                  {stat.value == null ? (
+                    <span className="inline-block w-10 h-5 animate-pulse bg-border-light rounded" />
+                  ) : stat.value === 0 ? (
+                    <span className="text-[12px] md:text-[13px] font-medium text-text-tertiary">
+                      {zeroStatTexts[language]?.[stat.key] ?? zeroStatTexts.en[stat.key]}
+                    </span>
+                  ) : (
+                    <AnimatedNumber value={stat.value} suffix={stat.suffix} />
+                  )}
+                </div>
                 <p className="text-[11px] md:text-[12px] text-text-tertiary mt-0.5">{stat.label}</p>
               </div>
             ))}
@@ -247,17 +298,37 @@ export default function Home() {
             </div>
             <Link href="/explore?ordering=-like_count" className="text-[13px] text-primary font-medium">{t("home.viewAll")}</Link>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {trailsLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="min-w-[280px]"><TrailCardSkeleton /></div>
-                ))
-              : popularTrails?.slice(0, 6).map((trail: any) => (
-                  <div key={trail.id} className="min-w-[280px]">
-                    <TrailCard trail={trail} variant="compact" />
-                  </div>
-                ))}
-          </div>
+          {trailsLoading ? (
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="min-w-[280px]"><TrailCardSkeleton /></div>
+              ))}
+            </div>
+          ) : popularTrails && popularTrails.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {popularTrails.slice(0, 6).map((trail: any) => (
+                <div key={trail.id} className="min-w-[280px]">
+                  <TrailCard trail={trail} variant="compact" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-6">
+              <span className="text-[48px] mb-4">🥾</span>
+              <h3 className="text-[17px] font-semibold text-text-primary mb-2">
+                {emptyTrailsTexts[language]?.title ?? emptyTrailsTexts.en.title}
+              </h3>
+              <p className="text-[14px] text-text-tertiary mb-6 text-center max-w-sm">
+                {emptyTrailsTexts[language]?.sub ?? emptyTrailsTexts.en.sub}
+              </p>
+              <Link
+                href="/trails/new"
+                className="btn-primary px-6 py-3 text-[14px] font-medium"
+              >
+                {emptyTrailsTexts[language]?.cta ?? emptyTrailsTexts.en.cta}
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

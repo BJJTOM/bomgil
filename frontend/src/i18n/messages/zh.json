@@ -344,7 +344,17 @@
     "region": "按地区",
     "guides": "热门向导",
     "trails": "路线",
-    "totalLikes": "总点赞"
+    "totalLikes": "总点赞",
+    "emptyWeeklyTitle": "本周还没有记录",
+    "emptyWeeklyDesc": "记录你的散步，挑战排行榜！",
+    "emptyMonthlyTitle": "本月还没有记录",
+    "emptyMonthlyDesc": "记录你的散步，挑战排行榜！",
+    "emptyRegionTitle": "该地区还没有步行记录",
+    "emptyRegionDesc": "成为第一个留下记录的人",
+    "emptyGuidesTitle": "还没有热门向导",
+    "emptyGuidesDesc": "注册路线，成为向导！",
+    "startRecording": "开始记录",
+    "registerTrail": "注册路线"
   },
   "register": {
     "joinTitle": "加入Moru",

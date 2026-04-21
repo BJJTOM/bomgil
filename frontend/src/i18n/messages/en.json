@@ -344,7 +344,17 @@
     "region": "By Region",
     "guides": "Top Guides",
     "trails": "trails",
-    "totalLikes": "total likes"
+    "totalLikes": "total likes",
+    "emptyWeeklyTitle": "No records this week yet",
+    "emptyWeeklyDesc": "Record your walk and challenge the rankings!",
+    "emptyMonthlyTitle": "No records this month yet",
+    "emptyMonthlyDesc": "Record your walk and challenge the rankings!",
+    "emptyRegionTitle": "No walking records in this area yet",
+    "emptyRegionDesc": "Be the first to leave a record",
+    "emptyGuidesTitle": "No popular guides yet",
+    "emptyGuidesDesc": "Register a trail and become a guide!",
+    "startRecording": "Start Recording",
+    "registerTrail": "Register Trail"
   },
   "register": {
     "joinTitle": "Join Moru",

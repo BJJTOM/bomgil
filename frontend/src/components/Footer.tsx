@@ -8,6 +8,12 @@ interface SiteConfig {
   instagram_url: string;
   threads_url: string;
   youtube_url: string;
+  business_name: string;
+  representative: string;
+  business_number: string;
+  location_service_number: string;
+  telecom_number: string;
+  contact_email: string;
 }
 
 export function Footer() {
@@ -53,6 +59,31 @@ export function Footer() {
           <span className="text-border-light">|</span>
           <Link href="/notices" className="hover:text-text-primary transition-colors">공지사항</Link>
         </div>
+
+        {/* Business info */}
+        {config && (
+          <div className="mt-4 text-center text-[11px] text-text-tertiary/50 leading-relaxed max-w-md mx-auto">
+            {(config.business_name || config.representative) && (
+              <p>
+                {config.business_name && <>상호: {config.business_name}</>}
+                {config.business_name && config.representative && " | "}
+                {config.representative && <>대표: {config.representative}</>}
+              </p>
+            )}
+            {config.business_number && (
+              <p>사업자등록번호: {config.business_number}</p>
+            )}
+            {config.location_service_number && (
+              <p>위치기반서비스사업 신고번호: {config.location_service_number}</p>
+            )}
+            {config.telecom_number && (
+              <p>통신판매업 신고번호: {config.telecom_number}</p>
+            )}
+            {config.contact_email && (
+              <p>이메일: {config.contact_email}</p>
+            )}
+          </div>
+        )}
 
         {/* Copyright */}
         <p className="text-center text-[11px] text-text-tertiary/60 mt-4">

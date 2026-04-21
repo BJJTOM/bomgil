@@ -627,4 +627,10 @@ class SiteConfigView(APIView):
             'instagram_url': config.instagram_url,
             'threads_url': config.threads_url,
             'youtube_url': config.youtube_url,
+            'business_name': config.business_name,
+            'representative': config.representative,
+            'business_number': config.business_number,
+            'location_service_number': config.location_service_number,
+            'telecom_number': config.telecom_number,
+            'contact_email': config.contact_email,
         })

@@ -344,7 +344,17 @@
     "region": "地域別",
     "guides": "人気ガイド",
     "trails": "コース",
-    "totalLikes": "総いいね"
+    "totalLikes": "総いいね",
+    "emptyWeeklyTitle": "今週の記録はまだありません",
+    "emptyWeeklyDesc": "散歩を記録してランキングに挑戦しましょう！",
+    "emptyMonthlyTitle": "今月の記録はまだありません",
+    "emptyMonthlyDesc": "散歩を記録してランキングに挑戦しましょう！",
+    "emptyRegionTitle": "この地域のウォーキング記録はまだありません",
+    "emptyRegionDesc": "最初の記録を残しましょう",
+    "emptyGuidesTitle": "まだ人気ガイドがいません",
+    "emptyGuidesDesc": "コースを登録してガイドになりましょう！",
+    "startRecording": "記録を始める",
+    "registerTrail": "コース登録"
   },
   "register": {
     "joinTitle": "Moruに参加しよう",

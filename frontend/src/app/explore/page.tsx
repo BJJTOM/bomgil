@@ -6,14 +6,225 @@ import Link from "next/link";
 import { useTrails, usePopularTrails } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { TrailCardSkeleton } from "@/components/ui/Skeleton";
 import { useT } from "@/stores/language";
 import type { Trail } from "@/types";
 
+// --- Skeleton Loading Component ---
+function TrailCardSkeleton() {
+  return (
+    <div className="bg-white rounded-[16px] overflow-hidden shadow-sm">
+      <div className="animate-pulse bg-gray-200 h-48 w-full" />
+      <div className="p-4 space-y-3">
+        <div className="animate-pulse bg-gray-200 rounded-md h-5 w-3/4" />
+        <div className="animate-pulse bg-gray-200 rounded-md h-4 w-1/2" />
+        <div className="flex gap-2 pt-1">
+          <div className="animate-pulse bg-gray-200 rounded-full h-6 w-16" />
+          <div className="animate-pulse bg-gray-200 rounded-full h-6 w-16" />
+          <div className="animate-pulse bg-gray-200 rounded-full h-6 w-20" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <TrailCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// --- Empty State Component (multi-language) ---
+const EMPTY_STATE_MESSAGES = {
+  ko: {
+    noFilterTitle: "베타 운영 중이라 코스가 아직 적어요",
+    noFilterDesc: "첫 번째 코스를 등록해보세요!",
+    filterTitle: "조건에 맞는 코스가 없어요",
+    filterDesc: "다른 필터를 시도해보세요",
+    ctaCreate: "코스 등록하기",
+    ctaClear: "다른 인기 코스 보기",
+    suggestion: "이런 코스는 어떠세요?",
+  },
+  en: {
+    noFilterTitle: "Not many trails yet — we're in beta",
+    noFilterDesc: "Be the first to register a trail!",
+    filterTitle: "No trails match your filters",
+    filterDesc: "Try different filters or keywords",
+    ctaCreate: "Create a Trail",
+    ctaClear: "View popular trails",
+    suggestion: "How about these trails?",
+  },
+  ja: {
+    noFilterTitle: "ベータ版のため、まだコースが少ないです",
+    noFilterDesc: "最初のコースを登録してみましょう！",
+    filterTitle: "条件に合うコースがありません",
+    filterDesc: "別のフィルターをお試しください",
+    ctaCreate: "コースを登録する",
+    ctaClear: "人気コースを見る",
+    suggestion: "こんなコースはいかがですか？",
+  },
+  zh: {
+    noFilterTitle: "测试阶段，路线还比较少",
+    noFilterDesc: "来注册第一条路线吧！",
+    filterTitle: "没有符合条件的路线",
+    filterDesc: "请尝试不同的筛选条件",
+    ctaCreate: "注册路线",
+    ctaClear: "查看热门路线",
+    suggestion: "试试这些路线？",
+  },
+};
+
+interface ExploreEmptyStateProps {
+  hasActiveFilters: boolean;
+  language: "ko" | "en" | "ja" | "zh";
+  onClearFilters: () => void;
+  popularTrails: Trail[];
+}
+
+function ExploreEmptyState({
+  hasActiveFilters,
+  language,
+  onClearFilters,
+  popularTrails,
+}: ExploreEmptyStateProps) {
+  const msg = EMPTY_STATE_MESSAGES[language] || EMPTY_STATE_MESSAGES.ko;
+
+  return (
+    <div className="flex flex-col items-center pt-12 pb-8 px-4">
+      {/* Illustration */}
+      <div className="w-20 h-20 rounded-full bg-[#F0F7F0] flex items-center justify-center mb-5">
+        <svg
+          width="36"
+          height="36"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#2D4A2E"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M13 4v16" />
+          <path d="M17 4v16" />
+          <path d="M19 4H14.5a3.5 3.5 0 0 0 0 7h4a3.5 3.5 0 0 1 0 7H13" />
+          <path d="M5 20l4-16" />
+          <path d="M3 20h6" />
+        </svg>
+      </div>
+
+      {/* Title & Description */}
+      <h3 className="text-[18px] font-bold text-gray-900 mb-2 text-center leading-snug">
+        {hasActiveFilters ? msg.filterTitle : msg.noFilterTitle}
+      </h3>
+      <p className="text-[14px] text-[#8B95A1] text-center mb-6 max-w-xs whitespace-pre-line">
+        {hasActiveFilters ? msg.filterDesc : msg.noFilterDesc}
+      </p>
+
+      {/* CTA Buttons */}
+      <div className="flex flex-col items-center gap-3">
+        <Link
+          href="/trails/new"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#2D4A2E] text-white rounded-[14px] text-[14px] font-semibold hover:bg-[#1F351F] transition-colors shadow-sm"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          {msg.ctaCreate}
+        </Link>
+
+        {hasActiveFilters && (
+          <button
+            onClick={onClearFilters}
+            className="text-[13px] text-[#2D4A2E] font-medium hover:underline"
+          >
+            {msg.ctaClear}
+          </button>
+        )}
+      </div>
+
+      {/* Popular Trails Suggestion */}
+      {popularTrails.length > 0 && (
+        <div className="mt-10 w-full max-w-xl">
+          <h4 className="text-[14px] font-bold text-gray-900 mb-3 px-1">
+            {msg.suggestion}
+          </h4>
+          <div className="space-y-2">
+            {popularTrails.map((trail) => (
+              <Link
+                key={trail.id}
+                href={`/trails/${trail.id}`}
+                className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-[#F2F4F6] hover:border-[#2D4A2E]/30 hover:shadow-sm transition-all"
+              >
+                {trail.cover_image ? (
+                  <img
+                    src={trail.cover_image}
+                    alt=""
+                    className="w-14 h-14 rounded-[10px] object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-[10px] bg-[#F7F8FA] flex items-center justify-center flex-shrink-0">
+                    <span className="text-[20px]">🥾</span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold text-gray-900 truncate">
+                    {trail.title}
+                  </p>
+                  <p className="text-[12px] text-[#8B95A1] truncate">
+                    {trail.region || ""}
+                    {trail.distance_km
+                      ? ` · ${parseFloat(trail.distance_km).toFixed(1)}km`
+                      : ""}
+                  </p>
+                </div>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#8B95A1"
+                  strokeWidth="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Main Explore Page ---
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "var(--c-warm)" }} />}>
+    <Suspense
+      fallback={
+        <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
+          {/* Static HTML shell for SSR/crawlers */}
+          <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
+            <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
+              <div className="flex gap-6 mb-2">
+                <span className="relative pb-2 text-[15px] font-bold text-gray-900">
+                  코스 탐색
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
+                </span>
+              </div>
+            </div>
+            <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
+              <div className="animate-pulse bg-gray-200 rounded-[12px] h-10 w-full" />
+            </div>
+          </div>
+          <div className="max-w-5xl mx-auto px-5 py-5">
+            <SkeletonGrid />
+          </div>
+        </div>
+      }
+    >
       <ExploreContent />
     </Suspense>
   );
@@ -21,7 +232,7 @@ export default function ExplorePage() {
 
 function ExploreContent() {
   const searchParams = useSearchParams();
-  const { t } = useT();
+  const { t, language } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("-like_count");
 
@@ -150,7 +361,7 @@ function ExploreContent() {
       {/* Tabs + Search Header */}
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
         <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
-          {/* Tabs — 코스/랭킹 */}
+          {/* Tabs */}
           <div className="flex gap-6 mb-2">
             <button onClick={() => setActiveTab("courses")} className={`relative pb-2 text-[15px] font-medium ${activeTab === "courses" ? "text-gray-900 font-bold" : "text-gray-400"}`}>
               {t("explore.title")}
@@ -164,7 +375,7 @@ function ExploreContent() {
         </div>
 
         {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
-          {/* Region quick-links — deep link to the SEO region hub pages */}
+          {/* Region quick-links */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {[
               { slug: "seoul", label: "서울", emoji: "🏙" },
@@ -262,68 +473,14 @@ function ExploreContent() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <TrailCardSkeleton key={i} />
-            ))}
-          </div>
+          <SkeletonGrid />
         ) : trails.length === 0 ? (
-          <div>
-            <EmptyState
-              title={t("explore.noResults")}
-              description={t("explore.noResultsDesc")}
-              action={
-                <button
-                  onClick={clearAllFilters}
-                  className="px-5 py-2.5 bg-[#2D4A2E] text-white rounded-[14px] text-[13px] font-semibold"
-                >
-                  {t("explore.resetFilters")}
-                </button>
-              }
-            />
-            {popularTrails.length > 0 && (
-              <div className="mt-8 max-w-xl mx-auto">
-                <h3 className="text-[14px] font-bold text-gray-900 mb-3 px-1">
-                  이런 코스는 어떠세요?
-                </h3>
-                <div className="space-y-2">
-                  {popularTrails.map((trail) => (
-                    <Link
-                      key={trail.id}
-                      href={`/trails/${trail.id}`}
-                      className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-[#F2F4F6] hover:border-[#2D4A2E]/30 hover:shadow-sm transition-all"
-                    >
-                      {trail.cover_image ? (
-                        <img
-                          src={trail.cover_image}
-                          alt=""
-                          className="w-14 h-14 rounded-[10px] object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-14 h-14 rounded-[10px] bg-[#F7F8FA] flex items-center justify-center flex-shrink-0">
-                          <span className="text-[20px]">🥾</span>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-gray-900 truncate">
-                          {trail.title}
-                        </p>
-                        <p className="text-[12px] text-[#8B95A1] truncate">
-                          {trail.region || ""}
-                          {trail.distance_km
-                            ? ` · ${parseFloat(trail.distance_km).toFixed(1)}km`
-                            : ""}
-                        </p>
-                      </div>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2">
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <ExploreEmptyState
+            hasActiveFilters={activeFilterCount > 0 || !!search.trim()}
+            language={language}
+            onClearFilters={clearAllFilters}
+            popularTrails={popularTrails}
+          />
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {trails.map((trail) => (

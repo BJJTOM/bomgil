@@ -51,7 +51,7 @@ export function Footer() {
           <span className="text-border-light">|</span>
           <Link href="/terms" className="hover:text-text-primary transition-colors">이용약관</Link>
           <span className="text-border-light">|</span>
-          <Link href="/community/notices" className="hover:text-text-primary transition-colors">공지사항</Link>
+          <Link href="/notices" className="hover:text-text-primary transition-colors">공지사항</Link>
         </div>
 
         {/* Copyright */}

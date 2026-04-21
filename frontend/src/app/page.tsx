@@ -8,6 +8,7 @@ import { TrailCard } from "@/components/TrailCard";
 import { TrailCardSkeleton } from "@/components/ui/Skeleton";
 import { useT, useLanguageStore, LANGUAGES } from "@/stores/language";
 import api from "@/lib/api";
+import { Footer } from "@/components/Footer";
 
 const DISCOVER_COUNTRIES = [
   { code: "KR", name: "Korea", nameKo: "한국", nameEn: "Korea", nameJa: "韓国", nameZh: "韩国", emoji: "🇰🇷", desc: { ko: "서울, 제주, 부산...", en: "Seoul, Jeju, Busan...", ja: "ソウル, 済州, 釜山...", zh: "首尔, 济州, 釜山..." } },
@@ -20,14 +21,6 @@ const DISCOVER_COUNTRIES = [
   { code: "ES", name: "Spain", nameKo: "스페인", nameEn: "Spain", nameJa: "スペイン", nameZh: "西班牙", emoji: "🇪🇸", desc: { ko: "바르셀로나, 산티아고...", en: "Barcelona, Santiago...", ja: "バルセロナ, サンティアゴ...", zh: "巴塞罗那, 圣地亚哥..." } },
 ];
 
-const KR_REGIONS = [
-  { name: "서울", emoji: "🏙️" },
-  { name: "부산", emoji: "🌊" },
-  { name: "제주", emoji: "🍊" },
-  { name: "전주", emoji: "🏛️" },
-  { name: "강릉", emoji: "☕" },
-  { name: "경주", emoji: "🏛️" },
-];
 
 export default function Home() {
   const { data: popularTrails, isLoading: trailsLoading } = usePopularTrails();
@@ -122,12 +115,6 @@ export default function Home() {
     zh: "浏览社区",
   };
 
-  const koreaRegionTexts: Record<string, string> = {
-    ko: "한국 지역별",
-    en: "Korea Regions",
-    ja: "韓国地域別",
-    zh: "韩国地区",
-  };
 
   const statsTexts: Record<string, { countries: string; trails: string; stories: string; travelers: string }> = {
     ko: { countries: "등록 국가", trails: "코스", stories: "걸은 이야기", travelers: "여행자" },
@@ -136,24 +123,6 @@ export default function Home() {
     zh: { countries: "国家", trails: "路线", stories: "故事", travelers: "旅行者" },
   };
 
-  const footerTexts: Record<string, { main: string; sub: string }> = {
-    ko: {
-      main: "Moru는 전 세계 도보여행자들을 위한 코스 공유 & 동행 매칭 플랫폼입니다",
-      sub: "Moru — A walking travel platform for discovering trails, sharing routes, and finding companions.",
-    },
-    en: {
-      main: "Moru is a trail-sharing & companion-matching platform for walking travelers worldwide",
-      sub: "Discover trails, share routes, and find walking companions.",
-    },
-    ja: {
-      main: "Moruは世界中の散歩旅行者のためのコース共有＆同行マッチングプラットフォームです",
-      sub: "コースを発見し、ルートを共有し、散歩仲間を見つけましょう。",
-    },
-    zh: {
-      main: "Moru是面向全球步行旅行者的路线分享和同行匹配平台",
-      sub: "发现路线，分享行程，寻找步行伙伴。",
-    },
-  };
 
   const countryUnit = language === "ko" ? "개국" : language === "ja" ? "ヶ国" : language === "zh" ? "国" : "";
   const countryStatsLabel = platformStats ? `${platformStats.countries}${countryUnit}` : "—";
@@ -267,24 +236,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Korea Regions */}
-      <section className="max-w-7xl mx-auto px-5 pb-10 bg-[#FAFAFA]">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-lg">🇰🇷</span>
-          <h3 className="text-[16px] font-bold">{koreaRegionTexts[language] ?? koreaRegionTexts.en}</h3>
-        </div>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-          {KR_REGIONS.map((r) => (
-            <Link
-              key={r.name}
-              href={`/explore?region=${r.name}`}
-              className="chip hover:bg-primary hover:text-white hover:scale-105 hover:shadow-soft transition-all duration-200 flex-shrink-0"
-            >
-              {r.emoji} {r.name}
-            </Link>
-          ))}
-        </div>
-      </section>
 
       {/* Popular Trails */}
       <section className="bg-surface py-8 md:py-14">
@@ -332,17 +283,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Global footer info */}
-      <section className="py-10 border-t border-border-light bg-[#FAFAFA]">
-        <div className="max-w-7xl mx-auto px-5 text-center">
-          <p className="text-[13px] text-text-tertiary">
-            {footerTexts[language]?.main ?? footerTexts.en.main}
-          </p>
-          <p className="text-[12px] text-text-tertiary/60 mt-1">
-            {footerTexts[language]?.sub ?? footerTexts.en.sub}
-          </p>
-        </div>
-      </section>
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

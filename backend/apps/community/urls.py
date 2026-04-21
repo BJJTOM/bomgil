@@ -47,4 +47,7 @@ urlpatterns = [
 
     # 공지사항
     path('notices/', views.NoticeListView.as_view(), name='notice-list'),
+
+    # 사이트 설정
+    path('site-config/', views.SiteConfigView.as_view(), name='site-config'),
 ]

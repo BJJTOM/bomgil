@@ -300,6 +300,32 @@ class ChallengeParticipant(models.Model):
 
 
 # ──────────────────────────────────────
+# 사이트 설정 (Site Config) — 싱글톤
+# ──────────────────────────────────────
+class SiteConfig(models.Model):
+    instagram_url = models.URLField(blank=True, default='')
+    threads_url = models.URLField(blank=True, default='')
+    youtube_url = models.URLField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "사이트 설정"
+        verbose_name_plural = "사이트 설정"
+
+    def __str__(self):
+        return "사이트 설정"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+# ──────────────────────────────────────
 # Notice (공지사항)
 # ──────────────────────────────────────
 class Notice(models.Model):

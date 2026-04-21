@@ -19,7 +19,7 @@ from .models import (
     Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
-    Notice,
+    Notice, SiteConfig,
 )
 
 
@@ -230,6 +230,19 @@ class ChallengeParticipantAdmin(admin.ModelAdmin):
     search_fields = ['user__nickname', 'challenge__title']
     date_hierarchy = 'joined_at'
     ordering = ['-joined_at']
+
+
+# ── Site Config ─────────────────────────────────────────────────────
+@admin.register(SiteConfig)
+class SiteConfigAdmin(admin.ModelAdmin):
+    list_display = ['__str__', 'instagram_url', 'threads_url', 'youtube_url', 'updated_at']
+    readonly_fields = ['updated_at']
+
+    def has_add_permission(self, request):
+        return not SiteConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # ── Notice ──────────────────────────────────────────────────────────

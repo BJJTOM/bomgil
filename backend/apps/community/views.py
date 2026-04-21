@@ -10,7 +10,7 @@ from .models import (
     Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
-    Notice,
+    Notice, SiteConfig,
 )
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateSerializer, PostUpdateSerializer,
@@ -616,3 +616,15 @@ class NoticeListView(generics.ListAPIView):
     serializer_class = NoticeSerializer
     permission_classes = [permissions.AllowAny]
     queryset = Notice.objects.filter(is_published=True)
+
+
+class SiteConfigView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        config = SiteConfig.load()
+        return Response({
+            'instagram_url': config.instagram_url,
+            'threads_url': config.threads_url,
+            'youtube_url': config.youtube_url,
+        })

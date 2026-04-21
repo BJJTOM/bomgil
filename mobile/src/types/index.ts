@@ -77,6 +77,8 @@ export interface Trail {
   is_official?: boolean;
   source?: string;
   source_url?: string;
+  avg_rating?: number | null;
+  review_count?: number;
 }
 
 export interface TrailConditionReport {

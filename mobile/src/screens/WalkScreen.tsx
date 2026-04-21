@@ -1000,6 +1000,8 @@ function WalkScreenInner() {
       maxSpeed: (finalStats.maxSpeed || 0).toFixed(1),
       splits: (() => { try { return JSON.stringify(finalStats.splits || []); } catch { return '[]'; } })(),
       activityId: null as any,
+      trailId: trailId || null,
+      trailTitle: route.params?.trail?.title || null,
     };
     const goToComplete = () => {
       // Defer so React has a chance to commit setIsCompleting(true) and

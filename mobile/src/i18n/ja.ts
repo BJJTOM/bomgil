@@ -175,6 +175,14 @@ const ja: TranslationKeys = {
     goHome: 'ホームへ',
     share: '共有する',
     greatWalk: '今日も素晴らしいウォーキング！',
+    nextSteps: '次のステップ',
+    writeStory: 'ストーリーを書く',
+    writeStoryDesc: '今日の歩きを記録に残しましょう',
+    writeReview: 'レビューを書く',
+    writeReviewDesc: '他のウォーカーに体験を共有しましょう',
+    viewCertificate: '認定証を見る',
+    viewCertificateDesc: 'コース完走認定証を確認しましょう',
+    goHomeDesc: 'メイン画面に戻る',
   },
 
   // Home

@@ -67,6 +67,10 @@ export interface Trail {
   // Condition reports (from TrailDetailSerializer)
   latest_condition?: TrailConditionReport | null;
   condition_count?: number;
+  // Rating & completion (optional — populated by list serializers)
+  avg_rating?: number;
+  review_count?: number;
+  completion_count?: number;
   created_at: string;
   updated_at: string;
 }

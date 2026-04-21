@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { Trail } from '../types';
@@ -28,19 +29,19 @@ interface TrailCardProps {
   variant?: 'default' | 'horizontal' | 'compact';
 }
 
-const DIFFICULTY_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  easy: { label: '쉽게', bg: '#DCFCE7', text: '#15803D' },
-  moderate: { label: '보통', bg: '#FEF3C7', text: '#B45309' },
-  hard: { label: '도전', bg: '#FEE2E2', text: '#DC2626' },
+const DIFFICULTY_CONFIG: Record<string, { label: string; bg: string; bgDark: string; text: string; textDark: string }> = {
+  easy: { label: '쉬움', bg: '#DCFCE7', bgDark: 'rgba(34,197,94,0.15)', text: '#15803D', textDark: '#4ADE80' },
+  moderate: { label: '보통', bg: '#FEF3C7', bgDark: 'rgba(245,158,11,0.15)', text: '#B45309', textDark: '#FBBF24' },
+  hard: { label: '어려움', bg: '#FEE2E2', bgDark: 'rgba(239,68,68,0.15)', text: '#DC2626', textDark: '#F87171' },
 };
 
-const TRAIL_TYPE_EMOJI: Record<string, string> = {
-  urban: '\u{1F3D9}',
-  coastal: '\u{1F30A}',
-  village: '\u{1F3E1}',
-  cultural: '\u{1F3DB}',
-  nature: '\u{1F332}',
-  mixed: '\u{1F6B6}',
+const TRAIL_TYPE_ICON: Record<string, { name: string; color: string }> = {
+  urban: { name: 'map-pin', color: '#6366F1' },
+  coastal: { name: 'wind', color: '#0EA5E9' },
+  village: { name: 'home', color: '#D97706' },
+  cultural: { name: 'book-open', color: '#8B5CF6' },
+  nature: { name: 'sun', color: '#16A34A' },
+  mixed: { name: 'layers', color: '#64748B' },
 };
 
 function formatDistance(km: string | number | null | undefined): string {
@@ -67,12 +68,16 @@ export default function TrailCard({
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const titleColor = isDark ? '#FFFFFF' : colors.textPrimary;
   const metaColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
-  const likeColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
+  const likeColor = isDark ? 'rgba(255,255,255,0.5)' : colors.textTertiary;
   const imagePlaceholderBg = isDark ? '#2a2a2a' : colors.accentLight;
 
   const diff = DIFFICULTY_CONFIG[trail.difficulty] || DIFFICULTY_CONFIG.easy;
-  const emoji = TRAIL_TYPE_EMOJI[trail.trail_type] || '\u{1F6B6}';
+  const trailIcon = TRAIL_TYPE_ICON[trail.trail_type] || TRAIL_TYPE_ICON.mixed;
   const effectiveVariant = compact ? 'compact' : variant;
+
+  // Rating data (optional from API)
+  const avgRating = trail.avg_rating;
+  const reviewCount = trail.review_count;
 
   // ---- Horizontal Variant ----
   if (effectiveVariant === 'horizontal') {
@@ -90,7 +95,7 @@ export default function TrailCard({
             />
           ) : (
             <View style={[styles.horizontalPlaceholder, { backgroundColor: imagePlaceholderBg }]}>
-              <Text style={styles.horizontalPlaceholderEmoji}>{emoji}</Text>
+              <Feather name={trailIcon.name} size={20} color={trailIcon.color} />
             </View>
           )}
         </View>
@@ -98,7 +103,7 @@ export default function TrailCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {trail.is_official && (
               <View style={styles.officialBadgeInline}>
-                <Text style={styles.officialBadgeText}>✓</Text>
+                <Feather name="check" size={10} color="#fff" />
               </View>
             )}
             <Text style={[styles.horizontalTitle, { color: titleColor }]} numberOfLines={1}>
@@ -133,23 +138,31 @@ export default function TrailCard({
           />
         ) : (
           <View style={[styles.imagePlaceholder, { backgroundColor: imagePlaceholderBg }]}>
-            <Text style={styles.imagePlaceholderEmoji}>{emoji}</Text>
+            <Feather name={trailIcon.name} size={36} color={trailIcon.color} />
           </View>
         )}
 
         {/* Liked heart top right */}
         {trail.is_liked && (
           <View style={styles.likedBadge}>
-            <Text style={styles.likedHeart}>{'❤️'}</Text>
+            <Feather name="heart" size={14} color="#EF4444" />
           </View>
         )}
 
-        {/* Official badge top left — signals government/tourism-verified trails */}
+        {/* Official badge top left */}
         {trail.is_official && (
           <View style={styles.officialBadge}>
-            <Text style={styles.officialBadgeText}>✓ 공식</Text>
+            <Feather name="check" size={11} color="#fff" style={{ marginRight: 3 }} />
+            <Text style={styles.officialBadgeText}>공식</Text>
           </View>
         )}
+
+        {/* Difficulty pill top right (below heart or alone) */}
+        <View style={[styles.difficultyBadge, { backgroundColor: isDark ? diff.bgDark : diff.bg }]}>
+          <Text style={[styles.difficultyText, { color: isDark ? diff.textDark : diff.text }]}>
+            {diff.label}
+          </Text>
+        </View>
       </View>
 
       {/* Content */}
@@ -160,9 +173,38 @@ export default function TrailCard({
         <Text style={[styles.meta, { color: metaColor }]} numberOfLines={1}>
           {trail.region || ''} · {formatDistance(trail.distance_km)} · {formatDuration(trail.estimated_minutes)}
         </Text>
-        <Text style={[styles.likeCount, { color: likeColor }]}>
-          {'♥'} {trail.like_count ?? 0}
-        </Text>
+
+        {/* Bottom row: rating + like count + completion count */}
+        <View style={styles.bottomRow}>
+          {/* Rating */}
+          {avgRating != null && avgRating > 0 ? (
+            <View style={styles.ratingWrap}>
+              <Feather name="star" size={12} color="#F59E0B" />
+              <Text style={[styles.ratingText, { color: metaColor }]}>
+                {Number(avgRating).toFixed(1)}
+                {reviewCount != null && reviewCount > 0 ? ` (${reviewCount})` : ''}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Like count */}
+          <View style={styles.likeWrap}>
+            <Feather name="heart" size={11} color={likeColor} />
+            <Text style={[styles.likeCount, { color: likeColor }]}>
+              {trail.like_count ?? 0}
+            </Text>
+          </View>
+
+          {/* Completion count */}
+          {trail.completion_count != null && trail.completion_count > 0 ? (
+            <View style={styles.likeWrap}>
+              <Feather name="check-circle" size={11} color={likeColor} />
+              <Text style={[styles.likeCount, { color: likeColor }]}>
+                {trail.completion_count}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -196,9 +238,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  imagePlaceholderEmoji: {
-    fontSize: 40,
-  },
   likedBadge: {
     position: 'absolute',
     top: 10,
@@ -210,13 +249,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  likedHeart: {
-    fontSize: 13,
-  },
   officialBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -235,6 +273,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  difficultyBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -251,7 +301,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  ratingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  likeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   likeCount: {
     fontSize: 12,
@@ -286,9 +355,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  horizontalPlaceholderEmoji: {
-    fontSize: 22,
   },
   horizontalContent: {
     flex: 1,

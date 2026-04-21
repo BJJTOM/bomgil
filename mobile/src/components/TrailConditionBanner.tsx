@@ -50,64 +50,76 @@ interface TrailConditionBannerProps {
 type Severity = 'good' | 'warning' | 'danger';
 
 interface TagMeta {
-  icon: string;
+  featherIcon: string;
+  iconColor: string;
   label: Record<Language, string>;
   severity: Severity;
 }
 
 const TAG_CONFIG: Record<string, TagMeta> = {
   clear: {
-    icon: '\u2705',
+    featherIcon: 'check-circle',
+    iconColor: '#16A34A',
     label: { ko: '상태 양호', en: 'Clear', ja: '良好', zh: '状态良好' },
     severity: 'good',
   },
   muddy: {
-    icon: '\uD83D\uDFE4',
+    featherIcon: 'droplet',
+    iconColor: '#92400E',
     label: { ko: '진흙/미끄러움', en: 'Muddy', ja: '泥濘', zh: '泥泞' },
     severity: 'warning',
   },
   icy: {
-    icon: '\uD83E\uDDCA',
+    featherIcon: 'thermometer',
+    iconColor: '#0284C7',
     label: { ko: '빙판', en: 'Icy', ja: '凍結', zh: '结冰' },
     severity: 'warning',
   },
   overgrown: {
-    icon: '\uD83C\uDF3F',
+    featherIcon: 'feather',
+    iconColor: '#16A34A',
     label: { ko: '풀 우거짐', en: 'Overgrown', ja: '草が茂っている', zh: '杂草丛生' },
     severity: 'warning',
   },
   flooded: {
-    icon: '\uD83C\uDF0A',
+    featherIcon: 'cloud-rain',
+    iconColor: '#0284C7',
     label: { ko: '침수', en: 'Flooded', ja: '浸水', zh: '浸水' },
     severity: 'danger',
   },
   closed: {
-    icon: '\uD83D\uDEAB',
+    featherIcon: 'x-circle',
+    iconColor: '#DC2626',
     label: { ko: '통행 불가', en: 'Closed', ja: '通行禁止', zh: '禁止通行' },
     severity: 'danger',
   },
   construction: {
-    icon: '\uD83D\uDEA7',
+    featherIcon: 'tool',
+    iconColor: '#EA580C',
     label: { ko: '공사 중', en: 'Construction', ja: '工事中', zh: '施工中' },
     severity: 'warning',
   },
   fallen_trees: {
-    icon: '\uD83C\uDF33',
+    featherIcon: 'alert-triangle',
+    iconColor: '#EA580C',
     label: { ko: '쓰러진 나무', en: 'Fallen trees', ja: '倒木', zh: '倒树' },
     severity: 'warning',
   },
   bugs: {
-    icon: '\uD83E\uDD9F',
+    featherIcon: 'alert-circle',
+    iconColor: '#CA8A04',
     label: { ko: '벌레 주의', en: 'Bugs', ja: '虫注意', zh: '注意虫子' },
     severity: 'warning',
   },
   crowded: {
-    icon: '\uD83D\uDC65',
+    featherIcon: 'users',
+    iconColor: '#EA580C',
     label: { ko: '혼잡', en: 'Crowded', ja: '混雑', zh: '拥挤' },
     severity: 'warning',
   },
   other: {
-    icon: '\u2139\uFE0F',
+    featherIcon: 'info',
+    iconColor: '#6B7280',
     label: { ko: '기타', en: 'Other', ja: 'その他', zh: '其他' },
     severity: 'warning',
   },
@@ -279,7 +291,7 @@ export function TrailConditionBanner({ condition }: TrailConditionBannerProps) {
             const label = meta.label[language] || meta.label.en;
             return (
               <View key={tag} style={[styles.tagChip, { backgroundColor: tagBgColor }]}>
-                <Text style={styles.tagIcon}>{meta.icon}</Text>
+                <Feather name={meta.featherIcon} size={13} color={meta.iconColor} />
                 <Text style={[styles.tagLabel, { color: textClr }]}>{label}</Text>
               </View>
             );
@@ -367,8 +379,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 4,
   },
-  tagIcon: {
-    fontSize: 13,
+  tagIconWrap: {
+    width: 16,
+    alignItems: 'center',
   },
   tagLabel: {
     fontSize: 12,

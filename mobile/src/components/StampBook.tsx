@@ -13,9 +13,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
-  Vibration,
   Alert,
-  Platform,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import Geolocation from '@react-native-community/geolocation';
@@ -24,6 +22,7 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { StampPoint } from '../types';
+import { haptics } from '../utils/haptics';
 
 interface Props {
   trailId: number;
@@ -62,8 +61,8 @@ export default function StampBook({ trailId }: Props) {
       return data;
     },
     onSuccess: (_data, variables) => {
-      // Vibrate for haptic feedback
-      Vibration.vibrate(Platform.OS === 'ios' ? 10 : 100);
+      // Haptic feedback on successful stamp collection
+      haptics.success();
 
       // Bounce animation on the newly collected stamp
       setJustCollectedId(variables.stampId);
@@ -192,7 +191,9 @@ export default function StampBook({ trailId }: Props) {
           />
         </View>
         {isComplete && (
-          <Text style={styles.completeEmoji}>{'\uD83C\uDF89'}</Text>
+          <View style={styles.completeIconWrap}>
+            <Feather name="award" size={20} color="#15803D" />
+          </View>
         )}
       </View>
 
@@ -339,9 +340,8 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  completeEmoji: {
-    fontSize: 18,
-    textAlign: 'center',
+  completeIconWrap: {
+    alignItems: 'center',
     marginTop: 8,
   },
 

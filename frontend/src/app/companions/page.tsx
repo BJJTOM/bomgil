@@ -107,7 +107,7 @@ export default function CompanionsPage() {
         >
           <option value="">코스 유형</option>
           {Object.entries(TRAIL_TYPE_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>{v.emoji} {v.label}</option>
+            <option key={k} value={k}>{v.label}</option>
           ))}
         </select>
       </div>
@@ -199,7 +199,7 @@ function WalkPlanCard({ plan, onRequest }: { plan: WalkPlan; onRequest: () => vo
         <div className="flex-1 min-w-0">
           {/* Trail info */}
           <div className="flex items-center gap-2 text-xs text-text-secondary mb-1">
-            <span>{trailType?.emoji} {plan.trail?.region}</span>
+            <span>{trailType?.label} · {plan.trail?.region}</span>
           </div>
           <Link href={`/trails/${plan.trail?.id}`} className="font-bold text-base truncate block hover:text-primary">
             {plan.trail?.title}

@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +19,8 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { CollectedStamp } from '../types';
+import LoadingState from '../components/LoadingState';
+import EmptyState from '../components/EmptyState';
 
 interface TrailGroup {
   trailId: number;
@@ -96,25 +97,15 @@ export default function MyStampsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <LoadingState text="스탬프를 불러오는 중..." />
       ) : totalCount === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>{'\uD83D\uDCEE'}</Text>
-          <Text style={[styles.emptyTitle, { color: textColor }]}>
-            {'아직 수집한 스탬프가 없어요'}
-          </Text>
-          <Text style={[styles.emptySub, { color: textTertColor }]}>
-            {'코스를 걸으며 스탬프를 수집해보세요'}
-          </Text>
-          <TouchableOpacity
-            style={styles.exploreBtn}
-            onPress={() => navigation.navigate('Main', { screen: 'Explore' })}
-            activeOpacity={0.85}>
-            <Text style={styles.exploreBtnText}>{'코스 탐색하기'}</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="map-pin"
+          title="아직 수집한 스탬프가 없어요"
+          subtitle="코스를 걸으며 스탬프를 수집해보세요"
+          ctaText="코스 탐색하기"
+          onCta={() => navigation.navigate('Main', { screen: 'Explore' })}
+        />
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}

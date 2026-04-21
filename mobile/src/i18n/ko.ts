@@ -173,6 +173,14 @@ const ko = {
     goHome: '홈으로',
     share: '공유하기',
     greatWalk: '오늘도 멋진 걸음!',
+    nextSteps: '다음 할 일',
+    writeStory: '스토리 남기기',
+    writeStoryDesc: '오늘의 걸음을 기록으로 남겨보세요',
+    writeReview: '리뷰 쓰기',
+    writeReviewDesc: '다른 걸음이들에게 후기를 공유해요',
+    viewCertificate: '인증서 보기',
+    viewCertificateDesc: '코스 완주 인증서를 확인하세요',
+    goHomeDesc: '메인 화면으로 돌아가기',
   },
 
   // Home

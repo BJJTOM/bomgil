@@ -167,8 +167,11 @@ function ExploreEmptyState({
                     className="w-14 h-14 rounded-[10px] object-cover flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-[10px] bg-[#F7F8FA] flex items-center justify-center flex-shrink-0">
-                    <span className="text-[20px]">🥾</span>
+                  <div className="w-14 h-14 rounded-[10px] bg-[#F0F7F0] flex items-center justify-center flex-shrink-0">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      <path d="M9 22V12h6v10" />
+                    </svg>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -437,20 +440,20 @@ function ExploreContent() {
           {/* Region quick-links */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {[
-              { slug: "seoul", label: "서울", emoji: "🏙" },
-              { slug: "gyeonggi", label: "경기", emoji: "🌳" },
-              { slug: "incheon", label: "인천", emoji: "⚓" },
-              { slug: "gangwon", label: "강원", emoji: "⛰" },
-              { slug: "chungcheong", label: "충청", emoji: "🍃" },
-              { slug: "gyeongsang", label: "경상", emoji: "🌊" },
-              { slug: "jeolla", label: "전라", emoji: "🌾" },
-              { slug: "jeju", label: "제주", emoji: "🏝" },
+              { slug: "seoul", label: "서울", color: "#6B7280" },
+              { slug: "gyeonggi", label: "경기", color: "#22C55E" },
+              { slug: "incheon", label: "인천", color: "#0EA5E9" },
+              { slug: "gangwon", label: "강원", color: "#8B5CF6" },
+              { slug: "chungcheong", label: "충청", color: "#10B981" },
+              { slug: "gyeongsang", label: "경상", color: "#0284C7" },
+              { slug: "jeolla", label: "전라", color: "#D97706" },
+              { slug: "jeju", label: "제주", color: "#F97316" },
             ].map((r) => (
               <Link
                 key={r.slug}
                 href={`/explore/region/${r.slug}`}
                 className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0F7F0] text-[#2D4A2E] rounded-full text-[12px] font-semibold hover:bg-[#E5EFE5] transition-colors">
-                <span>{r.emoji}</span>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
                 <span>{r.label}</span>
               </Link>
             ))}
@@ -460,7 +463,9 @@ function ExploreContent() {
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               {aiMode ? (
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px]" aria-hidden="true">&#10024;</span>
+                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+                </svg>
               ) : (
                 <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-tertiary)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               )}
@@ -516,7 +521,9 @@ function ExploreContent() {
                 }`}
                 title={AI_SEARCH_LABELS[language] || AI_SEARCH_LABELS.ko}
               >
-                <span className="text-[13px]">&#10024;</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+                </svg>
                 <span>{AI_SEARCH_LABELS[language] || AI_SEARCH_LABELS.ko}</span>
               </button>
             )}
@@ -585,7 +592,9 @@ function ExploreContent() {
             {/* AI search summary */}
             {aiSummary && (
               <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-[12px] bg-[#F0F0FF] border border-[#E0DFFF]">
-                <span className="text-[14px] flex-shrink-0 mt-0.5">&#10024;</span>
+                <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+                </svg>
                 <p className="text-[13px] text-[#4A4A6A] font-medium leading-relaxed">{aiSummary}</p>
               </div>
             )}
@@ -616,7 +625,11 @@ function ExploreContent() {
               />
             ) : (
               <div className="flex flex-col items-center pt-16 pb-8 text-center">
-                <span className="text-[40px] mb-4">&#10024;</span>
+                <div className="w-16 h-16 rounded-full bg-[#F0F0FF] flex items-center justify-center mb-4">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+                  </svg>
+                </div>
                 <h3 className="text-[16px] font-bold text-gray-900 mb-2">
                   {language === "ko"
                     ? "자연스럽게 말해보세요"

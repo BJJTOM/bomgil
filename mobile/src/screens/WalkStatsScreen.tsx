@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +16,7 @@ import { FadeInView } from '../components/FadeInView';
 import StreakCard from '../components/StreakCard';
 import { ActivityStats, PaginatedResponse, ActivityTrack } from '../types';
 import { useT } from '../i18n';
+import LoadingState from '../components/LoadingState';
 
 const DAILY_GOAL_KM = 5;
 const DAILY_GOAL_STEPS = 10000;
@@ -135,8 +135,8 @@ export default function WalkStatsScreen() {
 
   if (statsLoading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LoadingState text="통계를 불러오는 중..." />
       </View>
     );
   }

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +14,8 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
 import { useT } from '../i18n';
+import LoadingState from '../components/LoadingState';
+import EmptyState from '../components/EmptyState';
 
 interface Notification {
   id: number;
@@ -155,15 +156,13 @@ export default function NotificationsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <LoadingState />
       ) : !notifications || notifications.length === 0 ? (
-        <View style={styles.center}>
-          <Feather name="bell-off" size={48} color={textTertColor} style={{ marginBottom: 16 }} />
-          <Text style={[styles.emptyTitle, { color: textColor }]}>{t.notifications.empty}</Text>
-          <Text style={[styles.emptyDesc, { color: textSecColor }]}>{t.notifications.emptyDesc}</Text>
-        </View>
+        <EmptyState
+          icon="bell-off"
+          title={t.notifications.empty}
+          subtitle={t.notifications.emptyDesc}
+        />
       ) : (
         <FlatList
           data={notifications}

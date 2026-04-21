@@ -12,6 +12,11 @@ export const colors = {
   borderDefault: '#E5E8EB',
   borderLight: '#F2F4F6',
   bgSecondary: '#F7F8FA',
+  difficulty: {
+    easy: '#22C55E',
+    moderate: '#F59E0B',
+    hard: '#EF4444',
+  },
 };
 
 export const darkColors = {
@@ -28,6 +33,11 @@ export const darkColors = {
   borderDefault: 'rgba(255,255,255,0.1)',
   borderLight: 'rgba(255,255,255,0.06)',
   bgSecondary: '#1a1a1a',
+  difficulty: {
+    easy: '#4ADE80',
+    moderate: '#FBBF24',
+    hard: '#F87171',
+  },
 };
 
 export function getColors(isDark: boolean) {

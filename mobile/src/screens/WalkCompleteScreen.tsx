@@ -23,6 +23,8 @@ import SplitChart from '../components/SplitChart';
 import ElevationChart from '../components/ElevationChart';
 import { shareGpxFile } from '../utils/gpxExporter';
 import { weatherEmoji } from '../utils/weather';
+import { haptics } from '../utils/haptics';
+import { FadeInView } from '../components/FadeInView';
 
 const { width } = Dimensions.get('window');
 
@@ -92,7 +94,15 @@ function WalkCompleteInner() {
     maxSpeed = '0',
     splits: splitsJson = '[]',
     activityId = null,
+    trailId = null,
+    trailTitle = null,
   } = route.params || {};
+
+  // Fire a success haptic when the screen first mounts — the user just
+  // finished a walk, so give them a satisfying tactile reward.
+  useEffect(() => {
+    haptics.success();
+  }, []);
 
   // Large payloads (trackPoints, routeCoords, photos, spots) are loaded from
   // AsyncStorage rather than navigation params to avoid Android's
@@ -389,11 +399,11 @@ function WalkCompleteInner() {
           </View>
         )}
 
-        {/* Action Buttons */}
+        {/* Share + GPX row */}
         <View style={styles.actionsSection}>
           <TouchableOpacity
             style={styles.shareBtn}
-            onPress={handleShare}
+            onPress={() => { haptics.light(); handleShare(); }}
             activeOpacity={0.85}>
             <Feather name="share-2" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.shareBtnText}>{t.walkComplete.share}</Text>
@@ -403,11 +413,6 @@ function WalkCompleteInner() {
             <TouchableOpacity
               style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6' }]}
               onPress={() => navigation.navigate('ActivityDetail', {
-                // Pass ONLY metadata — heavy arrays (trackPoints/photos/spots)
-                // are already persisted to AsyncStorage under
-                // `activity_latest_extra` and ActivityDetail loads them from
-                // there. Passing them via nav params triggers Android's
-                // TransactionTooLargeException on long walks.
                 activity: {
                   id: activityId,
                   title: `${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ${t.walk.walking}`,
@@ -442,13 +447,121 @@ function WalkCompleteInner() {
               <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>GPX Export</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.secondaryBtn, { backgroundColor: isDark ? '#1e1e1e' : '#F2F4F6', marginTop: 8, alignSelf: 'center', width: '100%' }]}
-            onPress={() => navigation.popToTop()}
-            activeOpacity={0.85}>
-            <Feather name="home" size={16} color={textSecColor} style={{ marginRight: 6 }} />
-            <Text style={[styles.secondaryBtnText, { color: textSecColor }]}>{t.walkComplete.goHome}</Text>
-          </TouchableOpacity>
+        </View>
+
+        {/* ─── Next Steps ─── */}
+        <View style={styles.nextStepsSection}>
+          <Text style={[styles.nextStepsTitle, { color: textSecColor }]}>
+            {t.walkComplete.nextSteps}
+          </Text>
+
+          {/* 1. Write Story — always shown, trail pre-filled if available */}
+          <FadeInView delay={100}>
+            <TouchableOpacity
+              style={[styles.nextStepCard, { backgroundColor: cardBg }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                haptics.light();
+                navigation.navigate('CommunityWrite', {
+                  prefillTitle: trailTitle || '',
+                  prefillTrailId: trailId || undefined,
+                });
+              }}>
+              <View style={[styles.nextStepIconWrap, { backgroundColor: isDark ? 'rgba(45,74,46,0.3)' : 'rgba(45,74,46,0.08)' }]}>
+                <Feather name="edit-3" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.nextStepTextWrap}>
+                <Text style={[styles.nextStepCardTitle, { color: textColor }]}>
+                  {t.walkComplete.writeStory}
+                </Text>
+                <Text style={[styles.nextStepCardDesc, { color: textTertColor }]}>
+                  {t.walkComplete.writeStoryDesc}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={textTertColor} />
+            </TouchableOpacity>
+          </FadeInView>
+
+          {/* 2. Write Review */}
+          <FadeInView delay={200}>
+            <TouchableOpacity
+              style={[styles.nextStepCard, { backgroundColor: cardBg }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                haptics.light();
+                navigation.navigate('PostCreate', {
+                  category: 'review',
+                  prefillTrailId: trailId || undefined,
+                  prefillTrailTitle: trailTitle || undefined,
+                });
+              }}>
+              <View style={[styles.nextStepIconWrap, { backgroundColor: isDark ? 'rgba(74,222,128,0.15)' : 'rgba(74,222,128,0.1)' }]}>
+                <Feather name="star" size={20} color={colors.accent} />
+              </View>
+              <View style={styles.nextStepTextWrap}>
+                <Text style={[styles.nextStepCardTitle, { color: textColor }]}>
+                  {t.walkComplete.writeReview}
+                </Text>
+                <Text style={[styles.nextStepCardDesc, { color: textTertColor }]}>
+                  {t.walkComplete.writeReviewDesc}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={textTertColor} />
+            </TouchableOpacity>
+          </FadeInView>
+
+          {/* 3. View Certificate — only if a trail was auto-completed */}
+          {matchedTrails.some((m: any) => m?.trail_id && !m?.already_completed) && (
+            <FadeInView delay={300}>
+              <TouchableOpacity
+                style={[styles.nextStepCard, { backgroundColor: cardBg, borderColor: '#15803D', borderWidth: 1 }]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  haptics.medium();
+                  const completedTrail = matchedTrails.find((m: any) => m?.trail_id && !m?.already_completed);
+                  if (completedTrail) {
+                    navigation.navigate('Certificate', { trailId: completedTrail.trail_id });
+                  }
+                }}>
+                <View style={[styles.nextStepIconWrap, { backgroundColor: 'rgba(21,128,61,0.12)' }]}>
+                  <Feather name="award" size={20} color="#15803D" />
+                </View>
+                <View style={styles.nextStepTextWrap}>
+                  <Text style={[styles.nextStepCardTitle, { color: textColor }]}>
+                    {t.walkComplete.viewCertificate}
+                  </Text>
+                  <Text style={[styles.nextStepCardDesc, { color: textTertColor }]}>
+                    {t.walkComplete.viewCertificateDesc}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color="#15803D" />
+              </TouchableOpacity>
+            </FadeInView>
+          )}
+
+          {/* 4. Back to Home */}
+          <FadeInView delay={matchedTrails.some((m: any) => m?.trail_id && !m?.already_completed) ? 400 : 300}>
+            <TouchableOpacity
+              style={[styles.nextStepCard, { backgroundColor: cardBg }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                haptics.light();
+                navigation.popToTop();
+              }}>
+              <View style={[styles.nextStepIconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6' }]}>
+                <Feather name="home" size={20} color={textSecColor} />
+              </View>
+              <View style={styles.nextStepTextWrap}>
+                <Text style={[styles.nextStepCardTitle, { color: textColor }]}>
+                  {t.walkComplete.goHome}
+                </Text>
+                <Text style={[styles.nextStepCardDesc, { color: textTertColor }]}>
+                  {t.walkComplete.goHomeDesc}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={textTertColor} />
+            </TouchableOpacity>
+          </FadeInView>
         </View>
       </ScrollView>
     </View>
@@ -833,5 +946,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+
+  // Next Steps
+  nextStepsSection: {
+    width: width - 48,
+    gap: 10,
+    paddingBottom: 32,
+  },
+  nextStepsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  nextStepCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  nextStepIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  nextStepTextWrap: {
+    flex: 1,
+    marginRight: 8,
+  },
+  nextStepCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+    letterSpacing: -0.2,
+  },
+  nextStepCardDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
   },
 });

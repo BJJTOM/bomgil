@@ -175,6 +175,14 @@ const en: TranslationKeys = {
     goHome: 'Go Home',
     share: 'Share',
     greatWalk: 'Another great walk!',
+    nextSteps: 'What\'s Next',
+    writeStory: 'Write a Story',
+    writeStoryDesc: 'Share a story about your walk today',
+    writeReview: 'Write a Review',
+    writeReviewDesc: 'Help other walkers with your experience',
+    viewCertificate: 'View Certificate',
+    viewCertificateDesc: 'Check your trail completion certificate',
+    goHomeDesc: 'Return to the main screen',
   },
 
   // Home

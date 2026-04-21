@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Share,
   Alert,
   StatusBar,
@@ -16,6 +15,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useAuthStore } from '../stores/auth';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
+import LoadingState from '../components/LoadingState';
 
 const API_BASE = 'https://api.moruwalk.com/api/v1';
 
@@ -116,9 +116,8 @@ export default function CertificateScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top, backgroundColor: bg }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 16, fontSize: 14, color: textSecColor }}>인증서를 불러오는 중...</Text>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
+        <LoadingState text="인증서를 불러오는 중..." />
       </View>
     );
   }

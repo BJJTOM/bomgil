@@ -279,7 +279,7 @@ export default function HomeScreen() {
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#191F28';
-  const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : '#B0B8C1';
+  const textTertColor = isDark ? 'rgba(255,255,255,0.6)' : '#B0B8C1';
 
   // ---- Queries ----
 
@@ -588,7 +588,9 @@ export default function HomeScreen() {
             ) : (
               /* Empty state */
               <View style={[styles.emptyCard, { backgroundColor: isDark ? '#1a1a1a' : colors.primary50 }]}>
-                <Text style={styles.emptyEmoji}>🥾</Text>
+                <View style={styles.emptyIconWrap}>
+                  <Feather name="compass" size={44} color={isDark ? '#4ADE80' : '#2D4A2E'} />
+                </View>
                 <Text style={[styles.emptyTitle, { color: textColor }]}>
                   {t('emptyTrailsTitle', language)}
                 </Text>
@@ -650,9 +652,13 @@ export default function HomeScreen() {
                           navigation.navigate('TrailSeriesDetail', { slug: item.slug })
                         }>
                         <View style={[styles.seriesHomeEmojiWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
-                          <Text style={styles.seriesHomeEmoji}>
-                            {item.accent_emoji || '🚶'}
-                          </Text>
+                          {item.accent_emoji ? (
+                            <Text style={styles.seriesHomeEmoji}>
+                              {item.accent_emoji}
+                            </Text>
+                          ) : (
+                            <Feather name="activity" size={22} color={isDark ? '#4ADE80' : '#2D4A2E'} />
+                          )}
                         </View>
                         <Text
                           style={[styles.seriesHomeTitle, { color: textColor }]}
@@ -720,7 +726,7 @@ export default function HomeScreen() {
                 onPress={() => { setLanguage(lang.code); setShowLangModal(false); }}>
                 <Text style={styles.langFlag}>{lang.flag}</Text>
                 <Text style={[styles.langLabel, isDark && { color: '#FFFFFF' }]}>{lang.label}</Text>
-                {language === lang.code && <Text style={[styles.langCheck, isDark && { color: '#4ADE80' }]}>✓</Text>}
+                {language === lang.code && <Feather name="check" size={18} color={isDark ? '#4ADE80' : '#2D4A2E'} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -777,7 +783,7 @@ const styles = StyleSheet.create({
   },
   heroSub: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.7)',
     lineHeight: 18,
     textAlign: 'center',
     marginBottom: 20,
@@ -1010,9 +1016,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
   },
-  emptyEmoji: {
-    fontSize: 48,
+  emptyIconWrap: {
     marginBottom: 12,
+    alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 16,

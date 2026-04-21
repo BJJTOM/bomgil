@@ -360,7 +360,7 @@ export default function ExploreScreen() {
             {searchVisible && (
               <View style={[styles.searchBar, { backgroundColor: aiMode ? '#F0F0FF' : chipBg }]}>
                 {aiMode ? (
-                  <Text style={{ fontSize: 14, marginRight: 8 }}>{'\u2728'}</Text>
+                  <Feather name="zap" size={16} color="#6C5CE7" style={{ marginRight: 8 }} />
                 ) : (
                   <Feather name="search" size={16} color={textTertColor} style={{ marginRight: 8 }} />
                 )}
@@ -458,7 +458,7 @@ export default function ExploreScreen() {
                 { backgroundColor: aiMode ? '#6C5CE7' : chipBg },
               ]}
               activeOpacity={0.7}>
-              <Text style={{ fontSize: 12 }}>{'\u2728'}</Text>
+              <Feather name="zap" size={12} color={aiMode ? '#FFFFFF' : textSecColor} />
               <Text style={[styles.aiToggleBtnText, { color: aiMode ? '#FFFFFF' : textSecColor }]}>
                 AI
               </Text>
@@ -518,7 +518,7 @@ export default function ExploreScreen() {
                   <Text style={[styles.sortItemText, { color: textColor }, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
                     {opt.label}
                   </Text>
-                  {sortBy === opt.value && <Text style={{ color: colors.primary }}>✓</Text>}
+                  {sortBy === opt.value && <Feather name="check" size={16} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -550,7 +550,7 @@ export default function ExploreScreen() {
           }
           ListEmptyComponent={
             <View style={styles.loadingCenter}>
-              <Text style={{ fontSize: 44, marginBottom: 12 }}>🚶</Text>
+              <Feather name="activity" size={40} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginBottom: 12 }} />
               <Text style={[styles.emptyTitle, { color: textColor }]}>아직 시리즈가 없어요</Text>
               <Text style={[styles.emptyDesc, { color: textTertColor }]}>
                 곧 새로운 장거리 챌린지를 추가할 예정이에요
@@ -588,7 +588,11 @@ export default function ExploreScreen() {
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                    <Text style={{ fontSize: 24 }}>{item.accent_emoji || '🚶'}</Text>
+                    {item.accent_emoji ? (
+                      <Text style={{ fontSize: 24 }}>{item.accent_emoji}</Text>
+                    ) : (
+                      <Feather name="activity" size={24} color={isDark ? '#4ADE80' : '#2D4A2E'} />
+                    )}
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text
@@ -659,7 +663,7 @@ export default function ExploreScreen() {
         {/* AI Search Results */}
         {aiSummary ? (
           <View style={[styles.aiSummaryBanner, { backgroundColor: isDark ? '#2a2a3e' : '#F0F0FF' }]}>
-            <Text style={{ fontSize: 14, marginRight: 6 }}>{'\u2728'}</Text>
+            <Feather name="zap" size={14} color={isDark ? '#c0bfff' : '#6C5CE7'} style={{ marginRight: 6 }} />
             <Text style={[styles.aiSummaryText, { color: isDark ? '#c0bfff' : '#4A4A6A' }]}>{aiSummary}</Text>
           </View>
         ) : null}
@@ -689,7 +693,7 @@ export default function ExploreScreen() {
           </>
         ) : aiQuery.trim() && !aiLoading ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>{'\u2728'}</Text>
+            <Feather name="zap" size={36} color={isDark ? '#c0bfff' : '#6C5CE7'} style={{ marginBottom: 16 }} />
             <Text style={[styles.emptyTitle, { color: textColor }]}>검색 결과가 없어요</Text>
             <Text style={[styles.emptyDesc, { color: textTertColor }]}>
               다른 표현으로 검색해보세요
@@ -697,7 +701,7 @@ export default function ExploreScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={{ fontSize: 40, marginBottom: 16 }}>{'\u2728'}</Text>
+            <Feather name="zap" size={40} color={isDark ? '#c0bfff' : '#6C5CE7'} style={{ marginBottom: 16 }} />
             <Text style={[styles.emptyTitle, { color: textColor }]}>자연스럽게 말해보세요</Text>
             <Text style={[styles.emptyDesc, { color: textTertColor }]}>
               원하는 코스를 자유롭게 설명해보세요.{'\n'}AI가 맞는 코스를 찾아드려요.
@@ -721,7 +725,7 @@ export default function ExploreScreen() {
         </View>
       ) : isError ? (
         <View style={styles.loadingCenter}>
-          <Text style={{ fontSize: 44, marginBottom: 12 }}>{'\u26A0\uFE0F'}</Text>
+          <Feather name="alert-triangle" size={40} color="#F59E0B" style={{ marginBottom: 12 }} />
           <Text style={[styles.emptyTitle, { color: textColor }]}>네트워크 오류</Text>
           <Text style={[styles.emptyDesc, { color: textTertColor, marginBottom: 16 }]}>
             코스를 불러오지 못했어요
@@ -770,7 +774,7 @@ export default function ExploreScreen() {
           renderItem={renderTrailCard}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔍</Text>
+              <Feather name="search" size={36} color={isDark ? 'rgba(255,255,255,0.3)' : '#B0B8C1'} style={{ marginBottom: 16 }} />
               <Text style={[styles.emptyTitle, { color: textColor }]}>검색 결과가 없습니다</Text>
               <Text style={[styles.emptyDesc, { color: textTertColor }]}>
                 다른 키워드나 필터로 검색해보세요

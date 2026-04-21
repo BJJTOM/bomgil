@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +13,8 @@ import api from '../api/client';
 import { colors } from '../theme/colors';
 import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
+import LoadingState from '../components/LoadingState';
+import EmptyState from '../components/EmptyState';
 
 export default function LikedTrailsScreen() {
   const insets = useSafeAreaInsets();
@@ -39,20 +40,15 @@ export default function LikedTrailsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <LoadingState />
       ) : !trails || trails.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>{'❤️'}</Text>
-          <Text style={styles.emptyTitle}>좋아요한 코스가 없습니다</Text>
-          <Text style={styles.emptyDesc}>마음에 드는 코스에 좋아요를 눌러보세요</Text>
-          <TouchableOpacity
-            style={styles.exploreBtn}
-            onPress={() => navigation.navigate('Explore')}>
-            <Text style={styles.exploreBtnText}>코스 둘러보기</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="heart"
+          title="좋아요한 코스가 없습니다"
+          subtitle="마음에 드는 코스에 좋아요를 눌러보세요"
+          ctaText="코스 둘러보기"
+          onCta={() => navigation.navigate('Explore')}
+        />
       ) : (
         <FlatList
           data={trails}

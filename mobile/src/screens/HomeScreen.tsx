@@ -83,31 +83,6 @@ const TRANSLATIONS: Record<string, Record<Language, string>> = {
     ja: 'すべて見る',
     zh: '查看全部',
   },
-  // UGC CTA — upgraded
-  ugcTitle: {
-    ko: '나만 아는 그 길, 공유해주세요',
-    en: 'Share the path only you know',
-    ja: 'あなただけが知る道を共有してください',
-    zh: '分享只有你知道的那条路',
-  },
-  ugcSubtitle: {
-    ko: '당신이 걸었던 길이 다른 여행자의 지도가 됩니다',
-    en: 'The path you walked becomes another traveler\'s map',
-    ja: 'あなたが歩いた道が他の旅人の地図になります',
-    zh: '你走过的路将成为其他旅行者的地图',
-  },
-  ugcCreateBtn: {
-    ko: '코스 등록',
-    en: 'Create Trail',
-    ja: 'コース登録',
-    zh: '注册路线',
-  },
-  ugcCommunityBtn: {
-    ko: '커뮤니티',
-    en: 'Community',
-    ja: 'コミュニティ',
-    zh: '社区',
-  },
   // Stats labels
   registeredCountries: { ko: '등록 국가', en: 'Countries', ja: '登録国', zh: '注册国家' },
   courses: { ko: '코스', en: 'Trails', ja: 'コース', zh: '路线' },
@@ -701,49 +676,6 @@ export default function HomeScreen() {
           </View>
         </FadeInView>
 
-        {/* ============================================================= */}
-        {/* UGC CTA — compelling conversion card                           */}
-        {/* ============================================================= */}
-        <FadeInView delay={300}>
-          <LinearGradient
-            colors={isDark ? ['rgba(74,222,128,0.08)', 'rgba(74,222,128,0.02)'] : [colors.primary50, '#FFFFFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[styles.ugcCard, isDark && { borderColor: 'rgba(74,222,128,0.15)' }]}>
-            <View style={styles.ugcIconRow}>
-              <View style={[styles.ugcIconWrap, isDark && { backgroundColor: 'rgba(74,222,128,0.12)' }]}>
-                <Feather name="map" size={22} color={isDark ? '#4ADE80' : '#2D4A2E'} />
-              </View>
-            </View>
-            <Text style={[styles.ugcTitle, { color: textColor }]}>
-              {t('ugcTitle', language)}
-            </Text>
-            <Text style={[styles.ugcSubtitle, { color: textTertColor }]}>
-              {t('ugcSubtitle', language)}
-            </Text>
-            <View style={styles.ugcButtonRow}>
-              <TouchableOpacity
-                style={[styles.ugcPrimaryBtn, isDark && { backgroundColor: '#4ADE80' }]}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('TrailCreate')}>
-                <Feather name="plus-circle" size={14} color={isDark ? '#0a0a0a' : '#FFFFFF'} style={{ marginRight: 6 }} />
-                <Text style={[styles.ugcPrimaryBtnText, isDark && { color: '#0a0a0a' }]}>
-                  {t('ugcCreateBtn', language)}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.ugcSecondaryBtn, isDark && { borderColor: 'rgba(255,255,255,0.15)' }]}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('Community')}>
-                <Feather name="users" size={14} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginRight: 6 }} />
-                <Text style={[styles.ugcSecondaryBtnText, isDark && { color: '#4ADE80' }]}>
-                  {t('ugcCommunityBtn', language)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </FadeInView>
-
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>&copy; 2026 Moru</Text>
@@ -1095,71 +1027,6 @@ const styles = StyleSheet.create({
   emptyCTAText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // UGC CTA card
-  ugcCard: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    borderRadius: 18,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  ugcIconRow: {
-    marginBottom: 14,
-  },
-  ugcIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ugcTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 6,
-  },
-  ugcSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 20,
-  },
-  ugcButtonRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  ugcPrimaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2D4A2E',
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  ugcPrimaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  ugcSecondaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  ugcSecondaryBtnText: {
-    color: '#2D4A2E',
-    fontSize: 13,
     fontWeight: '600',
   },
 

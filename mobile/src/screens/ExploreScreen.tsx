@@ -14,7 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
@@ -152,16 +152,40 @@ export default function ExploreScreen() {
     return params;
   }, [filters, debouncedSearch, sortBy]);
 
-  // Filtered query (with search param for API).
+  // Filtered query (with search param for API) — infinite scroll pagination.
   // Lets react-query surface isError so we can render a retry CTA
   // instead of silently showing an empty list.
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['trails', queryParams],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       const { data: res } = await api.get('/trails/', {
-        params: { ...queryParams, page_size: 30 },
+        params: { ...queryParams, page: pageParam, page_size: 20 },
       });
       return res;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any) => {
+      if (lastPage?.next) {
+        try {
+          const url = new URL(lastPage.next);
+          const nextPage = url.searchParams.get('page');
+          return nextPage ? Number(nextPage) : undefined;
+        } catch {
+          // If URL parsing fails, try regex extraction
+          const match = lastPage.next.match(/[?&]page=(\d+)/);
+          return match ? Number(match[1]) : undefined;
+        }
+      }
+      return undefined;
     },
     retry: 1,
     staleTime: 30000,
@@ -195,37 +219,57 @@ export default function ExploreScreen() {
   });
   const seriesList = seriesData || [];
 
+  // Helper: check if a trail has an image (cover_image or thumbnail_url)
+  const trailHasImage = useCallback((trail: Trail): boolean => {
+    return !!(trail.cover_image || trail.thumbnail_url);
+  }, []);
+
   const trails = useMemo(() => {
-    const apiResults = data?.results ?? (Array.isArray(data) ? data : []);
-    if (!debouncedSearch.trim()) return apiResults as Trail[];
+    // Flatten all pages from infinite query
+    const apiResults: Trail[] = data?.pages
+      ? data.pages.flatMap((page: any) => page?.results ?? (Array.isArray(page) ? page : []))
+      : [];
 
-    const q = debouncedSearch.toLowerCase();
+    let result: Trail[];
 
-    // Also search through all trails for tag matches
-    const allTrails = allData?.results ?? (Array.isArray(allData) ? allData : []);
-    const tagMatches = (allTrails as Trail[]).filter(
-      (t) => t.tags?.some(tag =>
-        tag.name.toLowerCase().includes(q) ||
-        tag.name_en?.toLowerCase().includes(q)
-      ),
-    );
+    if (!debouncedSearch.trim()) {
+      result = apiResults;
+    } else {
+      const q = debouncedSearch.toLowerCase();
 
-    // Merge API results + tag matches, deduplicate by id
-    const merged = new Map<number, Trail>();
-    for (const t of apiResults as Trail[]) merged.set(t.id, t);
-    for (const t of tagMatches) merged.set(t.id, t);
+      // Also search through all trails for tag matches
+      const allTrails = allData?.results ?? (Array.isArray(allData) ? allData : []);
+      const tagMatches = (allTrails as Trail[]).filter(
+        (trail) => trail.tags?.some(tag =>
+          tag.name.toLowerCase().includes(q) ||
+          tag.name_en?.toLowerCase().includes(q)
+        ),
+      );
 
-    // Also client-side filter on title/region/description
-    const allMerged = Array.from(merged.values());
-    return allMerged.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.region?.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q) ||
-        t.country?.toLowerCase().includes(q) ||
-        t.tags?.some(tag => tag.name.toLowerCase().includes(q) || tag.name_en?.toLowerCase().includes(q)),
-    );
-  }, [data, allData, debouncedSearch]);
+      // Merge API results + tag matches, deduplicate by id
+      const merged = new Map<number, Trail>();
+      for (const trail of apiResults) merged.set(trail.id, trail);
+      for (const trail of tagMatches) merged.set(trail.id, trail);
+
+      // Also client-side filter on title/region/description
+      const allMerged = Array.from(merged.values());
+      result = allMerged.filter(
+        (trail) =>
+          trail.title.toLowerCase().includes(q) ||
+          trail.region?.toLowerCase().includes(q) ||
+          trail.description?.toLowerCase().includes(q) ||
+          trail.country?.toLowerCase().includes(q) ||
+          trail.tags?.some(tag => tag.name.toLowerCase().includes(q) || tag.name_en?.toLowerCase().includes(q)),
+      );
+    }
+
+    // Sort: trails with images first, preserving server ordering as secondary sort
+    return [...result].sort((a, b) => {
+      const aHas = trailHasImage(a) ? 0 : 1;
+      const bHas = trailHasImage(b) ? 0 : 1;
+      return aHas - bHas;
+    });
+  }, [data, allData, debouncedSearch, trailHasImage]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -556,7 +600,7 @@ export default function ExploreScreen() {
       {/* Result Count */}
       <View style={styles.resultHeader}>
         <Text style={[styles.resultCount, { color: textTertColor }]}>
-          {isLoading ? '검색 중...' : `${trails.length}개 코스`}
+          {isLoading ? '검색 중...' : `${data?.pages?.[0]?.count ?? trails.length}개 코스`}
         </Text>
       </View>
 
@@ -588,7 +632,20 @@ export default function ExploreScreen() {
           numColumns={width > 600 ? 2 : 1}
           key={width > 600 ? 'two-col' : 'one-col'}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching && !isFetchingNextPage} onRefresh={refetch} tintColor={colors.primary} />
+          }
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null
           }
           renderItem={renderTrailCard}
           ListEmptyComponent={
@@ -950,5 +1007,10 @@ const styles = StyleSheet.create({
   suggestCardMeta: {
     fontSize: 12,
     color: '#B0B8C1',
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -13,7 +13,7 @@ from apps.reviews.serializers import ReviewSerializer
 from apps.trails.models import Trail, TrailLike
 from apps.trails.serializers import TrailListSerializer
 
-from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, UserBadge
+from .models import AgreementAcceptance, CustomUser, Notification, PhoneAuthLog, PhoneOTP, UserBadge
 
 
 def _client_ip(request):
@@ -364,6 +364,7 @@ class CompletePhoneAuthView(APIView):
 
     def post(self, request):
         from django.core.cache import cache
+        from django.utils import timezone
 
         token = request.data.get('verification_token', '').strip()
         nickname = request.data.get('nickname', '').strip()
@@ -391,6 +392,30 @@ class CompletePhoneAuthView(APIView):
                     status=400,
                 )
 
+            # Phone-signup path: same legal consent requirements as the
+            # email register endpoint. Validate BEFORE we consume the
+            # verification token so the user can retry without re-doing
+            # SMS verification.
+            required = {
+                "agree_terms": "이용약관",
+                "agree_privacy": "개인정보처리방침",
+                "agree_location_terms": "위치기반서비스 이용약관",
+                "agree_location_privacy": "개인위치정보 처리방침",
+                "agree_age_14": "만 14세 이상 확인",
+            }
+            missing = [
+                label for field, label in required.items()
+                if not request.data.get(field)
+            ]
+            if missing:
+                return Response(
+                    {
+                        "error": f"필수 약관에 동의해야 합니다: {', '.join(missing)}",
+                        "code": "consent_required",
+                    },
+                    status=400,
+                )
+
             # Create new user with a phone-free username/email.
             base_nick = nickname
             i = 1
@@ -409,7 +434,28 @@ class CompletePhoneAuthView(APIView):
                 email=f"{username}@phone.moruwalk.com",
             )
             user.set_unusable_password()
+
+            # Save marketing consent + write AgreementAcceptance rows.
+            marketing = bool(request.data.get("agree_marketing"))
+            if marketing:
+                user.marketing_consent = True
+                user.marketing_consent_at = timezone.now()
             user.save()
+
+            from apps.community.models import LegalDocument
+            ua = request.META.get('HTTP_USER_AGENT', '')[:300]
+            ip = _client_ip(request)
+            to_log = ["terms", "privacy", "location-terms", "location-privacy", "age-14"]
+            if marketing:
+                to_log.append("marketing-consent")
+            for slug in to_log:
+                doc = LegalDocument.latest_published(slug) if slug != "age-14" else None
+                version = doc.version if doc else ""
+                AgreementAcceptance.objects.get_or_create(
+                    user=user, slug=slug,
+                    defaults={"version": version, "ip_address": ip, "user_agent": ua},
+                )
+
             is_new = True
 
         # Invalidate the verification token now that we have a real outcome.

@@ -28,9 +28,36 @@ export default function PhoneAuthPage() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [nickname, setNickname] = useState("");
+  const [agreements, setAgreements] = useState({
+    age_14: false,
+    terms: false,
+    privacy: false,
+    location_terms: false,
+    location_privacy: false,
+    marketing: false,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const requiredAllChecked =
+    agreements.age_14 &&
+    agreements.terms &&
+    agreements.privacy &&
+    agreements.location_terms &&
+    agreements.location_privacy;
+  const everyChecked = requiredAllChecked && agreements.marketing;
+  const toggleAllAgreements = () => {
+    const next = !everyChecked;
+    setAgreements({
+      age_14: next,
+      terms: next,
+      privacy: next,
+      location_terms: next,
+      location_privacy: next,
+      marketing: next,
+    });
+  };
   const verificationTokenRef = useRef<string | null>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
@@ -129,12 +156,26 @@ export default function PhoneAuthPage() {
       setStep("phone");
       return;
     }
+    if (!requiredAllChecked) {
+      setError("필수 약관에 모두 동의해주세요.");
+      return;
+    }
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/phone/otp/complete/", {
-        verification_token: verificationTokenRef.current,
-        nickname: trimmed,
-      });
+      const { data } = await api.post(
+        "/auth/phone/otp/complete/",
+        {
+          verification_token: verificationTokenRef.current,
+          nickname: trimmed,
+          agree_age_14: agreements.age_14,
+          agree_terms: agreements.terms,
+          agree_privacy: agreements.privacy,
+          agree_location_terms: agreements.location_terms,
+          agree_location_privacy: agreements.location_privacy,
+          agree_marketing: agreements.marketing,
+        },
+        { _silent: true } as any,
+      );
       login(data.user, data.access, data.refresh);
       router.push("/");
     } catch (e: any) {
@@ -290,12 +331,67 @@ export default function PhoneAuthPage() {
 
             {error && <p className="text-[13px] text-red-500 mb-3">{error}</p>}
 
+            {/* Consent block — mirror of the email signup flow. Required for
+                first-time phone users; existing users log in at the earlier
+                /complete/ call so they never see this screen. */}
+            <div className="mt-4 rounded-[14px] border border-gray-200 bg-white/60 p-4 space-y-2 text-[13px]">
+              <label className="flex items-center gap-3 pb-2 border-b border-gray-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-primary"
+                  checked={everyChecked}
+                  onChange={toggleAllAgreements}
+                />
+                <span className="font-semibold text-gray-900">전체 동의</span>
+              </label>
+              <PhoneConsentRow
+                label="만 14세 이상입니다"
+                required
+                checked={agreements.age_14}
+                onChange={(v) => setAgreements((a) => ({ ...a, age_14: v }))}
+              />
+              <PhoneConsentRow
+                label="이용약관 동의"
+                required
+                href="/terms"
+                checked={agreements.terms}
+                onChange={(v) => setAgreements((a) => ({ ...a, terms: v }))}
+              />
+              <PhoneConsentRow
+                label="개인정보처리방침 동의"
+                required
+                href="/privacy"
+                checked={agreements.privacy}
+                onChange={(v) => setAgreements((a) => ({ ...a, privacy: v }))}
+              />
+              <PhoneConsentRow
+                label="위치기반서비스 이용약관 동의"
+                required
+                href="/terms/location"
+                checked={agreements.location_terms}
+                onChange={(v) => setAgreements((a) => ({ ...a, location_terms: v }))}
+              />
+              <PhoneConsentRow
+                label="개인위치정보 처리방침 동의"
+                required
+                href="/privacy/location"
+                checked={agreements.location_privacy}
+                onChange={(v) => setAgreements((a) => ({ ...a, location_privacy: v }))}
+              />
+              <PhoneConsentRow
+                label="마케팅 정보 수신 동의"
+                href="/terms/marketing"
+                checked={agreements.marketing}
+                onChange={(v) => setAgreements((a) => ({ ...a, marketing: v }))}
+              />
+            </div>
+
             <div className="mb-auto" />
 
             <button
               type="button"
               onClick={handleSetNickname}
-              disabled={nickname.trim().length < 2 || loading}
+              disabled={nickname.trim().length < 2 || loading || !requiredAllChecked}
               className="bg-primary text-white text-[16px] font-bold py-4 rounded-[14px] mb-6 mt-8 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
@@ -310,6 +406,53 @@ export default function PhoneAuthPage() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function PhoneConsentRow({
+  label,
+  required,
+  href,
+  checked,
+  onChange,
+}: {
+  label: string;
+  required?: boolean;
+  href?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <label className="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-primary shrink-0"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span className="truncate">
+          <span
+            className={`text-[11px] font-semibold mr-1.5 ${
+              required ? "text-red-500" : "text-gray-400"
+            }`}
+          >
+            [{required ? "필수" : "선택"}]
+          </span>
+          <span className="text-gray-700">{label}</span>
+        </span>
+      </label>
+      {href && (
+        <Link
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-gray-400 underline shrink-0"
+        >
+          보기
+        </Link>
+      )}
     </div>
   );
 }

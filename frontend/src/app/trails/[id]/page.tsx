@@ -706,32 +706,6 @@ export default function TrailDetailPage() {
               />
             </section>
 
-            {/* Transport/Access */}
-            {tr.transport_access && (
-              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <IconBus size={16} className="text-primary" />
-                  <h3 className="text-sm font-bold text-text-primary">
-                    {language === "ko" ? "교통/접근" : language === "ja" ? "アクセス" : language === "zh" ? "交通" : "Access"}
-                  </h3>
-                </div>
-                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line mb-2.5">
-                  {tr.transport_access}
-                </p>
-                {tr.start_lat && tr.start_lng && (
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${tr.start_lat},${tr.start_lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-button text-[12px] font-semibold hover:bg-primary/20 transition-colors"
-                  >
-                    <IconNavigation size={13} className="text-primary" />
-                    {language === "ko" ? "길찾기" : language === "ja" ? "ルート案内" : language === "zh" ? "导航" : "Directions"}
-                  </a>
-                )}
-              </section>
-            )}
-
             {/* Author */}
             <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
               <Link

@@ -598,72 +598,17 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
-        {/* ===== ADDITIONAL INFO ===== */}
-        {(() => {
-          const tt = (trail as any).trail_type;
-          const ws = (trail as any).walking_surface;
-          const ta = (trail as any).transport_access;
-          const hasAny = trail.best_season || tt || ws || ta;
-          if (!hasAny) return null;
-
-          const rows: { label: string; value: string }[] = [];
-          if (trail.best_season) {
-            rows.push({
-              label: '\uCD94\uCC9C \uACC4\uC808',
-              value: SEASON_LABELS[trail.best_season] || trail.best_season,
-            });
-          }
-          if (tt) {
-            rows.push({
-              label: '\uCF54\uC2A4 \uC720\uD615',
-              value: tt === 'one_way' ? '\uD3B8\uB3C4' : tt === 'round_trip' ? '\uC655\uBCF5' : '\uC21C\uD658',
-            });
-          }
-          if (ws) {
-            rows.push({
-              label: '\uB178\uBA74',
-              value: ws === 'paved' ? '\uD3EC\uC7A5' : ws === 'unpaved' ? '\uBE44\uD3EC\uC7A5' : '\uD63C\uD569',
-            });
-          }
-
-          return (
-            <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-              <Text style={[styles.sectionTitle, { color: textColor }]}>{'\uCD94\uAC00 \uC815\uBCF4'}</Text>
-              <View style={[styles.infoCard, { backgroundColor: sectionBg }]}>
-                {rows.map((r, idx) => (
-                  <View
-                    key={r.label}
-                    style={[
-                      styles.infoRow,
-                      idx < rows.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: borderColor,
-                      },
-                    ]}>
-                    <Text style={[styles.infoLabel, { color: textTertColor }]}>{r.label}</Text>
-                    <Text style={[styles.infoValue, { color: textColor }]}>{r.value}</Text>
-                  </View>
-                ))}
-              </View>
-              {ta && (
-                <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
-                  <View style={styles.transportHeader}>
-                    <Feather name="navigation" size={14} color={colors.primary} />
-                    <Text style={styles.transportLabel}>{'\uAD50\uD1B5\uD3B8 \uC548\uB0B4'}</Text>
-                  </View>
-                  <Text style={[styles.transportText, { color: textColor }]}>{ta}</Text>
-                  <TouchableOpacity
-                    style={styles.directionsBtn}
-                    onPress={openDirections}
-                    activeOpacity={0.7}>
-                    <Feather name="external-link" size={14} color={colors.primary} />
-                    <Text style={styles.directionsBtnText}>{'\uAE38\uCC3E\uAE30'}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+        {/* ===== SEASON TAG (inline, compact) ===== */}
+        {trail.best_season && trail.best_season !== 'all' && (
+          <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Feather name="sun" size={13} color={textTertColor} />
+              <Text style={{ fontSize: 13, color: textSecColor }}>
+                {SEASON_LABELS[trail.best_season] || trail.best_season} 추천
+              </Text>
             </View>
-          );
-        })()}
+          </View>
+        )}
 
         {/* ===== MAP — compact ===== */}
         <TouchableOpacity

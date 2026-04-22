@@ -128,7 +128,7 @@ export default function TrailCard({
   // ---- Default / Compact Variant ----
   const isCompact = effectiveVariant === 'compact';
   const cardWidth = isCompact ? 260 : width - 32;
-  const imageHeight = isCompact ? 160 : 176;
+  const imageHeight = isCompact ? 140 : 140;
 
   return (
     <TouchableOpacity
@@ -221,14 +221,14 @@ const styles = StyleSheet.create({
   // ---- Default / Compact ----
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     marginRight: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   imageContainer: {
     position: 'relative',
@@ -293,22 +293,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    lineHeight: 20,
-    marginBottom: 4,
+    lineHeight: 19,
+    marginBottom: 2,
   },
   meta: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: 8,
+    lineHeight: 16,
+    marginBottom: 6,
   },
   bottomRow: {
     flexDirection: 'row',

@@ -48,7 +48,9 @@ function MapPlaceholder({
 }) {
   return (
     <View style={styles.placeholder}>
-      <Text style={{ fontSize: 36 }}>{'\u{1F5FA}️'}</Text>
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E5E8EB', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 18, color: '#8B95A1' }}>M</Text>
+      </View>
       <Text style={styles.placeholderRegion}>
         {region || ''} {country || ''}
       </Text>
@@ -262,24 +264,21 @@ export default function SafeMapView({
             </PointAnnotation>
           )}
 
-          {/* Spot markers */}
+          {/* Spot markers — small colored dots, no emoji */}
           {spots.map((spot, i) => (
             <PointAnnotation
               key={`spot-${i}`}
               id={`spot-${i}`}
-              coordinate={[spot.lng, spot.lat]}>
-              <View style={[styles.spotPin, {
-                backgroundColor: spot.type === 'restaurant' ? '#D85A30' :
-                  spot.type === 'cafe' ? '#378ADD' :
-                  spot.type === 'photo' ? '#7F77DD' :
-                  spot.type === 'view' ? '#EF9F27' : '#888780'
-              }]}>
-                <Text style={styles.spotPinText}>
-                  {spot.type === 'restaurant' ? '🍴' :
-                   spot.type === 'cafe' ? '☕' :
-                   spot.type === 'photo' ? '📸' :
-                   spot.type === 'view' ? '👀' : '📍'}
-                </Text>
+              coordinate={[spot.lng, spot.lat]}
+              anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={styles.spotDotMarker}>
+                <View style={[styles.spotDotMarkerInner, {
+                  backgroundColor: spot.type === 'restaurant' ? '#D85A30' :
+                    spot.type === 'cafe' ? '#378ADD' :
+                    spot.type === 'photo' ? '#7F77DD' :
+                    spot.type === 'viewpoint' ? '#EF9F27' :
+                    spot.type === 'danger' ? '#DC2626' : '#6B7280'
+                }]} />
               </View>
             </PointAnnotation>
           ))}
@@ -390,6 +389,24 @@ const styles = StyleSheet.create({
   },
   spotPinText: {
     fontSize: 13,
+  },
+  spotDotMarker: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  spotDotMarkerInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 
   // Legacy end marker (keep for compat)

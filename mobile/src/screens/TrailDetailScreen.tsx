@@ -598,19 +598,7 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
-        {/* ===== SEASON TAG (inline, compact) ===== */}
-        {trail.best_season && trail.best_season !== 'all' && (
-          <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Feather name="sun" size={13} color={textTertColor} />
-              <Text style={{ fontSize: 13, color: textSecColor }}>
-                {SEASON_LABELS[trail.best_season] || trail.best_season} 추천
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* ===== MAP — compact ===== */}
+        {/* ===== MAP ===== */}
         <TouchableOpacity
           style={[styles.mapSection, { backgroundColor: sectionBg }]}
           activeOpacity={0.95}

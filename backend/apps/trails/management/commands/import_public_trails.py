@@ -13,13 +13,19 @@ Content Type ID 25 = 걷기코스 (walking courses)
 import os
 import re
 import time
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 import requests
 import urllib3
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from apps.trails.models import Trail
+
+# Re-importing unchanged rows burns the public API quota and triggers
+# 429s. Skip enrichment for trails already updated within this window.
+REFRESH_STALE_AFTER = timedelta(days=7)
 
 # Suppress InsecureRequestWarning when verify=False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -133,19 +139,30 @@ def _infer_difficulty(distance_km):
 
 
 def _api_get(endpoint, params, label=""):
-    """Make a GET request to the KorService2 API with retry logic."""
+    """Make a GET request to the KorService2 API with retry + 429 backoff."""
     url = f"{BASE_URL}/{endpoint}"
     params["serviceKey"] = _get_api_key()
     params["MobileOS"] = "ETC"
     params["MobileApp"] = "Moru"
     params["_type"] = "json"
 
-    for attempt in range(3):
+    # Exponential backoff specifically tuned for the public API's bursty
+    # rate limiter: waits 5s, 15s, 45s on 429 before giving up.
+    backoff_429 = [5, 15, 45]
+    backoff_other = [1, 2, 4]
+
+    for attempt in range(4):
         try:
             resp = requests.get(url, params=params, verify=False, timeout=30)
+            if resp.status_code == 429:
+                if attempt < len(backoff_429):
+                    time.sleep(backoff_429[attempt])
+                    continue
+                raise RuntimeError(
+                    f"API rate-limited (429) after retries ({label})"
+                )
             resp.raise_for_status()
             data = resp.json()
-            # Navigate the nested response structure
             body = data.get("response", {}).get("body", {})
             items = body.get("items", {})
             if isinstance(items, str) and items == "":
@@ -154,15 +171,14 @@ def _api_get(endpoint, params, label=""):
                 return []
             item_list = items.get("item", [])
             if isinstance(item_list, dict):
-                # Single item returned as dict instead of list
                 return [item_list]
             return item_list
         except (requests.RequestException, ValueError) as exc:
-            if attempt < 2:
-                time.sleep(1)
+            if attempt < len(backoff_other):
+                time.sleep(backoff_other[attempt])
                 continue
             raise RuntimeError(
-                f"API request failed after 3 attempts ({label}): {exc}"
+                f"API request failed after retries ({label}): {exc}"
             ) from exc
     return []
 
@@ -231,7 +247,7 @@ class Command(BaseCommand):
                 break
 
             page += 1
-            time.sleep(0.2)
+            time.sleep(0.5)
 
         self.stdout.write(f"Total courses fetched: {len(all_courses)}")
 
@@ -243,8 +259,21 @@ class Command(BaseCommand):
         skipped = 0
         errors = 0
 
+        fresh_cutoff = timezone.now() - REFRESH_STALE_AFTER
+
         for idx, course in enumerate(all_courses):
             try:
+                content_id = course.get("contentid", "")
+                source_url = (
+                    f"https://korean.visitkorea.or.kr/detail/ms_detail.do?cotid={content_id}"
+                )
+                existing = Trail.objects.filter(
+                    source="visitkorea", source_url=source_url
+                ).only("updated_at").first()
+                if existing and existing.updated_at and existing.updated_at > fresh_cutoff:
+                    skipped += 1
+                    continue
+
                 self._process_course(course, idx, len(all_courses), dry_run)
                 if not dry_run:
                     result = self._save_course(course)
@@ -295,9 +324,10 @@ class Command(BaseCommand):
         mapx = course.get("mapx", "")
         mapy = course.get("mapy", "")
 
-        # Skip invalid entries
-        if not title:
-            raise ValueError("Empty title")
+        # Skip invalid entries — including menu/placeholder rows the API
+        # occasionally returns with junk titles.
+        if not title or title in ("Menu",):
+            raise ValueError(f"Skippable title: {title!r}")
 
         try:
             lng = float(mapx) if mapx else 0
@@ -309,7 +339,7 @@ class Command(BaseCommand):
             raise ValueError(f"Invalid coordinates: mapx={mapx}, mapy={mapy}")
 
         # Fetch detail (distance, time, theme)
-        time.sleep(0.2)
+        time.sleep(0.7)
         detail_items = _api_get(
             "detailIntro2",
             {"contentId": content_id, "contentTypeId": "25"},
@@ -318,7 +348,7 @@ class Command(BaseCommand):
         detail = detail_items[0] if detail_items else {}
 
         # Fetch description
-        time.sleep(0.2)
+        time.sleep(0.7)
         common_items = _api_get(
             "detailCommon2",
             {"contentId": content_id, "contentTypeId": "25", "defaultYN": "Y", "overviewYN": "Y"},

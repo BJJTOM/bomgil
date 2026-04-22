@@ -115,6 +115,12 @@ class CustomUser(AbstractUser):
     # Push notifications
     fcm_token = models.CharField(max_length=500, blank=True, default='')
 
+    # Marketing consent (optional — separate from core service terms,
+    # which are required and recorded at signup via AgreementAcceptance).
+    # Governs sending promotional pushes/emails/SMS.
+    marketing_consent = models.BooleanField(default=False)
+    marketing_consent_at = models.DateTimeField(null=True, blank=True)
+
     # XP / Level
     xp = models.PositiveIntegerField(default=0)
     level = models.PositiveIntegerField(default=1)
@@ -163,6 +169,40 @@ class UserBadge(models.Model):
 
     def __str__(self):
         return f"{self.user.nickname} - {self.get_badge_type_display()}"
+
+
+class AgreementAcceptance(models.Model):
+    """Audit trail for legal agreements accepted by the user at signup
+    (or later). Creates one row per slug the user accepts — we keep the
+    version string so that, if terms change later, we can prove which
+    exact version the user was shown."""
+
+    SLUG_CHOICES = [
+        ("terms", "이용약관"),
+        ("privacy", "개인정보처리방침"),
+        ("location-terms", "위치기반서비스 이용약관"),
+        ("location-privacy", "위치정보 처리방침"),
+        ("marketing-consent", "마케팅 수신 동의"),
+        ("age-14", "만 14세 이상 확인"),
+    ]
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="agreements",
+    )
+    slug = models.CharField(max_length=40, choices=SLUG_CHOICES, db_index=True)
+    version = models.CharField(max_length=20, blank=True, default="")
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True, default="")
+
+    class Meta:
+        unique_together = ("user", "slug")
+        ordering = ["-accepted_at"]
+        verbose_name = "약관 동의 기록"
+        verbose_name_plural = "약관 동의 기록"
+
+    def __str__(self):
+        return f"{self.user.nickname or self.user.username} · {self.get_slug_display()} v{self.version}"
 
 
 class PhoneOTP(models.Model):

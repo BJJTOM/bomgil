@@ -17,8 +17,36 @@ export default function RegisterPage() {
     password1: "",
     password2: "",
   });
+  const [agreements, setAgreements] = useState({
+    age_14: false,
+    terms: false,
+    privacy: false,
+    location_terms: false,
+    location_privacy: false,
+    marketing: false,
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const requiredAllChecked =
+    agreements.age_14 &&
+    agreements.terms &&
+    agreements.privacy &&
+    agreements.location_terms &&
+    agreements.location_privacy;
+  const everyChecked = requiredAllChecked && agreements.marketing;
+
+  const toggleAll = () => {
+    const next = !everyChecked;
+    setAgreements({
+      age_14: next,
+      terms: next,
+      privacy: next,
+      location_terms: next,
+      location_privacy: next,
+      marketing: next,
+    });
+  };
 
   function getPasswordStrength(password: string): { level: number; label: string; color: string } {
     if (!password) return { level: 0, label: "", color: "" };
@@ -64,10 +92,28 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!requiredAllChecked) {
+      setError("필수 약관에 모두 동의해주세요.");
+      return;
+    }
+
     setLoading(true);
     try {
       const username = form.email.split("@")[0] + "_" + Date.now().toString(36);
-      const { data } = await api.post("/auth/register/", { ...form, username });
+      const { data } = await api.post(
+        "/auth/register/",
+        {
+          ...form,
+          username,
+          agree_age_14: agreements.age_14,
+          agree_terms: agreements.terms,
+          agree_privacy: agreements.privacy,
+          agree_location_terms: agreements.location_terms,
+          agree_location_privacy: agreements.location_privacy,
+          agree_marketing: agreements.marketing,
+        },
+        { _silent: true } as any,
+      );
       const { data: user } = await api.get("/auth/me/", {
         headers: { Authorization: `Bearer ${data.access}` },
       });
@@ -196,10 +242,70 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* Consent block (Korean-standard signup flow) */}
+            <div className="mt-3 rounded-[14px] border border-gray-200 bg-white/60 p-4 space-y-2 text-[13px]">
+              <label className="flex items-center gap-3 pb-2 border-b border-gray-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-primary"
+                  checked={everyChecked}
+                  onChange={toggleAll}
+                />
+                <span className="font-semibold text-text-primary">전체 동의</span>
+              </label>
+              <ConsentRow
+                label="만 14세 이상입니다"
+                required
+                checked={agreements.age_14}
+                onChange={(v) => setAgreements((a) => ({ ...a, age_14: v }))}
+              />
+              <ConsentRow
+                label="이용약관 동의"
+                required
+                href="/terms"
+                checked={agreements.terms}
+                onChange={(v) => setAgreements((a) => ({ ...a, terms: v }))}
+              />
+              <ConsentRow
+                label="개인정보처리방침 동의"
+                required
+                href="/privacy"
+                checked={agreements.privacy}
+                onChange={(v) => setAgreements((a) => ({ ...a, privacy: v }))}
+              />
+              <ConsentRow
+                label="위치기반서비스 이용약관 동의"
+                required
+                href="/terms/location"
+                checked={agreements.location_terms}
+                onChange={(v) => setAgreements((a) => ({ ...a, location_terms: v }))}
+              />
+              <ConsentRow
+                label="개인위치정보 처리방침 동의"
+                required
+                href="/privacy/location"
+                checked={agreements.location_privacy}
+                onChange={(v) => setAgreements((a) => ({ ...a, location_privacy: v }))}
+              />
+              <ConsentRow
+                label="마케팅 정보 수신 동의"
+                href="/terms/marketing"
+                checked={agreements.marketing}
+                onChange={(v) => setAgreements((a) => ({ ...a, marketing: v }))}
+              />
+            </div>
+
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !form.email || !form.nickname || !form.password1 || !form.password2}
+              disabled={
+                loading ||
+                !form.email ||
+                !form.nickname ||
+                !form.password1 ||
+                !form.password2 ||
+                !requiredAllChecked
+              }
               className="btn-primary w-full mt-2"
             >
               {loading ? (
@@ -233,11 +339,56 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-[11px] text-text-tertiary mt-6 leading-relaxed">
-          {t("register.termsNotice")}{" "}
-          <Link href="/terms" className="underline">{t("register.terms")}</Link> {t("register.and")}{" "}
-          <Link href="/privacy" className="underline">{t("register.privacy")}</Link>{t("register.termsAgree")}
+          가입 완료 시 위 동의 내역은 감사 로그에 기록됩니다.
         </p>
       </div>
+    </div>
+  );
+}
+
+function ConsentRow({
+  label,
+  required,
+  href,
+  checked,
+  onChange,
+}: {
+  label: string;
+  required?: boolean;
+  href?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <label className="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-primary shrink-0"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span className="truncate">
+          <span
+            className={`text-[11px] font-semibold mr-1.5 ${
+              required ? "text-danger" : "text-text-tertiary"
+            }`}
+          >
+            [{required ? "필수" : "선택"}]
+          </span>
+          <span className="text-text-secondary">{label}</span>
+        </span>
+      </label>
+      {href && (
+        <Link
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-text-tertiary underline shrink-0"
+        >
+          보기
+        </Link>
+      )}
     </div>
   );
 }

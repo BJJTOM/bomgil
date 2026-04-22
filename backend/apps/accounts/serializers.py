@@ -4,7 +4,18 @@ from django.contrib.auth import authenticate
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
 
-from .models import CustomUser, LEVEL_NAMES, Notification, UserBadge, XPLog, xp_for_next_level
+from .models import (
+    AgreementAcceptance,
+    CustomUser,
+    LEVEL_NAMES,
+    Notification,
+    UserBadge,
+    XPLog,
+    xp_for_next_level,
+)
+
+
+REQUIRED_AGREEMENTS = ("terms", "privacy", "location-terms", "location-privacy", "age-14")
 
 
 def strip_html(value):
@@ -35,6 +46,15 @@ class EmailLoginSerializer(serializers.Serializer):
 class CustomRegisterSerializer(RegisterSerializer):
     nickname = serializers.CharField(max_length=50, required=True)
 
+    # Consent booleans — all required ones must be true before a user can
+    # register. Marketing is stored but optional.
+    agree_terms = serializers.BooleanField(write_only=True)
+    agree_privacy = serializers.BooleanField(write_only=True)
+    agree_location_terms = serializers.BooleanField(write_only=True)
+    agree_location_privacy = serializers.BooleanField(write_only=True)
+    agree_age_14 = serializers.BooleanField(write_only=True)
+    agree_marketing = serializers.BooleanField(write_only=True, required=False, default=False)
+
     def validate_nickname(self, value):
         cleaned = strip_html(value)
         if cleaned != value:
@@ -43,14 +63,65 @@ class CustomRegisterSerializer(RegisterSerializer):
             raise serializers.ValidationError("닉네임은 1~50자여야 합니다.")
         return cleaned
 
+    def validate(self, data):
+        data = super().validate(data)
+        missing = []
+        if not data.get("agree_terms"):
+            missing.append("이용약관")
+        if not data.get("agree_privacy"):
+            missing.append("개인정보처리방침")
+        if not data.get("agree_location_terms"):
+            missing.append("위치기반서비스 이용약관")
+        if not data.get("agree_location_privacy"):
+            missing.append("개인위치정보 처리방침")
+        if not data.get("agree_age_14"):
+            missing.append("만 14세 이상 확인")
+        if missing:
+            raise serializers.ValidationError(
+                {"non_field_errors": [f"필수 약관에 동의해야 합니다: {', '.join(missing)}"]}
+            )
+        return data
+
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
         data["nickname"] = self.validated_data.get("nickname", "")
         return data
 
     def custom_signup(self, request, user):
+        from django.utils import timezone
+        from apps.community.models import LegalDocument
+
         user.nickname = self.validated_data.get("nickname", "")
-        user.save(update_fields=["nickname"])
+        marketing = bool(self.validated_data.get("agree_marketing", False))
+        update_fields = ["nickname"]
+        if marketing:
+            user.marketing_consent = True
+            user.marketing_consent_at = timezone.now()
+            update_fields += ["marketing_consent", "marketing_consent_at"]
+        user.save(update_fields=update_fields)
+
+        # Record each accepted agreement with the live version the user
+        # was shown, so we can later prove which wording they agreed to.
+        ip = _client_ip(request)
+        ua = (request.META.get("HTTP_USER_AGENT", "") if request else "")[:300]
+        to_log = list(REQUIRED_AGREEMENTS) + (["marketing-consent"] if marketing else [])
+        for slug in to_log:
+            doc = LegalDocument.latest_published(slug) if slug != "age-14" else None
+            version = doc.version if doc else ""
+            AgreementAcceptance.objects.get_or_create(
+                user=user,
+                slug=slug,
+                defaults={"version": version, "ip_address": ip, "user_agent": ua},
+            )
+
+
+def _client_ip(request):
+    if not request:
+        return None
+    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
 
 
 class UserBadgeSerializer(serializers.ModelSerializer):

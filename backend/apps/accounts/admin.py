@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, Notification, PhoneAuthLog, PhoneOTP, XPLog
+from .models import AgreementAcceptance, CustomUser, Notification, PhoneAuthLog, PhoneOTP, XPLog
 
 
 @admin.register(CustomUser)
@@ -75,3 +75,12 @@ class PhoneAuthLogAdmin(admin.ModelAdmin):
         "nickname", "email", "ip_address", "user_agent", "error_message", "created_at",
     ]
     date_hierarchy = "created_at"
+
+
+@admin.register(AgreementAcceptance)
+class AgreementAcceptanceAdmin(admin.ModelAdmin):
+    list_display = ["user", "slug", "version", "accepted_at", "ip_address"]
+    list_filter = ["slug", "version"]
+    search_fields = ["user__nickname", "user__email", "ip_address"]
+    readonly_fields = ["user", "slug", "version", "accepted_at", "ip_address", "user_agent"]
+    date_hierarchy = "accepted_at"

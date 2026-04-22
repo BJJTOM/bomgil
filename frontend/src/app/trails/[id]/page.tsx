@@ -791,7 +791,7 @@ export default function TrailDetailPage() {
         {activeTab === "course" && (
           <div className="animate-fade-in space-y-3">
             {/* Elevation Profile */}
-            {tr.path_data && tr.path_data.coordinates.length >= 2 && (
+            {tr.path_data?.coordinates && tr.path_data.coordinates.length >= 2 && (
               <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
                 <ElevationProfile pathData={tr.path_data} />
               </section>

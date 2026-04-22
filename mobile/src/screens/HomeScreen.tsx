@@ -23,7 +23,7 @@ import { colors } from '../theme/colors';
 import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
-import WeeklyInsights from '../components/WeeklyInsights';
+// WeeklyInsights moved to ActivityScreen
 import { useLanguageStore, Language } from '../stores/language';
 import { useAuthStore } from '../stores/auth';
 import { useThemeStore } from '../stores/theme';
@@ -513,14 +513,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </FadeInView>
-
-        {/* ============================================================= */}
-        {/* Weekly Activity (authenticated, between countries and trails) */}
-        {isAuthenticated && (
-          <FadeInView delay={150}>
-            <WeeklyInsights />
-          </FadeInView>
-        )}
 
         {/* Merged Trail Section (today + popular + recommended)           */}
         {/* ============================================================= */}

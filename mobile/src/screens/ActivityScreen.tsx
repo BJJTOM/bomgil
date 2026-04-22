@@ -21,6 +21,7 @@ import { useAuthStore } from '../stores/auth';
 import { navParamCache } from '../utils/navParamCache';
 import { useThemeStore } from '../stores/theme';
 import { FadeInView } from '../components/FadeInView';
+import WeeklyInsights from '../components/WeeklyInsights';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 // ─── Progress Ring Constants ───
@@ -385,6 +386,11 @@ export default function ActivityScreen() {
               </View>
             </View>
           </View>
+        </FadeInView>
+
+        {/* ===== AI WEEKLY INSIGHTS ===== */}
+        <FadeInView delay={FADE_DELAY_WEEKLY_CARD + 50}>
+          <WeeklyInsights />
         </FadeInView>
 
         {/* ===== QUICK STATS ROW ===== */}

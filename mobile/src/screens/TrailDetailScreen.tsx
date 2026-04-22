@@ -634,7 +634,7 @@ function TrailDetailScreenInner() {
               pathCoordinates={trail.path_data?.coordinates as [number, number][] | undefined}
               region={trail.region}
               country={trail.country}
-              height={200}
+              height={260}
               theme="dark"
               spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
@@ -699,7 +699,14 @@ function TrailDetailScreenInner() {
                         </TouchableOpacity>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.spotName, { color: textColor }]}>{spot?.name || ''}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={[styles.spotName, { color: textColor, flex: 1 }]} numberOfLines={1}>{spot?.name || ''}</Text>
+                          {spot.distance_from_start != null && (
+                            <Text style={{ fontSize: 11, color: textTertColor, marginLeft: 8 }}>
+                              {parseFloat(String(spot.distance_from_start)).toFixed(1)}km
+                            </Text>
+                          )}
+                        </View>
                         {spot.description ? (
                           <Text style={[styles.spotDesc, { color: textSecColor }]} numberOfLines={2}>
                             {spot.description}
@@ -1312,7 +1319,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8FA',
   },
   mapFallback: {
-    height: 140,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F7F8FA',
@@ -1321,40 +1328,40 @@ const styles = StyleSheet.create({
   // -- Spots ----------------------------------------------------------
   spotItem: {
     flexDirection: 'row',
-    marginBottom: 2,
+    marginBottom: 0,
   },
   spotDotColumn: {
-    width: 28,
+    width: 24,
     alignItems: 'center',
   },
   spotDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F7F8FA',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F2F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   spotDotInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   spotConnector: {
-    width: 2,
+    width: 1.5,
     flex: 1,
     backgroundColor: '#E5E8EB',
-    marginVertical: 2,
+    marginVertical: 3,
   },
   spotContent: {
     flex: 1,
-    paddingLeft: 10,
-    paddingBottom: 14,
+    paddingLeft: 12,
+    paddingBottom: 18,
   },
   spotThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   spotCountBadge: {
     fontSize: 12,

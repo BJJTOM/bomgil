@@ -23,6 +23,7 @@ from .models import (
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
     Notice, SiteConfig,
+    LegalDocument,
 )
 
 
@@ -335,3 +336,17 @@ class NoticeAdmin(admin.ModelAdmin):
     list_editable = ['is_pinned', 'is_published']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
+
+
+# ── LegalDocument ───────────────────────────────────────────────────
+@admin.register(LegalDocument)
+class LegalDocumentAdmin(admin.ModelAdmin):
+    list_display = ['slug', 'version', 'title', 'effective_from', 'is_published', 'updated_at']
+    list_filter = ['slug', 'is_published']
+    search_fields = ['slug', 'title', 'body_markdown']
+    list_editable = ['is_published']
+    ordering = ['slug', '-effective_from']
+    fieldsets = [
+        ('기본', {'fields': ['slug', 'title', 'version', 'effective_from', 'is_published']}),
+        ('본문 (Markdown)', {'fields': ['body_markdown']}),
+    ]

@@ -350,3 +350,54 @@ class Notice(models.Model):
 
     def __str__(self):
         return f"{'[중요] ' if self.is_pinned else ''}{self.title}"
+
+
+# ──────────────────────────────────────
+# LegalDocument (약관·방침: 어드민에서 편집)
+# ──────────────────────────────────────
+class LegalDocument(models.Model):
+    """Admin-editable legal documents (terms, privacy, etc.).
+
+    Every save creates a new row (version). The "published" flag flips
+    only the latest revision per slug; older versions stay as historical
+    record so we can always show the text that was effective at signup.
+    """
+
+    SLUG_CHOICES = [
+        ("terms", "이용약관"),
+        ("privacy", "개인정보처리방침"),
+        ("location-terms", "위치기반서비스 이용약관"),
+        ("location-privacy", "위치정보 처리방침"),
+        ("marketing-consent", "마케팅 수신 동의"),
+    ]
+
+    slug = models.CharField(max_length=40, choices=SLUG_CHOICES, db_index=True)
+    title = models.CharField(max_length=100)
+    body_markdown = models.TextField(help_text="Markdown (GFM) 지원 — 표, 목록, 굵기 등")
+    version = models.CharField(max_length=20, default="1.0", help_text='예: "1.0", "1.1"')
+    effective_from = models.DateField(help_text="이 버전이 효력을 발생하는 시작일")
+    is_published = models.BooleanField(
+        default=False,
+        help_text="체크 시 공개 API에서 이 슬러그의 최신 노출본이 됩니다",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["slug", "-effective_from", "-created_at"]
+        indexes = [models.Index(fields=["slug", "-effective_from"])]
+        verbose_name = "약관·방침 문서"
+        verbose_name_plural = "약관·방침 문서"
+
+    def __str__(self):
+        status = "✓ 공개" if self.is_published else "초안"
+        return f"[{self.get_slug_display()}] v{self.version} ({status})"
+
+    @classmethod
+    def latest_published(cls, slug: str):
+        """Return the newest published document for the slug, or None."""
+        return (
+            cls.objects.filter(slug=slug, is_published=True)
+            .order_by("-effective_from", "-created_at")
+            .first()
+        )

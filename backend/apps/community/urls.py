@@ -50,4 +50,9 @@ urlpatterns = [
 
     # 사이트 설정
     path('site-config/', views.SiteConfigView.as_view(), name='site-config'),
+
+    # 약관·방침 (공개 + 어드민)
+    path('legal/<slug:slug>/', views.LegalDocumentPublicView.as_view(), name='legal-public'),
+    path('admin/legal/', views.LegalDocumentListAdminView.as_view(), name='legal-admin-list'),
+    path('admin/legal/<int:pk>/', views.LegalDocumentAdminDetailView.as_view(), name='legal-admin-detail'),
 ]

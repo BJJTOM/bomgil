@@ -11,6 +11,7 @@ from .models import (
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
     Notice, SiteConfig,
+    LegalDocument,
 )
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateSerializer, PostUpdateSerializer,
@@ -634,3 +635,94 @@ class SiteConfigView(APIView):
             'telecom_number': config.telecom_number,
             'contact_email': config.contact_email,
         })
+
+
+# ──────────────────────────────────────
+# LegalDocument (약관·방침)
+# ──────────────────────────────────────
+def _legal_to_dict(doc):
+    return {
+        "slug": doc.slug,
+        "slug_display": doc.get_slug_display(),
+        "title": doc.title,
+        "body_markdown": doc.body_markdown,
+        "version": doc.version,
+        "effective_from": doc.effective_from.isoformat(),
+        "is_published": doc.is_published,
+        "updated_at": doc.updated_at.isoformat(),
+    }
+
+
+class LegalDocumentPublicView(APIView):
+    """Public: return the latest published version for a given slug."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, slug):
+        doc = LegalDocument.latest_published(slug)
+        if not doc:
+            return Response({"detail": "문서를 찾을 수 없습니다."}, status=404)
+        return Response(_legal_to_dict(doc))
+
+
+class LegalDocumentListAdminView(APIView):
+    """Admin: list all documents (all versions, all slugs)."""
+
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        slug = request.query_params.get("slug")
+        qs = LegalDocument.objects.all()
+        if slug:
+            qs = qs.filter(slug=slug)
+        return Response([_legal_to_dict(d) for d in qs])
+
+    def post(self, request):
+        """Create a new version for a slug."""
+        slug = request.data.get("slug", "")
+        if slug not in dict(LegalDocument.SLUG_CHOICES):
+            return Response({"detail": "invalid slug"}, status=400)
+        doc = LegalDocument.objects.create(
+            slug=slug,
+            title=request.data.get("title", "").strip() or dict(LegalDocument.SLUG_CHOICES)[slug],
+            body_markdown=request.data.get("body_markdown", ""),
+            version=request.data.get("version", "1.0"),
+            effective_from=request.data.get("effective_from"),
+            is_published=bool(request.data.get("is_published", False)),
+        )
+        return Response(_legal_to_dict(doc), status=201)
+
+
+class LegalDocumentAdminDetailView(APIView):
+    """Admin: retrieve, update, delete a specific version."""
+
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_object(self, pk):
+        try:
+            return LegalDocument.objects.get(pk=pk)
+        except LegalDocument.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        doc = self.get_object(pk)
+        if not doc:
+            return Response(status=404)
+        return Response(_legal_to_dict(doc))
+
+    def patch(self, request, pk):
+        doc = self.get_object(pk)
+        if not doc:
+            return Response(status=404)
+        for field in ("title", "body_markdown", "version", "effective_from", "is_published"):
+            if field in request.data:
+                setattr(doc, field, request.data[field])
+        doc.save()
+        return Response(_legal_to_dict(doc))
+
+    def delete(self, request, pk):
+        doc = self.get_object(pk)
+        if not doc:
+            return Response(status=404)
+        doc.delete()
+        return Response(status=204)

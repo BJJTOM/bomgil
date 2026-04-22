@@ -69,7 +69,7 @@ function CategoryBadge({ category, isDark }: { category: string; isDark: boolean
   );
 }
 
-// ── Post Card (photo-first) ──
+// ── Thread-style Post Item (Threads/Twitter layout) ──
 const PostCard = React.memo(function PostCard({
   item,
   index,
@@ -101,116 +101,95 @@ const PostCard = React.memo(function PostCard({
 }) {
   const hasPhoto = !!(item.thumbnail || (item.images && item.images.length > 0));
   const photoUri = item.thumbnail || (item.images && item.images.length > 0 ? item.images[0].image : null);
+  const borderBottomColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
 
   return (
-    <FadeInView delay={Math.min(index * 40, 200)}>
-      <TouchableOpacity
-        style={[
-          styles.card,
-          {
-            backgroundColor: cardBg,
-            shadowColor,
-          },
-          isDark && styles.cardDark,
-        ]}
-        activeOpacity={0.7}
-        onPress={onPress}>
+    <TouchableOpacity
+      style={[styles.threadItem, { borderBottomColor }]}
+      activeOpacity={0.7}
+      onPress={onPress}>
 
-        {/* Photo area */}
-        {hasPhoto && photoUri ? (
-          <Image
-            source={{ uri: photoUri }}
-            style={styles.cardPhoto}
-            resizeMode="cover"
-          />
-        ) : (
-          /* Text preview when no photo */
-          <View style={[styles.cardTextPreview, { backgroundColor: textPreviewBg }]}>
-            <Text style={[styles.cardTextPreviewContent, { color: textSecColor }]} numberOfLines={3}>
-              {item.content || item.title}
-            </Text>
-          </View>
-        )}
-
-        {/* Card body */}
-        <View style={styles.cardBody}>
-          {/* Author row (top) */}
-          <TouchableOpacity
-            style={styles.authorRow}
-            activeOpacity={0.7}
-            onPress={onProfilePress}>
-            {item.author_image ? (
-              <Image source={{ uri: item.author_image }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: surfaceBg }]}>
-                <Feather name="user" size={14} color={textTertColor} />
-              </View>
-            )}
-            <View style={styles.authorInfo}>
-              <View style={styles.authorNameRow}>
-                <Text style={[styles.authorName, { color: textColor }]}>{item.author_nickname}</Text>
-                {item.author_level != null && item.author_level > 0 && (
-                  <View style={[styles.lvBadge, isDark && { backgroundColor: 'rgba(74,222,128,0.12)' }]}>
-                    <Text style={[styles.lvBadgeText, isDark && { color: '#4ADE80' }]}>Lv.{item.author_level}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={[styles.timeText, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
-            </View>
-            <CategoryBadge category={item.category} isDark={isDark} />
-          </TouchableOpacity>
-
-          {/* Title */}
-          <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={2}>
-            {item.title}
-          </Text>
-
-          {/* Pinned indicator */}
-          {item.is_pinned && (
-            <View style={[styles.pinnedRow]}>
-              <Feather name="bookmark" size={11} color="#C2410C" />
-              <Text style={styles.pinnedText}>고정됨</Text>
+      {/* Left: avatar + vertical line */}
+      <View style={styles.threadLeft}>
+        <TouchableOpacity onPress={onProfilePress} activeOpacity={0.7}>
+          {item.author_image ? (
+            <Image source={{ uri: item.author_image }} style={styles.threadAvatar} />
+          ) : (
+            <View style={[styles.threadAvatarPlaceholder, { backgroundColor: surfaceBg }]}>
+              <Feather name="user" size={16} color={textTertColor} />
             </View>
           )}
+        </TouchableOpacity>
+      </View>
 
-          {/* Footer: likes + comments */}
-          <View style={[styles.cardFooter, isDark && { borderTopColor: 'rgba(255,255,255,0.06)' }]}>
-            <TouchableOpacity
-              style={styles.footerBtn}
-              onPress={onLike}
-              activeOpacity={0.6}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Feather
-                name="heart"
-                size={16}
-                color={item.is_liked ? '#FF4B4B' : textTertColor}
-              />
-              <Text
-                style={[
-                  styles.footerCount,
-                  { color: textTertColor },
-                  item.is_liked && { color: '#FF4B4B' },
-                ]}>
-                {item.like_count}
-              </Text>
-            </TouchableOpacity>
+      {/* Right: content */}
+      <View style={styles.threadRight}>
+        {/* Header: name + time + category */}
+        <View style={styles.threadHeader}>
+          <TouchableOpacity onPress={onProfilePress} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Text style={[styles.threadAuthor, { color: textColor }]}>{item.author_nickname}</Text>
+            {item.author_level != null && item.author_level > 0 && (
+              <View style={[styles.lvBadge, isDark && { backgroundColor: 'rgba(74,222,128,0.12)' }]}>
+                <Text style={[styles.lvBadgeText, isDark && { color: '#4ADE80' }]}>Lv.{item.author_level}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={[styles.threadTime, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
+        </View>
 
-            <View style={styles.footerBtn}>
-              <Feather name="message-circle" size={16} color={textTertColor} />
-              <Text style={[styles.footerCount, { color: textTertColor }]}>
-                {item.comment_count}
-              </Text>
+        {/* Title + content */}
+        <Text style={[styles.threadTitle, { color: textColor }]} numberOfLines={2}>
+          {item.title}
+        </Text>
+        {item.content ? (
+          <Text style={[styles.threadContent, { color: textSecColor }]} numberOfLines={3}>
+            {item.content}
+          </Text>
+        ) : null}
+
+        {/* Photo (if exists) */}
+        {hasPhoto && photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.threadPhoto} resizeMode="cover" />
+        ) : null}
+
+        {/* Category + pinned */}
+        <View style={styles.threadMeta}>
+          <CategoryBadge category={item.category} isDark={isDark} />
+          {item.is_pinned && (
+            <View style={styles.pinnedRow}>
+              <Feather name="bookmark" size={10} color="#C2410C" />
+              <Text style={styles.pinnedText}>고정</Text>
             </View>
+          )}
+        </View>
 
-            <View style={styles.footerSpacer} />
-
-            <Text style={[styles.footerViews, { color: textTertColor }]}>
-              조회 {item.view_count}
+        {/* Actions: like, comment, views */}
+        <View style={styles.threadActions}>
+          <TouchableOpacity
+            style={styles.threadActionBtn}
+            onPress={onLike}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="heart" size={15} color={item.is_liked ? '#FF4B4B' : textTertColor} />
+            <Text style={[styles.threadActionText, { color: item.is_liked ? '#FF4B4B' : textTertColor }]}>
+              {item.like_count || ''}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.threadActionBtn}>
+            <Feather name="message-circle" size={15} color={textTertColor} />
+            <Text style={[styles.threadActionText, { color: textTertColor }]}>
+              {item.comment_count || ''}
+            </Text>
+          </View>
+          <View style={styles.threadActionBtn}>
+            <Feather name="eye" size={15} color={textTertColor} />
+            <Text style={[styles.threadActionText, { color: textTertColor }]}>
+              {item.view_count || ''}
             </Text>
           </View>
         </View>
-      </TouchableOpacity>
-    </FadeInView>
+      </View>
+    </TouchableOpacity>
   );
 });
 
@@ -512,38 +491,89 @@ const styles = StyleSheet.create({
   categoryChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
 
   // Post list
-  postList: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 100 },
+  postList: { paddingBottom: 100 },
 
-  // Card
-  card: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+  // Thread-style item
+  threadItem: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
   },
-  cardDark: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  threadLeft: {
+    width: 44,
+    alignItems: 'center',
+    paddingTop: 2,
   },
-
-  // Card photo
-  cardPhoto: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#F2F4F6',
+  threadAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
-
-  // Text preview (no photo)
-  cardTextPreview: {
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    minHeight: 100,
+  threadAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
     justifyContent: 'center',
   },
+  threadRight: {
+    flex: 1,
+    paddingLeft: 8,
+  },
+  threadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  threadAuthor: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginRight: 6,
+  },
+  threadTime: {
+    fontSize: 12,
+  },
+  threadTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 21,
+    marginBottom: 4,
+  },
+  threadContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  threadPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: '#F2F4F6',
+    marginBottom: 8,
+  },
+  threadMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  threadActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  threadActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  threadActionText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Legacy card styles (kept for compat)
   cardTextPreviewContent: {
     fontSize: 15,
     lineHeight: 22,

@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import api from "@/lib/api";
 
 export interface Trail {
@@ -30,6 +35,31 @@ export function useTrails(params?: Record<string, string>) {
       const { data } = await api.get("/trails/", { params });
       return data;
     },
+  });
+}
+
+/**
+ * Cursor-paginated infinite list. Hand the rendered element an
+ * IntersectionObserver target at the bottom of the grid to trigger
+ * fetchNextPage().
+ */
+export function useInfiniteTrails(params?: Record<string, string>) {
+  return useInfiniteQuery({
+    queryKey: ["trails", "infinite", params],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      // Cursor pagination: subsequent pages are full URLs returned by
+      // the DRF `next` field. Strip everything up to `?` and let axios
+      // send the query-string verbatim so we don't lose the cursor.
+      if (pageParam) {
+        const qs = String(pageParam).split("?")[1] || "";
+        const { data } = await api.get(`/trails/?${qs}`);
+        return data;
+      }
+      const { data } = await api.get("/trails/", { params });
+      return data;
+    },
+    getNextPageParam: (lastPage: { next?: string | null }) => lastPage?.next ?? null,
   });
 }
 

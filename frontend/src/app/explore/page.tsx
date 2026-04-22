@@ -3,7 +3,10 @@
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useTrails, usePopularTrails } from "@/hooks/useTrails";
+import {
+  useInfiniteTrails,
+  usePopularTrails,
+} from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
 import { ExploreMap } from "@/components/ExploreMap";
@@ -377,8 +380,34 @@ function ExploreContent() {
     return params;
   }, [filters, sortBy, search]);
 
-  const { data, isLoading } = useTrails(queryParams);
-  const allTrails: Trail[] = data?.results ?? data ?? [];
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteTrails(queryParams);
+  const allTrails: Trail[] = useMemo(() => {
+    const pages = (data?.pages ?? []) as Array<{ results?: Trail[] }>;
+    const out: Trail[] = [];
+    for (const p of pages) {
+      if (p?.results) out.push(...p.results);
+    }
+    return out;
+  }, [data]);
+
+  // Load the next cursor page when the sentinel enters the viewport.
+  const loadMoreRef = (node: HTMLDivElement | null) => {
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) fetchNextPage();
+      },
+      { rootMargin: "240px" },
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  };
 
   const { data: popularData } = usePopularTrails();
   const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);
@@ -711,13 +740,55 @@ function ExploreContent() {
                 popularTrails={popularTrails}
               />
             ) : viewMode === "list" ? (
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {trails.map((trail) => (
-                  <div key={trail.id} id={`trail-${trail.id}`}>
-                    <TrailCard trail={trail} />
+              <>
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {trails.map((trail) => (
+                    <div key={trail.id} id={`trail-${trail.id}`}>
+                      <TrailCard trail={trail} />
+                    </div>
+                  ))}
+                </div>
+                {hasNextPage && (
+                  <div ref={loadMoreRef} className="py-8 flex justify-center">
+                    {isFetchingNextPage ? (
+                      <div className="flex items-center gap-2 text-text-tertiary text-[13px]">
+                        <span className="w-4 h-4 rounded-full border-2 border-text-tertiary border-t-transparent animate-spin" />
+                        {language === "ko"
+                          ? "더 불러오는 중..."
+                          : language === "ja"
+                          ? "読み込み中..."
+                          : language === "zh"
+                          ? "加载中..."
+                          : "Loading more..."}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fetchNextPage()}
+                        className="px-5 py-2 rounded-full border border-gray-200 text-[13px] text-text-secondary"
+                      >
+                        {language === "ko"
+                          ? "더 보기"
+                          : language === "ja"
+                          ? "もっと見る"
+                          : language === "zh"
+                          ? "加载更多"
+                          : "Load more"}
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
+                )}
+                {!hasNextPage && trails.length > 20 && (
+                  <div className="py-8 text-center text-[12px] text-text-tertiary">
+                    {language === "ko"
+                      ? "모든 코스를 불러왔어요"
+                      : language === "ja"
+                      ? "すべて表示しました"
+                      : language === "zh"
+                      ? "已显示全部"
+                      : "That's all the trails!"}
+                  </div>
+                )}
+              </>
             ) : (
               <ExploreMap trails={trails} />
             )}

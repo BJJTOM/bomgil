@@ -322,3 +322,125 @@ input::-webkit-credentials-auto-fill-button {
   visibility: hidden;
   pointer-events: none;
 }
+
+/* ----------------------------------------------------------------
+   Legal documents (terms / privacy / etc.) Markdown typography.
+   Gives react-markdown output proper heading hierarchy, breathing
+   room between paragraphs, list and table styling so it reads like
+   a real policy document rather than a wall of text.
+---------------------------------------------------------------- */
+.legal-markdown {
+  color: var(--c-text-secondary, #4e5968);
+  line-height: 1.75;
+  font-size: 14px;
+}
+
+.legal-markdown > * + * {
+  margin-top: 1em;
+}
+
+.legal-markdown h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text-primary, #191f28);
+  margin-top: 0;
+  margin-bottom: 0.6em;
+  letter-spacing: -0.01em;
+}
+
+.legal-markdown h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-text-primary, #191f28);
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--c-border-light, #e5e8eb);
+  letter-spacing: -0.005em;
+}
+
+.legal-markdown h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 1em;
+}
+
+.legal-markdown h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--c-text-primary, #191f28);
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+}
+
+.legal-markdown p {
+  margin: 0.6em 0;
+}
+
+.legal-markdown strong {
+  color: var(--c-text-primary, #191f28);
+  font-weight: 600;
+}
+
+.legal-markdown ul,
+.legal-markdown ol {
+  margin: 0.6em 0 0.6em 1.2em;
+  padding-left: 0.2em;
+}
+
+.legal-markdown ul { list-style: disc; }
+.legal-markdown ol { list-style: decimal; }
+
+.legal-markdown li {
+  margin: 0.35em 0;
+  padding-left: 0.25em;
+}
+
+.legal-markdown li > ul,
+.legal-markdown li > ol { margin-top: 0.35em; }
+
+.legal-markdown a {
+  color: var(--c-primary, #2d4a2e);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal-markdown blockquote {
+  border-left: 3px solid var(--c-border-light, #e5e8eb);
+  padding: 0.4em 1em;
+  margin: 1em 0;
+  color: var(--c-text-tertiary, #8b95a1);
+}
+
+.legal-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 13px;
+}
+
+.legal-markdown thead th {
+  background: var(--c-bg-secondary, #f9fafb);
+  border-bottom: 2px solid var(--c-border-light, #e5e8eb);
+  text-align: left;
+  padding: 0.55em 0.8em;
+  color: var(--c-text-primary, #191f28);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.legal-markdown tbody td {
+  border-bottom: 1px solid var(--c-border-light, #e5e8eb);
+  padding: 0.5em 0.8em;
+  vertical-align: top;
+}
+
+.legal-markdown hr {
+  border: none;
+  border-top: 1px solid var(--c-border-light, #e5e8eb);
+  margin: 1.8em 0;
+}
+
+.dark .legal-markdown thead th { background: rgba(255, 255, 255, 0.04); }
+.dark .legal-markdown thead th,
+.dark .legal-markdown tbody td { border-color: rgba(255, 255, 255, 0.08); }

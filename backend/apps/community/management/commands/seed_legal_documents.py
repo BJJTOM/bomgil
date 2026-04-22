@@ -245,7 +245,6 @@ PRIVACY_MD = """# 개인정보처리방침
 | Vercel Inc. | 웹 호스팅, CDN | 미국 |
 | Google LLC (Firebase) | 푸시 알림(FCM), 분석, 충돌 리포트 | 미국 |
 | Cloudflare, Inc. (R2) | 이미지·미디어 저장 | 미국 |
-| Amazon Web Services, Inc. (S3) | 미디어 백업(선택) | 미국 |
 | Anthropic, PBC | AI 검색·스토리 작성 | 미국 |
 | Mapbox, Inc. | 지도 렌더링(모바일) | 미국 |
 | 한국관광공사 | 공공 코스 데이터 조회 | 대한민국 |
@@ -521,16 +520,41 @@ SEED_DATA = [
 
 
 class Command(BaseCommand):
-    help = "Seed initial legal documents (terms, privacy, location, marketing) as v1.0."
+    help = (
+        "Seed initial legal documents (terms, privacy, location, marketing). "
+        "Creates v1.0 on fresh DBs; with --force-update, overwrites the body "
+        "of the existing v1.0 to match the current source — useful when we "
+        "fix wording that was already seeded."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--force-update",
+            action="store_true",
+            help="Overwrite the body_markdown of existing v1.0 rows to match the seed source.",
+        )
 
     def handle(self, *args, **options):
         effective = date(2026, 4, 22)
+        force = options["force_update"]
         created = 0
+        updated = 0
         skipped = 0
+
         for slug, title, body in SEED_DATA:
-            if LegalDocument.objects.filter(slug=slug).exists():
-                skipped += 1
-                self.stdout.write(f"  = {slug} (exists, skipped)")
+            existing = LegalDocument.objects.filter(slug=slug, version="1.0").first()
+            if existing:
+                if force and existing.body_markdown != body:
+                    existing.title = title
+                    existing.body_markdown = body
+                    existing.is_published = True
+                    existing.effective_from = effective
+                    existing.save()
+                    updated += 1
+                    self.stdout.write(self.style.WARNING(f"  ↻ {slug} body updated"))
+                else:
+                    skipped += 1
+                    self.stdout.write(f"  = {slug} (exists, skipped)")
                 continue
             LegalDocument.objects.create(
                 slug=slug,
@@ -544,5 +568,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"  + {slug} created"))
 
         self.stdout.write(
-            self.style.SUCCESS(f"Done: created={created}, skipped={skipped}")
+            self.style.SUCCESS(
+                f"Done: created={created}, updated={updated}, skipped={skipped}"
+            )
         )

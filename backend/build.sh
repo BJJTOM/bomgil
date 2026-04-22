@@ -30,7 +30,13 @@ echo "=== Creating cache table (idempotent) ==="
 python manage.py createcachetable
 
 echo "=== Seeding legal documents (idempotent, fast) ==="
-python manage.py seed_legal_documents || echo "seed_legal_documents failed — continuing"
+# --force-update rewrites existing v1.0 rows so the fix for wording
+# issues we noticed post-seed (e.g. phantom AWS attribution) lands
+# automatically on the next deploy. Operator edits made through the
+# admin UI won't be overwritten because the admin should save a new
+# version string (v1.1, v2.0…) — only v1.0 is touched here.
+python manage.py seed_legal_documents --force-update \
+  || echo "seed_legal_documents failed — continuing"
 
 if [ "${MORU_SANITIZE_USERS:-0}" = "1" ]; then
   echo "=== Sanitizing legacy phone-encoded usernames ==="

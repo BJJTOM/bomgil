@@ -215,11 +215,29 @@ class Command(BaseCommand):
             action="store_true",
             help="Print what would be imported without saving to the database",
         )
+        parser.add_argument(
+            "--ai-enhance",
+            action="store_true",
+            help="Use Claude to rewrite descriptions + generate tags (costs API credits).",
+        )
+        parser.add_argument(
+            "--ai-budget",
+            type=int,
+            default=50,
+            help="When --ai-enhance is on, cap the number of Claude calls per run.",
+        )
+        parser.add_argument(
+            "--refresh-existing",
+            action="store_true",
+            help="Bypass the 7-day skip-if-fresh filter and re-process already-imported trails (pair with --ai-enhance to back-fill AI descriptions).",
+        )
 
     def handle(self, *args, **options):
         limit = options["limit"]
         area_filter = options["area"]
         dry_run = options["dry_run"]
+        self.ai_enhance = bool(options.get("ai_enhance"))
+        self.ai_budget_left = int(options.get("ai_budget") or 0)
 
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no data will be saved"))
@@ -271,6 +289,7 @@ class Command(BaseCommand):
         errors = 0
 
         fresh_cutoff = timezone.now() - REFRESH_STALE_AFTER
+        refresh_existing = bool(options.get("refresh_existing"))
 
         for idx, course in enumerate(all_courses):
             try:
@@ -281,7 +300,12 @@ class Command(BaseCommand):
                 existing = Trail.objects.filter(
                     source="visitkorea", source_url=source_url
                 ).only("updated_at").first()
-                if existing and existing.updated_at and existing.updated_at > fresh_cutoff:
+                if (
+                    existing
+                    and existing.updated_at
+                    and existing.updated_at > fresh_cutoff
+                    and not refresh_existing
+                ):
                     skipped += 1
                     continue
 
@@ -384,9 +408,25 @@ class Command(BaseCommand):
         area_code = str(course.get("areacode", ""))
         region = AREA_CODE_MAP.get(area_code, "")
 
-        # Image: prefer firstimage, fallback to firstimage2. Normalize
-        # http → https so the browser doesn't block as mixed content.
+        # Image: prefer firstimage, fallback to firstimage2, then
+        # detailImage2 for courses that didn't set a primary image.
         image_url = course.get("firstimage", "") or course.get("firstimage2", "")
+        if not image_url:
+            try:
+                time.sleep(0.5)
+                image_items = _api_get(
+                    "detailImage2",
+                    {"contentId": content_id, "imageYN": "Y", "subImageYN": "N", "numOfRows": 1, "pageNo": 1},
+                    label=f"image {content_id}",
+                )
+                if image_items:
+                    image_url = (
+                        image_items[0].get("originimgurl")
+                        or image_items[0].get("smallimageurl")
+                        or ""
+                    )
+            except Exception:
+                image_url = ""
         if image_url.startswith("http://"):
             image_url = "https://" + image_url[len("http://"):]
 
@@ -398,8 +438,13 @@ class Command(BaseCommand):
                 f"Not a walking-scale trail (distance_km={distance_km})"
             )
 
-        # Store parsed data back into course dict for _save_course
-        course["_parsed"] = {
+        # Time fallback: API often returns "약 X시간 Y분" free-form that our
+        # parser can't read → taketime = 0. If we already know distance,
+        # assume a 4 km/h walking pace so the detail page doesn't show "0분".
+        if (not estimated_minutes) and distance_km:
+            estimated_minutes = int(round(distance_km / 4.0 * 60))
+
+        parsed = {
             "title": title,
             "description": description or f"{title} 걷기 코스",
             "region": region,
@@ -417,6 +462,27 @@ class Command(BaseCommand):
             "source_url": f"https://korean.visitkorea.or.kr/detail/ms_detail.do?cotid={content_id}",
             "status": "approved",
         }
+
+        # Optional: pass the skeleton through Claude for a nicer ko/en/ja
+        # description + suggested tags. Budget-capped so a big re-import
+        # can't accidentally spend a fortune. Falls back silently on
+        # API/network/budget failures.
+        if getattr(self, "ai_enhance", False) and self.ai_budget_left > 0:
+            try:
+                from apps.trails.ai_utils import generate_trail_description
+                enriched = generate_trail_description(parsed) or {}
+                self.ai_budget_left -= 1
+                if enriched.get("description_ko"):
+                    parsed["description"] = enriched["description_ko"][:1000]
+                parsed["_ai_description_en"] = enriched.get("description_en", "")
+                parsed["_ai_description_ja"] = enriched.get("description_ja", "")
+                parsed["_ai_tags"] = enriched.get("suggested_tags", []) or []
+            except Exception as exc:
+                logger_ai = __import__("logging").getLogger(__name__)
+                logger_ai.warning("AI enhance failed for %s: %s", content_id, exc)
+
+        # Store parsed data back into course dict for _save_course
+        course["_parsed"] = parsed
 
         if dry_run:
             p = course["_parsed"]
@@ -461,5 +527,23 @@ class Command(BaseCommand):
             source_url=source_url,
             defaults=defaults,
         )
+
+        # Multilingual descriptions and AI-suggested tags — only overwrite
+        # when we actually produced new values (AI enhance was on).
+        if p.get("_ai_description_en") and hasattr(trail, "description_en"):
+            trail.description_en = p["_ai_description_en"][:1000]
+        if p.get("_ai_description_ja") and hasattr(trail, "description_ja"):
+            trail.description_ja = p["_ai_description_ja"][:1000]
+        ai_tags = p.get("_ai_tags") or []
+        if ai_tags:
+            from apps.trails.models import Tag
+            for name in ai_tags[:5]:  # cap to 5 per trail
+                clean = (name or "").strip()[:30]
+                if not clean:
+                    continue
+                tag, _ = Tag.objects.get_or_create(name=clean)
+                trail.tags.add(tag)
+        if p.get("_ai_description_en") or p.get("_ai_description_ja"):
+            trail.save(update_fields=["description_en", "description_ja"])
 
         return "created" if was_created else "updated"

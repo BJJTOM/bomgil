@@ -609,16 +609,24 @@ class GuestLoginView(APIView):
         cache.set(cache_key, True, timeout=3600)
 
 
-class ThrottledRegisterView(APIView):
-    """Proxy to dj-rest-auth RegisterView with rate limiting."""
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = []
-    throttle_classes = [RegisterRateThrottle]
+from dj_rest_auth.registration.views import RegisterView as _DjRestAuthRegisterView
 
-    def post(self, request, *args, **kwargs):
-        from dj_rest_auth.registration.views import RegisterView
-        view = RegisterView.as_view()
-        return view(request, *args, **kwargs)
+
+class ThrottledRegisterView(_DjRestAuthRegisterView):
+    """dj-rest-auth RegisterView with our rate-limit throttle attached.
+
+    The previous version wrapped RegisterView.as_view() inside an APIView
+    and forwarded the DRF-wrapped request. RegisterView's parent uses the
+    `sensitive_post_parameters` decorator, which expects a raw Django
+    HttpRequest — passing a DRF Request crashed the decorator with
+    `sensitive_post_parameters didn't receive an HttpRequest object`
+    and surfaced as a 500 on every signup attempt.
+
+    Subclassing keeps the original request plumbing intact and just
+    layers the throttle on top.
+    """
+
+    throttle_classes = [RegisterRateThrottle]
 
 
 class FCMTokenView(APIView):

@@ -32,15 +32,15 @@ const SECURITY_HEADERS = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
   {
-    // Content-Security-Policy kept permissive for now because we load
-    // Firebase JS, Mapbox tiles, and visitkorea images cross-origin;
-    // tighten once all external sources are catalogued.
+    // Content-Security-Policy: permissive enough to load our real
+    // third-party deps (Firebase, Google Analytics, Leaflet/Mapbox tiles,
+    // Pretendard font CDN) but still blocks arbitrary origins.
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseio.com https://*.googleapis.com https://apis.google.com https://www.gstatic.com https://vercel.live",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseio.com https://*.googleapis.com https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://vercel.live",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+      "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
       "img-src 'self' data: blob: https: http://tong.visitkorea.or.kr",
       "connect-src 'self' https: wss: ws://localhost:* http://localhost:*",
       "frame-src 'self' https://*.firebaseapp.com https://vercel.live",

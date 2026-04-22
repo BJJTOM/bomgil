@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
+import { registerToastHandler } from "@/lib/globalToast";
 
 interface Toast {
   id: number;
@@ -20,12 +21,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    }, 4000);
   }, []);
+
+  // Expose the toast to non-React callers (axios interceptor, etc).
+  useEffect(() => {
+    registerToastHandler(showToast);
+  }, [showToast]);
 
   const ICONS = {
     success: "\u2713",

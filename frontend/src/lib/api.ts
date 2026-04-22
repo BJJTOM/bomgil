@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
+import { extractApiErrorMessage, globalToast } from "@/lib/globalToast";
 
 // In dev, route through Next.js rewrite (`/api/v1/*`) to bypass CORS.
 // In prod, talk directly to the configured API host.
@@ -24,11 +25,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: auto-refresh on 401
+// Response interceptor:
+//   1. On 401, try the refresh-token dance once per request.
+//   2. On any other error the caller hasn't explicitly muted (via
+//      `config._silent = true`), surface a toast so the user isn't
+//      left staring at a silently-failing button.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config || {};
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -45,8 +50,17 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch {
           useAuthStore.getState().logout();
+          globalToast("세션이 만료되었습니다. 다시 로그인해주세요.", "error");
+          return Promise.reject(error);
         }
       }
+    }
+
+    // Surface a toast for any non-401 failure unless the caller opted out.
+    const status = error.response?.status;
+    if (!originalRequest._silent && status !== 401) {
+      const msg = extractApiErrorMessage(error);
+      globalToast(msg, "error");
     }
 
     return Promise.reject(error);

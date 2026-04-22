@@ -30,7 +30,9 @@ export interface Tag {
 
 export interface Trail {
   id: number;
-  author: User;
+  // Nullable because Trail.author is SET_NULL (user deletion) AND
+  // publicly-sourced trails (e.g. visitkorea imports) have no author.
+  author: User | null;
   title: string;
   title_en?: string;
   title_ja?: string;
@@ -64,6 +66,11 @@ export interface Trail {
   transport_access: string;
   walking_surface: "paved" | "mixed" | "unpaved";
   segments?: TrailSegment[];
+  // Source of the trail (e.g. "visitkorea" for public-imported courses).
+  // Empty/undefined for user-created trails.
+  source?: string;
+  source_url?: string;
+  is_official?: boolean;
   // Condition reports (from TrailDetailSerializer)
   latest_condition?: TrailConditionReport | null;
   condition_count?: number;

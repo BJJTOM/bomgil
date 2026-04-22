@@ -716,34 +716,60 @@ export default function TrailDetailPage() {
               />
             </section>
 
-            {/* Author */}
+            {/* Author — may be null for publicly-sourced trails (e.g. visitkorea) */}
             <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-              <Link
-                href={`/profile/${tr.author.nickname}`}
-                className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
-              >
-                <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {tr.author.profile_image ? (
-                    <Image
-                      src={tr.author.profile_image}
-                      alt={tr.author.nickname}
-                      width={36}
-                      height={36}
-                      className="object-cover"
-                    />
-                  ) : (
+              {tr.author ? (
+                <Link
+                  href={`/profile/${tr.author.nickname}`}
+                  className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {tr.author.profile_image ? (
+                      <Image
+                        src={tr.author.profile_image}
+                        alt={tr.author.nickname}
+                        width={36}
+                        height={36}
+                        className="object-cover"
+                      />
+                    ) : (
+                      <IconUser size={18} className="text-primary/60" />
+                    )}
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
+                    {tr.author.is_guide && (
+                      <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
+                        {t("trail.certifiedGuide")}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <IconUser size={18} className="text-primary/60" />
-                  )}
-                </div>
-                <div className="flex flex-col justify-center">
-                  <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
-                  {tr.author.is_guide && (
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <p className="text-[13px] font-semibold text-text-primary">
+                      {tr.source === "visitkorea"
+                        ? language === "ko"
+                          ? "한국관광공사"
+                          : language === "ja"
+                          ? "韓国観光公社"
+                          : language === "zh"
+                          ? "韩国观光公社"
+                          : "Korea Tourism Organization"
+                        : language === "ko"
+                        ? "공식 코스"
+                        : "Official course"}
+                    </p>
                     <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
-                      {t("trail.certifiedGuide")}
+                      {language === "ko" ? "공공 데이터" : language === "ja" ? "公共データ" : language === "zh" ? "公共数据" : "Public data"}
                     </span>
-                  )}
+                  </div>
                 </div>
-              </Link>
+              )}
             </section>
 
             {/* Start walking CTA — natural end of overview */}

@@ -343,8 +343,19 @@ class Command(BaseCommand):
         area_code = str(course.get("areacode", ""))
         region = AREA_CODE_MAP.get(area_code, "")
 
-        # Image: prefer firstimage, fallback to firstimage2
+        # Image: prefer firstimage, fallback to firstimage2. Normalize
+        # http → https so the browser doesn't block as mixed content.
         image_url = course.get("firstimage", "") or course.get("firstimage2", "")
+        if image_url.startswith("http://"):
+            image_url = "https://" + image_url[len("http://"):]
+
+        # The public API's contentTypeId=25 includes drive/overnight tour
+        # packages, not just walking courses. Filter by distance so only
+        # true walking-scale trails come through (≤15 km).
+        if distance_km is None or distance_km <= 0 or distance_km > 15:
+            raise ValueError(
+                f"Not a walking-scale trail (distance_km={distance_km})"
+            )
 
         # Store parsed data back into course dict for _save_course
         course["_parsed"] = {

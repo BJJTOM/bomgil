@@ -26,6 +26,9 @@ python manage.py sanitize_phone_usernames
 echo "=== Importing public trails from Korea Tourism API (idempotent) ==="
 MORU_DISABLE_REVALIDATE=1 python manage.py import_public_trails || echo "import_public_trails failed — continuing"
 
+echo "=== Cleaning up non-walking public trails (idempotent) ==="
+MORU_DISABLE_REVALIDATE=1 python manage.py cleanup_public_trails || echo "cleanup_public_trails failed — continuing"
+
 echo "=== Seeding trail series (idempotent) ==="
 MORU_DISABLE_REVALIDATE=1 python manage.py seed_trail_series || echo "seed_trail_series failed — continuing"
 

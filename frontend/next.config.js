@@ -22,6 +22,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "**.cloudflare.com",
       },
+      {
+        protocol: "https",
+        hostname: "tong.visitkorea.or.kr",
+      },
     ],
   },
   async rewrites() {

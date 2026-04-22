@@ -254,7 +254,7 @@ function ExploreContent() {
   const searchParams = useSearchParams();
   const { t, language } = useT();
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("-like_count");
+  const [sortBy, setSortBy] = useState("-created_at");
 
   // AI Search state
   const [aiMode, setAiMode] = useState(false);
@@ -351,8 +351,8 @@ function ExploreContent() {
   ];
 
   const SORT_OPTIONS = [
-    { value: "-like_count", label: t("explore.sortPopular") },
     { value: "-created_at", label: t("explore.sortNewest") },
+    { value: "-like_count", label: t("explore.sortPopular") },
     { value: "distance_km", label: t("explore.sortDistanceShort") },
     { value: "-distance_km", label: t("explore.sortDistanceLong") },
   ];
@@ -412,7 +412,7 @@ function ExploreContent() {
   const clearAllFilters = () => {
     setFilters({});
     setSearch("");
-    setSortBy("-like_count");
+    setSortBy("-created_at");
   };
 
   const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");

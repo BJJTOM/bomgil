@@ -34,15 +34,38 @@ export function extractApiErrorMessage(
   fallback = "요청 처리 중 문제가 발생했습니다.",
 ): string {
   const anyErr = err as {
-    response?: { data?: unknown; status?: number };
+    response?: { data?: unknown; status?: number; headers?: Record<string, string> };
     message?: string;
   };
+  const status = anyErr?.response?.status;
   const data = anyErr?.response?.data;
+
+  // 429: rate-limited. Prefer Retry-After header (seconds) when present
+  // and always use a friendly Korean sentence so the user knows this
+  // isn't a bug in their input — it's "slow down."
+  if (status === 429) {
+    const headers = anyErr?.response?.headers || {};
+    const retryAfter = headers["retry-after"] || headers["Retry-After"];
+    const detailSeconds = (() => {
+      if (data && typeof data === "object") {
+        const d = (data as Record<string, unknown>).detail;
+        if (typeof d === "string") {
+          const m = d.match(/(\d+)\s*second/);
+          if (m) return parseInt(m[1], 10);
+        }
+      }
+      return null;
+    })();
+    const seconds = Number(retryAfter) || detailSeconds;
+    if (seconds && seconds > 0) {
+      return `요청이 너무 잦아요. ${seconds}초 후 다시 시도해주세요.`;
+    }
+    return "요청이 너무 잦아요. 잠시 후 다시 시도해주세요.";
+  }
 
   if (typeof data === "string") {
     // HTML 500 page — don't dump raw HTML to the user
     if (data.includes("<html") || data.includes("<!DOCTYPE")) {
-      const status = anyErr?.response?.status;
       if (status && status >= 500) return "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       return fallback;
     }

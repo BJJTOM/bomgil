@@ -435,11 +435,14 @@ class CompletePhoneAuthView(APIView):
 
 
 class LoginRateThrottle(AnonRateThrottle):
-    rate = '5/minute'
+    # Reads rate from DEFAULT_THROTTLE_RATES['login'] so operators can
+    # tune it from settings without a code change. Also keeps the cache
+    # key namespaced per scope so login/register don't share a counter.
+    scope = 'login'
 
 
 class RegisterRateThrottle(AnonRateThrottle):
-    rate = '3/minute'
+    scope = 'register'
 
 
 class EmailLoginView(APIView):

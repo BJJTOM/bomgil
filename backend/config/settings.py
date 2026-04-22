@@ -179,8 +179,13 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
         "trail_create": "20/day",
-        "login": "5/minute",
-        "register": "3/minute",
+        # Login/register limits kept loose enough to survive a user
+        # fixing typos or bouncing between error messages without
+        # tripping rate limiting. Abuse is filtered by account-level
+        # checks (duplicate email, password policy, etc.), not by
+        # squeezing these.
+        "login": "20/minute",
+        "register": "20/minute",
         # Per-action scopes
         "post_create": "30/hour",
         "post_update": "60/hour",

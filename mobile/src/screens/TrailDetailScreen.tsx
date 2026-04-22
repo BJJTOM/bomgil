@@ -1166,28 +1166,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 1,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.2,
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   statValue: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   statDivider: {
     width: StyleSheet.hairlineWidth,
-    height: 28,
+    height: 22,
   },
 
   // -- Series chips --------------------------------------------------
@@ -1261,7 +1261,7 @@ const styles = StyleSheet.create({
 
   // -- Content blocks (replaces sectionCard for tighter layout) -------
   contentBlock: {
-    marginTop: 16,
+    marginTop: 20,
   },
 
   // -- Section titles (only used where needed) ------------------------
@@ -1289,24 +1289,24 @@ const styles = StyleSheet.create({
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 16,
   },
   tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     backgroundColor: '#F7F8FA',
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#8B95A1',
   },
 
   // -- Map ------------------------------------------------------------
   mapSection: {
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 24,
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#F7F8FA',

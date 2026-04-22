@@ -437,7 +437,10 @@ export default function TrailDetailPage() {
   // ─── Derived data ───────────────────────────────────────────────────────────
 
   const tr: Trail = trail;
-  const pathCoords = tr.path_data?.coordinates || [];
+  const pathCoords: [number, number][] =
+    (tr.path_data?.coordinates || []).map(
+      (c) => [c[0], c[1]] as [number, number],
+    );
   const mapMarkers = spots.map((s: Spot) => ({
     id: s.id,
     lat: parseFloat(s.lat),

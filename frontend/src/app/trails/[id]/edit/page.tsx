@@ -380,7 +380,9 @@ export default function EditTrailPage() {
   const typeObj = TRAIL_TYPES.find((t) => t.value === form.trail_type);
   const countryObj = COUNTRIES.find((c) => c.code === form.country);
   const surfaceObj = SURFACE_OPTIONS.find((s) => s.value === form.walking_surface);
-  const pathCoords = trail?.path_data?.coordinates || [];
+  const pathCoords: [number, number][] = (trail?.path_data?.coordinates || []).map(
+    (c: number[]) => [c[0], c[1]] as [number, number],
+  );
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

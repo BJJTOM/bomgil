@@ -75,7 +75,12 @@ class TrailViewSet(viewsets.ModelViewSet):
         return super().get_throttles()
 
     def get_queryset(self):
-        qs = Trail.objects.select_related("author").prefetch_related("tags")
+        # `series` and `segments` are hit by the detail serializer on every
+        # retrieve; prefetch them so the Trail detail page doesn't fan out
+        # into separate queries per trail.
+        qs = Trail.objects.select_related("author").prefetch_related(
+            "tags", "series", "segments"
+        )
         is_staff = self.request.user.is_authenticated and self.request.user.is_staff
 
         # Admin moderation: hidden trails are invisible to everyone except staff.

@@ -237,6 +237,11 @@ a, button, [role="button"] {
   to { transform: rotate(360deg); }
 }
 
+@keyframes ai-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(108, 92, 231, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(108, 92, 231, 0.7); }
+}
+
 /* Map marker pulse animation */
 @keyframes ping {
   0% { transform: scale(1); opacity: 0.6; }

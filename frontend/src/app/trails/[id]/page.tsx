@@ -218,6 +218,7 @@ export default function TrailDetailPage() {
   const [showCertificate, setShowCertificate] = useState(false);
   const [certBlobUrl, setCertBlobUrl] = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const createReview = useCreateReview(trailId);
 
   const tabBarRef = useRef<HTMLDivElement>(null);
@@ -320,28 +321,34 @@ export default function TrailDetailPage() {
   };
 
   const handleSubmitReview = async () => {
-    if (reviewImages.length > 0) {
-      const formData = new FormData();
-      formData.append("trail", String(trailId));
-      formData.append("rating", String(reviewForm.rating));
-      formData.append("content", reviewForm.content);
-      formData.append("visited_date", reviewForm.visited_date);
-      reviewImages.forEach((img) => formData.append("images", img));
-      try {
-        const api = (await import("@/lib/api")).default;
-        await api.post("/reviews/", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      } catch (e: any) {
-        alert("리뷰 작성 실패");
-        return;
+    if (isSubmittingReview) return;
+    setIsSubmittingReview(true);
+    try {
+      if (reviewImages.length > 0) {
+        const formData = new FormData();
+        formData.append("trail", String(trailId));
+        formData.append("rating", String(reviewForm.rating));
+        formData.append("content", reviewForm.content);
+        formData.append("visited_date", reviewForm.visited_date);
+        reviewImages.forEach((img) => formData.append("images", img));
+        try {
+          const api = (await import("@/lib/api")).default;
+          await api.post("/reviews/", formData, { headers: { "Content-Type": "multipart/form-data" } });
+        } catch (e: any) {
+          alert("리뷰 작성 실패");
+          return;
+        }
+      } else {
+        await createReview.mutateAsync(reviewForm);
       }
-    } else {
-      await createReview.mutateAsync(reviewForm);
+      setShowReviewForm(false);
+      setReviewForm({ rating: 5, content: "", visited_date: new Date().toISOString().split("T")[0] });
+      setReviewImages([]);
+      reviewPreviews.forEach(URL.revokeObjectURL);
+      setReviewPreviews([]);
+    } finally {
+      setIsSubmittingReview(false);
     }
-    setShowReviewForm(false);
-    setReviewForm({ rating: 5, content: "", visited_date: new Date().toISOString().split("T")[0] });
-    setReviewImages([]);
-    reviewPreviews.forEach(URL.revokeObjectURL);
-    setReviewPreviews([]);
   };
 
   const handleGpxDownload = () => {
@@ -941,10 +948,16 @@ export default function TrailDetailPage() {
                     </button>
                     <button
                       onClick={handleSubmitReview}
-                      disabled={!reviewForm.content || createReview.isPending}
-                      className="px-4 py-1.5 bg-primary text-white rounded-button text-[12px] font-semibold disabled:opacity-50"
+                      disabled={!reviewForm.content || isSubmittingReview || createReview.isPending}
+                      className="px-4 py-1.5 bg-primary text-white rounded-button text-[12px] font-semibold disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      {createReview.isPending ? t("review.submitting") : t("review.submit")}
+                      {(isSubmittingReview || createReview.isPending) && (
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {(isSubmittingReview || createReview.isPending) ? t("review.submitting") : t("review.submit")}
                     </button>
                   </div>
                 </div>

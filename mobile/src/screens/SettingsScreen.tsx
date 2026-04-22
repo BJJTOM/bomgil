@@ -49,8 +49,9 @@ export default function SettingsScreen() {
   const handlePickPhoto = async () => {
     try {
       const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 512, maxHeight: 512 });
-      if (result.didCancel || !result.assets?.[0]?.uri) return;
+      if (result.didCancel || result.errorCode || !result.assets?.[0]?.uri) return;
       const asset = result.assets[0];
+      if (!asset.uri) return;
       const formData = new FormData();
       formData.append('profile_image', {
         uri: asset.uri,

@@ -491,7 +491,13 @@ export default function HomeScreen() {
         {/* ============================================================= */}
         {isAuthenticated && (
           <FadeInView delay={50}>
-            <WeeklyInsights />
+            <View style={styles.weeklyInsightsWrap}>
+              <View style={styles.aiBadge}>
+                <Feather name="zap" size={10} color="#FFFFFF" />
+                <Text style={styles.aiBadgeText}>AI</Text>
+              </View>
+              <WeeklyInsights />
+            </View>
           </FadeInView>
         )}
 
@@ -1044,6 +1050,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // Weekly Insights wrapper + AI badge
+  weeklyInsightsWrap: {
+    position: 'relative',
+  },
+  aiBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 28,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#6C5CE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  aiBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
   // Section header with icon (kept for compatibility)

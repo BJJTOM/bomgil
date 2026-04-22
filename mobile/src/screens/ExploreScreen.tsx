@@ -24,6 +24,7 @@ import { Trail, PaginatedResponse } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
 import { useThemeStore } from '../stores/theme';
+import { haptics } from '../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -400,11 +401,12 @@ export default function ExploreScreen() {
                   <TouchableOpacity
                     key={filter.key}
                     style={[styles.chip, { backgroundColor: chipBg }, isActive && styles.chipActive]}
-                    onPress={() =>
+                    onPress={() => {
+                      haptics.light();
                       setExpandedFilter(
                         expandedFilter === filter.key ? null : filter.key,
-                      )
-                    }
+                      );
+                    }}
                     activeOpacity={0.7}>
                     <Text
                       style={[
@@ -486,7 +488,7 @@ export default function ExploreScreen() {
                       { backgroundColor: chipBg },
                       selected && styles.filterOptionActive,
                     ]}
-                    onPress={() => handleFilterChange(expandedFilter, opt.value)}
+                    onPress={() => { haptics.light(); handleFilterChange(expandedFilter, opt.value); }}
                     activeOpacity={0.7}>
                     <Text
                       style={[
@@ -514,7 +516,7 @@ export default function ExploreScreen() {
                 <TouchableOpacity
                   key={opt.value}
                   style={[styles.sortItem, sortBy === opt.value && styles.sortItemActive]}
-                  onPress={() => { setSortBy(opt.value); setShowSortModal(false); }}>
+                  onPress={() => { haptics.light(); setSortBy(opt.value); setShowSortModal(false); }}>
                   <Text style={[styles.sortItemText, { color: textColor }, sortBy === opt.value && { color: colors.primary, fontWeight: '600' }]}>
                     {opt.label}
                   </Text>

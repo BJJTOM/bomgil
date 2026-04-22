@@ -23,6 +23,20 @@ import { useThemeStore } from '../stores/theme';
 import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
+// ─── Progress Ring Constants ───
+const PROGRESS_RING_SIZE = 120;
+const PROGRESS_RING_STROKE_WIDTH = 10;
+
+// ─── Animation Delay Constants (ms) ───
+const FADE_DELAY_WEEKLY_CARD = 50;
+const FADE_DELAY_QUICK_STATS = 100;
+const FADE_DELAY_PAUSED_WALK = 150;
+const FADE_DELAY_WATCH_IMPORT = 175;
+const FADE_DELAY_RECENT_HEADER = 200;
+const FADE_DELAY_EMPTY_STATE = 250;
+const FADE_DELAY_ACTIVITY_BASE = 250;
+const FADE_DELAY_ACTIVITY_INCREMENT = 40;
+
 const SOURCE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   manual_gpx: { label: 'GPX', icon: 'file', color: '#6B7280' },
   apple_watch: { label: 'Apple Watch', icon: 'watch', color: '#34D399' },
@@ -274,11 +288,14 @@ export default function ActivityScreen() {
   };
 
   // Determine progress ring color — green gradient based on progress
+  // >= 90% uses a warm amber to signal "almost there!"
   const ringFillColor = weeklyProgressPct >= 1
     ? '#22C55E'
-    : weeklyProgressPct >= 0.5
-      ? '#4ADE80'
-      : colors.primary;
+    : weeklyProgressPct >= 0.9
+      ? '#F59E0B'
+      : weeklyProgressPct >= 0.5
+        ? '#4ADE80'
+        : colors.primary;
 
   const ringTrackColor = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
 
@@ -323,12 +340,12 @@ export default function ActivityScreen() {
         </View>
 
         {/* ===== WEEKLY SUMMARY CARD ===== */}
-        <FadeInView delay={50}>
+        <FadeInView delay={FADE_DELAY_WEEKLY_CARD}>
           <View style={[styles.weeklyCard, { backgroundColor: cardBg }]}>
             <View style={styles.weeklyRow}>
               <ProgressRing
-                size={120}
-                strokeWidth={10}
+                size={PROGRESS_RING_SIZE}
+                strokeWidth={PROGRESS_RING_STROKE_WIDTH}
                 progress={weeklyProgressPct}
                 trackColor={ringTrackColor}
                 fillColor={ringFillColor}>
@@ -371,7 +388,7 @@ export default function ActivityScreen() {
         </FadeInView>
 
         {/* ===== QUICK STATS ROW ===== */}
-        <FadeInView delay={100}>
+        <FadeInView delay={FADE_DELAY_QUICK_STATS}>
           <View style={styles.quickStatsRow}>
             <View style={[styles.quickStatCard, { backgroundColor: cardBg }]}>
               <Feather name="map" size={16} color="#60A5FA" />
@@ -401,7 +418,7 @@ export default function ActivityScreen() {
 
         {/* ===== PAUSED WALK RESUME ===== */}
         {pausedWalk && (
-          <FadeInView delay={150}>
+          <FadeInView delay={FADE_DELAY_PAUSED_WALK}>
             <TouchableOpacity
               style={[styles.resumeWalkCard, { backgroundColor: cardBg }]}
               onPress={() => {
@@ -436,7 +453,7 @@ export default function ActivityScreen() {
         )}
 
         {/* ===== IMPORT WATCH LINK ===== */}
-        <FadeInView delay={175}>
+        <FadeInView delay={FADE_DELAY_WATCH_IMPORT}>
           <TouchableOpacity
             style={[styles.watchImportLink, isDark && { borderColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => navigation.navigate('HealthImport')}
@@ -449,7 +466,7 @@ export default function ActivityScreen() {
 
         {/* ===== RECENT ACTIVITIES ===== */}
         <View style={styles.recentSection}>
-          <FadeInView delay={200}>
+          <FadeInView delay={FADE_DELAY_RECENT_HEADER}>
             <View style={styles.recentHeader}>
               <Text style={[styles.recentTitle, { color: textColor }]}>
                 {t.activity.recentTitle}{' '}
@@ -461,7 +478,7 @@ export default function ActivityScreen() {
           </FadeInView>
 
           {paginatedActivities.length === 0 ? (
-            <FadeInView delay={250}>
+            <FadeInView delay={FADE_DELAY_EMPTY_STATE}>
               <View style={[styles.emptyState, { backgroundColor: cardBg }]}>
                 <View style={[styles.emptyIconCircle, isDark && { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
                   <Feather name="sunrise" size={32} color={textTertColor} />
@@ -503,7 +520,7 @@ export default function ActivityScreen() {
               const featherIcon = sourceInfo?.icon || 'map-pin';
 
               return (
-                <FadeInView key={activity.id} delay={250 + index * 40}>
+                <FadeInView key={activity.id} delay={FADE_DELAY_ACTIVITY_BASE + index * FADE_DELAY_ACTIVITY_INCREMENT}>
                   <TouchableOpacity
                     style={[styles.activityCard, { backgroundColor: cardBg }]}
                     activeOpacity={0.7}

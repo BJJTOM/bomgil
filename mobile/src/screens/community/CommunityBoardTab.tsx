@@ -22,6 +22,9 @@ import { useThemeStore } from '../../stores/theme';
 import { FadeInView } from '../../components/FadeInView';
 import { useT } from '../../i18n';
 
+// ─── Search debounce delay (ms) ───
+const SEARCH_DEBOUNCE_MS = 300;
+
 // Category definitions with colored pills
 const CATEGORY_STYLES: Record<string, { bg: string; darkBg: string; text: string; darkText: string }> = {
   free:      { bg: '#EFF6FF', darkBg: 'rgba(59,130,246,0.15)', text: '#3B82F6', darkText: '#60A5FA' },
@@ -278,11 +281,24 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   const searchInputBg = isDark ? '#1c1c1e' : '#FFFFFF';
 
   const [category, setCategory] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const nextUrlRef = useRef<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input before triggering the query
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(searchText);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchText]);
 
   const { data: queryData, isLoading, refetch, isRefetching } = useQuery<{ results: CommunityPost[]; next: string | null }>({
     queryKey: ['community-posts', category, searchQuery],
@@ -379,13 +395,13 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
               style={[styles.searchInput, { color: textColor }]}
               placeholder={t.community.searchPlaceholder}
               placeholderTextColor={textTertColor}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={searchText}
+              onChangeText={setSearchText}
               returnKeyType="search"
               autoFocus
             />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchText(''); setSearchQuery(''); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Feather name="x" size={16} color={textTertColor} />
               </TouchableOpacity>
             )}
@@ -432,7 +448,7 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
         </View>
       ) : posts.length === 0 ? (
         <EmptyState
-          isSearch={!!searchQuery.trim()}
+          isSearch={!!searchText.trim()}
           textColor={textColor}
           textTertColor={textTertColor}
           surfaceBg={surfaceBg}

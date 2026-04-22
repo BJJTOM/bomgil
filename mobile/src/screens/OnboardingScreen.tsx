@@ -142,11 +142,14 @@ function Chip({
       style={[
         styles.chip,
         { borderColor: selected ? primaryColor : borderColor },
-        selected && { backgroundColor: primaryColor + '14' },
+        selected && { backgroundColor: primaryColor + '14', borderWidth: 2 },
       ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {selected && (
+        <Feather name="check" size={14} color={primaryColor} style={{ marginRight: 4 }} />
+      )}
       <Text
         style={[
           styles.chipText,
@@ -728,6 +731,8 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,

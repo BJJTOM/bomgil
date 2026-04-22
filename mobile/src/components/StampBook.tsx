@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import Geolocation from '@react-native-community/geolocation';
@@ -24,11 +25,20 @@ import { useThemeStore } from '../stores/theme';
 import { StampPoint } from '../types';
 import { haptics } from '../utils/haptics';
 
+// ─── Grid layout constants ───
+const STAMP_GRID_GAP = 10;
+const STAMP_GRID_COLUMNS = 3;
+const STAMP_GRID_HORIZONTAL_PADDING = 20;
+
 interface Props {
   trailId: number;
 }
 
 export default function StampBook({ trailId }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const stampItemWidth =
+    (screenWidth - STAMP_GRID_HORIZONTAL_PADDING * 2 - STAMP_GRID_GAP * (STAMP_GRID_COLUMNS - 1)) /
+    STAMP_GRID_COLUMNS;
   const queryClient = useQueryClient();
   const { isDark } = useThemeStore();
   const [collectingId, setCollectingId] = useState<number | null>(null);
@@ -198,7 +208,7 @@ export default function StampBook({ trailId }: Props) {
       </View>
 
       {/* Stamp grid */}
-      <View style={styles.stampGrid}>
+      <View style={[styles.stampGrid, { gap: STAMP_GRID_GAP }]}>
         {stamps.map((stamp) => {
           const isCollected = stamp.is_collected;
           const isCollecting = collectingId === stamp.id;
@@ -254,7 +264,7 @@ export default function StampBook({ trailId }: Props) {
             return (
               <Animated.View
                 key={stamp.id}
-                style={[styles.stampTouchable, { transform: [{ scale: bounceAnim }] }]}>
+                style={[styles.stampTouchable, { width: stampItemWidth, transform: [{ scale: bounceAnim }] }]}>
                 {stampContent}
               </Animated.View>
             );
@@ -263,7 +273,7 @@ export default function StampBook({ trailId }: Props) {
           return (
             <TouchableOpacity
               key={stamp.id}
-              style={styles.stampTouchable}
+              style={[styles.stampTouchable, { width: stampItemWidth }]}
               activeOpacity={isCollected ? 1 : 0.7}
               onPress={() => {
                 if (isCollected) return;
@@ -349,12 +359,10 @@ const styles = StyleSheet.create({
   stampGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
   },
   stampTouchable: {
-    width: '30%',
-    flexGrow: 1,
-    maxWidth: '32%',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   stampItem: {
     alignItems: 'center',

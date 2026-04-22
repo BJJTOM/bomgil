@@ -58,6 +58,13 @@ function formatDuration(minutes: number | null | undefined): string {
   return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
+function formatCount(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return '0';
+  if (n >= 10000) return `${(n / 10000).toFixed(1).replace(/\.0$/, '')}만`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(n);
+}
+
 export default function TrailCard({
   trail,
   onPress,
@@ -191,7 +198,7 @@ export default function TrailCard({
           <View style={styles.likeWrap}>
             <Feather name="heart" size={11} color={likeColor} />
             <Text style={[styles.likeCount, { color: likeColor }]}>
-              {trail.like_count ?? 0}
+              {formatCount(trail.like_count ?? 0)}
             </Text>
           </View>
 
@@ -200,7 +207,7 @@ export default function TrailCard({
             <View style={styles.likeWrap}>
               <Feather name="check-circle" size={11} color={likeColor} />
               <Text style={[styles.likeCount, { color: likeColor }]}>
-                {trail.completion_count}
+                {formatCount(trail.completion_count)}
               </Text>
             </View>
           ) : null}

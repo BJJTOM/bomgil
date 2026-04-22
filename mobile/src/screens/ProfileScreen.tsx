@@ -18,6 +18,7 @@ import { User } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { useThemeStore } from '../stores/theme';
 import { useT } from '../i18n';
+import EmptyState from '../components/EmptyState';
 
 const BADGE_DISPLAY: Record<string, { label: string; icon: string; color: string }> = {
   first_walk: { label: '첫 걸음', icon: 'navigation', color: '#4ADE80' },
@@ -298,22 +299,29 @@ export default function ProfileScreen() {
         {/* ===== TAB CONTENT ===== */}
         <View style={styles.tabContent}>
           {activeTab === 'courses' && (
-            <View style={styles.emptyTabContent}>
-              <Feather name="map" size={36} color={textTertColor} />
-              <Text style={[styles.emptyTabTitle, { color: textSecColor }]}>{t.profile.noCourses}</Text>
-            </View>
+            <EmptyState
+              icon="map"
+              title={t.profile.noCourses}
+              subtitle={isOwnProfile ? '첫 번째 코스를 걸어보세요' : undefined}
+              ctaText={isOwnProfile ? '코스 둘러보기' : undefined}
+              onCta={isOwnProfile ? () => navigation.navigate('Explore') : undefined}
+            />
           )}
           {activeTab === 'activity' && (
-            <View style={styles.emptyTabContent}>
-              <Feather name="activity" size={36} color={textTertColor} />
-              <Text style={[styles.emptyTabTitle, { color: textSecColor }]}>{t.profile.noActivity}</Text>
-            </View>
+            <EmptyState
+              icon="activity"
+              title={t.profile.noActivity}
+              subtitle={isOwnProfile ? '걷기를 시작하면 활동이 기록됩니다' : undefined}
+              ctaText={isOwnProfile ? '걷기 시작' : undefined}
+              onCta={isOwnProfile ? () => navigation.navigate('Walk') : undefined}
+            />
           )}
           {activeTab === 'stories' && (
-            <View style={styles.emptyTabContent}>
-              <Feather name="book-open" size={36} color={textTertColor} />
-              <Text style={[styles.emptyTabTitle, { color: textSecColor }]}>{'아직 스토리가 없습니다'}</Text>
-            </View>
+            <EmptyState
+              icon="book-open"
+              title={'아직 스토리가 없습니다'}
+              subtitle={isOwnProfile ? '걸으면서 만난 이야기를 공유해보세요' : undefined}
+            />
           )}
         </View>
       </ScrollView>

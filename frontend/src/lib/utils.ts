@@ -23,8 +23,28 @@ export function getCurrencySymbol(country: string): string {
   return map[country] || "$";
 }
 
+// ─── Config type interfaces ───
+interface SpotTypeEntry {
+  label: string;
+  icon: string;
+  color: string;
+}
+
+interface DifficultyEntry {
+  label: string;
+  color: string;
+  hex: string;
+}
+
+interface TrailTypeEntry {
+  label: string;
+  emoji: string;
+  icon: string;
+  color: string;
+}
+
 // Primary spot type config with SVG icon names and theme colors
-export const SPOT_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+export const SPOT_TYPE_CONFIG: Record<string, SpotTypeEntry> = {
   start: { label: "출발", icon: "flag", color: "#2D4A2E" },
   end: { label: "도착", icon: "flag-checkered", color: "#2D4A2E" },
   restaurant: { label: "맛집", icon: "utensils", color: "#E65100" },
@@ -83,13 +103,13 @@ export const SPOT_TYPE_LABELS: Record<string, { label: string; emoji: string }> 
     ])
   );
 
-export const DIFFICULTY_CONFIG = {
+export const DIFFICULTY_CONFIG: Record<string, DifficultyEntry> = {
   easy: { label: "쉬움", color: "bg-green-100 text-green-700", hex: "#22C55E" },
   moderate: { label: "보통", color: "bg-amber-100 text-amber-700", hex: "#F59E0B" },
   hard: { label: "어려움", color: "bg-red-100 text-red-700", hex: "#EF4444" },
-} as const;
+};
 
-export const TRAIL_TYPE_CONFIG: Record<string, { label: string; emoji: string; icon: string; color: string }> = {
+export const TRAIL_TYPE_CONFIG: Record<string, TrailTypeEntry> = {
   urban: { label: "도심산책", emoji: "", icon: "building", color: "#6B7280" },
   coastal: { label: "해안길", emoji: "", icon: "waves", color: "#0EA5E9" },
   village: { label: "마을길", emoji: "", icon: "home", color: "#D97706" },

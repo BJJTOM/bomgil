@@ -516,9 +516,10 @@ function ExploreContent() {
                 }}
                 className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-[12px] text-[12px] font-semibold transition-all ${
                   aiMode
-                    ? "bg-[#6C5CE7] text-white shadow-sm"
+                    ? "bg-purple-500 text-white shadow-[0_0_12px_rgba(108,92,231,0.5)] animate-pulse-slow"
                     : "bg-[#F7F8FA] text-[#8B95A1] hover:bg-[#EEF0F4]"
                 }`}
+                style={aiMode ? { animation: 'ai-glow 2s ease-in-out infinite' } : undefined}
                 title={AI_SEARCH_LABELS[language] || AI_SEARCH_LABELS.ko}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

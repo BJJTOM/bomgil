@@ -79,7 +79,6 @@ export interface Trail {
   source_url?: string;
   avg_rating?: number | null;
   review_count?: number;
-  completion_count?: number;
   segments?: TrailSegment[];
 }
 

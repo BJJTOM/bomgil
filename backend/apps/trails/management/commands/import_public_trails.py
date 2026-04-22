@@ -54,10 +54,21 @@ AREA_CODE_MAP = {
 
 
 def _get_api_key():
-    return os.environ.get(
-        "VISITKOREA_API_KEY",
-        "c4ce39010fc2ee141dba784bc1fe1c4f357a7b81fca0af04e39c92d19ac1a8d0",
-    )
+    """Pull the VisitKorea API key strictly from the environment.
+
+    Refuses to run with a missing key rather than falling back to a
+    hard-coded secret — a hard-coded key once leaked into this repo's
+    public history and we don't want that to happen again. Set
+    `VISITKOREA_API_KEY` in Render → Environment.
+    """
+    key = os.environ.get("VISITKOREA_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "VISITKOREA_API_KEY is not configured. "
+            "Set it in the service environment (Render → Environment) "
+            "before running import_public_trails."
+        )
+    return key
 
 
 def _strip_html(text):

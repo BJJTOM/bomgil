@@ -21,6 +21,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -789,67 +790,78 @@ export default function TrailDetailPage() {
 
         {/* ─── Tab 2: Course Info ─── */}
         {activeTab === "course" && (
-          <div className="animate-fade-in space-y-3">
-            {/* Elevation Profile */}
-            {tr.path_data?.coordinates && tr.path_data.coordinates.length >= 2 && (
+          <ErrorBoundary>
+            <div className="animate-fade-in space-y-3">
+              {/* Elevation Profile — require a real coordinates array before
+                  touching .length; public imports carry path_data: {} */}
+              {Array.isArray(tr.path_data?.coordinates) && tr.path_data!.coordinates.length >= 2 && (
+                <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                  <ErrorBoundary fallback={null}>
+                    <ElevationProfile pathData={tr.path_data} />
+                  </ErrorBoundary>
+                </section>
+              )}
+
+              {/* Trail Segments */}
+              {Array.isArray(tr.segments) && tr.segments.length > 0 && (
+                <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                  <h2 className="text-sm font-bold text-text-primary mb-3">
+                    {language === "ko" ? "구간별 거리 / 시간" : language === "ja" ? "区間別距離・時間" : language === "zh" ? "分段距离 / 时间" : "Segments"}
+                  </h2>
+                  <ErrorBoundary fallback={null}>
+                    <TrailSegments segments={tr.segments} />
+                  </ErrorBoundary>
+                </section>
+              )}
+
+              {/* Spot Timeline */}
+              {Array.isArray(spots) && spots.length > 0 && (
+                <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                  <ErrorBoundary fallback={null}>
+                    <SpotTimeline spots={visibleSpots} />
+                  </ErrorBoundary>
+                  {spots.length > 3 && !showAllSpots && (
+                    <button
+                      onClick={() => setShowAllSpots(true)}
+                      className="mt-2 w-full py-2 text-[13px] font-medium text-primary bg-[#f0f7f0] dark:bg-primary/10 rounded-button hover:bg-[#d9eed9] dark:hover:bg-primary/20 transition-colors"
+                    >
+                      {moreLabel} ({spots.length - 3})
+                    </button>
+                  )}
+                </section>
+              )}
+
+              {/* Stamp Book */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <ElevationProfile pathData={tr.path_data} />
+                <ErrorBoundary fallback={null}>
+                  <StampBook trailId={trailId} />
+                </ErrorBoundary>
               </section>
-            )}
 
-            {/* Trail Segments */}
-            {tr.segments && tr.segments.length > 0 && (
-              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <h2 className="text-sm font-bold text-text-primary mb-3">
-                  {language === "ko" ? "구간별 거리 / 시간" : language === "ja" ? "区間別距離・時間" : language === "zh" ? "分段距离 / 时间" : "Segments"}
-                </h2>
-                <TrailSegments segments={tr.segments} />
-              </section>
-            )}
+              {/* Empty state if no course data */}
+              {!tr.path_data?.coordinates?.length && !tr.segments?.length && (!spots || spots.length === 0) && (
+                <div className="text-center py-12 rounded-2xl bg-white dark:bg-gray-900 shadow-sm">
+                  <IconMapEmpty size={40} className="text-text-tertiary mx-auto mb-2" />
+                  <p className="text-sm text-text-tertiary">
+                    {language === "ko" ? "상세 코스 정보가 아직 없어요" : language === "ja" ? "詳細なコース情報はまだありません" : language === "zh" ? "暂无详细路线信息" : "No detailed course info yet"}
+                  </p>
+                </div>
+              )}
 
-            {/* Spot Timeline */}
-            {spots.length > 0 && (
-              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <SpotTimeline spots={visibleSpots} />
-                {spots.length > 3 && !showAllSpots && (
-                  <button
-                    onClick={() => setShowAllSpots(true)}
-                    className="mt-2 w-full py-2 text-[13px] font-medium text-primary bg-[#f0f7f0] dark:bg-primary/10 rounded-button hover:bg-[#d9eed9] dark:hover:bg-primary/20 transition-colors"
-                  >
-                    {moreLabel} ({spots.length - 3})
-                  </button>
-                )}
-              </section>
-            )}
-
-            {/* Stamp Book */}
-            <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-              <StampBook trailId={trailId} />
-            </section>
-
-            {/* Empty state if no course data */}
-            {!tr.path_data?.coordinates?.length && !tr.segments?.length && spots.length === 0 && (
-              <div className="text-center py-12 rounded-2xl bg-white dark:bg-gray-900 shadow-sm">
-                <IconMapEmpty size={40} className="text-text-tertiary mx-auto mb-2" />
-                <p className="text-sm text-text-tertiary">
-                  {language === "ko" ? "상세 코스 정보가 아직 없어요" : language === "ja" ? "詳細なコース情報はまだありません" : language === "zh" ? "暂无详细路线信息" : "No detailed course info yet"}
-                </p>
+              {/* Start walking CTA — natural end of course tab */}
+              <div className="pt-1">
+                <button
+                  onClick={() => {
+                    alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
+                  }}
+                  className="w-full py-3.5 bg-primary text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <IconSmartphone size={16} />
+                  {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
+                </button>
               </div>
-            )}
-
-            {/* Start walking CTA — natural end of course tab */}
-            <div className="pt-1">
-              <button
-                onClick={() => {
-                  alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
-                }}
-                className="w-full py-3.5 bg-primary text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-              >
-                <IconSmartphone size={16} />
-                {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
-              </button>
             </div>
-          </div>
+          </ErrorBoundary>
         )}
 
         {/* ─── Tab 3: Reviews ─── */}

@@ -1280,9 +1280,10 @@ const styles = StyleSheet.create({
 
   // -- Description ----------------------------------------------------
   descText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '400',
-    lineHeight: 22,
+    lineHeight: 26,
+    letterSpacing: -0.2,
     color: '#191F28',
   },
   tagsRow: {

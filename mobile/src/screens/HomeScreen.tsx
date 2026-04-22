@@ -487,21 +487,6 @@ export default function HomeScreen() {
         </View>
 
         {/* ============================================================= */}
-        {/* Weekly AI Insights (authenticated users only)                  */}
-        {/* ============================================================= */}
-        {isAuthenticated && (
-          <FadeInView delay={50}>
-            <View style={styles.weeklyInsightsWrap}>
-              <View style={styles.aiBadge}>
-                <Feather name="zap" size={10} color="#FFFFFF" />
-                <Text style={styles.aiBadgeText}>AI</Text>
-              </View>
-              <WeeklyInsights />
-            </View>
-          </FadeInView>
-        )}
-
-        {/* ============================================================= */}
         {/* Discover by Country                                            */}
         {/* ============================================================= */}
         <FadeInView delay={100}>
@@ -530,6 +515,13 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* ============================================================= */}
+        {/* Weekly Activity (authenticated, between countries and trails) */}
+        {isAuthenticated && (
+          <FadeInView delay={150}>
+            <WeeklyInsights />
+          </FadeInView>
+        )}
+
         {/* Merged Trail Section (today + popular + recommended)           */}
         {/* ============================================================= */}
         <FadeInView delay={200}>

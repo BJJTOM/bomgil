@@ -60,14 +60,40 @@ export async function fetchWeatherAt(
   }
 }
 
-/** Map an OpenWeatherMap "main" condition to an emoji for compact UI display. */
-export function weatherEmoji(condition: string): string {
+/** Map an OpenWeatherMap "main" condition to a localized label. */
+const WEATHER_LABELS: Record<string, Record<string, string>> = {
+  clear:   { ko: '맑음', en: 'Clear', ja: '晴れ', zh: '晴' },
+  clouds:  { ko: '흐림', en: 'Cloudy', ja: '曇り', zh: '多云' },
+  rain:    { ko: '비', en: 'Rain', ja: '雨', zh: '雨' },
+  drizzle: { ko: '이슬비', en: 'Drizzle', ja: '霧雨', zh: '毛毛雨' },
+  snow:    { ko: '눈', en: 'Snow', ja: '雪', zh: '雪' },
+  thunderstorm: { ko: '뇌우', en: 'Storm', ja: '雷雨', zh: '雷暴' },
+  mist:    { ko: '안개', en: 'Mist', ja: '霧', zh: '雾' },
+  fog:     { ko: '안개', en: 'Fog', ja: '霧', zh: '雾' },
+  haze:    { ko: '연무', en: 'Haze', ja: '靄', zh: '霾' },
+};
+
+export function weatherLabel(condition: string, lang: string = 'ko'): string {
   const c = condition.toLowerCase();
-  if (c.includes('clear')) return '☀️';
-  if (c.includes('cloud')) return '☁️';
-  if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
-  if (c.includes('snow')) return '❄️';
-  if (c.includes('thunder')) return '⛈️';
-  if (c.includes('mist') || c.includes('fog') || c.includes('haze')) return '🌫️';
-  return '🌤️';
+  for (const [key, labels] of Object.entries(WEATHER_LABELS)) {
+    if (c.includes(key)) return labels[lang] || labels.ko;
+  }
+  return condition;
+}
+
+/** Map an OpenWeatherMap "main" condition to a Feather icon name. */
+export function weatherIcon(condition: string): string {
+  const c = condition.toLowerCase();
+  if (c.includes('clear')) return 'sun';
+  if (c.includes('cloud')) return 'cloud';
+  if (c.includes('rain') || c.includes('drizzle')) return 'cloud-rain';
+  if (c.includes('snow')) return 'cloud-snow';
+  if (c.includes('thunder')) return 'cloud-lightning';
+  if (c.includes('mist') || c.includes('fog') || c.includes('haze')) return 'cloud';
+  return 'sun';
+}
+
+/** @deprecated Use weatherLabel + weatherIcon instead */
+export function weatherEmoji(condition: string): string {
+  return weatherLabel(condition, 'ko');
 }

@@ -21,7 +21,7 @@ pip install --upgrade pip --quiet
 pip install -r requirements.txt --prefer-binary --quiet
 
 echo "=== Collecting static files ==="
-python manage.py collectstatic --no-input --clear=no
+python manage.py collectstatic --no-input
 
 echo "=== Running migrations ==="
 python manage.py migrate --run-syncdb

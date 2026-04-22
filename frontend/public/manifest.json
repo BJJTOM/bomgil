@@ -1,7 +1,8 @@
 {
-  "name": "Roami — Walk. Discover. Connect.",
-  "short_name": "Roami",
-  "description": "전 세계 도보여행 코스 공유 & 동행 매칭 플랫폼",
+  "name": "Moru — 걸으면 보이는 것들",
+  "short_name": "Moru",
+  "description": "전 세계 도보여행 코스 공유와 동행 매칭 플랫폼",
+  "lang": "ko",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

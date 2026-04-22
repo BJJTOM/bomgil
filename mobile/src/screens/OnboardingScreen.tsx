@@ -68,6 +68,7 @@ function AnimatedDot({ index, scrollX, primaryColor, inactiveColor }: {
   inactiveColor: string;
 }) {
   const animStyle = useAnimatedStyle(() => {
+    'worklet';
     const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
     const dotWidth = interpolate(scrollX.value, inputRange, [8, 28, 8], Extrapolation.CLAMP);
     const opacity = interpolate(scrollX.value, inputRange, [0.3, 1, 0.3], Extrapolation.CLAMP);
@@ -477,6 +478,7 @@ export default function OnboardingScreen() {
 
   // Button animated style for last page width transition
   const buttonAnimStyle = useAnimatedStyle(() => {
+    'worklet';
     const progress = interpolate(
       scrollX.value,
       [(TOTAL_PAGES - 2) * width, (TOTAL_PAGES - 1) * width],
@@ -493,6 +495,7 @@ export default function OnboardingScreen() {
 
   // Label opacity for the "start" text inside button
   const startLabelStyle = useAnimatedStyle(() => {
+    'worklet';
     const progress = interpolate(
       scrollX.value,
       [(TOTAL_PAGES - 2) * width, (TOTAL_PAGES - 1) * width],
@@ -504,6 +507,7 @@ export default function OnboardingScreen() {
 
   // Arrow opacity (inverse)
   const arrowStyle = useAnimatedStyle(() => {
+    'worklet';
     const progress = interpolate(
       scrollX.value,
       [(TOTAL_PAGES - 2) * width, (TOTAL_PAGES - 1) * width],

@@ -62,7 +62,6 @@ import { useAuthStore } from '../stores/auth';
 
 const { width } = Dimensions.get('window');
 
-// --- Requirement #3: Difficulty wording standardized ---
 const DIFFICULTY_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   easy: { label: '\uC26C\uC6C0', bg: '#DCFCE7', text: '#15803D' },
   moderate: { label: '\uBCF4\uD1B5', bg: '#FEF3C7', text: '#B45309' },
@@ -75,18 +74,6 @@ const SEASON_LABELS: Record<string, string> = {
   autumn: '\uAC00\uC744',
   winter: '\uACA8\uC6B8',
   all: '\uC0AC\uACC4\uC808',
-};
-
-// --- Requirement #1: SPOT_ICONS now use Feather icon names instead of emojis ---
-const SPOT_ICONS: Record<string, string> = {
-  start: 'play-circle',
-  restaurant: 'coffee',
-  cafe: 'coffee',
-  photo: 'camera',
-  rest: 'pause-circle',
-  view: 'eye',
-  danger: 'alert-triangle',
-  end: 'flag',
 };
 
 function formatDistance(km: string | number | null | undefined): string {
@@ -132,7 +119,6 @@ function TrailDetailScreenInner() {
   const bg = isDark ? '#0a0a0a' : '#FAFAFA';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#191F28';
-  // --- Requirement #12: Dark mode contrast upgraded to minimum 0.7 for WCAG AA ---
   const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : '#8B95A1';
   const textTertColor = isDark ? 'rgba(255,255,255,0.6)' : '#B0B8C1';
   const borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6';
@@ -152,7 +138,6 @@ function TrailDetailScreenInner() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
 
-  // --- Requirement #11: Like button micro-interaction ---
   const likeScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -315,7 +300,6 @@ function TrailDetailScreenInner() {
     } catch {}
   };
 
-  // --- Requirement #11: Like button animation handler ---
   const handleLike = () => {
     Vibration.vibrate(10);
     Animated.spring(likeScale, {
@@ -332,7 +316,6 @@ function TrailDetailScreenInner() {
     likeMutation.mutate();
   };
 
-  // --- Requirement #9: Transport map deep link ---
   const openDirections = () => {
     if (!trail?.start_lat || !trail?.start_lng) return;
     const lat = parseFloat(String(trail.start_lat));
@@ -395,10 +378,10 @@ function TrailDetailScreenInner() {
         showsVerticalScrollIndicator={false}
         bounces={true}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
 
-        {/* ===== 1. Cover Image ===== */}
+        {/* ===== HERO IMAGE with action buttons overlay ===== */}
         <View style={styles.coverContainer}>
           {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
             <Image
@@ -415,17 +398,74 @@ function TrailDetailScreenInner() {
           {/* Status bar protection */}
           <View style={[styles.statusBarOverlay, { height: insets.top }]} />
 
-          {/* --- Requirement #4: Smooth gradient overlay --- */}
+          {/* Smooth gradient overlay */}
           <LinearGradient
-            colors={['transparent', 'transparent', 'rgba(0,0,0,0.6)']}
-            locations={[0, 0.3, 1]}
+            colors={['transparent', 'transparent', 'rgba(0,0,0,0.65)']}
+            locations={[0, 0.25, 1]}
             style={styles.coverGradientBottom}
           />
 
-          {/* Title overlay at bottom */}
+          {/* Back button */}
+          <TouchableOpacity
+            style={[styles.heroBackBtn, { top: insets.top + 8 }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="arrow-left" size={20} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Change #3: Action buttons (Like/Save/Share) overlaid on hero image bottom-right */}
+          <View style={styles.heroActionsRow}>
+            <Animated.View style={{ transform: [{ scale: likeScale }] }}>
+              <TouchableOpacity
+                style={styles.heroActionBtn}
+                onPress={handleLike}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Feather
+                  name="heart"
+                  size={20}
+                  color={trail.is_liked ? '#FF4B4B' : '#fff'}
+                />
+                {(trail.like_count ?? 0) > 0 && (
+                  <Text style={styles.heroActionCount}>{trail.like_count}</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            <TouchableOpacity
+              style={styles.heroActionBtn}
+              onPress={() => bookmarkMutation.mutate()}
+              disabled={bookmarkMutation.isPending}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+              <Feather
+                name="bookmark"
+                size={20}
+                color={trail.is_bookmarked ? '#FFB800' : '#fff'}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.heroActionBtn}
+              onPress={handleShare}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+              <Feather name="send" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Title overlay at bottom-left */}
           <View style={styles.coverOverlay}>
-            <Text style={styles.coverTitle} numberOfLines={2}>{trail?.title || ''}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text
+              style={[
+                styles.coverTitle,
+                (trail?.title || '').length > 20 && { fontSize: 22 },
+              ]}
+              numberOfLines={2}>
+              {trail?.title || ''}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
               <Feather name="map-pin" size={12} color="rgba(255,255,255,0.85)" />
               <Text style={styles.coverRegion}>
                 {[trail?.region, trail?.country].filter(Boolean).join(', ')}
@@ -434,35 +474,34 @@ function TrailDetailScreenInner() {
           </View>
         </View>
 
-        {/* ===== 2. Hero Stats Card =====
-            --- Requirement #2: Unified stat items with vertical dividers --- */}
-        <View style={[styles.heroStatsCard, { backgroundColor: cardBg }]}>
-          <View style={styles.heroStatsCol}>
-            <Feather name="map" size={16} color={colors.primary} />
-            <Text style={[styles.heroStatValue, { color: textColor }]}>
+        {/* ===== STATS ROW — Change #2: text labels instead of icons ===== */}
+        <View style={[styles.statsRow, { backgroundColor: cardBg }]}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{'\uAC70\uB9AC'}</Text>
+            <Text style={[styles.statValue, { color: textColor }]}>
               {formatDistance(trail.distance_km)}
             </Text>
           </View>
-          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
-          <View style={styles.heroStatsCol}>
-            <Feather name="clock" size={16} color={colors.primary} />
-            <Text style={[styles.heroStatValue, { color: textColor }]}>
+          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{'\uC2DC\uAC04'}</Text>
+            <Text style={[styles.statValue, { color: textColor }]}>
               {formatDuration(trail.estimated_minutes)}
             </Text>
           </View>
-          <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
-          <View style={styles.heroStatsCol}>
-            <Feather name="trending-up" size={16} color={diff.text} />
-            <Text style={[styles.heroStatValue, { color: diff.text }]}>
+          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: textTertColor }]}>{'\uB09C\uC774\uB3C4'}</Text>
+            <Text style={[styles.statValue, { color: diff.text }]}>
               {diff.label}
             </Text>
           </View>
           {trail.elevation_gain != null && trail.elevation_gain > 0 && (
             <>
-              <View style={[styles.heroStatsDivider, { backgroundColor: borderColor }]} />
-              <View style={styles.heroStatsCol}>
-                <Feather name="triangle" size={16} color="#FF6B35" />
-                <Text style={[styles.heroStatValue, { color: textColor }]}>
+              <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statLabel, { color: textTertColor }]}>{'\uACE0\uB3C4'}</Text>
+                <Text style={[styles.statValue, { color: textColor }]}>
                   +{Math.round(trail.elevation_gain)}m
                 </Text>
               </View>
@@ -470,19 +509,19 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
-        {/* Series-membership chip */}
+        {/* Series-membership chips */}
         {Array.isArray((trail as any).series) && (trail as any).series.length > 0 && (
-          <View style={styles.seriesMembershipRow}>
+          <View style={styles.seriesRow}>
             {(trail as any).series.slice(0, 3).map((sm: any) => (
               <TouchableOpacity
                 key={`sm-${sm.id || sm.slug}`}
-                style={[styles.seriesMembershipChip, { backgroundColor: isDark ? 'rgba(45,74,46,0.2)' : '#F0F7F0' }]}
+                style={[styles.seriesChip, { backgroundColor: isDark ? 'rgba(45,74,46,0.2)' : '#F0F7F0' }]}
                 activeOpacity={0.85}
                 onPress={() => {
                   if (sm.slug) navigation.navigate('TrailSeriesDetail', { slug: sm.slug });
                 }}>
                 <Feather name="flag" size={11} color={colors.primary} />
-                <Text style={[styles.seriesMembershipText, { color: colors.primary }]} numberOfLines={1}>
+                <Text style={[styles.seriesChipText, { color: colors.primary }]} numberOfLines={1}>
                   {sm.title || sm.slug}
                 </Text>
               </TouchableOpacity>
@@ -490,7 +529,7 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-        {/* ===== 3. Condition Banner ===== */}
+        {/* ===== CONDITION BANNER ===== */}
         <TrailConditionBanner
           condition={(() => {
             const lc = (trail as any).latest_condition;
@@ -511,7 +550,7 @@ function TrailDetailScreenInner() {
           })()}
         />
 
-        {/* ===== 3b. Certificate + Edit — inline, not in action bar (Requirement #5) ===== */}
+        {/* ===== CERTIFICATE + EDIT (inline) ===== */}
         {(trail.is_completed || (currentUser && trail.author?.id === currentUser.id)) && (
           <View style={[styles.inlineActionsCard, { backgroundColor: cardBg }]}>
             {trail.is_completed && (
@@ -545,9 +584,8 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-        {/* ===== 4. Description — wrapped in card (Requirement #7) ===== */}
-        <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>{'\uC18C\uAC1C'}</Text>
+        {/* ===== DESCRIPTION — Change #1: no "소개" title, directly after stats ===== */}
+        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
           <Text style={[styles.descText, { color: textColor }]}>{trail?.description || ''}</Text>
           {(trail?.tags || []).length > 0 && (
             <View style={styles.tagsRow}>
@@ -560,7 +598,7 @@ function TrailDetailScreenInner() {
           )}
         </View>
 
-        {/* ===== 4b. Additional Info — wrapped in card (Requirement #7) ===== */}
+        {/* ===== ADDITIONAL INFO ===== */}
         {(() => {
           const tt = (trail as any).trail_type;
           const ws = (trail as any).walking_surface;
@@ -589,7 +627,7 @@ function TrailDetailScreenInner() {
           }
 
           return (
-            <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
+            <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
               <Text style={[styles.sectionTitle, { color: textColor }]}>{'\uCD94\uAC00 \uC815\uBCF4'}</Text>
               <View style={[styles.infoCard, { backgroundColor: sectionBg }]}>
                 {rows.map((r, idx) => (
@@ -607,7 +645,6 @@ function TrailDetailScreenInner() {
                   </View>
                 ))}
               </View>
-              {/* --- Requirement #9: Transport with map deep link --- */}
               {ta && (
                 <View style={[styles.transportBox, isDark && { backgroundColor: 'rgba(45,74,46,0.2)' }]}>
                   <View style={styles.transportHeader}>
@@ -628,39 +665,7 @@ function TrailDetailScreenInner() {
           );
         })()}
 
-        {/* ===== 4b+ Elevation Profile ===== */}
-        {trail.path_data?.coordinates && (
-          <ElevationProfile
-            coordinates={trail.path_data.coordinates as any}
-            isDark={isDark}
-          />
-        )}
-
-        {/* ===== 4c. Author — wrapped in card (Requirement #7) ===== */}
-        {trail.author && (
-          <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>{'\uC791\uC131\uC790'}</Text>
-            <TouchableOpacity
-              style={[styles.authorCard, { backgroundColor: sectionBg }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
-              <View style={styles.authorAvatar}>
-                {trail.author.profile_image ? (
-                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 40, height: 40, borderRadius: 20 }} />
-                ) : (
-                  <Feather name="user" size={20} color={textSecColor} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
-                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
-              </View>
-              <Feather name="chevron-right" size={18} color={textTertColor} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ===== 5. Map ===== */}
+        {/* ===== MAP — compact ===== */}
         <TouchableOpacity
           style={[styles.mapSection, { backgroundColor: sectionBg }]}
           activeOpacity={0.95}
@@ -684,7 +689,7 @@ function TrailDetailScreenInner() {
               pathCoordinates={trail.path_data?.coordinates as [number, number][] | undefined}
               region={trail.region}
               country={trail.country}
-              height={260}
+              height={200}
               theme="dark"
               spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
@@ -698,80 +703,111 @@ function TrailDetailScreenInner() {
           )}
         </TouchableOpacity>
 
-        {/* ===== 5b. Trail Segments ===== */}
+        {/* ===== ELEVATION PROFILE ===== */}
+        {trail.path_data?.coordinates && (
+          <ElevationProfile
+            coordinates={trail.path_data.coordinates as any}
+            isDark={isDark}
+          />
+        )}
+
+        {/* ===== TRAIL SEGMENTS ===== */}
         <TrailSegments segments={(trail as any).segments} />
 
-        {/* ===== 6. Spots — wrapped in card (Requirement #7) ===== */}
+        {/* ===== SPOTS — Change #5: unified dot icon, optional thumbnail ===== */}
         {(spots || []).length > 0 && (
-          <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              {'\uACBD\uC720\uC9C0'} <Text style={[styles.sectionCount, { color: textSecColor }]}>{spots.length}</Text>
-            </Text>
-            {(showAllSpots ? spots : (spots || []).slice(0, 3)).map((spot, index) => (
-              <View key={spot.id} style={styles.spotItem}>
-                <View style={styles.spotDotColumn}>
-                  <View style={[styles.spotDot, { backgroundColor: sectionBg }]}>
-                    <Feather
-                      name={SPOT_ICONS[spot.spot_type] || 'map-pin'}
-                      size={14}
-                      color={spot.spot_type === 'danger' ? '#DC2626' : spot.spot_type === 'start' ? '#15803D' : spot.spot_type === 'end' ? '#DC2626' : colors.primary}
-                    />
-                  </View>
-                  {index < spots.length - 1 && <View style={[styles.spotConnector, { backgroundColor: borderColor }]} />}
-                </View>
-                <View style={styles.spotContent}>
-                  <Text style={[styles.spotName, { color: textColor }]}>{spot?.name || ''}</Text>
-                  {spot.description ? (
-                    <Text style={[styles.spotDesc, { color: textSecColor }]} numberOfLines={2}>
-                      {spot.description}
-                    </Text>
-                  ) : null}
-                  {spot.tip ? (
-                    <View style={[styles.tipBox, { backgroundColor: sectionBg }]}>
-                      <Text style={[styles.tipText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{spot.tip}</Text>
+          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Text style={[styles.spotCountBadge, { color: textSecColor, backgroundColor: sectionBg }]}>
+                {spots.length}
+              </Text>
+            </View>
+            {(showAllSpots ? spots : (spots || []).slice(0, 3)).map((spot, index) => {
+              const spotImgUrl = spot.images && spot.images.length > 0 ? spot.images[0].image : null;
+              return (
+                <View key={spot.id} style={styles.spotItem}>
+                  <View style={styles.spotDotColumn}>
+                    <View style={[styles.spotDot, { backgroundColor: sectionBg }]}>
+                      <View style={[styles.spotDotInner, {
+                        backgroundColor: index === 0 ? '#15803D' : index === spots.length - 1 ? '#DC2626' : colors.primary,
+                      }]} />
                     </View>
-                  ) : null}
-                  {spot.images && spot.images.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                      {spot.images.map((img: any, imgIdx: number) => (
+                    {index < (showAllSpots ? spots.length : Math.min(spots.length, 3)) - 1 && (
+                      <View style={[styles.spotConnector, { backgroundColor: borderColor }]} />
+                    )}
+                  </View>
+                  <View style={styles.spotContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      {spotImgUrl && (
                         <TouchableOpacity
-                          key={img.id}
                           activeOpacity={0.8}
                           onPress={() => {
                             setViewerImages(spot.images.map((i: any) => i.image));
-                            setViewerIndex(imgIdx);
+                            setViewerIndex(0);
                             setViewerVisible(true);
                           }}>
                           <Image
-                            source={{ uri: img.image }}
-                            style={styles.spotPhoto}
+                            source={{ uri: spotImgUrl }}
+                            style={styles.spotThumb}
                             resizeMode="cover"
                           />
                         </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  )}
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.spotName, { color: textColor }]}>{spot?.name || ''}</Text>
+                        {spot.description ? (
+                          <Text style={[styles.spotDesc, { color: textSecColor }]} numberOfLines={2}>
+                            {spot.description}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    {spot.tip ? (
+                      <View style={[styles.tipBox, { backgroundColor: sectionBg }]}>
+                        <Text style={[styles.tipText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{spot.tip}</Text>
+                      </View>
+                    ) : null}
+                    {spot.images && spot.images.length > 1 && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                        {spot.images.slice(1).map((img: any, imgIdx: number) => (
+                          <TouchableOpacity
+                            key={img.id}
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              setViewerImages(spot.images.map((i: any) => i.image));
+                              setViewerIndex(imgIdx + 1);
+                              setViewerVisible(true);
+                            }}>
+                            <Image
+                              source={{ uri: img.image }}
+                              style={styles.spotPhoto}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
             {(spots || []).length > 3 && !showAllSpots && (
               <TouchableOpacity
                 style={styles.showMoreBtn}
-                onPress={() => setShowAllSpots(true)}
-              >
+                onPress={() => setShowAllSpots(true)}>
                 <Text style={[styles.showMoreText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>
-                  +{(spots || []).length - 3}{'\uAC1C \uACBD\uC720\uC9C0 \uB354\uBCF4\uAE30'}
+                  +{(spots || []).length - 3}{'\uAC1C \uB354\uBCF4\uAE30'}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
         )}
 
-        {/* ===== 6b. Stamp Collection ===== */}
+        {/* ===== STAMP COLLECTION ===== */}
         <StampBook trailId={trail.id} />
 
-        {/* ===== 7. Reviews — wrapped in card (Requirement #7) ===== */}
-        <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
+        {/* ===== REVIEWS ===== */}
+        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
           <View style={styles.reviewsHeader}>
             <View style={styles.reviewsTitleRow}>
               <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>{'\uB9AC\uBDF0'}</Text>
@@ -866,7 +902,7 @@ function TrailDetailScreenInner() {
           {/* Review List */}
           {safeReviews.length === 0 && !showReviewForm && (
             <View style={styles.emptyReviews}>
-              <Feather name="message-circle" size={28} color={textTertColor} style={{ marginBottom: 8 }} />
+              <Feather name="message-circle" size={24} color={textTertColor} style={{ marginBottom: 6 }} />
               <Text style={[styles.emptyReviewsText, { color: textSecColor }]}>{'\uC544\uC9C1 \uB9AC\uBDF0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</Text>
               <Text style={[styles.emptyReviewsSub, { color: textTertColor }]}>{'\uCCAB \uBC88\uC9F8 \uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uBCF4\uC138\uC694'}</Text>
             </View>
@@ -904,7 +940,7 @@ function TrailDetailScreenInner() {
                 {review.content}
               </Text>
               {review.images && review.images.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
                   {review.images.map((img, imgIdx) => (
                     <TouchableOpacity
                       key={img.id}
@@ -927,35 +963,43 @@ function TrailDetailScreenInner() {
           ))}
         </View>
 
-        {/* ===== 8. Author bottom row — wrapped in card (Requirement #7) ===== */}
+        {/* ===== AUTHOR ===== */}
         {trail.author && (
-          <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
-            <View style={styles.authorRow}>
-              <View style={[styles.authorAvatar, { backgroundColor: sectionBg }]}>
+          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+            <TouchableOpacity
+              style={[styles.authorCard, { backgroundColor: sectionBg }]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
+              <View style={styles.authorAvatar}>
                 {trail.author.profile_image ? (
-                  <Image source={{ uri: trail.author.profile_image }} style={styles.authorAvatarImg} />
+                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
                 ) : (
-                  <Feather name="user" size={16} color={textSecColor} />
+                  <Feather name="user" size={18} color={textSecColor} />
                 )}
               </View>
-              <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname || ''}</Text>
-              {trail.author.is_guide && (
-                <View style={[styles.guideBadge, { backgroundColor: sectionBg }]}>
-                  <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
+                  {trail.author.is_guide && (
+                    <View style={[styles.guideBadge, { backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.08)' }]}>
+                      <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
+                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
+              </View>
+              <Feather name="chevron-right" size={16} color={textTertColor} />
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* ===== 9. Users who walked this trail — wrapped in card (Requirement #7, #8) ===== */}
+        {/* ===== WALKERS ===== */}
         {trailWalkers.length > 0 && (
-          <View style={[styles.sectionCard, { backgroundColor: cardBg }]}>
+          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>
               {'\uC774 \uCF54\uC2A4\uB97C \uAC78\uC740 \uC0AC\uB78C'}{' '}
               <Text style={[styles.sectionCount, { color: textSecColor }]}>{trailWalkers.length}</Text>
             </Text>
-            {/* --- Requirement #8: alignItems center on walker row --- */}
             <View style={styles.walkersRow}>
               {trailWalkers.slice(0, 5).map((walker: any, index: number) => (
                 <TouchableOpacity
@@ -977,7 +1021,7 @@ function TrailDetailScreenInner() {
               {trailWalkers.length > 5 && (
                 <View style={[styles.walkerItem, { marginLeft: -8 }]}>
                   <View style={[styles.walkerMoreBadge, { borderColor: cardBg }]}>
-                    <Text style={styles.walkerMoreText}>+{trailWalkers.length - 5}{'\uBA85'}</Text>
+                    <Text style={styles.walkerMoreText}>+{trailWalkers.length - 5}</Text>
                   </View>
                 </View>
               )}
@@ -994,73 +1038,37 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-      </ScrollView>
-
-      {/* ===== Floating bottom bar: Like/Save/Share + primary CTA (Requirement #5) =====
-          Slim row with icon-only action buttons + the walk CTA */}
-      <View
-        style={[
-          styles.stickyCtaWrap,
-          {
-            backgroundColor: cardBg,
-            borderTopColor: borderColor,
-            paddingBottom: insets.bottom > 0 ? insets.bottom + 4 : 12,
-          },
-        ]}>
-        <View style={styles.floatingActionRow}>
-          {/* --- Requirement #11: Animated like button --- */}
-          <Animated.View style={{ transform: [{ scale: likeScale }] }}>
-            <TouchableOpacity style={styles.floatingActionBtn} onPress={handleLike} activeOpacity={0.7}>
-              <Feather
-                name="heart"
-                size={20}
-                color={trail.is_liked ? '#FF4B4B' : textSecColor}
-              />
-              {(trail.like_count ?? 0) > 0 && (
-                <Text style={[styles.floatingActionCount, { color: trail.is_liked ? '#FF4B4B' : textTertColor }]}>
-                  {trail.like_count}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-
+        {/* ===== OFFLINE SAVE BUTTON (secondary) ===== */}
+        <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
           <TouchableOpacity
-            style={styles.floatingActionBtn}
-            onPress={() => bookmarkMutation.mutate()}
-            disabled={bookmarkMutation.isPending}
+            style={[styles.offlineSaveBtn, { borderColor: isDark ? 'rgba(255,255,255,0.15)' : borderColor }]}
+            onPress={handleSaveOffline}
+            disabled={savingOffline}
             activeOpacity={0.7}>
             <Feather
-              name="bookmark"
-              size={20}
-              color={trail.is_bookmarked ? colors.primary : textSecColor}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.floatingActionBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Feather name="share-2" size={20} color={textSecColor} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.floatingActionBtn} onPress={handleSaveOffline} disabled={savingOffline} activeOpacity={0.7}>
-            <Feather name={savedOffline ? 'check-circle' : 'download'} size={20} color={savedOffline ? colors.primary : textSecColor} />
-          </TouchableOpacity>
-
-          {/* Primary CTA */}
-          <TouchableOpacity
-            style={styles.stickyCtaBtn}
-            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
-            activeOpacity={0.88}>
-            <Feather
-              name={trail.is_completed ? 'rotate-cw' : 'play'}
+              name={savedOffline ? 'check-circle' : 'download'}
               size={16}
-              color="#fff"
-              style={{ marginRight: 6 }}
+              color={savedOffline ? colors.primary : textSecColor}
             />
-            <Text style={styles.stickyCtaText}>
-              {trail.is_completed ? '\uB2E4\uC2DC \uAC77\uAE30' : '\uAC77\uAE30 \uC2DC\uC791'}
+            <Text style={[styles.offlineSaveBtnText, { color: savedOffline ? colors.primary : textSecColor }]}>
+              {savedOffline ? '\uC624\uD504\uB77C\uC778 \uC800\uC7A5\uB428' : '\uC624\uD504\uB77C\uC778\uC73C\uB85C \uC800\uC7A5'}
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+        {/* ===== CTA BUTTON — Change #6: in scroll flow, not fixed ===== */}
+        <View style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 20 }}>
+          <TouchableOpacity
+            style={styles.ctaBtn}
+            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
+            activeOpacity={0.88}>
+            <Text style={styles.ctaBtnText}>
+              {trail.is_completed ? '\uB2E4\uC2DC \uAC77\uAE30' : '\uC774 \uCF54\uC2A4\uB85C \uAC77\uAE30 \uC2DC\uC791'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
     </KeyboardAvoidingView>
 
       {/* Fullscreen Image Viewer */}
@@ -1111,9 +1119,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // -- Cover -------------------------------------------------------
+  // -- Hero Cover ---------------------------------------------------
   coverContainer: {
-    height: 360,
+    height: 250,
     position: 'relative',
     backgroundColor: '#2D4A2E',
     overflow: 'hidden',
@@ -1137,170 +1145,145 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     zIndex: 5,
   },
-  // Requirement #4: Now rendered via LinearGradient component
   coverGradientBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 260,
+    height: 180,
+  },
+  heroBackBtn: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Change #3: action buttons overlaid on hero image
+  heroActionsRow: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  heroActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 3,
+  },
+  heroActionCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
   },
   coverOverlay: {
     position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
+    bottom: 16,
+    left: 20,
+    right: 100,
     zIndex: 6,
   },
   coverTitle: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 8,
-    letterSpacing: -0.6,
-    lineHeight: 36,
+    letterSpacing: -0.4,
+    lineHeight: 28,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   coverRegion: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.92)',
+    color: 'rgba(255,255,255,0.9)',
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
 
-  // -- Hero stats card (Requirement #2: unified with vertical dividers) --
-  heroStatsCard: {
+  // -- Stats row (Change #2: text labels, not icons) -----------------
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
   },
-  heroStatsCol: {
+  statItem: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 2,
   },
-  heroStatValue: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  statValue: {
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  heroStatLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  heroStatsDivider: {
+  statDivider: {
     width: StyleSheet.hairlineWidth,
-    height: 24,
-    backgroundColor: '#E5E8EB',
-  },
-  heroDifficultyPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  heroDifficultyText: {
-    fontSize: 12,
-    fontWeight: '700',
+    height: 28,
   },
 
-  // -- Series chips ------------------------------------------------
-  seriesMembershipRow: {
+  // -- Series chips --------------------------------------------------
+  seriesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 8,
   },
-  seriesMembershipChip: {
+  seriesChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 12,
   },
-  seriesMembershipText: {
+  seriesChipText: {
     fontSize: 12,
     fontWeight: '700',
   },
 
-  // -- Inline actions card (Certificate / Edit) --------------------
+  // -- Inline actions (Certificate / Edit) ----------------------------
   inlineActionsCard: {
     marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 16,
-    padding: 16,
-  },
-
-  // -- Floating bottom action bar (Requirement #5) -----------------
-  stickyCtaWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  floatingActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  floatingActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  floatingActionCount: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  stickyCtaBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#2D4A2E',
-    paddingVertical: 14,
+    marginTop: 10,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
+    padding: 14,
   },
-  stickyCtaText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.2,
-  },
-
   completionBadgeRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   completionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#15803D',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 14,
     gap: 6,
   },
@@ -1318,8 +1301,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#2D4A2E',
@@ -1331,22 +1314,18 @@ const styles = StyleSheet.create({
     color: '#2D4A2E',
   },
 
-  // -- Section card wrapper (Requirement #7) -----------------------
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 12,
+  // -- Content blocks (replaces sectionCard for tighter layout) -------
+  contentBlock: {
+    marginTop: 16,
   },
 
-  // -- Sections (Requirement #10: Typography hierarchy) ------------
+  // -- Section titles (only used where needed) ------------------------
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#191F28',
-    marginBottom: 16,
-    letterSpacing: -0.3,
+    marginBottom: 10,
+    letterSpacing: -0.2,
   },
   sectionCount: {
     fontSize: 13,
@@ -1354,7 +1333,7 @@ const styles = StyleSheet.create({
     color: '#8B95A1',
   },
 
-  // -- Description -------------------------------------------------
+  // -- Description ----------------------------------------------------
   descText: {
     fontSize: 14,
     fontWeight: '400',
@@ -1365,11 +1344,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 16,
+    marginTop: 10,
   },
   tag: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: '#F7F8FA',
   },
@@ -1378,37 +1357,42 @@ const styles = StyleSheet.create({
     color: '#8B95A1',
   },
 
-  // -- Map ---------------------------------------------------------
+  // -- Map ------------------------------------------------------------
   mapSection: {
     marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 16,
+    marginTop: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#F7F8FA',
   },
   mapFallback: {
-    height: 160,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F7F8FA',
   },
 
-  // -- Spots -------------------------------------------------------
+  // -- Spots ----------------------------------------------------------
   spotItem: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   spotDotColumn: {
-    width: 32,
+    width: 28,
     alignItems: 'center',
   },
   spotDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  spotDotInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   spotConnector: {
     width: 2,
@@ -1418,8 +1402,21 @@ const styles = StyleSheet.create({
   },
   spotContent: {
     flex: 1,
-    paddingLeft: 12,
-    paddingBottom: 20,
+    paddingLeft: 10,
+    paddingBottom: 14,
+  },
+  spotThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  spotCountBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   spotName: {
     fontSize: 14,
@@ -1430,30 +1427,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
     color: '#8B95A1',
-    marginTop: 3,
-    lineHeight: 19,
+    marginTop: 2,
+    lineHeight: 18,
   },
   tipBox: {
     backgroundColor: '#F7F8FA',
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginTop: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginTop: 6,
   },
   tipText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#2D4A2E',
-    lineHeight: 18,
+    lineHeight: 17,
   },
   spotPhoto: {
-    width: 80,
-    height: 60,
-    borderRadius: 12,
+    width: 72,
+    height: 54,
+    borderRadius: 10,
     marginRight: 6,
-    marginTop: 8,
   },
 
-  // -- Reviews -----------------------------------------------------
+  // -- Show More Spots ------------------------------------------------
+  showMoreBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  showMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2D4A2E',
+  },
+
+  // -- Reviews --------------------------------------------------------
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1470,8 +1478,8 @@ const styles = StyleSheet.create({
     color: '#FFB800',
   },
   writeReviewBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     backgroundColor: colors.primary,
     borderRadius: 20,
   },
@@ -1481,7 +1489,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   emptyReviews: {
-    paddingVertical: 32,
+    paddingVertical: 24,
     alignItems: 'center',
   },
   emptyReviewsText: {
@@ -1492,32 +1500,33 @@ const styles = StyleSheet.create({
   emptyReviewsSub: {
     fontSize: 11,
     color: '#B0B8C1',
-    marginTop: 4,
+    marginTop: 3,
   },
   reviewForm: {
     backgroundColor: '#F7F8FA',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    marginTop: 8,
   },
   starRow: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   reviewInput: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 10,
+    padding: 12,
     fontSize: 14,
     color: '#191F28',
-    minHeight: 100,
-    marginBottom: 12,
+    minHeight: 90,
+    marginBottom: 10,
   },
   reviewSubmitBtn: {
     backgroundColor: '#2D4A2E',
-    height: 48,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1530,37 +1539,37 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   reviewItem: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F2F4F6',
   },
   reviewTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 6,
   },
   reviewAvatarSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   reviewAvatarImg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   reviewAvatarFallback: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#8B95A1',
   },
   reviewAuthor: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#191F28',
   },
@@ -1575,13 +1584,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   reviewPhoto: {
-    width: 72,
-    height: 72,
+    width: 64,
+    height: 64,
     borderRadius: 8,
     marginRight: 6,
   },
   reviewImageSection: {
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 4,
   },
   reviewImageThumbWrap: {
@@ -1589,8 +1598,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   reviewImageThumb: {
-    width: 64,
-    height: 64,
+    width: 60,
+    height: 60,
     borderRadius: 10,
   },
   reviewImageRemove: {
@@ -1605,8 +1614,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   reviewImageAddBtn: {
-    width: 64,
-    height: 64,
+    width: 60,
+    height: 60,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
@@ -1620,43 +1629,28 @@ const styles = StyleSheet.create({
     color: '#8B95A1',
   },
 
-  // -- Author ------------------------------------------------------
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  // -- Author ---------------------------------------------------------
   authorAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F7F8FA',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  authorAvatarImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  authorAvatarFallback: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2D4A2E',
+  authorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
   },
   authorName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#191F28',
-  },
-  authorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7F8FA',
-    borderRadius: 14,
-    padding: 12,
-    gap: 12,
   },
   authorBio: {
     fontSize: 11,
@@ -1664,40 +1658,27 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   guideBadge: {
-    backgroundColor: '#F7F8FA',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   guideBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#2D4A2E',
     fontWeight: '600',
   },
 
-  // -- Show More Spots ---------------------------------------------
-  showMoreBtn: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  showMoreText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#2D4A2E',
-  },
-
-  // -- Additional info list ----------------------------------------
+  // -- Additional info ------------------------------------------------
   infoCard: {
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 11,
   },
   infoLabel: {
     fontSize: 13,
@@ -1708,18 +1689,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // -- Transport (Requirement #9) ----------------------------------
+  // -- Transport ------------------------------------------------------
   transportBox: {
-    marginTop: 16,
+    marginTop: 12,
     backgroundColor: '#F0F7F0',
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 12,
+    padding: 14,
   },
   transportHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   transportLabel: {
     fontSize: 13,
@@ -1736,11 +1717,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
+    marginTop: 8,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
     backgroundColor: 'rgba(45,74,46,0.08)',
   },
   directionsBtnText: {
@@ -1749,7 +1730,38 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  // -- Image viewer ------------------------------------------------
+  // -- Offline save button --------------------------------------------
+  offlineSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+  },
+  offlineSaveBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // -- CTA button (Change #6: in-flow, not fixed) --------------------
+  ctaBtn: {
+    backgroundColor: '#2D4A2E',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.2,
+  },
+
+  // -- Image viewer ---------------------------------------------------
   viewerOverlay: {
     flex: 1,
     backgroundColor: '#000',
@@ -1777,19 +1789,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // -- Trail Walkers (Requirement #8) ------------------------------
+  // -- Trail Walkers --------------------------------------------------
   walkersRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   walkerItem: {
     zIndex: 1,
   },
   walkerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F2F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1798,19 +1810,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   walkerAvatarImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   walkerAvatarFallback: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#8B95A1',
   },
   walkerMoreBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#E5E8EB',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1825,8 +1837,8 @@ const styles = StyleSheet.create({
   walkerNamesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
+    gap: 6,
+    marginTop: 2,
   },
   walkerName: {
     fontSize: 11,
@@ -1834,7 +1846,7 @@ const styles = StyleSheet.create({
     color: '#2D4A2E',
     backgroundColor: 'rgba(45,74,46,0.06)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 12,
     overflow: 'hidden',
   },

@@ -23,11 +23,8 @@ python manage.py sanitize_phone_usernames
 # based) so running on every deploy is safe. Failures here MUST NOT
 # break the build, because the app is still fully functional without
 # the curated content — so we wrap each in `|| true` and just log.
-echo "=== Seeding official trails (idempotent) ==="
-# MORU_DISABLE_REVALIDATE=1 stops the ISR webhook signals from firing
-# 30+ times in a loop during bulk seeding. The first real trail edit
-# after deploy will revalidate naturally via the signals.
-MORU_DISABLE_REVALIDATE=1 python manage.py seed_official_trails --update || echo "seed_official_trails failed — continuing"
+echo "=== Importing public trails from Korea Tourism API (idempotent) ==="
+MORU_DISABLE_REVALIDATE=1 python manage.py import_public_trails || echo "import_public_trails failed — continuing"
 
 echo "=== Seeding trail series (idempotent) ==="
 MORU_DISABLE_REVALIDATE=1 python manage.py seed_trail_series || echo "seed_trail_series failed — continuing"

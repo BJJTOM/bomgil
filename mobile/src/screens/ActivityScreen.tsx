@@ -24,15 +24,119 @@ import { FadeInView } from '../components/FadeInView';
 import { ActivityStats, ActivityTrack, PaginatedResponse } from '../types';
 
 const SOURCE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-  manual_gpx: { label: 'GPX', icon: '\uD83D\uDCC1', color: '#6B7280' },
-  apple_watch: { label: 'Apple Watch', icon: '⌚', color: '#34D399' },
-  garmin: { label: 'Garmin', icon: '⌚', color: '#60A5FA' },
-  samsung_health: { label: 'Samsung Health', icon: '\uD83D\uDCF1', color: '#818CF8' },
-  google_fit: { label: 'Google Fit', icon: '\uD83D\uDCF1', color: '#34D399' },
-  cashwalk: { label: 'Cashwalk', icon: '\uD83D\uDEB6', color: '#FBBF24' },
-  phone_gps: { label: 'GPS', icon: '\uD83D\uDCCD', color: '#F87171' },
-  strava: { label: 'Strava', icon: '\uD83C\uDFC3', color: '#FB923C' },
+  manual_gpx: { label: 'GPX', icon: 'file', color: '#6B7280' },
+  apple_watch: { label: 'Apple Watch', icon: 'watch', color: '#34D399' },
+  garmin: { label: 'Garmin', icon: 'watch', color: '#60A5FA' },
+  samsung_health: { label: 'Samsung Health', icon: 'smartphone', color: '#818CF8' },
+  google_fit: { label: 'Google Fit', icon: 'smartphone', color: '#34D399' },
+  cashwalk: { label: 'Cashwalk', icon: 'navigation', color: '#FBBF24' },
+  phone_gps: { label: 'GPS', icon: 'map-pin', color: '#F87171' },
+  strava: { label: 'Strava', icon: 'activity', color: '#FB923C' },
 };
+
+/* ─── Pure-View progress ring ─── */
+function ProgressRing({
+  size,
+  strokeWidth,
+  progress,
+  trackColor,
+  fillColor,
+  children,
+}: {
+  size: number;
+  strokeWidth: number;
+  progress: number; // 0..1
+  trackColor: string;
+  fillColor: string;
+  children?: React.ReactNode;
+}) {
+  const clampedProgress = Math.min(Math.max(progress, 0), 1);
+  const radius = size / 2;
+  const innerSize = size - strokeWidth * 2;
+
+  // We build the ring from two half-circle clips that rotate to reveal
+  // the fill colour arc. This avoids needing react-native-svg.
+  const renderHalf = (isRight: boolean) => {
+    // Each half covers 0-180 degrees of the ring.
+    // For progress 0..0.5  -> only the right half rotates (0..180 deg).
+    // For progress 0.5..1  -> right half is fully shown (180 deg),
+    //                         left half rotates (0..180 deg).
+    let rotation = 0;
+    let visible = true;
+
+    if (isRight) {
+      if (clampedProgress <= 0) {
+        visible = false;
+      } else if (clampedProgress <= 0.5) {
+        rotation = clampedProgress * 360; // 0..180
+      } else {
+        rotation = 180;
+      }
+    } else {
+      if (clampedProgress <= 0.5) {
+        visible = false;
+      } else {
+        rotation = (clampedProgress - 0.5) * 360; // 0..180
+      }
+    }
+
+    if (!visible) return null;
+
+    return (
+      <View
+        style={{
+          position: 'absolute',
+          width: radius,
+          height: size,
+          overflow: 'hidden',
+          left: isRight ? radius : 0,
+        }}>
+        <View
+          style={{
+            width: size,
+            height: size,
+            borderRadius: radius,
+            borderWidth: strokeWidth,
+            borderColor: fillColor,
+            position: 'absolute',
+            left: isRight ? -radius : 0,
+            transform: [{ rotate: `${isRight ? rotation - 180 : rotation}deg` }],
+          }}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Track (background ring) */}
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius,
+          borderWidth: strokeWidth,
+          borderColor: trackColor,
+          position: 'absolute',
+        }}
+      />
+      {/* Fill arcs */}
+      {renderHalf(true)}
+      {renderHalf(false)}
+      {/* Inner content */}
+      <View
+        style={{
+          width: innerSize,
+          height: innerSize,
+          borderRadius: innerSize / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        {children}
+      </View>
+    </View>
+  );
+}
 
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
@@ -49,11 +153,13 @@ export default function ActivityScreen() {
     if (hour >= 18 && hour <= 23) return t.activity.greetingEvening;
     return t.activity.greetingNight;
   };
+
   const bg = isDark ? '#0a0a0a' : '#F8F9FB';
   const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
   const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
   const textTertColor = isDark ? 'rgba(255,255,255,0.4)' : colors.textTertiary;
+  const dividerColor = isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB';
 
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['activity-stats'],
@@ -108,23 +214,16 @@ export default function ActivityScreen() {
   });
   const greeting = useMemo(() => getGreeting(), []);
 
-  const today = now.toISOString().split('T')[0];
-  const todayActivities = activities.filter(
-    (a) => a.started_at && a.started_at.startsWith(today),
-  );
-  const allSteps = activities.reduce((s, a) => s + (a.total_steps || 0), 0);
-  const allDistance = activities.reduce((s, a) => s + parseFloat(a.distance_km || '0'), 0);
-  const allCalories = activities.reduce((s, a) => s + (a.calories_burned || 0), 0);
-
-  const todaySteps = todayActivities.reduce((s, a) => s + (a.total_steps || 0), 0);
-  const todayDistance = todayActivities.reduce((s, a) => s + parseFloat(a.distance_km || '0'), 0);
-  const todayCalories = todayActivities.reduce((s, a) => s + (a.calories_burned || 0), 0);
-
-  const todayStats = {
-    steps: allSteps,
-    distance: allDistance,
-    calories: allCalories,
-  };
+  // Weekly goal data from stats API
+  const weeklyGoalKm = stats?.weekly_goal_km ?? 20;
+  const weeklyDistanceKm = stats?.weekly_distance_km ?? 0;
+  const weeklyProgressPct = stats?.weekly_progress_pct
+    ? stats.weekly_progress_pct / 100
+    : Math.min(weeklyDistanceKm / weeklyGoalKm, 1);
+  const currentStreak = stats?.current_streak ?? 0;
+  const longestStreak = stats?.longest_streak ?? 0;
+  const totalDistanceKm = stats?.total_distance_km ?? 0;
+  const totalWalks = stats?.track_count ?? 0;
 
   const [activityPage, setActivityPage] = useState(1);
   const [pausedWalk, setPausedWalk] = useState<any>(null);
@@ -135,7 +234,6 @@ export default function ActivityScreen() {
       if (val) {
         try {
           const data = JSON.parse(val);
-          // Check expiration (48 hours)
           if (new Date(data.expiresAt) > new Date()) {
             setPausedWalk(data);
           } else {
@@ -145,6 +243,7 @@ export default function ActivityScreen() {
       }
     }).catch(() => {});
   }, []);
+
   const PAGE_SIZE = 10;
   const paginatedActivities = activities.slice(0, activityPage * PAGE_SIZE);
   const hasMoreActivities = activities.length > activityPage * PAGE_SIZE;
@@ -174,6 +273,15 @@ export default function ActivityScreen() {
     );
   };
 
+  // Determine progress ring color — green gradient based on progress
+  const ringFillColor = weeklyProgressPct >= 1
+    ? '#22C55E'
+    : weeklyProgressPct >= 0.5
+      ? '#4ADE80'
+      : colors.primary;
+
+  const ringTrackColor = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
+
   if (!isAuthenticated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
@@ -181,9 +289,9 @@ export default function ActivityScreen() {
           <Text style={[styles.headerTitle, { color: textColor }]}>{t.activity.title}</Text>
         </View>
         <View style={styles.loginPrompt}>
-          <Text style={styles.loginPromptIcon}>{'\uD83E\uDDB6'}</Text>
+          <Feather name="activity" size={48} color={textTertColor} />
           <Text style={[styles.loginPromptTitle, { color: textSecColor }]}>
-{t.activity.loginPrompt}
+            {t.activity.loginPrompt}
           </Text>
           <TouchableOpacity
             style={styles.loginPromptBtn}
@@ -214,34 +322,86 @@ export default function ActivityScreen() {
           </FadeInView>
         </View>
 
-        {/* ===== STATS CARD ===== */}
+        {/* ===== WEEKLY SUMMARY CARD ===== */}
         <FadeInView delay={50}>
-          <View style={[styles.statsCard, { backgroundColor: cardBg }]}>
-            <View style={styles.statsMainRow}>
-              <View style={styles.statMainItem}>
-                <Text style={[styles.statMainValue, { color: textColor }]}>{todayStats.distance.toFixed(1)}</Text>
-                <Text style={[styles.statMainUnit, { color: textTertColor }]}>km</Text>
-              </View>
-              <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-              <View style={styles.statSubItem}>
-                <Feather name="trending-up" size={14} color="#60A5FA" />
-                <Text style={[styles.statSubValue, { color: textColor }]}>{todayStats.steps.toLocaleString()}</Text>
-                <Text style={[styles.statSubLabel, { color: textTertColor }]}>{t.walk.steps}</Text>
-              </View>
-              <View style={[styles.statDivider, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-              <View style={styles.statSubItem}>
-                <Feather name="zap" size={14} color="#F59E0B" />
-                <Text style={[styles.statSubValue, { color: textColor }]}>{todayStats.calories}</Text>
-                <Text style={[styles.statSubLabel, { color: textTertColor }]}>kcal</Text>
+          <View style={[styles.weeklyCard, { backgroundColor: cardBg }]}>
+            <View style={styles.weeklyRow}>
+              <ProgressRing
+                size={120}
+                strokeWidth={10}
+                progress={weeklyProgressPct}
+                trackColor={ringTrackColor}
+                fillColor={ringFillColor}>
+                <Text style={[styles.ringPercent, { color: textColor }]}>
+                  {Math.round(weeklyProgressPct * 100)}%
+                </Text>
+                <Text style={[styles.ringLabel, { color: textTertColor }]}>
+                  {weeklyProgressPct >= 1 ? 'DONE' : ''}
+                </Text>
+              </ProgressRing>
+
+              <View style={styles.weeklyInfo}>
+                <Text style={[styles.weeklyDistLabel, { color: textTertColor }]}>
+                  {'이번 주'}
+                </Text>
+                <Text style={[styles.weeklyDistValue, { color: textColor }]}>
+                  {weeklyDistanceKm.toFixed(1)}
+                  <Text style={[styles.weeklyDistUnit, { color: textTertColor }]}> / {weeklyGoalKm}km</Text>
+                </Text>
+
+                {currentStreak > 0 && (
+                  <View style={styles.streakRow}>
+                    <Feather name="zap" size={14} color="#F59E0B" />
+                    <Text style={[styles.streakText, { color: textColor }]}>
+                      {currentStreak}{'일 연속'}
+                    </Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.startWalkBtnSmall}
+                  onPress={() => navigation.navigate('Walk')}
+                  activeOpacity={0.85}>
+                  <Feather name="play" size={14} color="#fff" />
+                  <Text style={styles.startWalkBtnSmallText}>{t.activity.startWalk}</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         </FadeInView>
 
+        {/* ===== QUICK STATS ROW ===== */}
+        <FadeInView delay={100}>
+          <View style={styles.quickStatsRow}>
+            <View style={[styles.quickStatCard, { backgroundColor: cardBg }]}>
+              <Feather name="map" size={16} color="#60A5FA" />
+              <Text style={[styles.quickStatValue, { color: textColor }]}>
+                {totalDistanceKm.toFixed(1)}
+                <Text style={[styles.quickStatUnit, { color: textTertColor }]}> km</Text>
+              </Text>
+              <Text style={[styles.quickStatLabel, { color: textTertColor }]}>{'총 거리'}</Text>
+            </View>
+            <View style={[styles.quickStatCard, { backgroundColor: cardBg }]}>
+              <Feather name="navigation" size={16} color="#4ADE80" />
+              <Text style={[styles.quickStatValue, { color: textColor }]}>
+                {totalWalks}
+              </Text>
+              <Text style={[styles.quickStatLabel, { color: textTertColor }]}>{'총 걸음기록'}</Text>
+            </View>
+            <View style={[styles.quickStatCard, { backgroundColor: cardBg }]}>
+              <Feather name="award" size={16} color="#F59E0B" />
+              <Text style={[styles.quickStatValue, { color: textColor }]}>
+                {longestStreak}
+                <Text style={[styles.quickStatUnit, { color: textTertColor }]}> {'일'}</Text>
+              </Text>
+              <Text style={[styles.quickStatLabel, { color: textTertColor }]}>{'최장 연속'}</Text>
+            </View>
+          </View>
+        </FadeInView>
 
         {/* ===== PAUSED WALK RESUME ===== */}
         {pausedWalk && (
-          <FadeInView delay={100}>
+          <FadeInView delay={150}>
             <TouchableOpacity
               style={[styles.resumeWalkCard, { backgroundColor: cardBg }]}
               onPress={() => {
@@ -275,17 +435,8 @@ export default function ActivityScreen() {
           </FadeInView>
         )}
 
-        {/* ===== CTA ===== */}
-        <FadeInView delay={150}>
-          <TouchableOpacity
-            style={styles.startWalkBtnLarge}
-            onPress={() => navigation.navigate('Walk')}
-            activeOpacity={0.85}>
-            <View style={styles.startWalkIconCircle}>
-              <Feather name="play" size={24} color="#fff" />
-            </View>
-            <Text style={styles.startWalkTextLarge}>{t.activity.startWalk}</Text>
-          </TouchableOpacity>
+        {/* ===== IMPORT WATCH LINK ===== */}
+        <FadeInView delay={175}>
           <TouchableOpacity
             style={[styles.watchImportLink, isDark && { borderColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => navigation.navigate('HealthImport')}
@@ -298,51 +449,65 @@ export default function ActivityScreen() {
 
         {/* ===== RECENT ACTIVITIES ===== */}
         <View style={styles.recentSection}>
-          <FadeInView delay={250}>
+          <FadeInView delay={200}>
             <View style={styles.recentHeader}>
-              <Text style={[styles.recentTitle, { color: textColor }]}>{t.activity.recentTitle} <Text style={{ color: textTertColor, fontSize: 14, fontWeight: '500' }}>{activities.length}</Text></Text>
+              <Text style={[styles.recentTitle, { color: textColor }]}>
+                {t.activity.recentTitle}{' '}
+                <Text style={{ color: textTertColor, fontSize: 14, fontWeight: '500' }}>
+                  {activities.length}
+                </Text>
+              </Text>
             </View>
           </FadeInView>
 
           {paginatedActivities.length === 0 ? (
-            <FadeInView delay={300}>
-              <View style={[styles.noRecords, { backgroundColor: cardBg }]}>
-                <Text style={styles.noRecordsEmoji}>{'\uD83D\uDEB6'}</Text>
-                <Text style={styles.noRecordsText}>
-                  {t.activity.noActivities}
+            <FadeInView delay={250}>
+              <View style={[styles.emptyState, { backgroundColor: cardBg }]}>
+                <View style={[styles.emptyIconCircle, isDark && { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
+                  <Feather name="sunrise" size={32} color={textTertColor} />
+                </View>
+                <Text style={[styles.emptyTitle, { color: textSecColor }]}>
+                  {'아직 걸은 기록이 없어요'}
                 </Text>
-                <Text style={styles.noRecordsHint}>
-                  {t.activity.startWalk}
+                <Text style={[styles.emptyHint, { color: textTertColor }]}>
+                  {'첫 걸음을 기록해보세요'}
                 </Text>
+                <TouchableOpacity
+                  style={styles.emptyCTA}
+                  onPress={() => navigation.navigate('Walk')}
+                  activeOpacity={0.85}>
+                  <Feather name="play" size={14} color="#fff" />
+                  <Text style={styles.emptyCTAText}>{'걷기 시작하기'}</Text>
+                </TouchableOpacity>
               </View>
             </FadeInView>
           ) : (
             paginatedActivities.map((activity, index) => {
-              const dateStr = activity.started_at
-                ? new Date(activity.started_at).toLocaleDateString('ko-KR', {
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                : new Date(activity.created_at).toLocaleDateString('ko-KR', {
-                    month: 'long',
-                    day: 'numeric',
-                  });
+              const dateObj = activity.started_at
+                ? new Date(activity.started_at)
+                : new Date(activity.created_at);
+              const dateStr = dateObj.toLocaleDateString('ko-KR', {
+                month: 'long',
+                day: 'numeric',
+              });
+              const timeStr = dateObj.toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              });
               const sourceInfo = SOURCE_LABELS[activity.source];
-              const distanceStr = activity.distance_km
-                ? `${(parseFloat(String(activity.distance_km || '0')) || 0).toFixed(1)}km`
-                : '';
+              const distanceVal = parseFloat(String(activity.distance_km || '0')) || 0;
+              const distanceStr = distanceVal > 0 ? `${distanceVal.toFixed(1)}km` : '';
               const durationStr = formatDuration(activity.duration_minutes);
               const iconColor = sourceInfo?.color || '#9CA3AF';
+              const featherIcon = sourceInfo?.icon || 'map-pin';
 
               return (
-                <FadeInView key={activity.id} delay={300 + index * 50}>
+                <FadeInView key={activity.id} delay={250 + index * 40}>
                   <TouchableOpacity
                     style={[styles.activityCard, { backgroundColor: cardBg }]}
                     activeOpacity={0.7}
                     onPress={() => navigation.navigate('ActivityDetail', {
-                      // Strip heavy fields before navigation — ActivityDetail
-                      // re-fetches the full record itself. Avoids Android's
-                      // Intent bundle size limit (TransactionTooLargeException).
                       activity: {
                         ...activity,
                         track_points: undefined,
@@ -351,22 +516,38 @@ export default function ActivityScreen() {
                     })}
                     onLongPress={() => handleDelete(activity)}>
                     <View style={[styles.activityIconWrap, { backgroundColor: iconColor + '18' }]}>
-                      <Feather name="map-pin" size={18} color={iconColor} />
+                      <Feather name={featherIcon} size={18} color={iconColor} />
                     </View>
                     <View style={styles.activityInfo}>
                       <Text style={[styles.activityTitleMain, { color: textColor }]} numberOfLines={1}>
                         {activity.title || `${sourceInfo?.label || ''} 기록`}
                       </Text>
                       <Text style={[styles.activityMeta, { color: textTertColor }]}>
-                        {dateStr}  {'·'}  {[distanceStr, durationStr].filter(Boolean).join(' · ')}
+                        {dateStr} {timeStr}
+                        {distanceStr || durationStr ? '  ·  ' : ''}
+                        {[distanceStr, durationStr].filter(Boolean).join(' · ')}
                       </Text>
+                      {activity.trail && (
+                        <View style={styles.trailTag}>
+                          <Feather name="map" size={10} color={colors.primary} />
+                          <Text style={[styles.trailTagText, { color: colors.primary }]}>{'코스 연결됨'}</Text>
+                        </View>
+                      )}
                     </View>
-                    <TouchableOpacity
-                      style={[styles.deleteBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      onPress={() => handleDelete(activity)}>
-                      <Feather name="x" size={14} color={colors.textTertiary} />
-                    </TouchableOpacity>
+                    <View style={styles.activityRight}>
+                      {distanceVal > 0 && (
+                        <Text style={[styles.activityDistBig, { color: textColor }]}>
+                          {distanceVal.toFixed(1)}
+                          <Text style={{ fontSize: 11, fontWeight: '500', color: textTertColor }}> km</Text>
+                        </Text>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.deleteBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        onPress={() => handleDelete(activity)}>
+                        <Feather name="trash-2" size={12} color={isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'} />
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 </FadeInView>
               );
@@ -409,16 +590,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
-  },
-  loginPromptIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    gap: 16,
   },
   loginPromptTitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 20,
     lineHeight: 24,
   },
   loginPromptBtn: {
@@ -452,93 +629,114 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
 
-  // ===== Stats card =====
-  statsCard: {
+  // ===== Weekly summary card =====
+  weeklyCard: {
     marginHorizontal: 20,
     marginTop: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 3,
   },
-  statsMainRow: {
+  weeklyRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 24,
   },
-  statMainItem: {
-    flex: 1.2,
-    alignItems: 'center',
-  },
-  statMainValue: {
-    fontSize: 36,
+  ringPercent: {
+    fontSize: 22,
     fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
-  statMainUnit: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    fontWeight: '500',
+  ringLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
     marginTop: -2,
   },
-  statSubItem: {
+  weeklyInfo: {
     flex: 1,
-    alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
-  statSubValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statSubLabel: {
-    fontSize: 11,
-    color: colors.textTertiary,
+  weeklyDistLabel: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  statDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 4,
+  weeklyDistValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  weeklyDistUnit: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  streakText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  startWalkBtnSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  startWalkBtnSmallText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
-  // ===== CTA =====
-  startWalkBtnLarge: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    backgroundColor: colors.primary,
-    paddingVertical: 18,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // ===== Quick stats =====
+  quickStatsRow: {
     flexDirection: 'row',
-    gap: 12,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
+    marginHorizontal: 20,
+    marginTop: 12,
+    gap: 8,
   },
-  startWalkIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  quickStatCard: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  startWalkTextLarge: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  quickStatValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
+  quickStatUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  quickStatLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // ===== Watch import =====
   watchImportLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -556,31 +754,28 @@ const styles = StyleSheet.create({
   // ===== Recent section =====
   recentSection: {
     paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingTop: 24,
   },
   recentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   recentTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
+
+  // ===== Activity card =====
   activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -593,10 +788,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
-  },
-  activityIcon: {
-    fontSize: 20,
+    marginRight: 12,
   },
   activityInfo: {
     flex: 1,
@@ -608,30 +800,44 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   activityMeta: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textTertiary,
     fontWeight: '400',
   },
+  trailTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 4,
+  },
+  trailTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  activityRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+    marginLeft: 8,
+  },
+  activityDistBig: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
   deleteBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '600',
   },
 
+  // ===== Resume walk =====
   resumeWalkCard: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 12,
     padding: 14,
     borderRadius: 16,
     borderWidth: 1.5,
@@ -659,6 +865,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 3,
   },
+
+  // ===== Load more =====
   loadMoreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -674,9 +882,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  // Empty
-  noRecords: {
+  // ===== Empty state =====
+  emptyState: {
     paddingVertical: 48,
+    paddingHorizontal: 24,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -687,18 +896,37 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  noRecordsEmoji: {
-    fontSize: 40,
-    marginBottom: 12,
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  noRecordsText: {
-    fontSize: 15,
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.textSecondary,
     marginBottom: 4,
   },
-  noRecordsHint: {
+  emptyHint: {
     fontSize: 13,
-    color: colors.textTertiary,
+    fontWeight: '400',
+    marginBottom: 20,
+  },
+  emptyCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+  },
+  emptyCTAText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

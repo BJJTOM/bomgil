@@ -3,12 +3,13 @@ import { useLanguageStore, type Language } from '../stores/language';
 import ko, { type TranslationKeys } from './ko';
 import en from './en';
 import ja from './ja';
+import zh from './zh';
 
 const translations: Record<string, TranslationKeys> = {
   ko,
   en,
   ja,
-  zh: ko, // Chinese fallback to Korean for now
+  zh,
 };
 
 /** Get the full translation object for a language code */
@@ -23,4 +24,4 @@ export function useT(): TranslationKeys {
 }
 
 export type { TranslationKeys };
-export { ko, en, ja };
+export { ko, en, ja, zh };

@@ -451,6 +451,37 @@ const en: TranslationKeys = {
     changeDesc: 'Verify your current password, then set a new one.',
     changeComplete: 'Password changed.',
   },
+
+  // Onboarding
+  onboarding: {
+    skip: 'Skip',
+    next: 'Next',
+    start: 'Get Started',
+    // Page 1
+    page1Title: 'See More\non Foot',
+    page1Subtitle: 'Discover walking trails around the world\nand share your own path',
+    // Page 2
+    page2Title: 'Every Step\nBecomes a Journey',
+    feature1Title: 'GPS Tracking & Trail Picks',
+    feature1Desc: 'Auto-record your route\nand get personalized trail suggestions',
+    feature2Title: 'Find Companions & Community',
+    feature2Desc: 'Find walking buddies\nand share your experiences',
+    feature3Title: 'AI Coaching & Certificates',
+    feature3Desc: 'Get personalized coaching\nand earn completion certificates',
+    // Page 3
+    page3Title: 'What kind of walks\ndo you enjoy?',
+    page3Subtitle: 'Pick your interests and we\'ll recommend trails for you',
+    prefCountryLabel: 'Countries of Interest',
+    prefStyleLabel: 'Walking Style',
+    styleUrban: 'City Stroll',
+    styleNature: 'Nature Trail',
+    styleCoastal: 'Coastal Path',
+    styleCultural: 'Culture Tour',
+    prefDifficultyLabel: 'Preferred Difficulty',
+    diffEasy: 'Easy',
+    diffModerate: 'Moderate',
+    diffHard: 'Hard',
+  },
 };
 
 export default en;

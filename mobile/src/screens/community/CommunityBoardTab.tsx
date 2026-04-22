@@ -11,7 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import api from '../../api/client';
@@ -22,11 +22,21 @@ import { useThemeStore } from '../../stores/theme';
 import { FadeInView } from '../../components/FadeInView';
 import { useT } from '../../i18n';
 
+// Category definitions with colored pills
+const CATEGORY_STYLES: Record<string, { bg: string; darkBg: string; text: string; darkText: string }> = {
+  free:      { bg: '#EFF6FF', darkBg: 'rgba(59,130,246,0.15)', text: '#3B82F6', darkText: '#60A5FA' },
+  qna:       { bg: '#FEF3C7', darkBg: 'rgba(245,158,11,0.15)', text: '#D97706', darkText: '#FBBF24' },
+  recommend: { bg: '#F0FDF4', darkBg: 'rgba(34,197,94,0.15)',  text: '#16A34A', darkText: '#4ADE80' },
+  review:    { bg: '#FDF2F8', darkBg: 'rgba(236,72,153,0.15)', text: '#DB2777', darkText: '#F472B6' },
+  meetup:    { bg: '#FFF7ED', darkBg: 'rgba(249,115,22,0.15)', text: '#EA580C', darkText: '#FB923C' },
+  tip:       { bg: '#F5F3FF', darkBg: 'rgba(139,92,246,0.15)', text: '#7C3AED', darkText: '#A78BFA' },
+};
+
 const CATEGORIES = [
   { key: '', label: '전체' },
   { key: 'free', label: '자유' },
   { key: 'qna', label: '질문' },
-  { key: 'recommend', label: '추천' },
+  { key: 'recommend', label: '코스추천' },
   { key: 'review', label: '후기' },
   { key: 'meetup', label: '번개' },
   { key: 'tip', label: '꿀팁' },
@@ -44,20 +54,229 @@ const timeAgo = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('ko-KR');
 };
 
+// ── Category Badge ──
+function CategoryBadge({ category, isDark }: { category: string; isDark: boolean }) {
+  const style = CATEGORY_STYLES[category];
+  if (!style) return null;
+  const label = CATEGORIES.find((c) => c.key === category)?.label ?? category;
+  return (
+    <View style={[styles.badge, { backgroundColor: isDark ? style.darkBg : style.bg }]}>
+      <Text style={[styles.badgeText, { color: isDark ? style.darkText : style.text }]}>{label}</Text>
+    </View>
+  );
+}
+
+// ── Post Card (photo-first) ──
+const PostCard = React.memo(function PostCard({
+  item,
+  index,
+  isDark,
+  cardBg,
+  textColor,
+  textSecColor,
+  textTertColor,
+  surfaceBg,
+  textPreviewBg,
+  shadowColor,
+  onPress,
+  onLike,
+  onProfilePress,
+}: {
+  item: CommunityPost;
+  index: number;
+  isDark: boolean;
+  cardBg: string;
+  textColor: string;
+  textSecColor: string;
+  textTertColor: string;
+  surfaceBg: string;
+  textPreviewBg: string;
+  shadowColor: string;
+  onPress: () => void;
+  onLike: () => void;
+  onProfilePress: () => void;
+}) {
+  const hasPhoto = !!(item.thumbnail || (item.images && item.images.length > 0));
+  const photoUri = item.thumbnail || (item.images && item.images.length > 0 ? item.images[0].image : null);
+
+  return (
+    <FadeInView delay={Math.min(index * 40, 200)}>
+      <TouchableOpacity
+        style={[
+          styles.card,
+          {
+            backgroundColor: cardBg,
+            shadowColor,
+          },
+          isDark && styles.cardDark,
+        ]}
+        activeOpacity={0.7}
+        onPress={onPress}>
+
+        {/* Photo area */}
+        {hasPhoto && photoUri ? (
+          <Image
+            source={{ uri: photoUri }}
+            style={styles.cardPhoto}
+            resizeMode="cover"
+          />
+        ) : (
+          /* Text preview when no photo */
+          <View style={[styles.cardTextPreview, { backgroundColor: textPreviewBg }]}>
+            <Text style={[styles.cardTextPreviewContent, { color: textSecColor }]} numberOfLines={3}>
+              {item.content || item.title}
+            </Text>
+          </View>
+        )}
+
+        {/* Card body */}
+        <View style={styles.cardBody}>
+          {/* Author row (top) */}
+          <TouchableOpacity
+            style={styles.authorRow}
+            activeOpacity={0.7}
+            onPress={onProfilePress}>
+            {item.author_image ? (
+              <Image source={{ uri: item.author_image }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: surfaceBg }]}>
+                <Feather name="user" size={14} color={textTertColor} />
+              </View>
+            )}
+            <View style={styles.authorInfo}>
+              <View style={styles.authorNameRow}>
+                <Text style={[styles.authorName, { color: textColor }]}>{item.author_nickname}</Text>
+                {item.author_level != null && item.author_level > 0 && (
+                  <View style={[styles.lvBadge, isDark && { backgroundColor: 'rgba(74,222,128,0.12)' }]}>
+                    <Text style={[styles.lvBadgeText, isDark && { color: '#4ADE80' }]}>Lv.{item.author_level}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.timeText, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
+            </View>
+            <CategoryBadge category={item.category} isDark={isDark} />
+          </TouchableOpacity>
+
+          {/* Title */}
+          <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+
+          {/* Pinned indicator */}
+          {item.is_pinned && (
+            <View style={[styles.pinnedRow]}>
+              <Feather name="bookmark" size={11} color="#C2410C" />
+              <Text style={styles.pinnedText}>고정됨</Text>
+            </View>
+          )}
+
+          {/* Footer: likes + comments */}
+          <View style={[styles.cardFooter, isDark && { borderTopColor: 'rgba(255,255,255,0.06)' }]}>
+            <TouchableOpacity
+              style={styles.footerBtn}
+              onPress={onLike}
+              activeOpacity={0.6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather
+                name="heart"
+                size={16}
+                color={item.is_liked ? '#FF4B4B' : textTertColor}
+              />
+              <Text
+                style={[
+                  styles.footerCount,
+                  { color: textTertColor },
+                  item.is_liked && { color: '#FF4B4B' },
+                ]}>
+                {item.like_count}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.footerBtn}>
+              <Feather name="message-circle" size={16} color={textTertColor} />
+              <Text style={[styles.footerCount, { color: textTertColor }]}>
+                {item.comment_count}
+              </Text>
+            </View>
+
+            <View style={styles.footerSpacer} />
+
+            <Text style={[styles.footerViews, { color: textTertColor }]}>
+              조회 {item.view_count}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </FadeInView>
+  );
+});
+
+// ── Empty State ──
+function EmptyState({
+  isSearch,
+  textColor,
+  textTertColor,
+  surfaceBg,
+  onWrite,
+  t,
+}: {
+  isSearch: boolean;
+  textColor: string;
+  textTertColor: string;
+  surfaceBg: string;
+  onWrite: () => void;
+  t: any;
+}) {
+  return (
+    <View style={styles.emptyContainer}>
+      {/* Illustration area */}
+      <View style={[styles.emptyIllustration, { backgroundColor: surfaceBg }]}>
+        <Feather
+          name={isSearch ? 'search' : 'edit-3'}
+          size={40}
+          color={textTertColor}
+        />
+      </View>
+      <Text style={[styles.emptyTitle, { color: textColor }]}>
+        {isSearch ? t.community.noPostsSearch : '첫 번째 글을 남겨보세요'}
+      </Text>
+      <Text style={[styles.emptyDesc, { color: textTertColor }]}>
+        {isSearch
+          ? t.community.noPostsSearchHint
+          : '산책 사진, 코스 후기, 걷기 꿀팁을\n자유롭게 공유해보세요'}
+      </Text>
+      {!isSearch && (
+        <TouchableOpacity style={styles.emptyCta} onPress={onWrite} activeOpacity={0.8}>
+          <Feather name="plus" size={16} color="#FFFFFF" />
+          <Text style={styles.emptyCtaText}>글 작성하기</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// ── Main Component ──
 export default function CommunityBoardTab({ searchVisible = false }: { searchVisible?: boolean }) {
   const t = useT();
   const navigation = useNavigation<any>();
-  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const { isDark } = useThemeStore();
-  // Theme-reactive surface colors. Computed once per render — cheap.
-  const containerBg = isDark ? '#0a0a0a' : '#FFFFFF';
+
+  // Theme colors
+  const containerBg = isDark ? '#0a0a0a' : '#F7F8FA';
   const cardBg = isDark ? '#1c1c1e' : '#FFFFFF';
-  const surfaceBg = isDark ? '#1a1a1a' : '#F7F8FA';
+  const surfaceBg = isDark ? '#2a2a2a' : '#F2F4F6';
   const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
   const textSecColor = isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary;
   const textTertColor = isDark ? 'rgba(255,255,255,0.42)' : colors.textTertiary;
-  const dividerBg = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
+  const textPreviewBg = isDark ? '#1a1a1a' : '#F7F8FA';
+  const shadowColor = isDark ? 'transparent' : '#000';
+  const chipBg = isDark ? '#1c1c1e' : '#FFFFFF';
+  const chipBorder = isDark ? 'rgba(255,255,255,0.08)' : '#E5E8EB';
+  const chipActiveBg = colors.primary;
+  const searchBarBg = isDark ? '#0a0a0a' : '#F7F8FA';
+  const searchInputBg = isDark ? '#1c1c1e' : '#FFFFFF';
+
   const [category, setCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -70,7 +289,6 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
     queryFn: async () => {
       let params = '?';
       if (category) params += `category=${category}&`;
-      // Only send q param if search has content (trim to ignore whitespace-only)
       if (searchQuery.trim()) params += `q=${encodeURIComponent(searchQuery.trim())}&`;
       const { data } = await api.get(`/community/posts/${params}`);
       const results = data.results ?? data;
@@ -79,9 +297,6 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
     staleTime: 30000,
   });
 
-  // Sync query data into local paginated list whenever category/search changes
-  // or cached data is served. Using a useEffect instead of side-effect in
-  // queryFn so that cached results also reset the list.
   useEffect(() => {
     if (queryData) {
       setPosts(queryData.results);
@@ -116,7 +331,6 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
 
   const handleLike = useCallback((postId: number) => {
     if (!isAuthenticated) { navigation.navigate('Login'); return; }
-    // Snapshot previous state for rollback
     let prevPosts: CommunityPost[] = [];
     setPosts((old) => {
       prevPosts = old;
@@ -127,85 +341,40 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
       );
     });
     api.post(`/community/posts/${postId}/like/`).catch(() => {
-      // Rollback on error
       setPosts(prevPosts);
     });
   }, [isAuthenticated, navigation]);
 
+  const handleWrite = useCallback(() => {
+    if (!isAuthenticated) { navigation.navigate('Login'); return; }
+    navigation.navigate('PostCreate');
+  }, [isAuthenticated, navigation]);
+
   const renderPost = useCallback(({ item, index }: { item: CommunityPost; index: number }) => (
-    <FadeInView delay={index * 30}>
-      <TouchableOpacity
-        style={[styles.postCard, { backgroundColor: cardBg, borderBottomColor: dividerBg }]}
-        activeOpacity={0.6}
-        onPress={() => navigation.navigate('PostDetail', { postId: item.id })}>
-        <View style={styles.postContent}>
-          {/* Header */}
-          <View style={styles.postHeader}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.category_display}</Text>
-            </View>
-            {item.is_pinned && (
-              <View style={styles.pinnedBadge}><Text style={styles.pinnedBadgeText}>고정</Text></View>
-            )}
-          </View>
-
-          {/* Title */}
-          <Text style={[styles.postTitle, { color: textColor }]} numberOfLines={2}>{item.title}</Text>
-
-          {/* Meta */}
-          <View style={styles.postMeta}>
-            <TouchableOpacity
-              style={styles.postAuthor}
-              onPress={() => navigation.navigate('Profile', { nickname: item.author_nickname })}
-              activeOpacity={0.7}>
-              {item.author_image ? (
-                <Image source={{ uri: item.author_image }} style={styles.miniAvatar} />
-              ) : (
-                <View style={[styles.miniAvatarPlaceholder, { backgroundColor: surfaceBg }]}>
-                  <Text style={{ fontSize: 8, color: textTertColor }}>U</Text>
-                </View>
-              )}
-              <Text style={[styles.postAuthorName, { color: textSecColor }]}>{item.author_nickname}</Text>
-              {item.author_level != null && item.author_level > 0 && (
-                <View style={styles.lvBadge}>
-                  <Text style={styles.lvBadgeText}>Lv.{item.author_level}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <Text style={[styles.postTime, { color: textTertColor }]}>{timeAgo(item.created_at)}</Text>
-          </View>
-
-          {/* Stats — 심플 아이콘, 리스트에서도 좋아요 가능 */}
-          <View style={styles.postStats}>
-            <TouchableOpacity style={styles.statBtn} onPress={() => handleLike(item.id)} activeOpacity={0.6}>
-              <Feather name="heart" size={14} color={item.is_liked ? '#FF4B4B' : textTertColor} />
-              <Text style={[styles.statText, { color: textTertColor }, item.is_liked && { color: '#FF4B4B' }]}>{item.like_count}</Text>
-            </TouchableOpacity>
-            <View style={styles.statBtn}>
-              <Feather name="message-circle" size={14} color={textTertColor} />
-              <Text style={[styles.statText, { color: textTertColor }]}>{item.comment_count}</Text>
-            </View>
-            <View style={styles.statBtn}>
-              <Text style={[styles.statText, { color: textTertColor }]}>조회 {item.view_count}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Thumbnail */}
-        {item.thumbnail && (
-          <Image source={{ uri: item.thumbnail }} style={styles.postThumbnail} resizeMode="cover" />
-        )}
-      </TouchableOpacity>
-    </FadeInView>
-  ), [category, searchQuery, isAuthenticated, cardBg, dividerBg, textColor, textSecColor, textTertColor, surfaceBg]);
+    <PostCard
+      item={item}
+      index={index}
+      isDark={isDark}
+      cardBg={cardBg}
+      textColor={textColor}
+      textSecColor={textSecColor}
+      textTertColor={textTertColor}
+      surfaceBg={surfaceBg}
+      textPreviewBg={textPreviewBg}
+      shadowColor={shadowColor}
+      onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+      onLike={() => handleLike(item.id)}
+      onProfilePress={() => navigation.navigate('Profile', { nickname: item.author_nickname })}
+    />
+  ), [isDark, cardBg, textColor, textSecColor, textTertColor, surfaceBg, textPreviewBg, shadowColor, handleLike, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]}>
-      {/* Search bar — controlled by parent */}
+      {/* Search bar */}
       {searchVisible && (
-        <View style={[styles.searchBar, { backgroundColor: containerBg, borderBottomColor: dividerBg }]}>
-          <View style={[styles.searchInputWrap, { backgroundColor: surfaceBg }]}>
-            <Feather name="search" size={16} color={textTertColor} style={styles.searchIcon} />
+        <View style={[styles.searchBar, { backgroundColor: searchBarBg }]}>
+          <View style={[styles.searchInputWrap, { backgroundColor: searchInputBg }, isDark && { borderColor: 'rgba(255,255,255,0.06)', borderWidth: 1 }]}>
+            <Feather name="search" size={16} color={textTertColor} style={{ marginRight: 8 }} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
               placeholder={t.community.searchPlaceholder}
@@ -216,54 +385,60 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
               autoFocus
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Text style={[styles.searchClear, { color: textTertColor }]}>✕</Text>
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Feather name="x" size={16} color={textTertColor} />
               </TouchableOpacity>
             )}
           </View>
         </View>
       )}
 
-      {/* Category filter — horizontal scroll, 잘리지 않게 */}
+      {/* Category filter chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryList}
-        style={[styles.categoryBar, { backgroundColor: containerBg, borderBottomColor: dividerBg }]}>
-        {CATEGORIES.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            style={[
-              styles.categoryChip,
-              { backgroundColor: surfaceBg },
-              category === item.key && styles.categoryChipActive,
-            ]}
-            onPress={() => setCategory(item.key)}
-            activeOpacity={0.7}>
-            <Text
+        style={styles.categoryBar}>
+        {CATEGORIES.map((item) => {
+          const isActive = category === item.key;
+          return (
+            <TouchableOpacity
+              key={item.key}
               style={[
-                styles.categoryChipText,
-                { color: textSecColor },
-                category === item.key && styles.categoryChipTextActive,
-              ]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+                styles.categoryChip,
+                { backgroundColor: chipBg, borderColor: chipBorder },
+                isActive && { backgroundColor: chipActiveBg, borderColor: chipActiveBg },
+              ]}
+              onPress={() => setCategory(item.key)}
+              activeOpacity={0.7}>
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: textSecColor },
+                  isActive && styles.categoryChipTextActive,
+                ]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Posts */}
+      {/* Content */}
       {isLoading ? (
-        <View style={styles.loadingContainer}><Text style={styles.loadingText}>{t.common.loading}</Text></View>
-      ) : posts.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyTitle, { color: textColor }]}>
-            {searchQuery.trim() ? t.community.noPostsSearch : t.community.noPosts}
-          </Text>
-          <Text style={[styles.emptyDesc, { color: textTertColor }]}>
-            {searchQuery.trim() ? t.community.noPostsSearchHint : t.community.noPostsHint}
-          </Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: textTertColor, marginTop: 8 }]}>{t.common.loading}</Text>
         </View>
+      ) : posts.length === 0 ? (
+        <EmptyState
+          isSearch={!!searchQuery.trim()}
+          textColor={textColor}
+          textTertColor={textTertColor}
+          surfaceBg={surfaceBg}
+          onWrite={handleWrite}
+          t={t}
+        />
       ) : (
         <FlatList
           data={posts}
@@ -271,8 +446,13 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
           renderItem={renderPost}
           contentContainerStyle={styles.postList}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: dividerBg }]} />}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+            />
+          }
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={loadingMore ? (
@@ -286,78 +466,224 @@ export default function CommunityBoardTab({ searchVisible = false }: { searchVis
   );
 }
 
+// ── Styles ──
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { fontSize: 14, color: colors.textTertiary },
+  loadingText: { fontSize: 14 },
 
   // Search
-  searchBar: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 },
+  searchBar: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
   searchInputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FA',
-    borderRadius: 12, paddingHorizontal: 12, height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 42,
   },
-  searchIcon: { fontSize: 13, fontWeight: '700', color: colors.textTertiary, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary, paddingVertical: 0 },
-  searchClear: { fontSize: 14, color: colors.textTertiary, padding: 4 },
+  searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
 
-  // Category — must not clip
+  // Category chips
   categoryBar: { flexShrink: 0, flexGrow: 0 },
-  categoryList: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' },
+  categoryList: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, alignItems: 'center' },
   categoryChip: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
-    backgroundColor: '#F7F8FA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  categoryChipActive: { backgroundColor: colors.primary },
-  categoryChipText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
+  categoryChipText: { fontSize: 13, fontWeight: '500' },
   categoryChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
 
   // Post list
-  postList: { paddingBottom: 100 },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#F2F4F6', marginHorizontal: 20 },
+  postList: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 100 },
 
-  // Post card
-  postCard: {
-    flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF',
+  // Card
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  postContent: { flex: 1, marginRight: 12 },
-  postHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  categoryBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, backgroundColor: '#F0F7F0' },
-  categoryBadgeText: { fontSize: 11, fontWeight: '600', color: colors.primary },
-  pinnedBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FFF7ED' },
-  pinnedBadgeText: { fontSize: 10, fontWeight: '600', color: '#C2410C' },
-  postTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, lineHeight: 22, marginBottom: 8 },
+  cardDark: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
 
-  postMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  miniAvatar: { width: 16, height: 16, borderRadius: 8 },
-  miniAvatarPlaceholder: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
-  postAuthorName: { fontSize: 12, color: colors.textSecondary },
+  // Card photo
+  cardPhoto: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F2F4F6',
+  },
+
+  // Text preview (no photo)
+  cardTextPreview: {
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    minHeight: 100,
+    justifyContent: 'center',
+  },
+  cardTextPreviewContent: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+
+  // Card body
+  cardBody: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+
+  // Author row
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  avatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authorInfo: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  authorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  authorName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   lvBadge: {
     backgroundColor: colors.primary50,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
-    marginLeft: 2,
   },
   lvBadgeText: {
     fontSize: 9,
     fontWeight: '700',
     color: colors.primary,
   },
-  postTime: { fontSize: 11, color: colors.textTertiary },
+  timeText: {
+    fontSize: 12,
+    marginTop: 1,
+  },
 
-  // Stats — 심플 아이콘, 사이즈 업
-  postStats: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  statBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statIcon: { fontSize: 15, color: colors.textTertiary },
-  statText: { fontSize: 12, color: colors.textTertiary },
+  // Category badge (colored pill)
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
 
-  postThumbnail: { width: 72, height: 72, borderRadius: 10, backgroundColor: '#F7F8FA' },
+  // Card title
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
 
-  // Empty
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 6, textAlign: 'center' },
-  emptyDesc: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
+  // Pinned
+  pinnedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  pinnedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#C2410C',
+  },
+
+  // Card footer
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  footerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginRight: 16,
+  },
+  footerCount: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  footerSpacer: { flex: 1 },
+  footerViews: {
+    fontSize: 12,
+  },
+
+  // Empty state
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIllustration: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDesc: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  emptyCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
   loadingMore: { paddingVertical: 20, alignItems: 'center' },
 });

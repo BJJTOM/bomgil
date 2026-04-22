@@ -51,6 +51,36 @@ import LiveShareButton from '../components/LiveShareButton';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
+// Pulsing recording dot component — animates opacity continuously
+// to give clear visual feedback that recording is active.
+function PulsingDot({ color, size = 10, style }: { color: string; size?: number; style?: any }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+  return (
+    <Animated.View
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+          opacity: pulse,
+        },
+        style,
+      ]}
+    />
+  );
+}
+
 type WalkState = 'countdown' | 'walking' | 'paused';
 
 const SPOT_TYPES = [
@@ -1283,10 +1313,14 @@ function WalkScreenInner() {
         {/* Map top-left: status pill + GPS signal indicator */}
         <View style={[styles.mapTopBar, { top: insets.top + 12 }]}>
           <View style={styles.mapStatusPill}>
-            <View style={[styles.dot, state === 'walking'
-              ? (stats.isAutoPaused ? styles.dotOrange : styles.dotGreen)
-              : styles.dotYellow
-            ]} />
+            {state === 'walking' && !stats.isAutoPaused ? (
+              <PulsingDot color="#4ADE80" size={10} />
+            ) : (
+              <View style={[styles.dot, state === 'walking'
+                ? (stats.isAutoPaused ? styles.dotOrange : styles.dotGreen)
+                : styles.dotYellow
+              ]} />
+            )}
             <Text style={styles.mapStatusText}>
               {resumeData
                 ? (state === 'walking' ? '이어서 기록 중' : '이어하기 일시정지')
@@ -1327,8 +1361,30 @@ function WalkScreenInner() {
         <View style={styles.mapFade} />
       </View>
 
-      {/* ====== STATS PANEL (bottom) ====== */}
+      {/* ====== STATS PANEL (bottom ~60%) ====== */}
       <Animated.View style={[styles.statsPanel, { opacity: stats.isAutoPaused ? autoPausePulse : 1 }]}>
+
+        {/* Recording state indicator */}
+        <View style={styles.recordingIndicator}>
+          {state === 'walking' ? (
+            stats.isAutoPaused ? (
+              <>
+                <View style={[styles.recordingDotStatic, { backgroundColor: '#F97316' }]} />
+                <Text style={[styles.recordingStateText, { color: '#F97316' }]}>AUTO PAUSED</Text>
+              </>
+            ) : (
+              <>
+                <PulsingDot color="#EF4444" size={10} />
+                <Text style={[styles.recordingStateText, { color: '#EF4444' }]}>REC</Text>
+              </>
+            )
+          ) : (
+            <>
+              <View style={[styles.recordingDotStatic, { backgroundColor: '#FACC15' }]} />
+              <Text style={[styles.recordingStateText, { color: '#FACC15' }]}>PAUSED</Text>
+            </>
+          )}
+        </View>
 
         {/* Resume: previous segment banner */}
         {prevSegment && (
@@ -1339,31 +1395,32 @@ function WalkScreenInner() {
           </View>
         )}
 
-        {/* Time */}
-        <Text style={styles.timeLabel}>{prevSegment ? '현재 구간' : '시간'}</Text>
-        <Text style={styles.timeValue}>
-          {prevSegment
-            ? formatTime(Math.max(0, stats.duration - prevSegment.duration))
-            : formatTime(stats.duration)
-          }
-        </Text>
-
-        {/* Distance */}
+        {/* === DISTANCE — THE dominant stat (huge, center) === */}
         <View style={styles.distRow}>
           <Text style={styles.distValue}>{stats.distance.toFixed(2)}</Text>
           <Text style={styles.distUnit}>km</Text>
         </View>
 
-        {/* Pace — centered current pace, avg + delta in a row below */}
+        {/* === DURATION — secondary stat === */}
+        <View style={styles.timeRow}>
+          <Feather name="clock" size={13} color="rgba(255,255,255,0.4)" />
+          <Text style={styles.timeValue}>
+            {prevSegment
+              ? formatTime(Math.max(0, stats.duration - prevSegment.duration))
+              : formatTime(stats.duration)
+            }
+          </Text>
+        </View>
+
+        {/* === PACE — tertiary stat === */}
         <View style={styles.paceRow}>
-          <Text style={styles.paceLabel}>현재 페이스</Text>
           <View style={styles.paceValueRow}>
             <Text style={styles.paceValue}>{formatPace(stats.currentPace)}</Text>
             <Text style={styles.paceUnit}>/km</Text>
           </View>
           {stats.distance > 0.1 && stats.pace > 0 && (
             <View style={styles.paceAvgRow}>
-              <Text style={styles.paceAvgLabel}>평균 {formatPace(stats.pace)}</Text>
+              <Text style={styles.paceAvgLabel}>avg {formatPace(stats.pace)}</Text>
               {stats.currentPace > 0 && (
                 <Text
                   style={[
@@ -1378,26 +1435,21 @@ function WalkScreenInner() {
                     },
                   ]}>
                   {stats.currentPace < stats.pace - 0.1
-                    ? '▲ 빨라짐'
+                    ? '\u25B2'
                     : stats.currentPace > stats.pace + 0.1
-                    ? '▼ 느려짐'
-                    : '— 평균'}
+                    ? '\u25BC'
+                    : '\u2014'}
                 </Text>
               )}
             </View>
           )}
         </View>
 
-        {/* Primary 4-stat grid */}
+        {/* Secondary 3-stat row: steps, calories, elevation */}
         <View style={styles.grid}>
           <View style={styles.gridItem}>
             <Text style={styles.gridVal}>{stats.steps.toLocaleString()}</Text>
             <Text style={styles.gridLabel}>걸음</Text>
-          </View>
-          <View style={styles.gridDivider} />
-          <View style={styles.gridItem}>
-            <Text style={styles.gridVal}>{stats.cadence > 0 ? stats.cadence : '—'}</Text>
-            <Text style={styles.gridLabel}>spm</Text>
           </View>
           <View style={styles.gridDivider} />
           <View style={styles.gridItem}>
@@ -1412,39 +1464,41 @@ function WalkScreenInner() {
         </View>
       </Animated.View>
 
-      {/* ====== QUICK ACTIONS (spot/camera above controls) ====== */}
-      {state === 'walking' && (
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickBtn} onPress={handleTakePhoto} activeOpacity={0.8}>
-            <Feather name="camera" size={18} color="#fff" />
-            {taggedPhotos.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{taggedPhotos.length}</Text></View>}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={openSpotModal} activeOpacity={0.8}>
-            <Feather name="map-pin" size={18} color="#fff" />
-            {spots.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{spots.length}</Text></View>}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => setShowRecordSummary(true)} activeOpacity={0.8}>
-            <Feather name="list" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ====== CONTROLS ====== */}
-      <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
+      {/* ====== CONTROLS + QUICK ACTIONS ====== */}
+      <View style={[styles.controlsArea, { paddingBottom: insets.bottom + 16 }]}>
         {state === 'walking' ? (
-          <TouchableOpacity style={styles.pauseBtn} onPress={pauseWalk} activeOpacity={0.85}>
-            <View style={styles.pauseIconWrap}>
-              <View style={styles.pauseBar} />
-              <View style={styles.pauseBar} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.walkingControlsRow}>
+            {/* Quick action: camera */}
+            <TouchableOpacity style={styles.quickBtn} onPress={handleTakePhoto} activeOpacity={0.8}>
+              <Feather name="camera" size={20} color="#fff" />
+              {taggedPhotos.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{taggedPhotos.length}</Text></View>}
+            </TouchableOpacity>
+
+            {/* Main pause button — large 76px circle */}
+            <TouchableOpacity style={styles.pauseBtn} onPress={pauseWalk} activeOpacity={0.85}>
+              <View style={styles.pauseIconWrap}>
+                <View style={styles.pauseBar} />
+                <View style={styles.pauseBar} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Quick action: spot / record summary */}
+            <TouchableOpacity style={styles.quickBtn} onPress={openSpotModal} activeOpacity={0.8}>
+              <Feather name="map-pin" size={20} color="#fff" />
+              {spots.length > 0 && <View style={styles.quickBadge}><Text style={styles.quickBadgeText}>{spots.length}</Text></View>}
+            </TouchableOpacity>
+          </View>
         ) : (
+          /* PAUSED state: stop + resume + record summary */
           <View style={styles.pausedControls}>
             <TouchableOpacity style={styles.stopBtn} onPress={handleStop} activeOpacity={0.85}>
               <View style={styles.stopIcon} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.resumeBtn} onPress={resumeWalk} activeOpacity={0.85}>
               <View style={styles.playIcon} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickBtn} onPress={() => setShowRecordSummary(true)} activeOpacity={0.8}>
+              <Feather name="list" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
@@ -1889,7 +1943,7 @@ const styles = StyleSheet.create({
 
   // ---- MAP ----
   mapWrap: {
-    height: SH * 0.48,
+    height: SH * 0.38,
     overflow: 'hidden',
   },
   mapFade: {
@@ -1971,7 +2025,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255,255,255,0.85)',
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
   dotGreen: { backgroundColor: '#4ADE80' },
   dotYellow: { backgroundColor: '#FACC15' },
   dotOrange: { backgroundColor: '#F97316' },
@@ -2038,11 +2092,27 @@ const styles = StyleSheet.create({
   statsPanel: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 2,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     overflow: 'hidden',
+  },
+  recordingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  recordingDotStatic: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  recordingStateText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
   prevBanner: {
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -2058,56 +2128,36 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
   },
-  compactStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    flexWrap: 'wrap',
-    gap: 2,
-  },
-  compactStatItem: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-  },
-  compactStatDot: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.25)',
-    marginHorizontal: 3,
-  },
-  timeLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.3)',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 1,
-  },
-  timeValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
-    fontVariant: ['tabular-nums'],
-    marginBottom: 2,
-  },
   distRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 2,
+    marginBottom: 0,
   },
   distValue: {
-    fontSize: 44,
+    fontSize: 64,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -2,
+    letterSpacing: -3,
+    fontVariant: ['tabular-nums'],
   },
   distUnit: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.35)',
     marginLeft: 6,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  timeValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.8)',
+    fontVariant: ['tabular-nums'],
   },
   paceRow: {
     alignItems: 'center',
@@ -2115,19 +2165,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     width: '100%',
   },
-  paceLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 0.3,
-    marginBottom: 2,
-  },
   paceValueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
   },
   paceValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.6,
     color: '#4ADE80',
@@ -2141,24 +2185,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 3,
+    gap: 6,
+    marginTop: 2,
   },
   paceAvgLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '500',
   },
   paceDelta: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   grid: {
     flexDirection: 'row',
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   gridItem: {
@@ -2171,79 +2215,103 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   gridVal: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 2,
   },
   gridLabel: {
-    fontSize: 9,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.35)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
 
   // ---- CONTROLS ----
-  controls: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
+  controlsArea: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
     alignItems: 'center',
   },
+  walkingControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 32,
+    width: '100%',
+  },
   pauseBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   pauseIconWrap: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 7,
   },
   pauseBar: {
-    width: 5,
-    height: 20,
-    borderRadius: 2.5,
+    width: 6,
+    height: 24,
+    borderRadius: 3,
     backgroundColor: '#111',
   },
   pausedControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 28,
+    width: '100%',
   },
   stopBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
   },
   stopIcon: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     borderRadius: 3,
     backgroundColor: '#fff',
   },
   resumeBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   playIcon: {
     width: 0,
     height: 0,
-    borderLeftWidth: 16,
-    borderTopWidth: 11,
-    borderBottomWidth: 11,
+    borderLeftWidth: 18,
+    borderTopWidth: 13,
+    borderBottomWidth: 13,
     borderLeftColor: '#fff',
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    marginLeft: 3,
+    marginLeft: 4,
   },
 
   // ---- STOP MODAL ----
@@ -2448,31 +2516,22 @@ const styles = StyleSheet.create({
   },
 
   // ---- QUICK ACTIONS ----
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 18,
-    paddingTop: 8,
-    paddingBottom: 2,
-  },
   quickBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickBtnLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
-  },
   quickBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,

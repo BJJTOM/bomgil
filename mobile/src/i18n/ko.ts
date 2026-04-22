@@ -449,6 +449,37 @@ const ko = {
     changeDesc: '보안을 위해 현재 비밀번호를 확인한 후 새 비밀번호를 설정합니다.',
     changeComplete: '비밀번호가 변경되었습니다.',
   },
+
+  // Onboarding
+  onboarding: {
+    skip: '건너뛰기',
+    next: '다음',
+    start: '시작하기',
+    // Page 1
+    page1Title: '걸으면 보이는 것들',
+    page1Subtitle: '전 세계 도보여행 코스를 발견하고,\n나만의 길을 공유하세요',
+    // Page 2
+    page2Title: '당신의 걸음이\n여행이 됩니다',
+    feature1Title: 'GPS 기록 & 코스 추천',
+    feature1Desc: '걸은 경로를 자동 기록하고\n나에게 맞는 코스를 추천받으세요',
+    feature2Title: '동행 찾기 & 커뮤니티',
+    feature2Desc: '함께 걸을 동행을 찾고\n걷기 경험을 나누세요',
+    feature3Title: 'AI 코칭 & 완주 인증서',
+    feature3Desc: '맞춤 코칭을 받고\n완주 인증서를 발급받으세요',
+    // Page 3
+    page3Title: '어떤 걷기를 좋아하세요?',
+    page3Subtitle: '관심사를 선택하면 맞춤 코스를 추천해드려요',
+    prefCountryLabel: '관심 국가',
+    prefStyleLabel: '걷기 스타일',
+    styleUrban: '도심 산책',
+    styleNature: '자연 트레일',
+    styleCoastal: '해안길',
+    styleCultural: '문화 탐방',
+    prefDifficultyLabel: '선호 난이도',
+    diffEasy: '쉬움',
+    diffModerate: '보통',
+    diffHard: '어려움',
+  },
 };
 
 export default ko;

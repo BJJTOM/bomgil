@@ -451,6 +451,37 @@ const ja: TranslationKeys = {
     changeDesc: 'セキュリティのため、現在のパスワードを確認してから新しいパスワードを設定します。',
     changeComplete: 'パスワードが変更されました。',
   },
+
+  // Onboarding
+  onboarding: {
+    skip: 'スキップ',
+    next: '次へ',
+    start: '始める',
+    // Page 1
+    page1Title: '歩けば\n見えてくるもの',
+    page1Subtitle: '世界中のウォーキングコースを発見し、\nあなただけの道を共有しましょう',
+    // Page 2
+    page2Title: 'あなたの一歩が\n旅になる',
+    feature1Title: 'GPS記録 & コース提案',
+    feature1Desc: 'ルートを自動記録し\nおすすめコースを提案します',
+    feature2Title: '仲間探し & コミュニティ',
+    feature2Desc: '一緒に歩く仲間を見つけ\n歩く体験を共有しましょう',
+    feature3Title: 'AIコーチング & 完走証',
+    feature3Desc: 'パーソナルコーチングと\n完走認定証をもらいましょう',
+    // Page 3
+    page3Title: 'どんな歩きが\n好きですか？',
+    page3Subtitle: '興味を選ぶと、おすすめコースをご案内します',
+    prefCountryLabel: '興味のある国',
+    prefStyleLabel: 'ウォーキングスタイル',
+    styleUrban: '都市散歩',
+    styleNature: '自然トレイル',
+    styleCoastal: '海岸道',
+    styleCultural: '文化探訪',
+    prefDifficultyLabel: '希望の難易度',
+    diffEasy: '簡単',
+    diffModerate: '普通',
+    diffHard: '難しい',
+  },
 };
 
 export default ja;

@@ -226,11 +226,16 @@ class Notification(models.Model):
         ('reply', '답글'),
         ('follow', '팔로우'),
         ('system', '시스템'),
+        ('new_trail', '새 코스'),
+        ('review', '리뷰'),
+        ('companion', '동행 요청'),
+        ('weekly_goal', '주간 목표'),
     ]
     TARGET_TYPE_CHOICES = [
         ('post', '게시글'),
         ('trail', '코스'),
         ('activity', '활동'),
+        ('walk_plan', '걷기 일정'),
     ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='account_notifications')

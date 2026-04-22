@@ -175,32 +175,60 @@ export default function SettingsScreen() {
     }, 800);
   };
 
-  const sections: Section[] = [
-    {
-      title: t.settings.profile,
-      items: isAuthenticated
-        ? [
-            { icon: 'user', label: t.settings.editProfile, onPress: () => navigation.navigate('ProfileEdit') },
-            {
-              icon: 'bar-chart-2',
-              label: t.activity.title,
-              onPress: () => navigation.navigate('Main', { screen: 'Activity' }),
-            },
+  const sections: Section[] = isAuthenticated
+    ? [
+        {
+          title: '내 걷기',
+          items: [
+            { icon: 'bar-chart-2', label: t.activity.title, onPress: () => navigation.navigate('Main', { screen: 'Activity' }) },
             { icon: 'map', label: t.activity.management, onPress: () => navigation.navigate('MyTrails') },
-            { icon: 'users', label: '동행 찾기', onPress: () => navigation.navigate('Companions') },
-            { icon: 'calendar', label: '내 일정', onPress: () => navigation.navigate('MyWalkPlans') },
             { icon: 'heart', label: t.profile.likes, onPress: () => navigation.navigate('LikedTrails') },
             { icon: 'bookmark', label: '저장한 코스', onPress: () => navigation.navigate('BookmarkedTrails') },
+          ],
+        },
+        {
+          title: '소셜',
+          items: [
+            { icon: 'users', label: '동행 찾기', onPress: () => navigation.navigate('Companions') },
+            { icon: 'calendar', label: '내 일정', onPress: () => navigation.navigate('MyWalkPlans') },
             { icon: 'flag', label: '시리즈 도전', onPress: () => navigation.navigate('TrailSeriesList') },
             { icon: 'award', label: '내 스탬프', onPress: () => navigation.navigate('MyStamps') },
-            { icon: 'download', label: t.profile.courses, onPress: () => navigation.navigate('SavedTrails') },
-            { icon: 'upload', label: 'GPX', onPress: handleGpxImport },
+          ],
+        },
+        {
+          title: t.settings.title,
+          items: [
+            { icon: 'user', label: t.settings.editProfile, onPress: () => navigation.navigate('ProfileEdit') },
+            { icon: 'globe', label: t.settings.language, value: LANGUAGES.find((l) => l.code === language)?.label, onPress: () => setShowLangModal(true) },
+            { icon: 'moon', label: t.settings.darkMode, value: currentThemeLabel, onPress: () => setShowThemeModal(true) },
+            { icon: 'bell', label: t.settings.notifications, onPress: () => navigation.navigate('Notifications') },
+          ],
+        },
+        {
+          title: '도구',
+          items: [
+            { icon: 'upload', label: 'GPX 가져오기', onPress: handleGpxImport },
             { icon: 'crosshair', label: '보폭 보정', onPress: () => navigation.navigate('StrideCalibration') },
+            { icon: 'download', label: '오프라인 저장', onPress: () => navigation.navigate('SavedTrails') },
+          ],
+        },
+        {
+          title: '정보',
+          items: [
+            { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
+            { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
+            { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
+            { icon: 'info', label: t.settings.version, value: '1.0.0' },
+          ],
+        },
+        {
+          title: '계정',
+          items: [
             ...(!isGuestUser ? [{ icon: 'lock', label: t.password.changeTitle, onPress: () => navigation.navigate('PasswordChange') }] : []),
             { icon: 'user-x', label: t.settings.deleteAccount, onPress: () => {
               Alert.alert(
                 t.settings.deleteAccount,
-                '\uC815\uB9D0 \uD0C8\uD1F4\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uD0C8\uD1F4 \uD6C4 \uACC4\uC815\uACFC \uBAA8\uB4E0 \uB370\uC774\uD130\uB294 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',
+                '정말 탈퇴하시겠습니까?\n탈퇴 후 계정과 모든 데이터는 복구할 수 없습니다.',
                 [
                   { text: t.common.cancel, style: 'cancel' },
                   {
@@ -219,49 +247,34 @@ export default function SettingsScreen() {
                 ],
               );
             }},
-          ]
-        : [
-            {
-              icon: 'log-in',
-              label: t.activity.login,
-              onPress: () => navigation.navigate('Login'),
-            },
-            {
-              icon: 'user-plus',
-              label: t.activity.login,
-              onPress: () => navigation.navigate('Register'),
-            },
           ],
-    },
-    {
-      title: t.settings.title,
-      items: [
+        },
+      ]
+    : [
         {
-          icon: 'globe',
-          label: t.settings.language,
-          value: LANGUAGES.find((l) => l.code === language)?.label,
-          onPress: () => setShowLangModal(true),
+          title: '시작하기',
+          items: [
+            { icon: 'log-in', label: '로그인', onPress: () => navigation.navigate('Login') },
+            { icon: 'user-plus', label: '회원가입', onPress: () => navigation.navigate('Register') },
+          ],
         },
         {
-          icon: 'moon',
-          label: t.settings.darkMode,
-          value: currentThemeLabel,
-          onPress: () => setShowThemeModal(true),
+          title: t.settings.title,
+          items: [
+            { icon: 'globe', label: t.settings.language, value: LANGUAGES.find((l) => l.code === language)?.label, onPress: () => setShowLangModal(true) },
+            { icon: 'moon', label: t.settings.darkMode, value: currentThemeLabel, onPress: () => setShowThemeModal(true) },
+          ],
         },
-        { icon: 'bell', label: t.settings.notifications, onPress: () => navigation.navigate('Notifications') },
-        { icon: 'shield', label: t.permissions.locationName, onPress: () => navigation.navigate('Permissions') },
-      ],
-    },
-    {
-      title: t.settings.notice,
-      items: [
-        { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
-        { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
-        { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
-        { icon: 'info', label: t.settings.version, value: '1.0.0' },
-      ],
-    },
-  ];
+        {
+          title: '정보',
+          items: [
+            { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
+            { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
+            { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
+            { icon: 'info', label: t.settings.version, value: '1.0.0' },
+          ],
+        },
+      ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: bg }]}>
@@ -468,7 +481,7 @@ export default function SettingsScreen() {
               </View>
             ) : (
               <>
-                <Text style={styles.logoutModalIcon}>{'\uD83D\uDC4B'}</Text>
+                <Feather name="log-out" size={36} color={colors.danger} style={{ marginBottom: 12 }} />
                 <Text style={styles.logoutModalTitle}>{t.settings.logout}?</Text>
                 <Text style={styles.logoutModalSub}>{t.activity.resumeExpiry}</Text>
                 <TouchableOpacity style={styles.logoutConfirmBtn} onPress={confirmLogout} activeOpacity={0.85}>

@@ -1,7 +1,8 @@
 """POI detail proxy for the Korea Tourism API.
 
 Fetches detailed information about a single point of interest using the
-KorService2 `detailCommon2` endpoint and caches results for 24 hours.
+KorService2 `detailCommon2` and `detailIntro2` endpoints and caches
+results for 24 hours.
 """
 
 import logging
@@ -30,6 +31,43 @@ CONTENT_TYPE_MAP = {
     "39": "음식점",
 }
 
+# Maps detailIntro2 field names (per content type) to unified output keys.
+INTRO_FIELD_MAP = {
+    # 음식점 (contentTypeId=39)
+    "39": {
+        "firstmenu": "main_menu",
+        "treatmenu": "menu_info",
+        "opentimefood": "operating_hours",
+        "restdatefood": "closed_days",
+        "parkingfood": "parking",
+        "infocenterfood": "info_center",
+    },
+    # 관광지 (contentTypeId=12)
+    "12": {
+        "usetime": "operating_hours",
+        "restdate": "closed_days",
+        "parking": "parking",
+        "infocenter": "info_center",
+        "usefee": "fee",
+    },
+    # 숙박 (contentTypeId=32)
+    "32": {
+        "checkintime": "checkin",
+        "checkouttime": "checkout",
+        "parkinglodging": "parking",
+        "infocenterlodging": "info_center",
+        "roomtype": "room_type",
+    },
+    # 문화시설 (contentTypeId=14)
+    "14": {
+        "usefee": "fee",
+        "usetimeculture": "operating_hours",
+        "restdateculture": "closed_days",
+        "parkingculture": "parking",
+        "infocenterculture": "info_center",
+    },
+}
+
 
 def strip_html(text: str) -> str:
     """Remove HTML tags from a string."""
@@ -41,11 +79,68 @@ def strip_html(text: str) -> str:
     return clean
 
 
+def _fetch_detail_intro(api_key: str, content_id, content_type_id: str) -> dict:
+    """Call detailIntro2 and return unified field dict.
+
+    Returns an empty dict on failure or if the content type has no
+    mapped fields.
+    """
+    field_map = INTRO_FIELD_MAP.get(content_type_id)
+    if not field_map:
+        return {}
+
+    params = {
+        "serviceKey": api_key,
+        "contentId": content_id,
+        "contentTypeId": content_type_id,
+        "MobileOS": "ETC",
+        "MobileApp": "Moru",
+        "_type": "json",
+    }
+
+    try:
+        resp = requests.get(
+            "https://apis.data.go.kr/B551011/KorService2/detailIntro2",
+            params=params,
+            timeout=10,
+            verify=False,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        logger.exception("Failed to fetch detailIntro2 for content %s", content_id)
+        return {}
+
+    try:
+        items = (
+            data.get("response", {})
+            .get("body", {})
+            .get("items", {})
+            .get("item", [])
+        )
+        if isinstance(items, dict):
+            items = [items]
+    except (AttributeError, TypeError):
+        items = []
+
+    if not items:
+        return {}
+
+    intro = items[0]
+    result = {}
+    for api_field, unified_key in field_map.items():
+        value = strip_html(str(intro.get(api_field, "") or ""))
+        if value:
+            result[unified_key] = value
+
+    return result
+
+
 class POIDetailView(APIView):
     """GET /api/v1/poi/{contentId}/
 
     Returns detailed information about a single POI, fetched from the
-    Korea Tourism API (KorService2 detailCommon2).
+    Korea Tourism API (KorService2 detailCommon2 + detailIntro2).
 
     Results are cached per contentId for 24 hours. No authentication required.
     """
@@ -124,6 +219,7 @@ class POIDetailView(APIView):
         result = {
             "name": item.get("title", ""),
             "category": category,
+            "content_type_id": content_type_id,
             "overview": strip_html(item.get("overview", "")),
             "address": item.get("addr1", ""),
             "tel": item.get("tel", ""),
@@ -131,7 +227,22 @@ class POIDetailView(APIView):
             "image": item.get("firstimage") or item.get("firstimage2") or "",
             "lat": float(item.get("mapy", 0)),
             "lng": float(item.get("mapx", 0)),
+            # Intro fields — defaults (overwritten below if available)
+            "operating_hours": "",
+            "closed_days": "",
+            "parking": "",
+            "main_menu": "",
+            "menu_info": "",
+            "fee": "",
+            "checkin": "",
+            "checkout": "",
+            "info_center": "",
+            "room_type": "",
         }
+
+        # Fetch type-specific intro data and merge
+        intro_data = _fetch_detail_intro(api_key, content_id, content_type_id)
+        result.update(intro_data)
 
         # Cache the result
         cache.set(cache_key, result, CACHE_TTL)

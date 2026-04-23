@@ -1087,6 +1087,7 @@ interface NearbyPOI {
 interface POIDetail {
   name: string;
   category: string;
+  content_type_id: string;
   overview: string;
   address: string;
   tel: string;
@@ -1094,6 +1095,16 @@ interface POIDetail {
   image: string;
   lat: number;
   lng: number;
+  operating_hours: string;
+  closed_days: string;
+  parking: string;
+  main_menu: string;
+  menu_info: string;
+  fee: string;
+  checkin: string;
+  checkout: string;
+  info_center: string;
+  room_type: string;
 }
 
 function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean }) {
@@ -1368,6 +1379,59 @@ function POIDetailBottomSheet({
                     {detail.overview}
                   </Text>
                 ) : null}
+
+                {/* Additional detail info */}
+                {detail && (() => {
+                  const rows: { label: string; icon: string; value: string }[] = [];
+                  if (detail.operating_hours) rows.push({ label: '영업시간', icon: 'clock', value: detail.operating_hours });
+                  if (detail.closed_days) rows.push({ label: '휴무일', icon: 'calendar', value: detail.closed_days });
+                  if (detail.parking) rows.push({ label: '주차', icon: 'square', value: detail.parking });
+                  if (detail.main_menu) rows.push({ label: '대표메뉴', icon: 'star', value: detail.main_menu });
+                  if (detail.menu_info) rows.push({ label: '메뉴', icon: 'list', value: detail.menu_info });
+                  if (detail.fee) rows.push({ label: '이용요금', icon: 'dollar-sign', value: detail.fee });
+                  if (detail.checkin && detail.checkout) {
+                    rows.push({ label: '체크인/아웃', icon: 'log-in', value: `${detail.checkin} / ${detail.checkout}` });
+                  } else if (detail.checkin) {
+                    rows.push({ label: '체크인', icon: 'log-in', value: detail.checkin });
+                  } else if (detail.checkout) {
+                    rows.push({ label: '체크아웃', icon: 'log-out', value: detail.checkout });
+                  }
+                  if (detail.info_center) rows.push({ label: '문의', icon: 'info', value: detail.info_center });
+
+                  if (rows.length === 0) return null;
+
+                  return (
+                    <View style={{
+                      marginTop: 14,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6',
+                      overflow: 'hidden',
+                    }}>
+                      {rows.map((row, i) => (
+                        <View
+                          key={row.label}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            paddingHorizontal: 14,
+                            paddingVertical: 11,
+                            borderBottomWidth: i < rows.length - 1 ? 1 : 0,
+                            borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6',
+                          }}
+                        >
+                          <Feather name={row.icon as any} size={13} color={textTertColor} style={{ marginTop: 2, marginRight: 8 }} />
+                          <Text style={{ fontSize: 12, color: textTertColor, fontWeight: '500', width: 72 }}>
+                            {row.label}
+                          </Text>
+                          <Text style={{ fontSize: 13, color: textColor, flex: 1, lineHeight: 19 }}>
+                            {row.value}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
 
                 {/* Action buttons */}
                 <View style={poiDetailStyles.actionsRow}>

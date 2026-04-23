@@ -21,6 +21,7 @@ interface NearbyPOI {
 interface POIDetail {
   name: string;
   category: string;
+  content_type_id: string;
   overview: string;
   address: string;
   tel: string;
@@ -28,6 +29,16 @@ interface POIDetail {
   image: string;
   lat: number;
   lng: number;
+  operating_hours: string;
+  closed_days: string;
+  parking: string;
+  main_menu: string;
+  menu_info: string;
+  fee: string;
+  checkin: string;
+  checkout: string;
+  info_center: string;
+  room_type: string;
 }
 
 interface NearbyPOISectionProps {
@@ -268,6 +279,47 @@ function POIDetailModal({
                     </p>
                   </div>
                 )}
+
+                {/* Additional detail info */}
+                {detail && (() => {
+                  const rows: { label: string; value: string }[] = [];
+                  if (detail.operating_hours) rows.push({ label: "영업시간", value: detail.operating_hours });
+                  if (detail.closed_days) rows.push({ label: "휴무일", value: detail.closed_days });
+                  if (detail.parking) rows.push({ label: "주차", value: detail.parking });
+                  if (detail.main_menu) rows.push({ label: "대표메뉴", value: detail.main_menu });
+                  if (detail.menu_info) rows.push({ label: "메뉴", value: detail.menu_info });
+                  if (detail.fee) rows.push({ label: "이용요금", value: detail.fee });
+                  if (detail.checkin && detail.checkout) {
+                    rows.push({ label: "체크인/아웃", value: `${detail.checkin} / ${detail.checkout}` });
+                  } else if (detail.checkin) {
+                    rows.push({ label: "체크인", value: detail.checkin });
+                  } else if (detail.checkout) {
+                    rows.push({ label: "체크아웃", value: detail.checkout });
+                  }
+                  if (detail.info_center) rows.push({ label: "문의", value: detail.info_center });
+
+                  if (rows.length === 0) return null;
+
+                  return (
+                    <div className="mt-3 mb-4 rounded-xl border border-border-light overflow-hidden">
+                      {rows.map((row, i) => (
+                        <div
+                          key={row.label}
+                          className={`flex items-start gap-3 px-3 py-2.5 ${
+                            i < rows.length - 1 ? "border-b border-border-light" : ""
+                          }`}
+                        >
+                          <span className="text-[12px] text-text-tertiary font-medium w-[72px] flex-shrink-0 pt-[1px]">
+                            {row.label}
+                          </span>
+                          <span className="text-[13px] text-text-primary leading-snug flex-1 break-words">
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Action buttons */}
                 <div className="flex gap-2 mt-4">

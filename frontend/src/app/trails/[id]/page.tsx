@@ -4,9 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { useTrail, useToggleLike } from "@/hooks/useTrails";
-import api from "@/lib/api";
 import { useTrailSpots } from "@/hooks/useSpots";
 import { useTrailReviews, useCreateReview, useToggleHelpful } from "@/hooks/useReviews";
 import { useTrailActivities } from "@/hooks/useActivities";
@@ -24,7 +22,7 @@ import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NearbyPOISection, POIDetailModal } from "@/components/NearbyPOISection";
+import { NearbyPOISection } from "@/components/NearbyPOISection";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -201,18 +199,6 @@ export default function TrailDetailPage() {
   const { data: spots = [] } = useTrailSpots(trailId);
   const { data: reviews = [] } = useTrailReviews(trailId);
   const { data: activities = [] } = useTrailActivities(trailId);
-  const { data: nearbyPOIsData } = useQuery({
-    queryKey: ["trail-nearby-poi", trailId],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get(`/trails/${trailId}/nearby/`);
-        return data as { name: string; category: string; lat: number; lng: number; image: string; content_id?: string; content_type_id?: string; address?: string; tel?: string }[];
-      } catch { return []; }
-    },
-    staleTime: 30 * 60 * 1000,
-    enabled: !!trailId,
-  });
-  const nearbyPOIs = nearbyPOIsData ?? [];
   const toggleLike = useToggleLike();
   const toggleHelpful = useToggleHelpful();
 
@@ -234,14 +220,11 @@ export default function TrailDetailPage() {
   const [certBlobUrl, setCertBlobUrl] = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [mapSelectedPOI, setMapSelectedPOI] = useState<{ name: string; category: string; content_type_id: string; content_id: string; lat: number; lng: number; image: string; address: string; tel: string } | null>(null);
   const createReview = useCreateReview(trailId);
 
   const tabBarRef = useRef<HTMLDivElement>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
   const tabIndicatorRef = useRef<HTMLDivElement>(null);
-  const nearbyPOIsRef = useRef(nearbyPOIs);
-  nearbyPOIsRef.current = nearbyPOIs;
 
   // ─── Tab from URL hash ──────────────────────────────────────────────────────
 
@@ -460,43 +443,14 @@ export default function TrailDetailPage() {
     [tr.path_data],
   );
   const mapMarkers = useMemo(() => {
-    const sm = spots.map((s: Spot) => ({
+    return spots.map((s: Spot) => ({
       id: s.id,
       lat: parseFloat(s.lat),
       lng: parseFloat(s.lng),
       title: s.name,
       emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
     }));
-    const pm = nearbyPOIs.map((p: any, i: number) => ({
-      id: 90000 + i,
-      lat: p.lat,
-      lng: p.lng,
-      title: p.name,
-      emoji: undefined,
-    }));
-    return [...sm, ...pm];
-  }, [spots, nearbyPOIs]);
-
-  // Map marker click handler: open POI detail modal for POI markers
-  const handleMapMarkerClick = useCallback((markerId: number) => {
-    if (markerId >= 90000) {
-      const poiIndex = markerId - 90000;
-      const poi = nearbyPOIsRef.current?.[poiIndex] as any;
-      if (poi) {
-        setMapSelectedPOI({
-          name: poi.name,
-          category: poi.category,
-          content_type_id: poi.content_type_id || "",
-          content_id: poi.content_id || "",
-          lat: poi.lat,
-          lng: poi.lng,
-          image: poi.image || "",
-          address: poi.address || "",
-          tel: poi.tel || "",
-        });
-      }
-    }
-  }, []);
+  }, [spots]);
 
   const avgRating =
     reviews.length > 0
@@ -757,7 +711,6 @@ export default function TrailDetailPage() {
                     showStats
                     distance={tr.distance_km}
                     duration={String(tr.estimated_minutes)}
-                    onMarkerClick={handleMapMarkerClick}
                   />
                   <MapExpandButton onClick={() => setMapFullscreen(true)} />
                 </div>
@@ -1176,16 +1129,6 @@ export default function TrailDetailPage() {
       </div>
 
       {/* ================================================================== */}
-      {/* POI Detail Modal (from map marker click)                           */}
-      {/* ================================================================== */}
-      {mapSelectedPOI && (
-        <POIDetailModal
-          contentId={mapSelectedPOI.content_id || ""}
-          poi={mapSelectedPOI}
-          onClose={() => setMapSelectedPOI(null)}
-          language={language}
-        />
-      )}
 
       {/* ================================================================== */}
       {/* Certificate Modal                                                  */}

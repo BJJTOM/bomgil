@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   usePopularTrails,
 } from "@/hooks/useTrails";
@@ -730,8 +730,9 @@ function ExploreContent() {
     return params;
   }, [filters, sortBy, search, currentPage]);
 
-  // Use standard query instead of infinite query for page-based pagination
-  const { data: trailsData, isLoading } = useQuery<{
+  // Use standard query with keepPreviousData for smooth page transitions
+  const queryClient = useQueryClient();
+  const { data: trailsData, isLoading, isPlaceholderData } = useQuery<{
     count: number;
     results: Trail[];
     next?: string | null;
@@ -742,11 +743,28 @@ function ExploreContent() {
       const { data } = await api.get("/trails/", { params: queryParams });
       return data;
     },
+    placeholderData: (prev) => prev,
+    staleTime: 60_000,
   });
 
   const trails: Trail[] = trailsData?.results ?? [];
   const totalCount = trailsData?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+
+  // Prefetch next page
+  useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextParams = { ...queryParams, offset: String(currentPage * ITEMS_PER_PAGE) };
+      queryClient.prefetchQuery({
+        queryKey: ["trails", "paginated", nextParams],
+        queryFn: async () => {
+          const { data } = await api.get("/trails/", { params: nextParams });
+          return data;
+        },
+        staleTime: 60_000,
+      });
+    }
+  }, [currentPage, totalPages, queryParams, queryClient]);
 
   const { data: popularData } = usePopularTrails();
   const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);

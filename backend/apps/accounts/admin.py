@@ -115,12 +115,14 @@ _original_index = admin.AdminSite.index
 
 def _patched_index(self, request, extra_context=None):
     from datetime import timedelta
-    from django.db.models import Q
+    from django.db.models import Count, Q
+    from django.db.models.functions import TruncDate, TruncHour
     from django.utils import timezone
 
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     last_24h = now - timedelta(hours=24)
+    last_30m = now - timedelta(minutes=30)
 
     stats = {}
     try:
@@ -134,6 +136,16 @@ def _patched_index(self, request, extra_context=None):
         )
         stats["logins_24h"] = LoginHistory.objects.filter(created_at__gte=last_24h).count()
         stats["signups_24h"] = CustomUser.objects.filter(date_joined__gte=last_24h).count()
+
+        # 실시간 활성 — 최근 30분/24시간 내 로그인한 distinct 유저 수
+        stats["active_30m"] = (
+            LoginHistory.objects.filter(created_at__gte=last_30m)
+            .values("user").distinct().count()
+        )
+        stats["active_24h"] = (
+            LoginHistory.objects.filter(created_at__gte=last_24h)
+            .values("user").distinct().count()
+        )
     except Exception:
         pass
 
@@ -161,8 +173,97 @@ def _patched_index(self, request, extra_context=None):
         stats.setdefault("ai_review", 0)
         stats.setdefault("ai_rejected", 0)
 
+    # 최근 로그인 목록 (대시보드 우측 패널)
+    recent_logins = []
+    try:
+        for lh in (
+            LoginHistory.objects.select_related("user").order_by("-created_at")[:6]
+        ):
+            recent_logins.append({
+                "id": lh.pk,
+                "user_nickname": lh.user.nickname or lh.user.username,
+                "user_id": lh.user_id,
+                "ip": lh.ip_address,
+                "method": lh.login_method,
+                "created_at": lh.created_at,
+            })
+    except Exception:
+        pass
+
+    # 7일 가입자 추이 + 24시간 시간당 로그인 추이 (차트용)
+    signups_7d = []
+    logins_24h_hourly = []
+    posts_7d = []
+    try:
+        today_date = now.date()
+        days = [today_date - timedelta(days=i) for i in range(6, -1, -1)]
+        signup_rows = (
+            CustomUser.objects
+            .filter(date_joined__date__gte=days[0])
+            .annotate(d=TruncDate("date_joined"))
+            .values("d").annotate(c=Count("id"))
+        )
+        signup_map = {r["d"]: r["c"] for r in signup_rows}
+        signups_7d = [
+            {"label": d.strftime("%m/%d"),
+             "short": d.strftime("%d"),
+             "value": signup_map.get(d, 0),
+             "is_today": d == today_date}
+            for d in days
+        ]
+
+        try:
+            from apps.community.models import Post
+            post_rows = (
+                Post.objects
+                .filter(created_at__date__gte=days[0])
+                .annotate(d=TruncDate("created_at"))
+                .values("d").annotate(c=Count("id"))
+            )
+            post_map = {r["d"]: r["c"] for r in post_rows}
+            posts_7d = [
+                {"label": d.strftime("%m/%d"),
+                 "short": d.strftime("%d"),
+                 "value": post_map.get(d, 0),
+                 "is_today": d == today_date}
+                for d in days
+            ]
+        except Exception:
+            pass
+
+        hour_start = now.replace(minute=0, second=0, microsecond=0)
+        hours = [hour_start - timedelta(hours=i) for i in range(23, -1, -1)]
+        login_rows = (
+            LoginHistory.objects
+            .filter(created_at__gte=hours[0])
+            .annotate(h=TruncHour("created_at"))
+            .values("h").annotate(c=Count("id"))
+        )
+        login_map = {r["h"]: r["c"] for r in login_rows}
+        logins_24h_hourly = [
+            {"label": h.strftime("%H"),
+             "value": login_map.get(h, 0),
+             "is_now": h.hour == now.hour}
+            for h in hours
+        ]
+    except Exception:
+        pass
+
+    def _chart_max(series, floor=1):
+        try:
+            return max([row["value"] for row in series] + [floor])
+        except Exception:
+            return floor
+
     extra_context = dict(extra_context or {})
     extra_context["moru_stats"] = stats
+    extra_context["moru_recent_logins"] = recent_logins
+    extra_context["moru_signups_7d"] = signups_7d
+    extra_context["moru_signups_7d_max"] = _chart_max(signups_7d)
+    extra_context["moru_posts_7d"] = posts_7d
+    extra_context["moru_posts_7d_max"] = _chart_max(posts_7d)
+    extra_context["moru_logins_24h"] = logins_24h_hourly
+    extra_context["moru_logins_24h_max"] = _chart_max(logins_24h_hourly)
     return _original_index(self, request, extra_context=extra_context)
 
 

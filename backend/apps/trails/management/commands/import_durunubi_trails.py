@@ -104,10 +104,15 @@ def _parse_time_to_minutes(raw):
 
     raw_str = str(raw).strip()
 
-    # Try pure numeric (hours)
+    # Try pure numeric — Durunubi returns minutes (e.g. 420 = 7시간)
     try:
-        hours = float(raw_str)
-        return max(1, int(round(hours * 60)))
+        val = float(raw_str)
+        # If value > 24, it's already in minutes (e.g. 420)
+        # If value <= 24, it's in hours (e.g. 7)
+        if val > 24:
+            return max(1, int(round(val)))
+        else:
+            return max(1, int(round(val * 60)))
     except (ValueError, TypeError):
         pass
 

@@ -81,6 +81,7 @@ function POIDetailModal({
 }) {
   const [isVisible, setIsVisible] = useState(false);
 
+  const hasContentId = !!contentId && contentId !== "";
   const { data: detail, isLoading, isError } = useQuery<POIDetail>({
     queryKey: ["poi-detail", contentId],
     queryFn: async () => {
@@ -89,6 +90,7 @@ function POIDetailModal({
     },
     staleTime: 1000 * 60 * 30,
     retry: 1,
+    enabled: hasContentId,
   });
 
   // Animate in on mount
@@ -144,7 +146,7 @@ function POIDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center md:justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-end md:items-center md:justify-center">
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black transition-opacity duration-300 ${
@@ -207,8 +209,8 @@ function POIDetailModal({
 
           {/* Content */}
           <div className="p-5">
-            {isLoading ? (
-              /* Skeleton */
+            {isLoading && hasContentId ? (
+              /* Skeleton — only show if we're actually fetching detail */
               <div className="space-y-3 animate-pulse">
                 <div className="flex items-center gap-2">
                   <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -216,21 +218,6 @@ function POIDetailModal({
                 <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
                 <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
                 <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="space-y-2 mt-4">
-                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-3 w-4/5 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-              </div>
-            ) : isError ? (
-              /* Error state */
-              <div className="text-center py-8">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary mx-auto mb-2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <p className="text-sm text-text-tertiary">{errorLabel[language] || errorLabel.en}</p>
               </div>
             ) : (
               /* Detail content */

@@ -227,7 +227,7 @@ export function MapView({
       if (onMarkerClick) marker.on("click", () => onMarkerClick(m.id));
       markerLayersRef.current.push(marker);
     });
-  }, [pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
+  }, [loaded, pathCoordinates?.length, markers.length, center?.lat, center?.lng]);
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ background: isDark ? "#1a1a2e" : "#f0f4f0" }}>

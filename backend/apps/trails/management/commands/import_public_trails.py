@@ -276,7 +276,7 @@ class Command(BaseCommand):
                 break
 
             page += 1
-            time.sleep(1.0)
+            time.sleep(0.5)
 
         self.stdout.write(f"Total courses fetched: {len(all_courses)}")
 
@@ -374,7 +374,7 @@ class Command(BaseCommand):
             raise ValueError(f"Invalid coordinates: mapx={mapx}, mapy={mapy}")
 
         # Fetch detail (distance, time, theme)
-        time.sleep(1.2)
+        time.sleep(0.5)
         detail_items = _api_get(
             "detailIntro2",
             {"contentId": content_id, "contentTypeId": "25"},
@@ -383,7 +383,7 @@ class Command(BaseCommand):
         detail = detail_items[0] if detail_items else {}
 
         # Fetch description
-        time.sleep(1.2)
+        time.sleep(0.5)
         common_items = _api_get(
             "detailCommon2",
             {"contentId": content_id, "contentTypeId": "25", "defaultYN": "Y", "overviewYN": "Y"},
@@ -413,7 +413,7 @@ class Command(BaseCommand):
         image_url = course.get("firstimage", "") or course.get("firstimage2", "")
         if not image_url:
             try:
-                time.sleep(1.0)
+                time.sleep(0.5)
                 image_items = _api_get(
                     "detailImage2",
                     {"contentId": content_id, "imageYN": "Y", "subImageYN": "N", "numOfRows": 1, "pageNo": 1},

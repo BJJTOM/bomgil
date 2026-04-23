@@ -47,11 +47,8 @@ fi
 
 if [ "${MORU_SEED_TRAILS:-0}" = "1" ]; then
   echo "=== Importing public trails from Korea Tourism API ==="
-  MORU_DISABLE_REVALIDATE=1 python manage.py import_public_trails \
+  MORU_DISABLE_REVALIDATE=1 python manage.py import_public_trails --limit 200 \
     || echo "import_public_trails failed — continuing"
-  echo "=== Cleaning up non-walking public trails ==="
-  MORU_DISABLE_REVALIDATE=1 python manage.py cleanup_public_trails \
-    || echo "cleanup_public_trails failed — continuing"
   echo "=== Importing Durunubi trails with GPS routes ==="
   MORU_DISABLE_REVALIDATE=1 python manage.py import_durunubi_trails \
     || echo "import_durunubi_trails failed — continuing"

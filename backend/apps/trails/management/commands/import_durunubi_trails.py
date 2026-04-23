@@ -366,7 +366,9 @@ class Command(BaseCommand):
                     lat = float(trkpt.get("lat", 0))
                     lng = float(trkpt.get("lon", 0))
                     if lat > 0 and lng > 0:
-                        coordinates.append([lng, lat])
+                        ele_el = trkpt.find("g:ele", ns)
+                        ele = float(ele_el.text) if ele_el is not None and ele_el.text else 0
+                        coordinates.append([lng, lat, ele])
                 # Fallback: try without namespace
                 if not coordinates:
                     for trkpt in root.iter():
@@ -374,7 +376,11 @@ class Command(BaseCommand):
                             lat = float(trkpt.get("lat", 0))
                             lng = float(trkpt.get("lon", 0))
                             if lat > 0 and lng > 0:
-                                coordinates.append([lng, lat])
+                                ele = 0
+                                for child in trkpt:
+                                    if "ele" in child.tag and child.text:
+                                        ele = float(child.text)
+                                coordinates.append([lng, lat, ele])
 
                 self.stdout.write(f"  Parsed {len(coordinates)} GPS points for {crs_idx}")
             except Exception as exc:
@@ -394,8 +400,17 @@ class Command(BaseCommand):
         }
 
         # Start and end points from GPS route
-        start_lng, start_lat = coordinates[0]
-        end_lng, end_lat = coordinates[-1]
+        start_lng, start_lat = coordinates[0][0], coordinates[0][1]
+        end_lng, end_lat = coordinates[-1][0], coordinates[-1][1]
+
+        # Calculate elevation gain from GPS elevation data
+        elevation_gain = 0
+        for i in range(1, len(coordinates)):
+            if len(coordinates[i]) >= 3 and len(coordinates[i - 1]) >= 3:
+                diff = coordinates[i][2] - coordinates[i - 1][2]
+                if diff > 0:
+                    elevation_gain += diff
+        elevation_gain = round(elevation_gain) if elevation_gain > 0 else None
 
         # ----------------------------------------------------------
         # Parse course metadata
@@ -461,6 +476,7 @@ class Command(BaseCommand):
             "end_lng": Decimal(str(end_lng)),
             "path_data": path_data,
             "trail_type": trail_type,
+            "elevation_gain": elevation_gain,
             "is_official": True,
             "source_url": source_url,
             "status": "approved",

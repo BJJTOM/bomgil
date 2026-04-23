@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsTrailAllowed
 from apps.spots.serializers import SpotSerializer
+from config.pagination import TrailPagination
 from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
 from config.validators import validate_image_file
@@ -58,6 +59,7 @@ class TrailUpdateThrottle(UserRateThrottle):
 
 class TrailViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, IsTrailAllowed]
+    pagination_class = TrailPagination
     filterset_fields = [
         "region", "country", "difficulty", "best_season", "status", "tags",
         "is_official", "trail_type",

@@ -21,6 +21,25 @@ from .models import (
 )
 
 
+# ── 감사 로그 헬퍼 ──────────────────────────────────────────
+def _log_moderation(moderator, target_user, action, reason=""):
+    """moderation.ModerationLog에 감사 기록. 실패해도 업무 흐름을 막지 않음."""
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from apps.moderation.models import ModerationLog
+        ct = ContentType.objects.get_for_model(type(target_user))
+        ModerationLog.objects.create(
+            moderator=moderator,
+            content_type=ct,
+            object_id=target_user.pk,
+            action=action,
+            reason=(reason or "")[:500],
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("moderation log failed")
+
+
 # ── 유저 리스트 bulk 정지 액션 ──────────────────────────────
 def _bulk_suspend(modeladmin, request, queryset, days, reason, duration_key):
     now = timezone.now()
@@ -34,6 +53,7 @@ def _bulk_suspend(modeladmin, request, queryset, days, reason, duration_key):
             suspended_by=request.user,
             expires_at=None if days is None else now + timedelta(days=days),
         )
+        _log_moderation(request.user, user, "suspend", f"{duration_key} / bulk")
         created += 1
     modeladmin.message_user(request, f"{created}명 유저를 {reason}로 정지했습니다.")
 
@@ -64,6 +84,7 @@ def action_lift_all(modeladmin, request, queryset):
             s.lifted_by = request.user
             s.lifted_reason = "관리자 일괄 해제"
             s.save(update_fields=["lifted_at", "lifted_by", "lifted_reason"])
+            _log_moderation(request.user, user, "lift", "bulk")
             lifted += 1
     modeladmin.message_user(request, f"{lifted}건의 정지를 해제했습니다.")
 

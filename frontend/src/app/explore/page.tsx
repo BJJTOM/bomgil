@@ -16,7 +16,7 @@ import api from "@/lib/api";
 import type { Trail, User } from "@/types";
 import Image from "next/image";
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 21;
 
 // --- Skeleton Loading Component ---
 function TrailCardSkeleton() {

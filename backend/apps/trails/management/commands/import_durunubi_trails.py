@@ -329,42 +329,36 @@ class Command(BaseCommand):
             raise ValueError(f"Missing crsIdx for course: {title}")
 
         # ----------------------------------------------------------
-        # Fetch GPS route points
+        # Fetch GPS route from GPX file (no API quota needed)
         # ----------------------------------------------------------
-        time.sleep(0.3)
-        route_items = _api_get(
-            "routeList",
-            {"crsIdx": crs_idx},
-            label=f"routeList {crs_idx}",
-        )
-
-        # Build GeoJSON LineString from route points
+        gpx_url = (course.get("gpxpath") or "").strip()
         coordinates = []
-        for point in route_items:
-            try:
-                lng = float(point.get("brdPosX", 0))
-                lat = float(point.get("brdPosY", 0))
-                if lng > 0 and lat > 0:
-                    coordinates.append([lng, lat])
-            except (ValueError, TypeError):
-                continue
 
-        # If routeList returned nothing, try courseDetail as fallback
-        if not coordinates:
-            time.sleep(0.3)
-            detail_items = _api_get(
-                "courseDetail",
-                {"crsIdx": crs_idx},
-                label=f"courseDetail {crs_idx}",
-            )
-            for point in detail_items:
-                try:
-                    lng = float(point.get("brdPosX", 0))
-                    lat = float(point.get("brdPosY", 0))
-                    if lng > 0 and lat > 0:
+        if gpx_url:
+            try:
+                time.sleep(0.3)
+                resp = requests.get(gpx_url, verify=False, timeout=30)
+                resp.raise_for_status()
+                gpx_xml = resp.text
+                # Parse trkpt elements from GPX
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(gpx_xml)
+                ns = {"g": "http://www.topografix.com/GPX/1/1"}
+                for trkpt in root.findall(".//g:trkpt", ns):
+                    lat = float(trkpt.get("lat", 0))
+                    lng = float(trkpt.get("lon", 0))
+                    if lat > 0 and lng > 0:
                         coordinates.append([lng, lat])
-                except (ValueError, TypeError):
-                    continue
+                # If namespace didn't work, try without
+                if not coordinates:
+                    for trkpt in root.iter():
+                        if "trkpt" in trkpt.tag:
+                            lat = float(trkpt.get("lat", 0))
+                            lng = float(trkpt.get("lon", 0))
+                            if lat > 0 and lng > 0:
+                                coordinates.append([lng, lat])
+            except Exception as exc:
+                self.stderr.write(f"  GPX download failed for {crs_idx}: {exc}")
 
         if not coordinates:
             raise ValueError(

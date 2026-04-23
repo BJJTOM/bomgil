@@ -169,10 +169,6 @@ class POIDetailView(APIView):
             "MobileOS": "ETC",
             "MobileApp": "Moru",
             "_type": "json",
-            "defaultYN": "Y",
-            "overviewYN": "Y",
-            "addrinfoYN": "Y",
-            "firstImageYN": "Y",
         }
 
         try:

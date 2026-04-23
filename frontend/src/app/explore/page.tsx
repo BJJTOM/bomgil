@@ -3,16 +3,20 @@
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
-  useInfiniteTrails,
   usePopularTrails,
 } from "@/hooks/useTrails";
 import { TrailCard } from "@/components/TrailCard";
 import { FilterBar } from "@/components/FilterBar";
 import { ExploreMap } from "@/components/ExploreMap";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useT } from "@/stores/language";
 import api from "@/lib/api";
-import type { Trail } from "@/types";
+import type { Trail, User } from "@/types";
+import Image from "next/image";
+
+const ITEMS_PER_PAGE = 20;
 
 // --- Skeleton Loading Component ---
 function TrailCardSkeleton() {
@@ -253,11 +257,352 @@ const AI_SEARCH_LABELS: Record<string, string> = {
   zh: "AI搜索",
 };
 
+// --- Rankings Sub-components (inlined from rankings page) ---
+
+type RankingTab = "weekly" | "monthly" | "region" | "guides";
+
+function RankingItemSkeleton() {
+  return (
+    <div className="flex items-start gap-4">
+      <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+      <div className="flex-1 bg-white rounded-card shadow-soft overflow-hidden">
+        <div className="flex gap-3 p-4">
+          <Skeleton className="w-20 h-20 rounded-lg flex-shrink-0" />
+          <div className="flex-1 space-y-2 py-1">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <div className="flex gap-2 pt-1">
+              <Skeleton className="h-5 w-14 rounded-full" />
+              <Skeleton className="h-5 w-14 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuideItemSkeleton() {
+  return (
+    <div className="flex items-center gap-4 bg-white rounded-card shadow-soft p-4">
+      <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+      <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <Skeleton className="h-6 w-16 rounded-full" />
+    </div>
+  );
+}
+
+function RankingEmptyState({
+  icon,
+  title,
+  description,
+  ctaLabel,
+  ctaHref,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="text-5xl mb-4">{icon}</div>
+      <h3 className="text-lg font-bold text-text-primary mb-2">{title}</h3>
+      <p className="text-text-secondary text-sm mb-6 max-w-sm">{description}</p>
+      {ctaLabel && ctaHref && (
+        <Link
+          href={ctaHref}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-full hover:bg-primary/90 transition-colors"
+        >
+          {ctaLabel}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="text-lg">🥇</span>;
+  if (rank === 2) return <span className="text-lg">🥈</span>;
+  if (rank === 3) return <span className="text-lg">🥉</span>;
+  return <span className="text-sm font-bold font-en">{rank}</span>;
+}
+
+function InlineRankings() {
+  const { t } = useT();
+  const [tab, setTab] = useState<RankingTab>("weekly");
+  const [region, setRegion] = useState("\uC11C\uC6B8");
+
+  const { data: weeklyTrails = [], isLoading: weeklyLoading } = useQuery<Trail[]>({
+    queryKey: ["rankings", "weekly"],
+    queryFn: async () => (await api.get("/trails/rankings/weekly/")).data,
+    enabled: tab === "weekly",
+  });
+
+  const { data: monthlyTrails = [], isLoading: monthlyLoading } = useQuery<Trail[]>({
+    queryKey: ["rankings", "monthly"],
+    queryFn: async () => (await api.get("/trails/rankings/monthly/")).data,
+    enabled: tab === "monthly",
+  });
+
+  const { data: regionTrails = [], isLoading: regionLoading } = useQuery<Trail[]>({
+    queryKey: ["rankings", "region", region],
+    queryFn: async () =>
+      (await api.get(`/trails/rankings/region/?region=${region}`)).data,
+    enabled: tab === "region",
+  });
+
+  const { data: guides = [], isLoading: guidesLoading } = useQuery<
+    (User & { total_likes?: number })[]
+  >({
+    queryKey: ["rankings", "guides"],
+    queryFn: async () => (await api.get("/trails/rankings/guides/")).data,
+    enabled: tab === "guides",
+  });
+
+  const TABS = [
+    { key: "weekly" as const, label: t("rankings.weekly") },
+    { key: "monthly" as const, label: t("rankings.monthly") },
+    { key: "region" as const, label: t("rankings.region") },
+    { key: "guides" as const, label: t("rankings.guides") },
+  ];
+
+  const REGIONS = [
+    { value: "\uC11C\uC6B8", label: t("region.seoul") },
+    { value: "\uC81C\uC8FC", label: t("region.jeju") },
+    { value: "\uAC15\uC6D0", label: t("region.gangwon") },
+    { value: "\uBD80\uC0B0", label: t("region.busan") },
+    { value: "\uC804\uB0A8", label: t("region.jeonnam") },
+    { value: "\uACBD\uBD81", label: t("region.gyeongbuk") },
+  ];
+
+  const isTrailTab = tab === "weekly" || tab === "monthly" || tab === "region";
+  const currentLoading = tab === "weekly"
+    ? weeklyLoading
+    : tab === "monthly"
+    ? monthlyLoading
+    : tab === "region"
+    ? regionLoading
+    : guidesLoading;
+
+  const currentTrails = tab === "weekly"
+    ? weeklyTrails
+    : tab === "monthly"
+    ? monthlyTrails
+    : regionTrails;
+
+  return (
+    <>
+      <h2 className="text-xl font-bold mb-1">{t("rankings.title")}</h2>
+      <p className="text-text-secondary text-sm mb-6">
+        {t("rankings.subtitle")}
+      </p>
+
+      {/* Ranking sub-tabs */}
+      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto scrollbar-hide">
+        {TABS.map((tb) => (
+          <button
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`relative px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+              tab === tb.key
+                ? "text-primary"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {tb.label}
+            {tab === tb.key && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Region selector */}
+      {tab === "region" && (
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {REGIONS.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setRegion(r.value)}
+              className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
+                region === r.value
+                  ? "bg-primary text-white"
+                  : "bg-white text-text-primary border border-gray-200 hover:border-primary/50"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Trail rankings */}
+      {isTrailTab && (
+        <div className="space-y-4">
+          {currentLoading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <RankingItemSkeleton key={i} />
+            ))
+          ) : currentTrails.length === 0 ? (
+            <RankingEmptyState
+              icon="🏃‍♂️"
+              title={
+                tab === "weekly"
+                  ? t("rankings.emptyWeeklyTitle")
+                  : tab === "monthly"
+                  ? t("rankings.emptyMonthlyTitle")
+                  : t("rankings.emptyRegionTitle")
+              }
+              description={
+                tab === "weekly"
+                  ? t("rankings.emptyWeeklyDesc")
+                  : tab === "monthly"
+                  ? t("rankings.emptyMonthlyDesc")
+                  : t("rankings.emptyRegionDesc")
+              }
+              ctaLabel={t("rankings.startRecording")}
+              ctaHref="/activities"
+            />
+          ) : (
+            currentTrails.map((trail, index) => (
+              <div key={trail.id} className="flex items-start gap-4">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    index < 3
+                      ? "bg-primary/10"
+                      : "bg-gray-100 text-text-secondary"
+                  }`}
+                >
+                  <RankBadge rank={index + 1} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <TrailCard trail={trail} variant="horizontal" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Guides ranking */}
+      {tab === "guides" && (
+        <div className="space-y-4">
+          {guidesLoading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <GuideItemSkeleton key={i} />
+            ))
+          ) : guides.length === 0 ? (
+            <RankingEmptyState
+              icon="🧭"
+              title={t("rankings.emptyGuidesTitle")}
+              description={t("rankings.emptyGuidesDesc")}
+              ctaLabel={t("rankings.registerTrail")}
+              ctaHref="/trails/new"
+            />
+          ) : (
+            guides.map((guide, index) => (
+              <div
+                key={guide.id}
+                className="flex items-center gap-4 bg-white rounded-card shadow-soft p-4"
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    index < 3
+                      ? "bg-primary/10"
+                      : "bg-gray-100 text-text-secondary"
+                  }`}
+                >
+                  <RankBadge rank={index + 1} />
+                </div>
+                <div className="w-12 h-12 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {guide.profile_image ? (
+                    <Image
+                      src={guide.profile_image}
+                      alt={guide.nickname}
+                      width={48}
+                      height={48}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <span className="text-xl">👤</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{guide.nickname}</p>
+                  <p className="text-xs text-text-secondary">
+                    {t("rankings.trails")} {guide.trail_count || 0} · {t("rankings.totalLikes")}{" "}
+                    {guide.total_likes || 0}
+                  </p>
+                </div>
+                {guide.is_guide && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0">
+                    {t("trail.certifiedGuide")}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// --- Pagination Controls ---
+function PaginationControls({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-4 py-8">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className={`px-4 py-2 rounded-[12px] text-[14px] font-medium transition-colors ${
+          currentPage <= 1
+            ? "text-gray-300 cursor-not-allowed"
+            : "text-gray-700 hover:bg-gray-100"
+        }`}
+      >
+        &lt; 이전
+      </button>
+      <span className="text-[14px] font-semibold text-gray-700">
+        {currentPage}/{totalPages}
+      </span>
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className={`px-4 py-2 rounded-[12px] text-[14px] font-medium transition-colors ${
+          currentPage >= totalPages
+            ? "text-gray-300 cursor-not-allowed"
+            : "text-gray-700 hover:bg-gray-100"
+        }`}
+      >
+        다음 &gt;
+      </button>
+    </div>
+  );
+}
+
 function ExploreContent() {
   const searchParams = useSearchParams();
   const { t, language } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("-created_at");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // AI Search state
   const [aiMode, setAiMode] = useState(false);
@@ -371,61 +716,44 @@ function ExploreContent() {
     return initial;
   });
 
+  // Build query params for API (with pagination)
   const queryParams = useMemo(() => {
-    const params: Record<string, string> = { ordering: sortBy };
+    const params: Record<string, string> = {
+      ordering: sortBy,
+      limit: String(ITEMS_PER_PAGE),
+      offset: String((currentPage - 1) * ITEMS_PER_PAGE),
+    };
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params[k] = v;
     });
     if (search.trim()) params["search"] = search.trim();
     return params;
-  }, [filters, sortBy, search]);
+  }, [filters, sortBy, search, currentPage]);
 
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteTrails(queryParams);
-  const allTrails: Trail[] = useMemo(() => {
-    const pages = (data?.pages ?? []) as Array<{ results?: Trail[] }>;
-    const out: Trail[] = [];
-    for (const p of pages) {
-      if (p?.results) out.push(...p.results);
-    }
-    return out;
-  }, [data]);
+  // Use standard query instead of infinite query for page-based pagination
+  const { data: trailsData, isLoading } = useQuery<{
+    count: number;
+    results: Trail[];
+    next?: string | null;
+    previous?: string | null;
+  }>({
+    queryKey: ["trails", "paginated", queryParams],
+    queryFn: async () => {
+      const { data } = await api.get("/trails/", { params: queryParams });
+      return data;
+    },
+  });
 
-  // Load the next cursor page when the sentinel enters the viewport.
-  const loadMoreRef = (node: HTMLDivElement | null) => {
-    if (!node || !hasNextPage || isFetchingNextPage) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) fetchNextPage();
-      },
-      { rootMargin: "240px" },
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  };
+  const trails: Trail[] = trailsData?.results ?? [];
+  const totalCount = trailsData?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
   const { data: popularData } = usePopularTrails();
   const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);
 
-  const trails = useMemo(() => {
-    if (!search.trim()) return allTrails;
-    const q = search.toLowerCase();
-    return allTrails.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.region?.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q) ||
-        t.country?.toLowerCase().includes(q)
-    );
-  }, [allTrails, search]);
-
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
+  // Reset to page 1 when filters, search, or sort change
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => {
       const next = { ...prev };
@@ -436,16 +764,36 @@ function ExploreContent() {
       }
       return next;
     });
+    setCurrentPage(1);
   };
 
   const clearAllFilters = () => {
     setFilters({});
     setSearch("");
     setSortBy("-created_at");
+    setCurrentPage(1);
+  };
+
+  // Reset page when search or sort changes
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    setCurrentPage(1);
   };
 
   const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+
+  // Total count label
+  const totalCountLabel = useMemo(() => {
+    if (isLoading) return t("explore.searching");
+    const unit = language === "ko" ? "개 코스" : language === "ja" ? "件のコース" : language === "zh" ? "条路线" : " trails";
+    return `${language === "ko" ? "총 " : ""}${totalCount}${unit}`;
+  }, [isLoading, totalCount, language, t]);
 
   return (
     <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
@@ -502,7 +850,7 @@ function ExploreContent() {
                 type="text"
                 value={aiMode ? aiQuery : search}
                 onChange={(e) =>
-                  aiMode ? setAiQuery(e.target.value) : setSearch(e.target.value)
+                  aiMode ? setAiQuery(e.target.value) : handleSearchChange(e.target.value)
                 }
                 onKeyDown={(e) => {
                   if (aiMode && e.key === "Enter") {
@@ -524,7 +872,7 @@ function ExploreContent() {
               />
               {(aiMode ? aiQuery : search) && (
                 <button
-                  onClick={() => (aiMode ? setAiQuery("") : setSearch(""))}
+                  onClick={() => (aiMode ? setAiQuery("") : handleSearchChange(""))}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#B0B8C1]/30 flex items-center justify-center"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
@@ -534,7 +882,7 @@ function ExploreContent() {
                 </button>
               )}
             </div>
-            {/* AI toggle button — only shown when AI is available */}
+            {/* AI toggle button -- only shown when AI is available */}
             {aiAvailable && (
               <button
                 onClick={() => {
@@ -569,7 +917,7 @@ function ExploreContent() {
               />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => handleSortChange(e.target.value)}
                 className="flex-shrink-0 text-[12px] bg-[#F7F8FA] border-none rounded-[20px] px-3 py-1.5 font-medium text-[#8B95A1] focus:outline-none appearance-none cursor-pointer"
                 style={{ WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23B0B8C1' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", paddingRight: "28px" }}
               >
@@ -605,13 +953,10 @@ function ExploreContent() {
         </div>}
       </div>
 
+      {/* Rankings tab - inline content */}
       {activeTab === "rankings" && (
-        <div className="max-w-5xl mx-auto px-5 py-5">
-          <div className="text-center py-4">
-            <Link href="/rankings" className="inline-block px-6 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
-              {t("rankings.title")} {"\u2192"}
-            </Link>
-          </div>
+        <div className="max-w-4xl mx-auto px-5 py-8">
+          <InlineRankings />
         </div>
       )}
 
@@ -687,9 +1032,7 @@ function ExploreContent() {
             {/* Trail count + view toggle */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-[13px] text-[#8B95A1]">
-                {isLoading
-                  ? t("explore.searching")
-                  : t("explore.found").replace("{count}", String(trails.length))}
+                {totalCountLabel}
               </p>
 
               {/* List / Map toggle */}
@@ -748,46 +1091,11 @@ function ExploreContent() {
                     </div>
                   ))}
                 </div>
-                {hasNextPage && (
-                  <div ref={loadMoreRef} className="py-8 flex justify-center">
-                    {isFetchingNextPage ? (
-                      <div className="flex items-center gap-2 text-text-tertiary text-[13px]">
-                        <span className="w-4 h-4 rounded-full border-2 border-text-tertiary border-t-transparent animate-spin" />
-                        {language === "ko"
-                          ? "더 불러오는 중..."
-                          : language === "ja"
-                          ? "読み込み中..."
-                          : language === "zh"
-                          ? "加载中..."
-                          : "Loading more..."}
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => fetchNextPage()}
-                        className="px-5 py-2 rounded-full border border-gray-200 text-[13px] text-text-secondary"
-                      >
-                        {language === "ko"
-                          ? "더 보기"
-                          : language === "ja"
-                          ? "もっと見る"
-                          : language === "zh"
-                          ? "加载更多"
-                          : "Load more"}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {!hasNextPage && trails.length > 20 && (
-                  <div className="py-8 text-center text-[12px] text-text-tertiary">
-                    {language === "ko"
-                      ? "모든 코스를 불러왔어요"
-                      : language === "ja"
-                      ? "すべて表示しました"
-                      : language === "zh"
-                      ? "已显示全部"
-                      : "That's all the trails!"}
-                  </div>
-                )}
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
               </>
             ) : (
               <ExploreMap trails={trails} />

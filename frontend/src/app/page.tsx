@@ -9,7 +9,6 @@ import { TrailCardSkeleton } from "@/components/ui/Skeleton";
 import { useT, useLanguageStore, LANGUAGES } from "@/stores/language";
 import api from "@/lib/api";
 import { Footer } from "@/components/Footer";
-import { WeeklyInsights } from "@/components/WeeklyInsights";
 
 const DISCOVER_COUNTRIES = [
   { code: "KR", name: "Korea", nameKo: "한국", nameEn: "Korea", nameJa: "韓国", nameZh: "韩国", emoji: "🇰🇷", desc: { ko: "서울, 제주, 부산...", en: "Seoul, Jeju, Busan...", ja: "ソウル, 済州, 釜山...", zh: "首尔, 济州, 釜山..." } },
@@ -289,11 +288,6 @@ export default function Home() {
       </section>
 
 
-      {/* Weekly AI Insights (authenticated users only) */}
-      <section className="max-w-4xl mx-auto px-5 py-6">
-        <WeeklyInsights />
-      </section>
-
       {/* Popular Trails */}
       <section className="bg-surface py-8 md:py-14">
         <div className="max-w-7xl mx-auto px-5">
@@ -347,25 +341,25 @@ export default function Home() {
       </section>
 
       {/* UGC CTA */}
-      <section className="bg-surface py-8 md:py-14">
-        <div className="max-w-3xl mx-auto px-5">
-          <div className="bg-gradient-to-br from-primary-50 to-accent-light/30 rounded-card p-8 md:p-10">
+      <section className="bg-surface py-10 md:py-20">
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="bg-gradient-to-br from-primary-50 to-accent-light/30 rounded-card p-10 md:p-16">
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 bg-white rounded-pill px-4 py-2 shadow-soft mb-5">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="inline-flex items-center gap-2.5 bg-white rounded-pill px-5 py-2.5 shadow-soft mb-7">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
                   <line x1="8" y1="2" x2="8" y2="18" />
                   <line x1="16" y1="6" x2="16" y2="22" />
                 </svg>
-                <span className="text-[13px] font-semibold text-primary">{ctaBadgeTexts[language] ?? ctaBadgeTexts.en}</span>
+                <span className="text-[15px] font-semibold text-primary">{ctaBadgeTexts[language] ?? ctaBadgeTexts.en}</span>
               </div>
-              <h2 className="text-[22px] font-bold tracking-tight mb-2 whitespace-pre-line">{ctaTitleTexts[language] ?? ctaTitleTexts.en}</h2>
-              <p className="text-[14px] text-text-secondary leading-relaxed mb-7 max-w-md mx-auto whitespace-pre-line">
+              <h2 className="text-[28px] md:text-[36px] font-bold tracking-tight mb-4 whitespace-pre-line leading-snug">{ctaTitleTexts[language] ?? ctaTitleTexts.en}</h2>
+              <p className="text-[16px] md:text-[18px] text-text-secondary leading-relaxed mb-10 max-w-lg mx-auto whitespace-pre-line">
                 {ctaDescTexts[language] ?? ctaDescTexts.en}
               </p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                <Link href="/trails/new" className="btn-primary">{t("home.ctaButton")}</Link>
-                <Link href="/community" className="btn-secondary">{communityButtonTexts[language] ?? communityButtonTexts.en}</Link>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <Link href="/trails/new" className="btn-primary px-8 py-4 text-[16px] font-semibold">{t("home.ctaButton")}</Link>
+                <Link href="/community" className="btn-secondary px-8 py-4 text-[16px] font-semibold">{communityButtonTexts[language] ?? communityButtonTexts.en}</Link>
               </div>
             </div>
           </div>

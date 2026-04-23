@@ -4,7 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useTrail, useToggleLike } from "@/hooks/useTrails";
+import api from "@/lib/api";
 import { useTrailSpots } from "@/hooks/useSpots";
 import { useTrailReviews, useCreateReview, useToggleHelpful } from "@/hooks/useReviews";
 import { useTrailActivities } from "@/hooks/useActivities";
@@ -200,6 +202,17 @@ export default function TrailDetailPage() {
   const { data: spots = [] } = useTrailSpots(trailId);
   const { data: reviews = [] } = useTrailReviews(trailId);
   const { data: activities = [] } = useTrailActivities(trailId);
+  const { data: nearbyPOIs = [] } = useQuery({
+    queryKey: ["trail-nearby-poi", trailId],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get(`/trails/${trailId}/nearby/`);
+        return data as { name: string; category: string; lat: number; lng: number; image: string }[];
+      } catch { return []; }
+    },
+    staleTime: 30 * 60 * 1000,
+    enabled: !!trailId,
+  });
   const toggleLike = useToggleLike();
   const toggleHelpful = useToggleHelpful();
 
@@ -443,13 +456,21 @@ export default function TrailDetailPage() {
     (tr.path_data?.coordinates || []).map(
       (c) => [c[0], c[1]] as [number, number],
     );
-  const mapMarkers = spots.map((s: Spot) => ({
+  const spotMarkers = spots.map((s: Spot) => ({
     id: s.id,
     lat: parseFloat(s.lat),
     lng: parseFloat(s.lng),
     title: s.name,
     emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
   }));
+  const poiMarkers = nearbyPOIs.map((p: any, i: number) => ({
+    id: 90000 + i,
+    lat: p.lat,
+    lng: p.lng,
+    title: p.name,
+    emoji: undefined,
+  }));
+  const mapMarkers = [...spotMarkers, ...poiMarkers];
 
   const avgRating =
     reviews.length > 0

@@ -1,5 +1,5 @@
 // Roami Service Worker
-const CACHE_NAME = 'moru-v1';
+const CACHE_NAME = 'moru-v2';
 
 // Install — cache shell
 self.addEventListener('install', (event) => {

@@ -9,7 +9,7 @@
 #
 # Flags (set in Render → Environment when you want them on, then unset
 # after the deploy finishes):
-#   MORU_SEED_TRAILS=1   → runs import_public_trails + cleanup
+#   MORU_SEED_TRAILS=1   → runs import_public_trails + cleanup + import_durunubi_trails
 #   MORU_SEED_SERIES=1   → runs seed_trail_series
 #   MORU_SANITIZE_USERS=1 → runs sanitize_phone_usernames
 #
@@ -52,6 +52,9 @@ if [ "${MORU_SEED_TRAILS:-0}" = "1" ]; then
   echo "=== Cleaning up non-walking public trails ==="
   MORU_DISABLE_REVALIDATE=1 python manage.py cleanup_public_trails \
     || echo "cleanup_public_trails failed — continuing"
+  echo "=== Importing Durunubi trails with GPS routes ==="
+  MORU_DISABLE_REVALIDATE=1 python manage.py import_durunubi_trails \
+    || echo "import_durunubi_trails failed — continuing"
 else
   echo "=== Skipping public trail import/cleanup (set MORU_SEED_TRAILS=1 to enable) ==="
 fi

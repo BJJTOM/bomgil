@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -201,17 +201,18 @@ export default function TrailDetailPage() {
   const { data: spots = [] } = useTrailSpots(trailId);
   const { data: reviews = [] } = useTrailReviews(trailId);
   const { data: activities = [] } = useTrailActivities(trailId);
-  const { data: nearbyPOIs = [] } = useQuery({
+  const { data: nearbyPOIsData } = useQuery({
     queryKey: ["trail-nearby-poi", trailId],
     queryFn: async () => {
       try {
         const { data } = await api.get(`/trails/${trailId}/nearby/`);
-        return data as { name: string; category: string; lat: number; lng: number; image: string }[];
+        return data as { name: string; category: string; lat: number; lng: number; image: string; content_id?: string; content_type_id?: string; address?: string; tel?: string }[];
       } catch { return []; }
     },
     staleTime: 30 * 60 * 1000,
     enabled: !!trailId,
   });
+  const nearbyPOIs = nearbyPOIsData ?? [];
   const toggleLike = useToggleLike();
   const toggleHelpful = useToggleHelpful();
 
@@ -454,25 +455,27 @@ export default function TrailDetailPage() {
   // ─── Derived data ───────────────────────────────────────────────────────────
 
   const tr: Trail = trail;
-  const pathCoords: [number, number][] =
-    (tr.path_data?.coordinates || []).map(
-      (c) => [c[0], c[1]] as [number, number],
-    );
-  const spotMarkers = spots.map((s: Spot) => ({
-    id: s.id,
-    lat: parseFloat(s.lat),
-    lng: parseFloat(s.lng),
-    title: s.name,
-    emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
-  }));
-  const poiMarkers = (nearbyPOIs || []).map((p: any, i: number) => ({
-    id: 90000 + i,
-    lat: p.lat,
-    lng: p.lng,
-    title: p.name,
-    emoji: undefined,
-  }));
-  const mapMarkers = [...spotMarkers, ...poiMarkers];
+  const pathCoords = useMemo<[number, number][]>(
+    () => (tr.path_data?.coordinates || []).map((c) => [c[0], c[1]] as [number, number]),
+    [tr.path_data],
+  );
+  const mapMarkers = useMemo(() => {
+    const sm = spots.map((s: Spot) => ({
+      id: s.id,
+      lat: parseFloat(s.lat),
+      lng: parseFloat(s.lng),
+      title: s.name,
+      emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
+    }));
+    const pm = nearbyPOIs.map((p: any, i: number) => ({
+      id: 90000 + i,
+      lat: p.lat,
+      lng: p.lng,
+      title: p.name,
+      emoji: undefined,
+    }));
+    return [...sm, ...pm];
+  }, [spots, nearbyPOIs]);
 
   // Map marker click handler: open POI detail modal for POI markers
   const handleMapMarkerClick = useCallback((markerId: number) => {

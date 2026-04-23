@@ -340,21 +340,34 @@ class Command(BaseCommand):
         coordinates = []
 
         if gpx_url:
+            import xml.etree.ElementTree as ET
+            import urllib.request
+            import ssl
+
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+
             try:
                 time.sleep(0.3)
-                resp = requests.get(gpx_url, verify=False, timeout=30)
-                resp.raise_for_status()
-                gpx_xml = resp.text
-                # Parse trkpt elements from GPX
-                import xml.etree.ElementTree as ET
+                req = urllib.request.Request(
+                    gpx_url,
+                    headers={"User-Agent": "Moru/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=30, context=ssl_ctx) as resp:
+                    gpx_xml = resp.read().decode("utf-8")
+
+                self.stdout.write(f"  GPX downloaded: {len(gpx_xml)} bytes for {crs_idx}")
+
                 root = ET.fromstring(gpx_xml)
+                # Try with namespace
                 ns = {"g": "http://www.topografix.com/GPX/1/1"}
                 for trkpt in root.findall(".//g:trkpt", ns):
                     lat = float(trkpt.get("lat", 0))
                     lng = float(trkpt.get("lon", 0))
                     if lat > 0 and lng > 0:
                         coordinates.append([lng, lat])
-                # If namespace didn't work, try without
+                # Fallback: try without namespace
                 if not coordinates:
                     for trkpt in root.iter():
                         if "trkpt" in trkpt.tag:
@@ -362,8 +375,12 @@ class Command(BaseCommand):
                             lng = float(trkpt.get("lon", 0))
                             if lat > 0 and lng > 0:
                                 coordinates.append([lng, lat])
+
+                self.stdout.write(f"  Parsed {len(coordinates)} GPS points for {crs_idx}")
             except Exception as exc:
-                self.stderr.write(f"  GPX download failed for {crs_idx}: {exc}")
+                self.stderr.write(
+                    self.style.ERROR(f"  GPX FAILED for {crs_idx}: {type(exc).__name__}: {exc}")
+                )
 
         if not coordinates:
             raise ValueError(

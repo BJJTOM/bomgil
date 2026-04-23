@@ -188,10 +188,11 @@ export function MapView({
 
       pathLayerRef.current = layers;
 
-      // Fit bounds only if no live tracking (static view)
-      if (!center) {
+      // Always fit bounds when path exists so the full route is visible
+      try {
         map.fitBounds(L.polyline(latLngs).getBounds(), { padding: [40, 40] });
-      }
+      } catch {}
+
     }
 
     // Current position marker (pulsing green dot)

@@ -556,25 +556,69 @@
   .moru-empty { color: #9CA3AF; font-size: 12px; padding: 10px 12px; background: #F7F8FA; border: 1px dashed #E5E8EB; border-radius: 10px; }
 
   /* 반응형 */
+  /* ── 반응형 breakpoints ─────────────────────────────────── */
+  @media (max-width: 1700px) {
+    .moru-quick-links { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
   @media (max-width: 1500px) {
+    .moru-index-layout { grid-template-columns: minmax(400px, 460px) minmax(0, 1fr); }
+    .moru-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .moru-quick-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
-  @media (max-width: 1400px) {
-    .moru-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .moru-trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
   @media (max-width: 1280px) {
+    .moru-index-layout { grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); }
     .moru-hero-row { grid-template-columns: 1fr; }
     .moru-hero-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .moru-trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .moru-split2 { grid-template-columns: 1fr; }
   }
-  @media (max-width: 1100px) {
+  @media (max-width: 1024px) {
+    /* 좌/우 열 해제 — 세로 스택 */
     .moru-index-layout { grid-template-columns: 1fr; }
-    .moru-index-side { position: static; max-height: none; overflow: visible; }
-    .moru-stat-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-    .moru-quick-links { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-    .moru-trend-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .moru-index-side {
+      position: static; max-height: none; overflow: visible; order: -1;
+    }
+    .moru-stat-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+    .moru-quick-links { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .moru-trend-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .moru-hero-charts { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  }
+  @media (max-width: 768px) {
+    body.dashboard #content { padding: 16px !important; }
+    .moru-hero { padding: 14px 16px; }
+    .moru-hero-value { font-size: 40px; }
+    .moru-hero-label { font-size: 12px; }
+    .moru-hero-chip { font-size: 10px; }
+    .moru-stat-card { padding: 10px 12px; min-height: 72px; }
+    .moru-stat-value { font-size: 20px; }
+    .moru-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .moru-quick-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .moru-trend-grid { grid-template-columns: 1fr; }
     .moru-hero-charts { grid-template-columns: 1fr; }
+    .moru-barchart { height: 70px; }
+    .moru-barchart--tall { height: 80px; }
+    .moru-side-title { font-size: 14px; }
+    .moru-index-main .module caption { font-size: 12px; padding: 8px 12px; }
+    .moru-recent-table, .moru-actionlist { font-size: 11px; }
+    .moru-recent-table thead th, .moru-recent-table tbody td { padding: 6px 8px; }
+  }
+  @media (max-width: 480px) {
+    body.dashboard #content { padding: 12px !important; }
+    .moru-hero { padding: 12px 14px; border-radius: 12px; }
+    .moru-hero-value { font-size: 34px; }
+    .moru-stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .moru-quick-links { grid-template-columns: 1fr; }
+    .moru-quick-link { padding: 8px 10px; }
+    .moru-stat-card { min-height: 66px; padding: 9px 11px; }
+    .moru-stat-value { font-size: 18px; }
+    .moru-stat-label { font-size: 10px; }
+    .moru-stat-sub { font-size: 9px; }
+    .moru-hero-subrow { gap: 6px; }
+    .moru-hero-chip { padding: 3px 8px; }
+    .moru-bar-tick { font-size: 8px; }
+    /* 최근 로그인: method 칼럼 숨겨 좁은 폭 대응 */
+    .moru-recent-table thead th:nth-child(3),
+    .moru-recent-table tbody td:nth-child(3) { display: none; }
   }
 </style>
 

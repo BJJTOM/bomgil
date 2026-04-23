@@ -1,0 +1,409 @@
+/* =============================================================
+   모루 어드민 테마 — 라이트 모드 강제 + 브랜드 컬러
+   brand primary: #2D4A2E (deep forest green)
+   ============================================================= */
+
+/* 1. 라이트 모드 강제 (Django 4.2+의 data-theme 및 auto 대응) */
+:root, html[data-theme="auto"], html[data-theme="light"], html[data-theme="dark"] {
+    color-scheme: light !important;
+
+    --primary: #2D4A2E;
+    --secondary: #3a5d3b;
+    --accent: #52a858;
+    --primary-fg: #ffffff;
+
+    --body-fg: #191F28;
+    --body-bg: #FAFAFA;
+    --body-quiet-color: #8B95A1;
+    --body-loud-color: #111;
+
+    --header-color: #ffffff;
+    --header-branding-color: #A8E6CF;
+    --header-bg: #2D4A2E;
+    --header-link-color: #ffffff;
+
+    --breadcrumbs-fg: #6b7280;
+    --breadcrumbs-link-fg: #2D4A2E;
+    --breadcrumbs-bg: #F7F8FA;
+
+    --link-fg: #2D4A2E;
+    --link-hover-color: #52a858;
+    --link-selected-fg: #1b2f1c;
+
+    --hairline-color: #E5E8EB;
+    --border-color: #E5E8EB;
+
+    --button-fg: #ffffff;
+    --button-bg: #2D4A2E;
+    --button-hover-bg: #243d25;
+    --default-button-bg: #2D4A2E;
+    --default-button-hover-bg: #243d25;
+    --close-button-bg: #8B95A1;
+    --close-button-hover-bg: #6b7280;
+    --delete-button-bg: #FF4B4B;
+    --delete-button-hover-bg: #e63e3e;
+
+    --object-tools-fg: #ffffff;
+    --object-tools-bg: #2D4A2E;
+    --object-tools-hover-bg: #243d25;
+
+    --message-success-bg: #e6f4ea;
+    --message-warning-bg: #fff7e6;
+    --message-error-bg:   #fde7e7;
+
+    --darkened-bg: #F2F4F6;
+    --selected-bg: #E8F0E9;
+    --selected-row: #F0F7F0;
+}
+
+/* html 자체에 라이트 배경 고정 */
+html, body {
+    background: #FAFAFA !important;
+    color: #191F28 !important;
+}
+
+/* 상단 헤더 */
+#header {
+    background: #2D4A2E !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+#header a:link, #header a:visited { color: #ffffff !important; }
+#branding h1, #branding h1 a { color: #ffffff !important; font-weight: 700; letter-spacing: -0.01em; }
+
+/* 네비(모듈) 리스트 카드화 */
+.module {
+    background: #ffffff;
+    border: 1px solid #E5E8EB;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+.module h2, .module caption {
+    background: #2D4A2E !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* 버튼 */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: #2D4A2E !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+    border: none !important;
+    padding: 8px 14px !important;
+    font-weight: 600;
+}
+.button:hover, input[type=submit]:hover, input[type=button]:hover,
+.submit-row input:hover, a.button:hover {
+    background: #243d25 !important;
+}
+.button.default, input[type=submit].default {
+    background: #2D4A2E !important;
+}
+.deletelink, .submit-row a.deletelink {
+    background: #FF4B4B !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+    padding: 8px 14px !important;
+}
+
+/* 링크 */
+a:link, a:visited { color: #2D4A2E; }
+a:hover { color: #52a858; }
+
+/* 테이블 (changelist) */
+#changelist table thead th {
+    background: #F7F8FA !important;
+    color: #6b7280 !important;
+    font-weight: 600;
+    border-bottom: 1px solid #E5E8EB;
+}
+#changelist table tbody tr:hover {
+    background: #F0F7F0 !important;
+}
+#changelist-filter h2 {
+    background: #2D4A2E !important;
+    color: #ffffff !important;
+}
+
+/* 폼 fieldset */
+.module fieldset.collapsed h2,
+.module fieldset h2 {
+    background: #F7F8FA !important;
+    color: #2D4A2E !important;
+    border-bottom: 1px solid #E5E8EB;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 16px !important;
+}
+.module fieldset.collapsed { background: #fafbfc; }
+
+/* 접기/펼치기 토글 — 모듈 헤더(딥그린) 위에 올라가는 흰색 텍스트 링크 */
+fieldset.module h2 a.collapse-toggle,
+.module fieldset h2 a.collapse-toggle,
+fieldset h2 a.collapse-toggle,
+.collapse-toggle {
+    color: #ffffff !important;
+    text-decoration: underline !important;
+    font-weight: 500;
+    font-size: 12px;
+    margin-left: 10px;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+.collapse-toggle::before { content: ""; }
+.collapse-toggle:hover { color: #A8E6CF !important; }
+/* details 기반 새 마크업 대응 */
+fieldset.collapse > summary,
+fieldset > details > summary {
+    color: #2D4A2E !important;
+    cursor: pointer;
+    font-weight: 600;
+}
+fieldset > details > summary::marker { color: #52a858; }
+
+/* ---- 입력 필드 ---- */
+input[type=text], input[type=password], input[type=email], input[type=url],
+input[type=number], input[type=tel], input[type=search], textarea, select {
+    background: #ffffff !important;
+    color: #191F28 !important;
+    border: 1px solid #E5E8EB !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    box-shadow: none !important;
+}
+input:focus, textarea:focus, select:focus {
+    border-color: #2D4A2E !important;
+    outline: 2px solid rgba(45,74,46,0.12) !important;
+}
+
+/* ---- Breadcrumbs ---- */
+div.breadcrumbs {
+    background: #F7F8FA !important;
+    color: #6b7280 !important;
+    border-bottom: 1px solid #E5E8EB;
+    padding: 10px 20px;
+}
+div.breadcrumbs a { color: #2D4A2E !important; }
+
+/* ---- filter_horizontal selector: Django 기본 레이아웃 유지, 색상만 브랜드화 ---- */
+.selector h2 {
+    background: #F7F8FA !important;
+    color: #2D4A2E !important;
+    font-weight: 600;
+    border-bottom: 1px solid #E5E8EB;
+}
+.selector-add, .selector-remove {
+    background-color: #2D4A2E !important;
+}
+.selector-chooseall, .selector-clearall {
+    color: #2D4A2E !important;
+}
+
+/* 도움말 문구 */
+.help, p.help, .form-row p.help {
+    color: #8B95A1 !important;
+    font-size: 12px;
+}
+
+/* 인라인 테이블 */
+.inline-group .tabular tr.form-row td,
+.inline-group .tabular tr.form-row th {
+    border-bottom: 1px solid #F2F4F6;
+}
+.inline-group h2 {
+    background: #2D4A2E !important;
+    color: #ffffff !important;
+}
+
+/* 리스트 뱃지 */
+.moru-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+    min-width: 28px;
+}
+.moru-badge--level { background: #E8F0E9; color: #2D4A2E; }
+.moru-badge--warn  { background: #FFE9D6; color: #C2410C; }
+.moru-badge--danger{ background: #fde7e7; color: #C62828; }
+
+/* selected / focus row */
+.selected { background: #F0F7F0 !important; }
+
+/* (체크박스용 flex 커스텀은 제거 — Django 기본 form-row 렌더 유지) */
+
+/* =============================================================
+   DateTime split 위젯 — "날짜 :" / "시각 :" 카드형 두 줄
+   - 라벨 왼쪽 · 입력창 · 오른쪽 "오늘/현재 + 아이콘"
+   - 연회색 둥근 테두리, 넉넉한 패딩
+   ============================================================= */
+p.datetime, p.datetime.moru-datetime {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0;
+}
+
+.moru-dt-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #E5E8EB;
+    border-radius: 7px;
+    padding: 3px 9px;
+    min-height: 26px;
+    min-width: 240px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+
+.moru-dt-label {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 28px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 입력 필드 — 테두리/배경 제거, 카드 내부에 녹아들게 */
+.moru-dt-row input.vDateField,
+.moru-dt-row input.vTimeField {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 90px !important;
+    font-size: 11px !important;
+    color: #191F28 !important;
+    box-shadow: none !important;
+    flex-shrink: 0;
+}
+
+/* 읽기 전용 값 (정지 기록의 시작/자동해제 등) */
+.moru-dt-stack {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.moru-dt-row.moru-dt-readonly {
+    min-width: 180px;
+    padding: 3px 9px;
+}
+.moru-dt-value {
+    font-size: 11px;
+    color: #191F28;
+    font-variant-numeric: tabular-nums;
+}
+.moru-dt-row input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Django가 JS로 삽입하는 shortcut 컨테이너 */
+.moru-dt-row .datetimeshortcuts {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    padding-left: 8px;
+    border-left: 1px solid #E5E8EB;
+    /* 텍스트 노드("|", 공백)는 숨기고 anchor만 복원 */
+    font-size: 0;
+    color: transparent;
+}
+.moru-dt-row .datetimeshortcuts a {
+    color: #2D4A2E !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+}
+.moru-dt-row .datetimeshortcuts a:hover { color: #52a858 !important; }
+
+/* 달력 아이콘 (date-icon) */
+.moru-dt-row .date-icon,
+.moru-dt-row a[id^="calendarlink"] > * {
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232D4A2E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>") no-repeat center / contain;
+}
+
+/* 시계 아이콘 (clock-icon) */
+.moru-dt-row .clock-icon,
+.moru-dt-row a[id^="clocklink"] > * {
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232D4A2E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>") no-repeat center / contain;
+}
+
+/* "Now" → "현재"로 텍스트 치환 (Django JS 기본값 "지금") */
+.moru-dt-row a[id^="clockshortcut"] {
+    font-size: 0 !important;
+}
+.moru-dt-row a[id^="clockshortcut"]::after {
+    content: "현재";
+    font-size: 10px;
+    font-weight: 500;
+    color: #2D4A2E;
+}
+
+/* 텍스트 링크에 아이콘 붙이기(옵션): "오늘" 앞에 작은 점, "현재"도 동일 */
+.moru-dt-row a[id^="calendarshortcut"]::before,
+.moru-dt-row a[id^="clockshortcut"]::before {
+    content: "";
+    display: none;
+}
+
+/* textarea 기본 높이/너비 정돈 */
+textarea {
+    min-height: 70px;
+    line-height: 1.45;
+}
+
+/* help / description 전반 */
+fieldset .description {
+    padding: 10px 14px;
+    color: #6b7280;
+    background: #fafbfc;
+    border-bottom: 1px solid #E5E8EB;
+    font-size: 12px;
+}
+
+/* ---- 정지 범위: 체크박스 한 줄로 나열 ---- */
+ul.moru-checkboxes-inline {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+}
+ul.moru-checkboxes-inline li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+ul.moru-checkboxes-inline li label {
+    margin: 0;
+    font-weight: 500;
+    color: #191F28;
+    cursor: pointer;
+}

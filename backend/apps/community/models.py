@@ -44,6 +44,8 @@ class Post(models.Model):
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']
+        verbose_name = "게시글"
+        verbose_name_plural = "게시글"
 
     def __str__(self):
         return f'[{self.category}] {self.title}'
@@ -56,6 +58,8 @@ class PostImage(models.Model):
 
     class Meta:
         ordering = ['order']
+        verbose_name = "게시글 이미지"
+        verbose_name_plural = "게시글 이미지"
 
 
 class PostComment(models.Model):
@@ -78,6 +82,8 @@ class PostComment(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        verbose_name = "댓글"
+        verbose_name_plural = "댓글"
 
     def __str__(self):
         return f'{self.author} on {self.post}'
@@ -90,6 +96,8 @@ class PostLike(models.Model):
 
     class Meta:
         unique_together = ('user', 'post')
+        verbose_name = "게시글 좋아요"
+        verbose_name_plural = "게시글 좋아요"
 
 
 class CommentLike(models.Model):
@@ -99,6 +107,8 @@ class CommentLike(models.Model):
 
     class Meta:
         unique_together = ('user', 'comment')
+        verbose_name = "댓글 좋아요"
+        verbose_name_plural = "댓글 좋아요"
 
 
 class PostBookmark(models.Model):
@@ -108,6 +118,8 @@ class PostBookmark(models.Model):
 
     class Meta:
         unique_together = ('user', 'post')
+        verbose_name = "게시글 북마크"
+        verbose_name_plural = "게시글 북마크"
 
 
 # ──────────────────────────────────────
@@ -146,6 +158,8 @@ class Report(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = "신고"
+        verbose_name_plural = "신고"
 
 
 class UserBlock(models.Model):
@@ -159,6 +173,8 @@ class UserBlock(models.Model):
 
     class Meta:
         unique_together = ('blocker', 'blocked')
+        verbose_name = "유저 차단"
+        verbose_name_plural = "유저 차단"
 
 
 # ──────────────────────────────────────
@@ -198,6 +214,8 @@ class Group(models.Model):
 
     class Meta:
         ordering = ['-member_count', '-created_at']
+        verbose_name = "모임"
+        verbose_name_plural = "모임"
 
     def __str__(self):
         return self.name
@@ -220,6 +238,8 @@ class GroupMember(models.Model):
     class Meta:
         unique_together = ('group', 'user')
         ordering = ['joined_at']
+        verbose_name = "모임 멤버"
+        verbose_name_plural = "모임 멤버"
 
 
 class GroupMessage(models.Model):
@@ -235,6 +255,8 @@ class GroupMessage(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        verbose_name = "모임 메시지"
+        verbose_name_plural = "모임 메시지"
 
 
 # ──────────────────────────────────────
@@ -275,6 +297,8 @@ class Challenge(models.Model):
 
     class Meta:
         ordering = ['-start_date']
+        verbose_name = "챌린지"
+        verbose_name_plural = "챌린지"
 
     def __str__(self):
         return self.title
@@ -297,6 +321,8 @@ class ChallengeParticipant(models.Model):
     class Meta:
         unique_together = ('challenge', 'user')
         ordering = ['-current_value']
+        verbose_name = "챌린지 참가자"
+        verbose_name_plural = "챌린지 참가자"
 
 
 # ──────────────────────────────────────
@@ -347,6 +373,8 @@ class Notice(models.Model):
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']
+        verbose_name = "공지사항"
+        verbose_name_plural = "공지사항"
 
     def __str__(self):
         return f"{'[중요] ' if self.is_pinned else ''}{self.title}"

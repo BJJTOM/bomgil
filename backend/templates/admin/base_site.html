@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | 모루 운영자{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">모루 Moru · 운영자</a></h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/moru.css' %}">
+<script>
+  // Django 4.2+ 테마 토글이 있어도 라이트 모드로 고정
+  try {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+  } catch (e) {}
+</script>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

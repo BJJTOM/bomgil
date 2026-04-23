@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
 
@@ -83,7 +84,7 @@ class CustomUser(AbstractUser):
         (3, "신뢰 동행자"),
     ]
 
-    nickname = models.CharField(max_length=50, unique=True)
+    nickname = models.CharField("닉네임", max_length=50, unique=True)
     following = models.ManyToManyField('self', symmetrical=False, related_name='followers', blank=True)
     profile_image = models.ImageField(upload_to="profiles/", null=True, blank=True)
     bio = models.TextField(max_length=300, blank=True)
@@ -128,16 +129,37 @@ class CustomUser(AbstractUser):
     # Phase 11: 인증
     is_verified = models.BooleanField(default=False)
     verification_level = models.IntegerField(choices=VERIFICATION_LEVEL_CHOICES, default=0)
-    phone_number = models.CharField(max_length=20, blank=True, db_index=True)
-    phone_verified = models.BooleanField(default=False)
+    phone_number = models.CharField("전화번호", max_length=20, blank=True, db_index=True)
+    phone_verified = models.BooleanField("전화번호 인증", default=False)
+    phone_verified_at = models.DateTimeField("전화번호 인증 일시", null=True, blank=True)
     firebase_uid = models.CharField(max_length=128, blank=True, default='', db_index=True)
+
+    # 최근 로그인 정보
+    last_login_ip = models.GenericIPAddressField("마지막 로그인 IP", null=True, blank=True)
+    last_login_user_agent = models.CharField("마지막 로그인 디바이스", max_length=300, blank=True, default="")
+
+    # 탈퇴(소프트 딜리트)
+    is_deleted = models.BooleanField("탈퇴 여부", default=False)
+    deleted_at = models.DateTimeField("탈퇴 일시", null=True, blank=True)
+    deletion_reason = models.TextField("탈퇴 사유", blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def is_suspended(self) -> bool:
+        """활성 정지 기록이 하나라도 있으면 True."""
+        from django.utils import timezone
+        now = timezone.now()
+        return self.suspensions.filter(
+            lifted_at__isnull=True,
+        ).filter(
+            models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now),
+        ).exists()
+
     class Meta(AbstractUser.Meta):
-        verbose_name = "회원"
-        verbose_name_plural = "회원"
+        verbose_name = "유저"
+        verbose_name_plural = "유저"
 
     def __str__(self):
         return self.nickname or self.username
@@ -312,3 +334,171 @@ class XPLog(models.Model):
 
     def __str__(self):
         return f"{self.user.nickname} +{self.amount} ({self.reason})"
+
+
+class UserSuspension(models.Model):
+    """운영자가 유저의 서비스 이용을 정지시킨 기록 (해제 포함)."""
+
+    DURATION_CHOICES = [
+        ("1d", "1일"),
+        ("3d", "3일"),
+        ("5d", "5일"),
+        ("7d", "7일"),
+        ("permanent", "영구정지"),
+    ]
+    _DURATION_DAYS = {"1d": 1, "3d": 3, "5d": 5, "7d": 7}
+
+    SCOPE_CHOICES = [
+        ("account", "계정 이용"),
+        ("community", "커뮤니티"),
+        ("trail", "코스 등록"),
+        ("companion", "동행"),
+        ("review", "리뷰/평점"),
+    ]
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="suspensions",
+        verbose_name="대상 유저",
+    )
+    reason = models.CharField("사유", max_length=100)
+    duration = models.CharField(
+        "정지 기간", max_length=10, choices=DURATION_CHOICES, default="7d",
+    )
+    scopes = ArrayField(
+        base_field=models.CharField(max_length=20, choices=SCOPE_CHOICES),
+        default=list, blank=True, size=10,
+        verbose_name="정지 범위",
+    )
+    suspended_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+", verbose_name="정지 처리자",
+    )
+    suspended_at = models.DateTimeField("정지 시작", auto_now_add=True)
+    expires_at = models.DateTimeField("자동 해제 예정", null=True, blank=True)
+    lifted_at = models.DateTimeField("해제 일시", null=True, blank=True)
+    lifted_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+", verbose_name="해제 처리자",
+    )
+    lifted_reason = models.TextField("해제 사유", blank=True, default="")
+
+    class Meta:
+        ordering = ["-suspended_at"]
+        verbose_name = "정지 기록"
+        verbose_name_plural = "정지 기록"
+
+    def __str__(self):
+        return f"[{self.status_label}] {self.user} — {self.reason[:30]}"
+
+    @property
+    def is_currently_active(self) -> bool:
+        from django.utils import timezone
+        if self.lifted_at:
+            return False
+        if self.expires_at and self.expires_at <= timezone.now():
+            return False
+        return True
+
+    @property
+    def status_label(self) -> str:
+        if self.lifted_at:
+            return "해제됨"
+        from django.utils import timezone
+        if self.expires_at and self.expires_at <= timezone.now():
+            return "만료됨"
+        return "정지중"
+
+    def compute_expires_at(self):
+        """duration 값 기준으로 expires_at 자동 계산. 영구정지면 None."""
+        from django.utils import timezone
+        from datetime import timedelta
+        if self.duration == "permanent":
+            return None
+        days = self._DURATION_DAYS.get(self.duration)
+        if not days:
+            return None
+        base = self.suspended_at or timezone.now()
+        return base + timedelta(days=days)
+
+
+class LoginHistory(models.Model):
+    """유저 로그인 이벤트 기록 — IP, 디바이스(UA)."""
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="login_history",
+        verbose_name="유저",
+    )
+    ip_address = models.GenericIPAddressField("IP 주소", null=True, blank=True)
+    user_agent = models.CharField("디바이스 (User-Agent)", max_length=300, blank=True, default="")
+    login_method = models.CharField(
+        "로그인 방식", max_length=20, blank=True, default="",
+        help_text="예: password, phone, social_google 등",
+    )
+    created_at = models.DateTimeField("로그인 일시", auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "로그인 기록"
+        verbose_name_plural = "로그인 기록"
+
+    def __str__(self):
+        return f"{self.user} @ {self.ip_address} · {self.created_at:%Y-%m-%d %H:%M}"
+
+    @classmethod
+    def record(cls, user, request=None, method: str = ""):
+        """로그인 뷰에서 호출. request로부터 IP/UA 추출해 저장."""
+        ip = None
+        ua = ""
+        if request is not None:
+            xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+            ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+            ua = request.META.get("HTTP_USER_AGENT", "")[:300]
+        cls.objects.create(user=user, ip_address=ip, user_agent=ua, login_method=method)
+        update_fields = []
+        if ip:
+            user.last_login_ip = ip
+            update_fields.append("last_login_ip")
+        if ua:
+            user.last_login_user_agent = ua
+            update_fields.append("last_login_user_agent")
+        if update_fields:
+            user.save(update_fields=update_fields)
+
+
+class AdminMemo(models.Model):
+    """운영자가 특정 유저에 대해 기록하는 메모 (이미지 첨부 가능)."""
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="admin_memos",
+        verbose_name="대상 유저",
+    )
+    author = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+", verbose_name="작성자",
+    )
+    content = models.TextField("내용")
+    created_at = models.DateTimeField("작성 일시", auto_now_add=True)
+    updated_at = models.DateTimeField("수정 일시", auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "유저 메모"
+        verbose_name_plural = "유저 메모"
+
+    def __str__(self):
+        return f"{self.user} — {self.content[:30]}"
+
+
+class AdminMemoImage(models.Model):
+    memo = models.ForeignKey(
+        AdminMemo, on_delete=models.CASCADE, related_name="images",
+        verbose_name="메모",
+    )
+    image = models.ImageField("이미지", upload_to="admin_memos/")
+    uploaded_at = models.DateTimeField("업로드 일시", auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
+        verbose_name = "유저 메모 첨부"
+        verbose_name_plural = "유저 메모 첨부"
+
+    def __str__(self):
+        return f"{self.memo_id} — {self.image.name}"

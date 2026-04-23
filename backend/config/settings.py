@@ -22,6 +22,7 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "django.forms",
 ]
 
 THIRD_PARTY_APPS = [
@@ -86,6 +87,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
+
+# 폼 위젯 템플릿 오버라이드를 위해 프로젝트 TEMPLATES 설정을 사용
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 # ---------------------------------------------------------------------------
 # Database
@@ -241,6 +245,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "mediafiles"
 

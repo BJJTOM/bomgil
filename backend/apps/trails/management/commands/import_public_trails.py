@@ -142,9 +142,9 @@ def _infer_difficulty(distance_km):
     """Infer difficulty from distance: <5km=easy, 5-15km=moderate, >15km=hard."""
     if distance_km is None:
         return "moderate"
-    if distance_km < 5:
+    if distance_km < 10:
         return "easy"
-    if distance_km <= 15:
+    if distance_km <= 30:
         return "moderate"
     return "hard"
 
@@ -276,7 +276,7 @@ class Command(BaseCommand):
                 break
 
             page += 1
-            time.sleep(0.5)
+            time.sleep(1.0)
 
         self.stdout.write(f"Total courses fetched: {len(all_courses)}")
 
@@ -374,7 +374,7 @@ class Command(BaseCommand):
             raise ValueError(f"Invalid coordinates: mapx={mapx}, mapy={mapy}")
 
         # Fetch detail (distance, time, theme)
-        time.sleep(0.7)
+        time.sleep(1.2)
         detail_items = _api_get(
             "detailIntro2",
             {"contentId": content_id, "contentTypeId": "25"},
@@ -383,7 +383,7 @@ class Command(BaseCommand):
         detail = detail_items[0] if detail_items else {}
 
         # Fetch description
-        time.sleep(0.7)
+        time.sleep(1.2)
         common_items = _api_get(
             "detailCommon2",
             {"contentId": content_id, "contentTypeId": "25", "defaultYN": "Y", "overviewYN": "Y"},
@@ -413,7 +413,7 @@ class Command(BaseCommand):
         image_url = course.get("firstimage", "") or course.get("firstimage2", "")
         if not image_url:
             try:
-                time.sleep(0.5)
+                time.sleep(1.0)
                 image_items = _api_get(
                     "detailImage2",
                     {"contentId": content_id, "imageYN": "Y", "subImageYN": "N", "numOfRows": 1, "pageNo": 1},
@@ -432,8 +432,8 @@ class Command(BaseCommand):
 
         # The public API's contentTypeId=25 includes drive/overnight tour
         # packages, not just walking courses. Filter by distance so only
-        # true walking-scale trails come through (≤15 km).
-        if distance_km is None or distance_km <= 0 or distance_km > 15:
+        # reasonable walking trails come through (≤100 km).
+        if distance_km is None or distance_km <= 0 or distance_km > 100:
             raise ValueError(
                 f"Not a walking-scale trail (distance_km={distance_km})"
             )

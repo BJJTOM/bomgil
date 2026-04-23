@@ -463,7 +463,7 @@ export default function TrailDetailPage() {
     title: s.name,
     emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
   }));
-  const poiMarkers = nearbyPOIs.map((p: any, i: number) => ({
+  const poiMarkers = (nearbyPOIs || []).map((p: any, i: number) => ({
     id: 90000 + i,
     lat: p.lat,
     lng: p.lng,
@@ -722,9 +722,9 @@ export default function TrailDetailPage() {
                       ))
                     : null}
                 </div>
-                {tr.tags.length > 0 && (
+                {(tr.tags || []).length > 0 && (
                   <div className="flex gap-1.5 mt-3 flex-wrap">
-                    {tr.tags.map((tag) => (
+                    {(tr.tags || []).map((tag) => (
                       <span
                         key={tag.id}
                         className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-medium bg-bg-secondary text-text-secondary"

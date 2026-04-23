@@ -429,9 +429,9 @@ export function NearbyPOISection({ trailId, language }: NearbyPOISectionProps) {
       </section>
 
       {/* POI Detail Modal */}
-      {selectedPOI && selectedPOI.content_id && (
+      {selectedPOI && (
         <POIDetailModal
-          contentId={selectedPOI.content_id}
+          contentId={selectedPOI.content_id || ""}
           poi={selectedPOI}
           onClose={() => setSelectedPOI(null)}
           language={language}

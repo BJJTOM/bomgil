@@ -214,6 +214,34 @@ class PostAdmin(admin.ModelAdmin):
         'comment_count', 'view_count', 'report_count_badge',
         'status_badge', 'ai_status', 'created_at',
     ]
+
+    def get_queryset(self, request):
+        from django.contrib.contenttypes.models import ContentType
+        from django.db.models import Count, OuterRef, Subquery
+        qs = super().get_queryset(request).select_related("author")
+        # 신고 수 annotate (리스트 N+1 방지)
+        report_count_sq = (
+            Report.objects
+            .filter(target_type="post", target_id=OuterRef("pk"))
+            .order_by()
+            .values("target_id")
+            .annotate(c=Count("id"))
+            .values("c")
+        )
+        qs = qs.annotate(_report_count=Subquery(report_count_sq))
+        # AI 최근 결과 prefetch: ContentType별 최신 로그
+        try:
+            ct = ContentType.objects.get_for_model(Post)
+            latest_ai_sq = (
+                AIModerationLog.objects
+                .filter(content_type=ct, object_id=OuterRef("pk"))
+                .order_by("-created_at")
+                .values("action")[:1]
+            )
+            qs = qs.annotate(_ai_action=Subquery(latest_ai_sq))
+        except Exception:
+            pass
+        return qs
     list_filter = ['category', 'is_hidden', 'is_pinned', AIFlaggedFilter, 'created_at']
     search_fields = ['title', 'content', 'author__nickname', 'author__username']
     date_hierarchy = 'created_at'
@@ -271,12 +299,24 @@ class PostAdmin(admin.ModelAdmin):
 
     @admin.display(description='AI')
     def ai_status(self, obj):
+        # annotate된 _ai_action이 있으면 재쿼리 없이 사용
+        action = getattr(obj, "_ai_action", None)
+        if action:
+            colors = {"approve": "#22C55E", "review": "#F59E0B", "reject": "#EF4444", "error": "#9CA3AF"}
+            labels = {"approve": "OK", "review": "검토", "reject": "차단", "error": "오류"}
+            return format_html(
+                '<span style="color:#fff;background:{};padding:2px 6px;border-radius:8px;'
+                'font-size:10px;font-weight:600;">{}</span>',
+                colors.get(action, "#9CA3AF"), labels.get(action, action),
+            )
         return _ai_badge(obj)
 
-    @admin.display(description='신고')
+    @admin.display(description='신고', ordering='_report_count')
     def report_count_badge(self, obj):
-        cnt = Report.objects.filter(target_type='post', target_id=obj.pk).count()
-        if cnt == 0:
+        cnt = getattr(obj, "_report_count", None)
+        if cnt is None:
+            cnt = Report.objects.filter(target_type='post', target_id=obj.pk).count()
+        if not cnt:
             return format_html('<span style="color:#9CA3AF;font-size:11px;">0</span>')
         color = '#EF4444' if cnt >= 3 else '#F59E0B'
         return format_html(
@@ -402,14 +442,127 @@ class PostBookmarkAdmin(admin.ModelAdmin):
 
 
 # ── Reports & Blocks ────────────────────────────────────────────────
+@admin.action(description="✅ 선택 신고 '처리완료' 로 표시")
+def action_resolve_reports(modeladmin, request, queryset):
+    updated = queryset.filter(status__in=["pending", "reviewed"]).update(status="resolved")
+    modeladmin.message_user(request, f"{updated}건 신고를 처리완료로 표시했습니다.")
+
+
+@admin.action(description="🚫 선택 신고 대상 숨김 처리 + '처리완료'")
+def action_hide_target_and_resolve(modeladmin, request, queryset):
+    hidden, resolved = 0, 0
+    now = timezone.now()
+    for r in queryset:
+        target = None
+        if r.target_type == "post":
+            target = Post.objects.filter(pk=r.target_id).first()
+        elif r.target_type == "comment":
+            target = PostComment.objects.filter(pk=r.target_id).first()
+        elif r.target_type == "group":
+            target = Group.objects.filter(pk=r.target_id).first()
+        if target and hasattr(target, "is_hidden") and not target.is_hidden:
+            target.is_hidden = True
+            target.hidden_at = now
+            target.hidden_reason = f"신고 #{r.id} 처리"
+            target.save(update_fields=["is_hidden", "hidden_at", "hidden_reason"])
+            hidden += 1
+        if r.status != "resolved":
+            r.status = "resolved"
+            r.save(update_fields=["status"])
+            resolved += 1
+    modeladmin.message_user(
+        request, f"{hidden}개 대상 숨김 처리, {resolved}건 신고 처리완료.",
+    )
+
+
 @admin.register(Report)
 class CommunityReportAdmin(admin.ModelAdmin):
-    list_display = ['id', 'reporter', 'target_type', 'target_id', 'reason', 'status', 'created_at']
+    list_display = [
+        'id', 'reporter', 'target_type', 'target_id', 'target_preview',
+        'reason', 'status', 'created_at',
+    ]
     list_filter = ['target_type', 'reason', 'status', 'created_at']
     search_fields = ['reporter__nickname', 'detail']
     date_hierarchy = 'created_at'
     ordering = ['-created_at']
     list_editable = ['status']
+    readonly_fields = ['target_link_detail']
+    actions = [action_resolve_reports, action_hide_target_and_resolve]
+
+    fieldsets = (
+        ("신고 정보", {
+            "fields": (
+                ("reporter", "status"),
+                ("target_type", "target_id"),
+                "target_link_detail",
+                "reason",
+                "detail",
+                "created_at",
+            ),
+        }),
+    )
+
+    @admin.display(description='대상 미리보기')
+    def target_preview(self, obj):
+        text = self._resolve_target_text(obj)
+        if not text:
+            return format_html('<span style="color:#9CA3AF;">—</span>')
+        return format_html(
+            '<span style="color:#4b5563;font-size:11px;">{}</span>',
+            text[:50] + ("…" if len(text) > 50 else ""),
+        )
+
+    @admin.display(description='대상 바로가기 / 미리보기')
+    def target_link_detail(self, obj):
+        if not obj or not obj.pk:
+            return '-'
+        text = self._resolve_target_text(obj) or ''
+        url = self._resolve_target_admin_url(obj)
+        link_html = (
+            format_html('<a href="{}" style="color:#2D4A2E;font-weight:600;">상세 이동 →</a>', url)
+            if url else format_html('<span style="color:#9CA3AF;">대상 없음</span>')
+        )
+        return format_html(
+            '<div style="display:flex;flex-direction:column;gap:6px;padding:6px 0;">'
+            '<div style="padding:8px 12px;background:#F7F8FA;border-radius:8px;'
+            'border:1px solid #E5E8EB;color:#191F28;font-size:12px;">{}</div>{}</div>',
+            text or '(내용 없음)', link_html,
+        )
+
+    @staticmethod
+    def _resolve_target_text(obj):
+        try:
+            if obj.target_type == "post":
+                p = Post.objects.filter(pk=obj.target_id).only("title", "content").first()
+                return p and (p.title or p.content)
+            if obj.target_type == "comment":
+                c = PostComment.objects.filter(pk=obj.target_id).only("content").first()
+                return c and c.content
+            if obj.target_type == "user":
+                from apps.accounts.models import CustomUser
+                u = CustomUser.objects.filter(pk=obj.target_id).only("nickname", "username").first()
+                return u and (u.nickname or u.username)
+            if obj.target_type == "group":
+                g = Group.objects.filter(pk=obj.target_id).only("name").first()
+                return g and g.name
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _resolve_target_admin_url(obj):
+        try:
+            if obj.target_type == "post":
+                return reverse("admin:community_post_change", args=[obj.target_id])
+            if obj.target_type == "comment":
+                return reverse("admin:community_postcomment_change", args=[obj.target_id])
+            if obj.target_type == "user":
+                return reverse("admin:accounts_customuser_change", args=[obj.target_id])
+            if obj.target_type == "group":
+                return reverse("admin:community_group_change", args=[obj.target_id])
+        except Exception:
+            return None
+        return None
 
 
 @admin.register(UserBlock)

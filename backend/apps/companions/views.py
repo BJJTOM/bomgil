@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsCompanionAllowed
 from apps.moderation.reports import Notification
 
 from .models import (
@@ -59,7 +60,7 @@ def _check_companion_eligible(user):
 
 
 class WalkPlanViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCompanionAllowed]
 
     def get_queryset(self):
         qs = WalkPlan.objects.select_related("user", "trail").annotate(
@@ -109,7 +110,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed])
     def close(self, request, pk=None):
         plan = self.get_object()
         if plan.user != request.user:
@@ -118,7 +119,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
         plan.save(update_fields=["companion_status"])
         return Response({"status": "closed"})
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed])
     def complete(self, request, pk=None):
         plan = self.get_object()
         if plan.user != request.user:
@@ -145,7 +146,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "completed"})
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed])
     def request_companion(self, request, pk=None):
         plan = self.get_object()
         eligible, reason = _check_companion_eligible(request.user)
@@ -173,7 +174,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
         )
         return Response(CompanionRequestSerializer(comp_req).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["get"], permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed])
     def requests(self, request, pk=None):
         plan = self.get_object()
         if plan.user != request.user:
@@ -184,7 +185,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[permissions.IsAuthenticated],
+        permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed],
         url_path="suggested-companions",
     )
     def suggested_companions(self, request, pk=None):
@@ -207,7 +208,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[permissions.IsAuthenticated],
+        permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed],
         url_path="scored-requests",
     )
     def scored_requests(self, request, pk=None):
@@ -244,7 +245,7 @@ class WalkPlanViewSet(viewsets.ModelViewSet):
         serializer = CompanionRequestWithScoreSerializer(results, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsCompanionAllowed])
     def companion_review(self, request, pk=None):
         plan = self.get_object()
         if plan.companion_status != "completed":
@@ -281,7 +282,7 @@ class CompatibilityCheckView(APIView):
     Optionally accepts ?walk_plan=<id> to include availability scoring.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def get(self, request, user_id):
         from apps.accounts.models import CustomUser
@@ -311,7 +312,7 @@ class CompatibilityCheckView(APIView):
 
 
 class CompanionRequestAcceptView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def post(self, request, pk):
         try:
@@ -346,7 +347,7 @@ class CompanionRequestAcceptView(APIView):
 
 
 class CompanionRequestRejectView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def post(self, request, pk):
         try:
@@ -382,7 +383,7 @@ class UserCompanionReviewsView(generics.ListAPIView):
 
 class MyWalkPlansView(generics.ListAPIView):
     serializer_class = WalkPlanListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def get_queryset(self):
         return WalkPlan.objects.filter(user=self.request.user).select_related("user", "trail")
@@ -390,7 +391,7 @@ class MyWalkPlansView(generics.ListAPIView):
 
 class MyCompanionRequestsView(generics.ListAPIView):
     serializer_class = CompanionRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def get_queryset(self):
         return CompanionRequest.objects.filter(
@@ -400,7 +401,7 @@ class MyCompanionRequestsView(generics.ListAPIView):
 
 class SafetyReportCreateView(generics.CreateAPIView):
     serializer_class = SafetyReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def perform_create(self, serializer):
         report = serializer.save(reporter=self.request.user)
@@ -419,7 +420,7 @@ class SafetyReportCreateView(generics.CreateAPIView):
 # Chat views
 class ChatRoomListView(generics.ListAPIView):
     serializer_class = ChatRoomSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def get_queryset(self):
         from django.db.models import Q
@@ -440,7 +441,7 @@ class ChatRoomListView(generics.ListAPIView):
 
 class ChatMessageListView(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def get_queryset(self):
         room = get_object_or_404(ChatRoom, pk=self.kwargs["room_id"])
@@ -450,7 +451,7 @@ class ChatMessageListView(generics.ListAPIView):
 
 
 class ChatMessageCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCompanionAllowed]
 
     def post(self, request, room_id):
         try:

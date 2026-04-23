@@ -1,11 +1,34 @@
 import logging
 from decimal import Decimal
 
+from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+# ── 로그인 이벤트 자동 수집 (이메일/Django auth 기반) ──
+@receiver(user_logged_in)
+def record_login_history(sender, request, user, **kwargs):
+    """
+    Django 기본 `user_logged_in` 시그널을 수집.
+    dj-rest-auth 회원가입/allauth 계정 인증에서 발생.
+    phone/email/guest 로그인은 각 뷰에서 명시적으로 record() 호출하므로
+    여기선 중복을 피하려 최근 3초 내 로그인 기록이 있으면 스킵.
+    """
+    try:
+        from .models import LoginHistory
+        from datetime import timedelta
+        recent = LoginHistory.objects.filter(
+            user=user, created_at__gt=timezone.now() - timedelta(seconds=3),
+        ).exists()
+        if recent:
+            return
+        LoginHistory.record(user, request, method="signal")
+    except Exception:
+        logger.exception("record_login_history failed for user=%s", getattr(user, "pk", None))
 
 
 # ── Walk completed (ActivityTrack created): +10 per km + daily bonus ──

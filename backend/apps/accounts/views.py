@@ -471,7 +471,16 @@ class CompletePhoneAuthView(APIView):
             user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
         )
 
+        # 신규 가입은 통과(정의상 정지 기록 없음), 기존 로그인은 account-scope 정지 차단
+        if not is_new:
+            from .authentication import assert_account_accessible
+            assert_account_accessible(user)
+
         refresh = RefreshToken.for_user(user)
+        from .models import LoginHistory as _LoginHistory
+        _LoginHistory.record(
+            user, request, method="phone_signup" if is_new else "phone_login",
+        )
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -498,10 +507,14 @@ class EmailLoginView(APIView):
 
     def post(self, request):
         from .serializers import EmailLoginSerializer
+        from .authentication import assert_account_accessible
+        from .models import LoginHistory
         serializer = EmailLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+        assert_account_accessible(user)
         refresh = RefreshToken.for_user(user)
+        LoginHistory.record(user, request, method="password_email")
         user_data = UserSerializer(user).data
         return Response({
             'access': str(refresh.access_token),
@@ -623,6 +636,8 @@ class GuestLoginView(APIView):
         user.save()
 
         refresh = RefreshToken.for_user(user)
+        from .models import LoginHistory as _LoginHistory
+        _LoginHistory.record(user, request, method="guest")
         user_data = UserSerializer(user).data
 
         return Response(

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsTrailAllowed
 from apps.spots.serializers import SpotSerializer
 from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
@@ -56,7 +57,7 @@ class TrailUpdateThrottle(UserRateThrottle):
 
 
 class TrailViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, IsTrailAllowed]
     filterset_fields = [
         "region", "country", "difficulty", "best_season", "status", "tags",
         "is_official", "trail_type",
@@ -142,7 +143,7 @@ class TrailViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsTrailAllowed])
     def like(self, request, pk=None):
         trail = self.get_object()
         like, created = TrailLike.objects.get_or_create(user=request.user, trail=trail)
@@ -155,7 +156,7 @@ class TrailViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True, methods=["post"],
-        permission_classes=[permissions.IsAuthenticated],
+        permission_classes=[permissions.IsAuthenticated, IsTrailAllowed],
         throttle_classes=[TrailBookmarkThrottle],
     )
     def bookmark(self, request, pk=None):
@@ -172,7 +173,7 @@ class TrailViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True, methods=["post"],
-        permission_classes=[permissions.IsAuthenticated],
+        permission_classes=[permissions.IsAuthenticated, IsTrailAllowed],
     )
     def complete(self, request, pk=None):
         """Manually mark this trail as completed by the user.
@@ -264,7 +265,7 @@ class TrailViewSet(viewsets.ModelViewSet):
     @action(
         detail=True, methods=["post"],
         url_path=r"stamps/(?P<stamp_id>\d+)/collect",
-        permission_classes=[permissions.IsAuthenticated],
+        permission_classes=[permissions.IsAuthenticated, IsTrailAllowed],
     )
     def collect_stamp(self, request, pk=None, stamp_id=None):
         """Collect a stamp point if the user is within radius.

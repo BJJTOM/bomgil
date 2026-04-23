@@ -149,13 +149,30 @@ class CustomUser(AbstractUser):
     @property
     def is_suspended(self) -> bool:
         """활성 정지 기록이 하나라도 있으면 True."""
+        return self._active_suspensions_qs().exists()
+
+    def _active_suspensions_qs(self):
         from django.utils import timezone
         now = timezone.now()
         return self.suspensions.filter(
             lifted_at__isnull=True,
         ).filter(
             models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now),
+        )
+
+    def is_suspended_for(self, scope: str) -> bool:
+        """특정 scope 또는 account 스코프 정지가 유효한지."""
+        qs = self._active_suspensions_qs()
+        return qs.filter(
+            models.Q(scopes__contains=[scope]) | models.Q(scopes__contains=["account"])
         ).exists()
+
+    def active_suspension_scopes(self) -> set:
+        """현재 유효한 정지의 scope 집합."""
+        scopes = set()
+        for row in self._active_suspensions_qs().values_list("scopes", flat=True):
+            scopes.update(row or [])
+        return scopes
 
     class Meta(AbstractUser.Meta):
         verbose_name = "유저"

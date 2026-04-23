@@ -4,6 +4,7 @@ from rest_framework import generics, status, permissions, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.accounts.notifications import create_notification
+from apps.accounts.permissions import IsCommunityAllowed
 from config.validators import validate_image_file
 from .models import (
     Post, PostComment, PostLike, CommentLike, PostImage, PostBookmark,
@@ -80,7 +81,7 @@ class PopularPostListView(generics.ListAPIView):
 class MyBookmarkedPostsView(generics.ListAPIView):
     """내 북마크 목록"""
     serializer_class = PostListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
 
     def get_queryset(self):
         bookmarked_ids = PostBookmark.objects.filter(
@@ -133,7 +134,7 @@ class GroupMessageThrottle(throttling.UserRateThrottle):
 
 class PostCreateView(generics.CreateAPIView):
     serializer_class = PostCreateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [PostCreateThrottle]
 
     def perform_create(self, serializer):
@@ -156,7 +157,7 @@ class PostDetailView(generics.RetrieveAPIView):
 
 class PostUpdateView(generics.UpdateAPIView):
     serializer_class = PostUpdateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [PostUpdateThrottle]
     http_method_names = ['patch']
 
@@ -165,7 +166,7 @@ class PostUpdateView(generics.UpdateAPIView):
 
 
 class PostLikeView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
@@ -191,7 +192,7 @@ class PostLikeView(APIView):
 
 
 class PostBookmarkView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
@@ -207,7 +208,7 @@ class PostBookmarkView(APIView):
 
 
 class PostDeleteView(generics.DestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [PostUpdateThrottle]
 
     def get_queryset(self):
@@ -236,7 +237,7 @@ class PostCommentListView(generics.ListAPIView):
 
 class PostCommentCreateView(generics.CreateAPIView):
     serializer_class = PostCommentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [CommentCreateThrottle]
 
     def perform_create(self, serializer):
@@ -257,7 +258,7 @@ class PostCommentCreateView(generics.CreateAPIView):
 
 class PostCommentUpdateView(APIView):
     """댓글 수정"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [CommentCreateThrottle]
 
     def patch(self, request, comment_id):
@@ -275,7 +276,7 @@ class PostCommentUpdateView(APIView):
 
 class PostCommentDeleteView(APIView):
     """댓글 삭제 (soft delete)"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [CommentCreateThrottle]
 
     def delete(self, request, comment_id):
@@ -290,7 +291,7 @@ class PostCommentDeleteView(APIView):
 
 
 class CommentLikeView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
@@ -307,7 +308,7 @@ class CommentLikeView(APIView):
 
 class CommentReplyView(generics.CreateAPIView):
     serializer_class = PostCommentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [CommentCreateThrottle]
 
     def perform_create(self, serializer):
@@ -327,7 +328,7 @@ class CommentReplyView(generics.CreateAPIView):
 
 
 class PostImageUploadView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [ImageUploadThrottle]
 
     def post(self, request, pk):
@@ -363,7 +364,7 @@ class PostImageUploadView(APIView):
 
 
 class PostImageDeleteView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [ImageUploadThrottle]
 
     def delete(self, request, pk, image_id):
@@ -378,7 +379,7 @@ class PostImageDeleteView(APIView):
 
 class ReportCreateView(generics.CreateAPIView):
     serializer_class = ReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [ReportThrottle]
 
     def perform_create(self, serializer):
@@ -386,7 +387,7 @@ class ReportCreateView(generics.CreateAPIView):
 
 
 class UserBlockView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request):
@@ -402,7 +403,7 @@ class UserBlockView(APIView):
 
 
 class UserUnblockView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request):
@@ -412,7 +413,7 @@ class UserUnblockView(APIView):
 
 
 class BlockedUsersView(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
 
     def get(self, request):
         blocks = UserBlock.objects.filter(blocker=request.user).select_related('blocked')
@@ -450,7 +451,7 @@ class GroupDetailView(generics.RetrieveAPIView):
 
 class GroupCreateView(generics.CreateAPIView):
     serializer_class = GroupCreateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [GroupCreateThrottle]
 
     def perform_create(self, serializer):
@@ -459,7 +460,7 @@ class GroupCreateView(generics.CreateAPIView):
 
 
 class GroupJoinView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):
@@ -474,7 +475,7 @@ class GroupJoinView(APIView):
 
 
 class GroupLeaveView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):
@@ -496,7 +497,7 @@ class GroupMemberListView(generics.ListAPIView):
 
 class GroupMessageListView(generics.ListAPIView):
     serializer_class = GroupMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     pagination_class = None  # Return flat list for chat
 
     def get_queryset(self):
@@ -508,7 +509,7 @@ class GroupMessageListView(generics.ListAPIView):
 
 class GroupMessageCreateView(generics.CreateAPIView):
     serializer_class = GroupMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [GroupMessageThrottle]
 
     def perform_create(self, serializer):
@@ -542,7 +543,7 @@ class ChallengeDetailView(generics.RetrieveAPIView):
 
 
 class ChallengeJoinView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
@@ -561,7 +562,7 @@ class ChallengeJoinView(APIView):
 
 
 class ChallengeLeaveView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     @transaction.atomic
@@ -576,7 +577,7 @@ class ChallengeLeaveView(APIView):
 
 class ChallengeProgressUpdateView(APIView):
     """Update the current user's progress for a challenge."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCommunityAllowed]
     throttle_classes = [LikeBookmarkThrottle]
 
     def post(self, request, pk):

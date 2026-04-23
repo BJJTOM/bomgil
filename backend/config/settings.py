@@ -163,8 +163,9 @@ SIMPLE_JWT = {
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # 탈퇴·account-scope 정지 유저는 인증 단계에서 차단됩니다.
+        "apps.accounts.authentication.MoruJWTCookieAuthentication",
+        "apps.accounts.authentication.MoruJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",

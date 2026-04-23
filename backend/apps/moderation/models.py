@@ -10,6 +10,10 @@ class ModerationLog(models.Model):
         ("reject", "반려"),
         ("delete", "삭제"),
         ("flag", "플래그"),
+        ("suspend", "유저 정지"),
+        ("lift", "정지 해제"),
+        ("user_delete", "유저 탈퇴 처리"),
+        ("memo", "유저 메모"),
     ]
 
     moderator = models.ForeignKey(

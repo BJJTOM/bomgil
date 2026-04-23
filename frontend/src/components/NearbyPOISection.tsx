@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 
@@ -9,11 +10,24 @@ interface NearbyPOI {
   name: string;
   category: string;
   content_type_id: string;
+  content_id: string;
   lat: number;
   lng: number;
   image: string;
   address: string;
   tel: string;
+}
+
+interface POIDetail {
+  name: string;
+  category: string;
+  overview: string;
+  address: string;
+  tel: string;
+  homepage: string;
+  image: string;
+  lat: number;
+  lng: number;
 }
 
 interface NearbyPOISectionProps {
@@ -52,9 +66,274 @@ const SECTION_TITLE: Record<string, string> = {
   zh: "周边信息",
 };
 
+// ─── POI Detail Modal ───────────────────────────────────────────────────────
+
+function POIDetailModal({
+  contentId,
+  poi,
+  onClose,
+  language,
+}: {
+  contentId: string;
+  poi: NearbyPOI;
+  onClose: () => void;
+  language: string;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  const { data: detail, isLoading, isError } = useQuery<POIDetail>({
+    queryKey: ["poi-detail", contentId],
+    queryFn: async () => {
+      const { data } = await api.get(`/poi/${contentId}/`);
+      return data;
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  // Animate in on mount
+  useEffect(() => {
+    // Small delay so the initial render is off-screen, then slide up
+    const t = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  const color = CATEGORY_COLORS[poi.category] || DEFAULT_COLOR;
+
+  const directionsUrl = detail
+    ? `https://www.google.com/maps/dir/?api=1&destination=${detail.lat},${detail.lng}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${poi.lat},${poi.lng}`;
+
+  const displayTel = detail?.tel || poi.tel;
+  const displayImage = detail?.image || poi.image;
+  const displayName = detail?.name || poi.name;
+  const displayAddress = detail?.address || poi.address;
+
+  const directionsLabel: Record<string, string> = {
+    ko: "길찾기",
+    en: "Directions",
+    ja: "経路",
+    zh: "路线",
+  };
+
+  const callLabel: Record<string, string> = {
+    ko: "전화",
+    en: "Call",
+    ja: "電話",
+    zh: "电话",
+  };
+
+  const errorLabel: Record<string, string> = {
+    ko: "정보를 불러올 수 없습니다",
+    en: "Unable to load information",
+    ja: "情報を読み込めません",
+    zh: "无法加载信息",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center md:justify-center">
+      {/* Backdrop */}
+      <div
+        className={`absolute inset-0 bg-black transition-opacity duration-300 ${
+          isVisible ? "opacity-50" : "opacity-0"
+        }`}
+        onClick={handleClose}
+      />
+
+      {/* Modal */}
+      <div
+        className={`relative w-full md:max-w-[480px] max-h-[80vh] bg-white dark:bg-gray-900 md:rounded-2xl rounded-t-2xl shadow-xl overflow-hidden transform transition-transform duration-300 ease-out ${
+          isVisible
+            ? "translate-y-0 md:scale-100"
+            : "translate-y-full md:translate-y-0 md:scale-95"
+        }`}
+      >
+        {/* Close button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        {/* Handle bar (mobile) */}
+        <div className="md:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(80vh-12px)] md:max-h-[80vh]">
+          {/* Image */}
+          <div className="h-[200px] bg-bg-secondary relative overflow-hidden">
+            {displayImage ? (
+              <img
+                src={displayImage}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-bg-secondary">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-text-tertiary"
+                >
+                  <path d={CATEGORY_ICONS[poi.category] || "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"} />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="p-5">
+            {isLoading ? (
+              /* Skeleton */
+              <div className="space-y-3 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+                <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="space-y-2 mt-4">
+                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-3 w-4/5 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+              </div>
+            ) : isError ? (
+              /* Error state */
+              <div className="text-center py-8">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary mx-auto mb-2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <p className="text-sm text-text-tertiary">{errorLabel[language] || errorLabel.en}</p>
+              </div>
+            ) : (
+              /* Detail content */
+              <>
+                {/* Category badge */}
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${color.bg} ${color.text} mb-2`}
+                >
+                  {detail?.category || poi.category}
+                </span>
+
+                {/* Name */}
+                <h2 className="text-lg font-bold text-text-primary leading-tight mb-3">
+                  {displayName}
+                </h2>
+
+                {/* Address */}
+                {displayAddress && (
+                  <div className="flex items-start gap-2 mb-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary flex-shrink-0 mt-0.5">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <p className="text-[13px] text-text-secondary leading-snug">{displayAddress}</p>
+                  </div>
+                )}
+
+                {/* Phone */}
+                {displayTel && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary flex-shrink-0">
+                      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+                    </svg>
+                    <a
+                      href={`tel:${displayTel}`}
+                      className="text-[13px] text-primary font-medium hover:underline"
+                    >
+                      {displayTel}
+                    </a>
+                  </div>
+                )}
+
+                {/* Overview */}
+                {detail?.overview && (
+                  <div className="mt-3 mb-4">
+                    <p className="text-[13px] text-text-secondary leading-relaxed">
+                      {detail.overview}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 mt-4">
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl text-[13px] font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                    </svg>
+                    {directionsLabel[language] || directionsLabel.en}
+                  </a>
+                  {displayTel && (
+                    <a
+                      href={`tel:${displayTel}`}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-bg-secondary text-text-primary rounded-xl text-[13px] font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+                      </svg>
+                      {callLabel[language] || callLabel.en}
+                    </a>
+                  )}
+                </div>
+
+                {/* Mini map */}
+                <div className="mt-4 rounded-xl overflow-hidden border border-border-light">
+                  <img
+                    src={`https://maps.googleapis.com/maps/api/staticmap?center=${detail?.lat || poi.lat},${detail?.lng || poi.lng}&zoom=15&size=480x160&markers=color:red%7C${detail?.lat || poi.lat},${detail?.lng || poi.lng}&key=${typeof window !== "undefined" ? (window as any).__NEXT_DATA__?.props?.pageProps?.gmapKey || "" : ""}`}
+                    alt="map"
+                    className="w-full h-[120px] object-cover bg-bg-secondary"
+                    onError={(e) => {
+                      // If Google static map fails, show a placeholder
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function NearbyPOISection({ trailId, language }: NearbyPOISectionProps) {
+  const [selectedPOI, setSelectedPOI] = useState<NearbyPOI | null>(null);
+
   const { data: pois, isLoading } = useQuery<NearbyPOI[]>({
     queryKey: ["trail-nearby-poi", trailId],
     queryFn: async () => {
@@ -96,68 +375,81 @@ export function NearbyPOISection({ trailId, language }: NearbyPOISectionProps) {
   }
 
   return (
-    <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-text-primary mb-3">
-        {SECTION_TITLE[language] || SECTION_TITLE.en}
-      </h3>
-      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {pois.map((poi, idx) => {
-          const color = CATEGORY_COLORS[poi.category] || DEFAULT_COLOR;
-          return (
-            <div
-              key={`${poi.name}-${idx}`}
-              className="flex-shrink-0 w-[200px] rounded-xl border border-border-light overflow-hidden bg-surface hover:shadow-soft transition-shadow"
-            >
-              {/* Image or placeholder */}
-              <div className="h-[80px] bg-bg-secondary relative overflow-hidden">
-                {poi.image ? (
-                  <img
-                    src={poi.image}
-                    alt={poi.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-bg-secondary">
-                    <svg
-                      width="28"
-                      height="28"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-text-tertiary"
-                    >
-                      <path d={CATEGORY_ICONS[poi.category] || "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"} />
-                    </svg>
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="p-2.5">
-                <div className="flex items-start gap-1.5 mb-1">
-                  <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold ${color.bg} ${color.text} flex-shrink-0`}
-                  >
-                    {poi.category}
-                  </span>
+    <>
+      <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+        <h3 className="text-sm font-bold text-text-primary mb-3">
+          {SECTION_TITLE[language] || SECTION_TITLE.en}
+        </h3>
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          {pois.map((poi, idx) => {
+            const color = CATEGORY_COLORS[poi.category] || DEFAULT_COLOR;
+            return (
+              <button
+                key={`${poi.name}-${idx}`}
+                onClick={() => setSelectedPOI(poi)}
+                className="flex-shrink-0 w-[200px] rounded-xl border border-border-light overflow-hidden bg-surface hover:shadow-soft transition-shadow text-left cursor-pointer"
+              >
+                {/* Image or placeholder */}
+                <div className="h-[80px] bg-bg-secondary relative overflow-hidden">
+                  {poi.image ? (
+                    <img
+                      src={poi.image}
+                      alt={poi.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-bg-secondary">
+                      <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-text-tertiary"
+                      >
+                        <path d={CATEGORY_ICONS[poi.category] || "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"} />
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[12px] font-semibold text-text-primary leading-tight line-clamp-1">
-                  {poi.name}
-                </p>
-                {poi.address && (
-                  <p className="text-[10px] text-text-tertiary mt-0.5 line-clamp-1">
-                    {poi.address}
+
+                {/* Info */}
+                <div className="p-2.5">
+                  <div className="flex items-start gap-1.5 mb-1">
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold ${color.bg} ${color.text} flex-shrink-0`}
+                    >
+                      {poi.category}
+                    </span>
+                  </div>
+                  <p className="text-[12px] font-semibold text-text-primary leading-tight line-clamp-1">
+                    {poi.name}
                   </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+                  {poi.address && (
+                    <p className="text-[10px] text-text-tertiary mt-0.5 line-clamp-1">
+                      {poi.address}
+                    </p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* POI Detail Modal */}
+      {selectedPOI && selectedPOI.content_id && (
+        <POIDetailModal
+          contentId={selectedPOI.content_id}
+          poi={selectedPOI}
+          onClose={() => setSelectedPOI(null)}
+          language={language}
+        />
+      )}
+    </>
   );
 }

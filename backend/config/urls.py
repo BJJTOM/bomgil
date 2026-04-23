@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.trails.health import HealthCheckView
+from apps.trails.poi_detail import POIDetailView
 
 from django.http import JsonResponse
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("api/v1/live-walks/", include("apps.activities.live_share_urls")),
     path("api/v1/community/", include("apps.community.urls")),
     path("api/v1/health/", HealthCheckView.as_view(), name="health-check"),
+    path("api/v1/poi/<int:content_id>/", POIDetailView.as_view(), name="poi-detail"),
 ]
 
 # Serve media files in both debug and production

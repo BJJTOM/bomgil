@@ -1,0 +1,81 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div class="moru-dashboard">
+  <h1 style="margin-top:0;color:#2D4A2E;">📊 운영자 대시보드</h1>
+
+  {% if moru_stats %}
+  <div class="moru-stat-grid">
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">전체 유저</div>
+      <div class="moru-stat-value">{{ moru_stats.users_total }}</div>
+      <div class="moru-stat-sub">오늘 신규 {{ moru_stats.users_today }}</div>
+    </div>
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">활성 정지</div>
+      <div class="moru-stat-value">{{ moru_stats.suspensions_active }}</div>
+      <div class="moru-stat-sub">탈퇴 {{ moru_stats.users_deleted }}</div>
+    </div>
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">미처리 신고</div>
+      <div class="moru-stat-value" style="color:{% if moru_stats.reports_pending %}#EF4444{% else %}#22C55E{% endif %};">{{ moru_stats.reports_pending }}</div>
+      <div class="moru-stat-sub">전체 {{ moru_stats.reports_total }}</div>
+    </div>
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">최근 24h 로그인</div>
+      <div class="moru-stat-value">{{ moru_stats.logins_24h }}</div>
+      <div class="moru-stat-sub">신규 가입 {{ moru_stats.signups_24h }}</div>
+    </div>
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">게시글 / 댓글</div>
+      <div class="moru-stat-value">{{ moru_stats.posts_total }} / {{ moru_stats.comments_total }}</div>
+      <div class="moru-stat-sub">오늘 {{ moru_stats.posts_today }} / {{ moru_stats.comments_today }}</div>
+    </div>
+    <div class="moru-stat-card">
+      <div class="moru-stat-label">AI 차단/검토 대기</div>
+      <div class="moru-stat-value" style="color:{% if moru_stats.ai_review %}#F59E0B{% else %}#9CA3AF{% endif %};">{{ moru_stats.ai_review }}</div>
+      <div class="moru-stat-sub">전체 차단 {{ moru_stats.ai_rejected }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <h2 style="color:#2D4A2E;margin-top:28px;">앱 목록</h2>
+</div>
+{{ block.super }}
+
+<style>
+  .moru-dashboard { margin-bottom: 24px; }
+  .moru-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 16px 0 8px 0;
+  }
+  .moru-stat-card {
+    background: #fff;
+    border: 1px solid #E5E8EB;
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+  }
+  .moru-stat-label {
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .moru-stat-value {
+    color: #2D4A2E;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .moru-stat-sub {
+    color: #9CA3AF;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+</style>
+{% endblock %}

@@ -117,6 +117,7 @@ class TrailNearbyPOIView(APIView):
                 "name": item.get("title", ""),
                 "category": category,
                 "content_type_id": content_type_id,
+                "content_id": str(item.get("contentid", "")),
                 "lat": float(item.get("mapy", 0)),
                 "lng": float(item.get("mapx", 0)),
                 "image": item.get("firstimage") or item.get("firstimage2") or "",

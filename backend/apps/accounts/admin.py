@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db import models as django_models
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import (
@@ -16,6 +19,53 @@ from .models import (
     UserSuspension,
     XPLog,
 )
+
+
+# ── 유저 리스트 bulk 정지 액션 ──────────────────────────────
+def _bulk_suspend(modeladmin, request, queryset, days, reason, duration_key):
+    now = timezone.now()
+    created = 0
+    for user in queryset:
+        UserSuspension.objects.create(
+            user=user,
+            reason=reason,
+            duration=duration_key,
+            scopes=["account"],
+            suspended_by=request.user,
+            expires_at=None if days is None else now + timedelta(days=days),
+        )
+        created += 1
+    modeladmin.message_user(request, f"{created}명 유저를 {reason}로 정지했습니다.")
+
+
+@admin.action(description="⛔️ 선택 유저 1일 정지 (account)")
+def action_suspend_1d(modeladmin, request, queryset):
+    _bulk_suspend(modeladmin, request, queryset, 1, "관리자 일괄 정지 1일", "1d")
+
+
+@admin.action(description="⛔️ 선택 유저 3일 정지 (account)")
+def action_suspend_3d(modeladmin, request, queryset):
+    _bulk_suspend(modeladmin, request, queryset, 3, "관리자 일괄 정지 3일", "3d")
+
+
+@admin.action(description="⛔️ 선택 유저 7일 정지 (account)")
+def action_suspend_7d(modeladmin, request, queryset):
+    _bulk_suspend(modeladmin, request, queryset, 7, "관리자 일괄 정지 7일", "7d")
+
+
+@admin.action(description="♻️ 선택 유저의 활성 정지 모두 해제")
+def action_lift_all(modeladmin, request, queryset):
+    now = timezone.now()
+    lifted = 0
+    for user in queryset:
+        qs = user.suspensions.filter(lifted_at__isnull=True)
+        for s in qs:
+            s.lifted_at = now
+            s.lifted_by = request.user
+            s.lifted_reason = "관리자 일괄 해제"
+            s.save(update_fields=["lifted_at", "lifted_by", "lifted_reason"])
+            lifted += 1
+    modeladmin.message_user(request, f"{lifted}건의 정지를 해제했습니다.")
 
 
 # "유저 관리" 앱 안에서 모델 순서 고정: 유저 먼저, 이후 이름이 짧은 순.
@@ -36,6 +86,66 @@ def _patched_get_app_list(self, request, app_label=None):
 
 
 admin.AdminSite.get_app_list = _patched_get_app_list
+
+
+# ── 대시보드 통계 주입 ──────────────────────────────────────
+_original_index = admin.AdminSite.index
+
+
+def _patched_index(self, request, extra_context=None):
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+
+    now = timezone.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    last_24h = now - timedelta(hours=24)
+
+    stats = {}
+    try:
+        stats["users_total"] = CustomUser.objects.count()
+        stats["users_today"] = CustomUser.objects.filter(date_joined__gte=today_start).count()
+        stats["users_deleted"] = CustomUser.objects.filter(is_deleted=True).count()
+        stats["suspensions_active"] = (
+            UserSuspension.objects.filter(lifted_at__isnull=True)
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .count()
+        )
+        stats["logins_24h"] = LoginHistory.objects.filter(created_at__gte=last_24h).count()
+        stats["signups_24h"] = CustomUser.objects.filter(date_joined__gte=last_24h).count()
+    except Exception:
+        pass
+
+    try:
+        from apps.community.models import Post, PostComment, Report
+        stats["posts_total"] = Post.objects.count()
+        stats["posts_today"] = Post.objects.filter(created_at__gte=today_start).count()
+        stats["comments_total"] = PostComment.objects.count()
+        stats["comments_today"] = PostComment.objects.filter(created_at__gte=today_start).count()
+        stats["reports_total"] = Report.objects.count()
+        stats["reports_pending"] = Report.objects.filter(status="pending").count()
+    except Exception:
+        stats.setdefault("posts_total", 0)
+        stats.setdefault("posts_today", 0)
+        stats.setdefault("comments_total", 0)
+        stats.setdefault("comments_today", 0)
+        stats.setdefault("reports_total", 0)
+        stats.setdefault("reports_pending", 0)
+
+    try:
+        from apps.moderation.models import AIModerationLog
+        stats["ai_review"] = AIModerationLog.objects.filter(action="review").count()
+        stats["ai_rejected"] = AIModerationLog.objects.filter(action="reject").count()
+    except Exception:
+        stats.setdefault("ai_review", 0)
+        stats.setdefault("ai_rejected", 0)
+
+    extra_context = dict(extra_context or {})
+    extra_context["moru_stats"] = stats
+    return _original_index(self, request, extra_context=extra_context)
+
+
+admin.AdminSite.index = _patched_index
 
 
 class SuspensionAdminForm(forms.ModelForm):
@@ -226,11 +336,18 @@ class CustomUserAdmin(UserAdmin):
 
     inlines = [NewSuspensionInline, SuspensionHistoryInline, AdminMemoInline, LoginHistoryInline]
 
+    actions = [action_suspend_1d, action_suspend_3d, action_suspend_7d, action_lift_all]
+
     formfield_overrides = {
         django_models.TextField: {
             "widget": forms.Textarea(attrs={"rows": 2, "style": "width: 360px; max-width: 100%;"}),
         },
     }
+
+    def get_queryset(self, request):
+        # 활성 정지 수를 미리 annotate — is_suspended 컬럼/필터 N+1 방지
+        qs = super().get_queryset(request).order_by("-date_joined")
+        return qs.prefetch_related("suspensions")
 
     fieldsets = (
         ("계정", {
@@ -312,11 +429,12 @@ class CustomUserAdmin(UserAdmin):
     def last_login_time(self, obj):
         return obj.last_login.strftime("%H:%M:%S") if obj.last_login else "-"
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).order_by("-date_joined")
-
     def save_model(self, request, obj, form, change):
         from django.utils import timezone
+        was_deleted = False
+        if change and obj.pk:
+            prev = type(obj).objects.filter(pk=obj.pk).values("is_deleted").first()
+            was_deleted = bool(prev and prev.get("is_deleted"))
         # 탈퇴 체크박스를 켤 때 타임스탬프 자동 기록
         if obj.is_deleted and not obj.deleted_at:
             obj.deleted_at = timezone.now()
@@ -328,27 +446,52 @@ class CustomUserAdmin(UserAdmin):
         if not obj.phone_verified:
             obj.phone_verified_at = None
         super().save_model(request, obj, form, change)
+        # is_deleted 전환 시 감사 로그
+        if obj.is_deleted and not was_deleted:
+            _log_moderation(request.user, obj, "user_delete", obj.deletion_reason or "탈퇴 처리")
 
     def save_formset(self, request, form, formset, change):
-        # 인라인 저장 시 자동 필드 채움
+        # 인라인 저장 시 자동 필드 채움 + 감사 로그
         instances = formset.save(commit=False)
         for inst in instances:
-            if isinstance(inst, AdminMemo) and inst.author_id is None:
-                inst.author = request.user
+            if isinstance(inst, AdminMemo):
+                was_new = inst.pk is None
+                if inst.author_id is None:
+                    inst.author = request.user
+                inst.save()
+                if was_new:
+                    _log_moderation(request.user, inst.user, "memo", inst.content[:100])
+                continue
             if isinstance(inst, UserSuspension):
                 is_new = inst.pk is None
+                # 직전 lifted_at 값 비교용
+                prev_lifted = None
+                if not is_new:
+                    prev = UserSuspension.objects.filter(pk=inst.pk).values("lifted_at").first()
+                    prev_lifted = prev and prev.get("lifted_at")
                 if is_new:
                     if inst.suspended_by_id is None:
                         inst.suspended_by = request.user
-                    inst.save()  # suspended_at 확정을 위해 먼저 save
+                    inst.save()
                     new_expiry = inst.compute_expires_at()
                     if new_expiry != inst.expires_at:
                         inst.expires_at = new_expiry
                         inst.save(update_fields=["expires_at"])
+                    _log_moderation(
+                        request.user, inst.user, "suspend",
+                        f"{inst.duration} / {','.join(inst.scopes or [])} / {inst.reason[:50]}",
+                    )
                     continue
                 # 해제 처리자 자동 기록
                 if inst.lifted_at and inst.lifted_by_id is None:
                     inst.lifted_by = request.user
+                inst.save()
+                if inst.lifted_at and not prev_lifted:
+                    _log_moderation(
+                        request.user, inst.user, "lift",
+                        inst.lifted_reason or "정지 해제",
+                    )
+                continue
             inst.save()
         for obj in formset.deleted_objects:
             obj.delete()

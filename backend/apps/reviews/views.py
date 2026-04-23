@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsReviewAllowed
 from apps.trails.models import Trail
 from config.permissions import IsOwnerOrReadOnly
 from config.validators import is_valid_image_file
@@ -29,7 +30,7 @@ class ReviewImageUploadThrottle(UserRateThrottle):
 
 
 class TrailReviewListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsReviewAllowed]
 
     def get_throttles(self):
         if self.request.method == 'POST':
@@ -74,7 +75,7 @@ class TrailReviewListCreateView(generics.ListCreateAPIView):
 class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.filter(is_hidden=False).select_related("author").prefetch_related("images")
     serializer_class = ReviewSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, IsReviewAllowed]
 
     def get_throttles(self):
         if self.request.method in ('PUT', 'PATCH', 'DELETE'):
@@ -83,7 +84,7 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ReviewHelpfulView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsReviewAllowed]
     throttle_classes = [ReviewHelpfulThrottle]
 
     def post(self, request, pk):
@@ -101,7 +102,7 @@ class ReviewHelpfulView(APIView):
 
 class ReviewImageUploadView(APIView):
     """Upload images to a review (max 3)."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsReviewAllowed]
     throttle_classes = [ReviewImageUploadThrottle]
 
     def post(self, request, pk):

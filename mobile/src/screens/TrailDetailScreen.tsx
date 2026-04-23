@@ -1076,11 +1076,24 @@ interface NearbyPOI {
   name: string;
   category: string;
   content_type_id: string;
+  content_id: string;
   lat: number;
   lng: number;
   image: string;
   address: string;
   tel: string;
+}
+
+interface POIDetail {
+  name: string;
+  category: string;
+  overview: string;
+  address: string;
+  tel: string;
+  homepage: string;
+  image: string;
+  lat: number;
+  lng: number;
 }
 
 function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean }) {
@@ -1090,6 +1103,8 @@ function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean 
   const textTertColor = isDark ? 'rgba(255,255,255,0.6)' : '#B0B8C1';
   const borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6';
   const sectionBg = isDark ? '#1a1a1a' : '#F7F8FA';
+
+  const [selectedPOI, setSelectedPOI] = useState<NearbyPOI | null>(null);
 
   const { data: pois, isLoading } = useQuery<NearbyPOI[]>({
     queryKey: ['trail-nearby-poi', trailId],
@@ -1136,9 +1151,11 @@ function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean 
           const iconName = POI_CATEGORY_ICONS[poi.category] || 'map-pin';
 
           return (
-            <View
+            <TouchableOpacity
               key={`${poi.name}-${idx}`}
               style={[nearbyStyles.card, { backgroundColor: cardBg, borderColor }]}
+              activeOpacity={0.7}
+              onPress={() => setSelectedPOI(poi)}
             >
               {/* Image or placeholder */}
               <View style={[nearbyStyles.cardImage, { backgroundColor: sectionBg }]}>
@@ -1171,13 +1188,351 @@ function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean 
                   </Text>
                 ) : null}
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </ScrollView>
+
+      {/* POI Detail Bottom Sheet */}
+      {selectedPOI && (
+        <POIDetailBottomSheet
+          poi={selectedPOI}
+          isDark={isDark}
+          onClose={() => setSelectedPOI(null)}
+        />
+      )}
     </View>
   );
 }
+
+// ─── POI Detail Bottom Sheet ──────────────────────────────────────────────
+
+function POIDetailBottomSheet({
+  poi,
+  isDark,
+  onClose,
+}: {
+  poi: NearbyPOI;
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#191F28';
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : '#8B95A1';
+  const textTertColor = isDark ? 'rgba(255,255,255,0.6)' : '#B0B8C1';
+  const sectionBg = isDark ? '#1a1a1a' : '#F7F8FA';
+
+  const { data: detail, isLoading, isError } = useQuery<POIDetail>({
+    queryKey: ['poi-detail', poi.content_id],
+    queryFn: async () => {
+      const { data } = await api.get(`/poi/${poi.content_id}/`);
+      return data;
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+    enabled: !!poi.content_id,
+  });
+
+  const displayImage = detail?.image || poi.image;
+  const displayName = detail?.name || poi.name;
+  const displayAddress = detail?.address || poi.address;
+  const displayTel = detail?.tel || poi.tel;
+  const catColor = POI_CATEGORY_COLORS[poi.category] || { bg: sectionBg, text: textSecColor };
+
+  const handleDirections = () => {
+    const lat = detail?.lat || poi.lat;
+    const lng = detail?.lng || poi.lng;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    Linking.openURL(url);
+  };
+
+  const handleCall = () => {
+    if (displayTel) {
+      Linking.openURL(`tel:${displayTel}`);
+    }
+  };
+
+  return (
+    <Modal
+      visible={true}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {/* Backdrop */}
+      <TouchableOpacity
+        style={poiDetailStyles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View />
+      </TouchableOpacity>
+
+      {/* Bottom Sheet */}
+      <View style={[poiDetailStyles.sheet, { backgroundColor: cardBg }]}>
+        {/* Handle bar */}
+        <View style={poiDetailStyles.handleBarWrap}>
+          <View style={[poiDetailStyles.handleBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB' }]} />
+        </View>
+
+        {/* Close button */}
+        <TouchableOpacity
+          style={poiDetailStyles.closeBtn}
+          onPress={onClose}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <View style={poiDetailStyles.closeBtnBg}>
+            <Feather name="x" size={16} color="#fff" />
+          </View>
+        </TouchableOpacity>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          contentContainerStyle={{ paddingBottom: 30 }}
+        >
+          {/* Image */}
+          <View style={[poiDetailStyles.imageWrap, { backgroundColor: sectionBg }]}>
+            {displayImage ? (
+              <Image
+                source={{ uri: displayImage }}
+                style={poiDetailStyles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[poiDetailStyles.imagePlaceholder, { backgroundColor: sectionBg }]}>
+                <Feather
+                  name={POI_CATEGORY_ICONS[poi.category] || 'map-pin'}
+                  size={36}
+                  color={textTertColor}
+                />
+              </View>
+            )}
+          </View>
+
+          {/* Content */}
+          <View style={poiDetailStyles.content}>
+            {isLoading ? (
+              /* Loading state */
+              <View style={poiDetailStyles.loadingWrap}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[poiDetailStyles.loadingText, { color: textTertColor }]}>
+                  {'\uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...'}
+                </Text>
+              </View>
+            ) : isError ? (
+              /* Error state */
+              <View style={poiDetailStyles.errorWrap}>
+                <Feather name="alert-circle" size={28} color={textTertColor} style={{ marginBottom: 8 }} />
+                <Text style={[poiDetailStyles.errorText, { color: textSecColor }]}>
+                  {'\uC815\uBCF4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* Category badge */}
+                <View style={[poiDetailStyles.categoryBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : catColor.bg }]}>
+                  <Text style={[poiDetailStyles.categoryText, { color: isDark ? 'rgba(255,255,255,0.8)' : catColor.text }]}>
+                    {detail?.category || poi.category}
+                  </Text>
+                </View>
+
+                {/* Name */}
+                <Text style={[poiDetailStyles.name, { color: textColor }]}>
+                  {displayName}
+                </Text>
+
+                {/* Address */}
+                {displayAddress ? (
+                  <View style={poiDetailStyles.infoRow}>
+                    <Feather name="map-pin" size={14} color={textTertColor} style={{ marginTop: 2 }} />
+                    <Text style={[poiDetailStyles.infoText, { color: textSecColor }]}>
+                      {displayAddress}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Phone */}
+                {displayTel ? (
+                  <TouchableOpacity style={poiDetailStyles.infoRow} onPress={handleCall} activeOpacity={0.7}>
+                    <Feather name="phone" size={14} color={textTertColor} />
+                    <Text style={[poiDetailStyles.infoText, { color: colors.primary }]}>
+                      {displayTel}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {/* Overview */}
+                {detail?.overview ? (
+                  <Text style={[poiDetailStyles.overview, { color: textSecColor }]}>
+                    {detail.overview}
+                  </Text>
+                ) : null}
+
+                {/* Action buttons */}
+                <View style={poiDetailStyles.actionsRow}>
+                  <TouchableOpacity
+                    style={[poiDetailStyles.actionBtn, { backgroundColor: colors.primary }]}
+                    onPress={handleDirections}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="navigation" size={16} color="#fff" />
+                    <Text style={poiDetailStyles.actionBtnTextWhite}>{'\uAE38\uCC3E\uAE30'}</Text>
+                  </TouchableOpacity>
+
+                  {displayTel ? (
+                    <TouchableOpacity
+                      style={[poiDetailStyles.actionBtn, { backgroundColor: sectionBg }]}
+                      onPress={handleCall}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="phone" size={16} color={textColor} />
+                      <Text style={[poiDetailStyles.actionBtnText, { color: textColor }]}>{'\uC804\uD654\uD558\uAE30'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const poiDetailStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '80%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  handleBarWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    zIndex: 10,
+  },
+  closeBtnBg: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageWrap: {
+    width: '100%',
+    height: 200,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 13,
+    marginTop: 10,
+  },
+  errorWrap: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 12,
+    lineHeight: 26,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  overview: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 12,
+    letterSpacing: -0.1,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 14,
+  },
+  actionBtnTextWhite: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  actionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});
 
 const nearbyStyles = StyleSheet.create({
   container: {

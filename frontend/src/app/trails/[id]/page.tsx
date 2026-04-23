@@ -24,7 +24,7 @@ import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NearbyPOISection } from "@/components/NearbyPOISection";
+import { NearbyPOISection, POIDetailModal } from "@/components/NearbyPOISection";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ const STAT_LABELS = {
 
 // ─── Tab Types ───────────────────────────────────────────────────────────────
 
-type TabId = "overview" | "course" | "reviews" | "records";
+type TabId = "overview" | "reviews" | "records";
 
 interface TabConfig {
   id: TabId;
@@ -184,8 +184,7 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: "overview", label: { ko: "소개", en: "Overview", ja: "紹介", zh: "简介" } },
-  { id: "course", label: { ko: "코스 정보", en: "Course Info", ja: "コース情報", zh: "路线信息" } },
+  { id: "overview", label: { ko: "코스 소개", en: "Course Overview", ja: "コース紹介", zh: "路线简介" } },
   { id: "reviews", label: { ko: "리뷰", en: "Reviews", ja: "レビュー", zh: "评价" } },
   { id: "records", label: { ko: "기록", en: "Records", ja: "記録", zh: "记录" } },
 ];
@@ -234,6 +233,7 @@ export default function TrailDetailPage() {
   const [certBlobUrl, setCertBlobUrl] = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [mapSelectedPOI, setMapSelectedPOI] = useState<{ name: string; category: string; content_type_id: string; content_id: string; lat: number; lng: number; image: string; address: string; tel: string } | null>(null);
   const createReview = useCreateReview(trailId);
 
   const tabBarRef = useRef<HTMLDivElement>(null);
@@ -472,6 +472,27 @@ export default function TrailDetailPage() {
   }));
   const mapMarkers = [...spotMarkers, ...poiMarkers];
 
+  // Map marker click handler: open POI detail modal for POI markers
+  const handleMapMarkerClick = useCallback((markerId: number) => {
+    if (markerId >= 90000) {
+      const poiIndex = markerId - 90000;
+      const poi = nearbyPOIs[poiIndex] as any;
+      if (poi) {
+        setMapSelectedPOI({
+          name: poi.name,
+          category: poi.category,
+          content_type_id: poi.content_type_id || "",
+          content_id: poi.content_id || "",
+          lat: poi.lat,
+          lng: poi.lng,
+          image: poi.image || "",
+          address: poi.address || "",
+          tel: poi.tel || "",
+        });
+      }
+    }
+  }, [nearbyPOIs]);
+
   const avgRating =
     reviews.length > 0
       ? (reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)
@@ -683,140 +704,133 @@ export default function TrailDetailPage() {
       {/* ================================================================== */}
       <div ref={tabContentRef} className="max-w-3xl mx-auto px-5 py-4">
 
-        {/* ─── Tab 1: Overview ─── */}
+        {/* ─── Tab 1: Course Overview (merged 소개 + 코스 정보) ─── */}
         {activeTab === "overview" && (
-          <div className="animate-fade-in space-y-3">
-            {/* Trail Condition Banner */}
-            <TrailConditionBanner condition={tr.latest_condition} language={language} />
+          <ErrorBoundary>
+            <div className="animate-fade-in space-y-5">
+              {/* Trail Condition Banner */}
+              <TrailConditionBanner condition={tr.latest_condition} language={language} />
 
-            {/* Description (no card title — content speaks for itself) */}
-            <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-              <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-                {tr.description}
-              </p>
-              {tr.tags.length > 0 && (
-                <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                  {tr.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-medium bg-bg-secondary text-text-secondary"
-                    >
-                      #{tag.name}
-                    </span>
-                  ))}
+              {/* Description (no card title — content speaks for itself) */}
+              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                <div className="text-[15px] leading-[1.8] text-text-primary font-normal whitespace-pre-line">
+                  {tr.description
+                    ? tr.description.split("\n").map((paragraph, i) => (
+                        <p key={i} className={i > 0 ? "mt-3" : ""}>
+                          {paragraph}
+                        </p>
+                      ))
+                    : null}
                 </div>
-              )}
-            </section>
+                {tr.tags.length > 0 && (
+                  <div className="flex gap-1.5 mt-3 flex-wrap">
+                    {tr.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-medium bg-bg-secondary text-text-secondary"
+                      >
+                        #{tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </section>
 
-            {/* Interactive Map */}
-            <section className="rounded-2xl bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <div className="h-[260px] md:h-[340px] relative">
-                <MapView
-                  country={tr.country}
-                  center={{
-                    lat: parseFloat(tr.start_lat),
-                    lng: parseFloat(tr.start_lng),
-                  }}
-                  zoom={14}
-                  markers={mapMarkers}
+              {/* Interactive Map */}
+              <section className="rounded-2xl bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                <div className="h-[260px] md:h-[340px] relative">
+                  <MapView
+                    country={tr.country}
+                    center={{
+                      lat: parseFloat(tr.start_lat),
+                      lng: parseFloat(tr.start_lng),
+                    }}
+                    zoom={14}
+                    markers={mapMarkers}
+                    pathCoordinates={pathCoords}
+                    theme="dark"
+                    showStats
+                    distance={tr.distance_km}
+                    duration={String(tr.estimated_minutes)}
+                    onMarkerClick={handleMapMarkerClick}
+                  />
+                  <MapExpandButton onClick={() => setMapFullscreen(true)} />
+                </div>
+                <MapFullscreen
+                  open={mapFullscreen}
+                  onClose={() => setMapFullscreen(false)}
+                  title={tr.title}
                   pathCoordinates={pathCoords}
-                  theme="dark"
-                  showStats
+                  markers={mapMarkers}
                   distance={tr.distance_km}
                   duration={String(tr.estimated_minutes)}
+                  theme="dark"
+                  onMarkerClick={handleMapMarkerClick}
                 />
-                <MapExpandButton onClick={() => setMapFullscreen(true)} />
-              </div>
-              <MapFullscreen
-                open={mapFullscreen}
-                onClose={() => setMapFullscreen(false)}
-                title={tr.title}
-                pathCoordinates={pathCoords}
-                markers={mapMarkers}
-                distance={tr.distance_km}
-                duration={String(tr.estimated_minutes)}
-                theme="dark"
-              />
-            </section>
+              </section>
 
-            {/* Nearby POIs */}
-            <NearbyPOISection trailId={trailId} language={language} />
+              {/* Nearby POIs */}
+              <NearbyPOISection trailId={trailId} language={language} />
 
-            {/* Author — may be null for publicly-sourced trails (e.g. visitkorea) */}
-            <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-              {tr.author ? (
-                <Link
-                  href={`/profile/${tr.author.nickname}`}
-                  className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {tr.author.profile_image ? (
-                      <Image
-                        src={tr.author.profile_image}
-                        alt={tr.author.nickname}
-                        width={36}
-                        height={36}
-                        className="object-cover"
-                      />
-                    ) : (
+              {/* Author — may be null for publicly-sourced trails (e.g. visitkorea) */}
+              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                {tr.author ? (
+                  <Link
+                    href={`/profile/${tr.author.nickname}`}
+                    className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {tr.author.profile_image ? (
+                        <Image
+                          src={tr.author.profile_image}
+                          alt={tr.author.nickname}
+                          width={36}
+                          height={36}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <IconUser size={18} className="text-primary/60" />
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
+                      {tr.author.is_guide && (
+                        <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
+                          {t("trail.certifiedGuide")}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                       <IconUser size={18} className="text-primary/60" />
-                    )}
-                  </div>
-                  <div className="flex flex-col justify-center">
-                    <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
-                    {tr.author.is_guide && (
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {tr.source === "visitkorea"
+                          ? language === "ko"
+                            ? "한국관광공사"
+                            : language === "ja"
+                            ? "韓国観光公社"
+                            : language === "zh"
+                            ? "韩国观光公社"
+                            : "Korea Tourism Organization"
+                          : language === "ko"
+                          ? "공식 코스"
+                          : "Official course"}
+                      </p>
                       <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
-                        {t("trail.certifiedGuide")}
+                        {language === "ko" ? "공공 데이터" : language === "ja" ? "公共データ" : language === "zh" ? "公共数据" : "Public data"}
                       </span>
-                    )}
+                    </div>
                   </div>
-                </Link>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <IconUser size={18} className="text-primary/60" />
-                  </div>
-                  <div className="flex flex-col justify-center">
-                    <p className="text-[13px] font-semibold text-text-primary">
-                      {tr.source === "visitkorea"
-                        ? language === "ko"
-                          ? "한국관광공사"
-                          : language === "ja"
-                          ? "韓国観光公社"
-                          : language === "zh"
-                          ? "韩国观光公社"
-                          : "Korea Tourism Organization"
-                        : language === "ko"
-                        ? "공식 코스"
-                        : "Official course"}
-                    </p>
-                    <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
-                      {language === "ko" ? "공공 데이터" : language === "ja" ? "公共データ" : language === "zh" ? "公共数据" : "Public data"}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </section>
+                )}
+              </section>
 
-            {/* Start walking CTA — natural end of overview */}
-            <div className="pt-1">
-              <button
-                onClick={() => {
-                  alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
-                }}
-                className="w-full py-3.5 bg-primary text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-              >
-                <IconSmartphone size={16} />
-                {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
-              </button>
-            </div>
-          </div>
-        )}
+              {/* ─── Separator between overview and course detail sections ─── */}
+              <div className="border-t border-border-light" />
 
-        {/* ─── Tab 2: Course Info ─── */}
-        {activeTab === "course" && (
-          <ErrorBoundary>
-            <div className="animate-fade-in space-y-3">
               {/* Elevation Profile — require a real coordinates array before
                   touching .length; public imports carry path_data: {} */}
               {Array.isArray(tr.path_data?.coordinates) && tr.path_data!.coordinates.length >= 2 && (
@@ -863,17 +877,7 @@ export default function TrailDetailPage() {
                 </ErrorBoundary>
               </section>
 
-              {/* Empty state if no course data */}
-              {!tr.path_data?.coordinates?.length && !tr.segments?.length && (!spots || spots.length === 0) && (
-                <div className="text-center py-12 rounded-2xl bg-white dark:bg-gray-900 shadow-sm">
-                  <IconMapEmpty size={40} className="text-text-tertiary mx-auto mb-2" />
-                  <p className="text-sm text-text-tertiary">
-                    {language === "ko" ? "상세 코스 정보가 아직 없어요" : language === "ja" ? "詳細なコース情報はまだありません" : language === "zh" ? "暂无详细路线信息" : "No detailed course info yet"}
-                  </p>
-                </div>
-              )}
-
-              {/* Start walking CTA — natural end of course tab */}
+              {/* Start walking CTA — natural end of overview */}
               <div className="pt-1">
                 <button
                   onClick={() => {
@@ -1165,6 +1169,18 @@ export default function TrailDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ================================================================== */}
+      {/* POI Detail Modal (from map marker click)                           */}
+      {/* ================================================================== */}
+      {mapSelectedPOI && (
+        <POIDetailModal
+          contentId={mapSelectedPOI.content_id || ""}
+          poi={mapSelectedPOI}
+          onClose={() => setMapSelectedPOI(null)}
+          language={language}
+        />
+      )}
 
       {/* ================================================================== */}
       {/* Certificate Modal                                                  */}

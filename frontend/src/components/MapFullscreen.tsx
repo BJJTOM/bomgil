@@ -18,6 +18,7 @@ interface MapFullscreenProps {
   distance?: string;
   duration?: string;
   theme?: "dark" | "light";
+  onMarkerClick?: (id: number) => void;
 }
 
 export function MapFullscreen({
@@ -29,6 +30,7 @@ export function MapFullscreen({
   distance,
   duration,
   theme = "dark",
+  onMarkerClick,
 }: MapFullscreenProps) {
   // ESC to close + lock body scroll
   useEffect(() => {
@@ -58,6 +60,7 @@ export function MapFullscreen({
           distance={distance}
           duration={duration}
           className="w-full h-full"
+          onMarkerClick={onMarkerClick}
         />
       </div>
 

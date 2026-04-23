@@ -6,7 +6,7 @@ import api from "@/lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface NearbyPOI {
+export interface NearbyPOI {
   name: string;
   category: string;
   content_type_id: string;
@@ -79,7 +79,7 @@ const SECTION_TITLE: Record<string, string> = {
 
 // ─── POI Detail Modal ───────────────────────────────────────────────────────
 
-function POIDetailModal({
+export function POIDetailModal({
   contentId,
   poi,
   onClose,
@@ -274,7 +274,7 @@ function POIDetailModal({
                 {/* Overview */}
                 {detail?.overview && (
                   <div className="mt-3 mb-4">
-                    <p className="text-[13px] text-text-secondary leading-relaxed">
+                    <p className="text-[14px] leading-[1.7] text-text-primary">
                       {detail.overview}
                     </p>
                   </div>
@@ -309,7 +309,7 @@ function POIDetailModal({
                             i < rows.length - 1 ? "border-b border-border-light" : ""
                           }`}
                         >
-                          <span className="text-[12px] text-text-tertiary font-medium w-[72px] flex-shrink-0 pt-[1px]">
+                          <span className="text-[12px] font-semibold text-text-secondary w-[72px] flex-shrink-0 pt-[1px]">
                             {row.label}
                           </span>
                           <span className="text-[13px] text-text-primary leading-snug flex-1 break-words">
@@ -469,7 +469,7 @@ export function NearbyPOISection({ trailId, language }: NearbyPOISectionProps) {
                     {poi.name}
                   </p>
                   {poi.address && (
-                    <p className="text-[10px] text-text-tertiary mt-0.5 line-clamp-1">
+                    <p className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">
                       {poi.address}
                     </p>
                   )}

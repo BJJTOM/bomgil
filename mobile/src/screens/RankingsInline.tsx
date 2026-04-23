@@ -29,11 +29,25 @@ const TABS = [
   { key: 'weekly', label: '주간' },
   { key: 'monthly', label: '월간' },
   { key: 'region', label: '지역별' },
-];
+  { key: 'guides', label: '가이드' },
+] as const;
+
+type TabKey = typeof TABS[number]['key'];
+
+type GuideRow = {
+  id: number;
+  nickname?: string;
+  username?: string;
+  profile_image?: string | null;
+  bio?: string;
+  total_likes?: number;
+  trail_count?: number;
+  level?: number;
+};
 
 export default function RankingsInline() {
   const navigation = useNavigation<any>();
-  const [activeTab, setActiveTab] = useState('weekly');
+  const [activeTab, setActiveTab] = useState<TabKey>('weekly');
   const [search, setSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
 
@@ -41,12 +55,20 @@ export default function RankingsInline() {
     queryKey: ['rankings', activeTab],
     queryFn: async () => {
       const { data: res } = await api.get(`/trails/rankings/${activeTab}/`);
-      return (res?.results || res || []) as Trail[];
+      return (res?.results || res || []) as Trail[] | GuideRow[];
     },
   });
 
-  const trails = (data || []).filter((t) =>
+  const isGuideTab = activeTab === 'guides';
+
+  const filteredTrails = (!isGuideTab ? (data as Trail[] | undefined) : undefined) || [];
+  const trails = filteredTrails.filter((t) =>
     search ? t.title?.toLowerCase().includes(search.toLowerCase()) || t.region?.toLowerCase().includes(search.toLowerCase()) : true
+  );
+
+  const filteredGuides = (isGuideTab ? (data as GuideRow[] | undefined) : undefined) || [];
+  const guides = filteredGuides.filter((g) =>
+    search ? (g.nickname || g.username || '').toLowerCase().includes(search.toLowerCase()) : true
   );
 
   return (
@@ -90,6 +112,65 @@ export default function RankingsInline() {
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : isGuideTab ? (
+        <FlatList
+          data={guides}
+          keyExtractor={(item) => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+          renderItem={({ item, index }) => {
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            const name = item.nickname || item.username || `사용자 #${item.id}`;
+            return (
+              <TouchableOpacity
+                style={styles.rankItem}
+                onPress={() => navigation.navigate('Profile', { nickname: item.nickname || item.username })}
+                activeOpacity={0.7}>
+                <View style={[styles.rankBadge, isTop3 && styles.rankBadgeTop]}>
+                  <Text style={[styles.rankNum, isTop3 && styles.rankNumTop]}>{rank}</Text>
+                </View>
+                <View style={styles.rankImage}>
+                  {resolveImageUrl(item.profile_image) ? (
+                    <Image source={{ uri: resolveImageUrl(item.profile_image)! }} style={styles.rankImg} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.rankImgPlaceholder}>
+                      <Feather name="user" size={16} color={colors.textTertiary} />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.rankContent}>
+                  <Text style={styles.rankTitle} numberOfLines={1}>{name}</Text>
+                  {item.bio ? (
+                    <Text style={styles.rankMeta} numberOfLines={1}>{item.bio}</Text>
+                  ) : item.level != null ? (
+                    <Text style={styles.rankMeta}>Lv.{item.level}</Text>
+                  ) : null}
+                  <View style={styles.rankStats}>
+                    {item.total_likes != null && (
+                      <>
+                        <Feather name="heart" size={12} color="#FF4B4B" />
+                        <Text style={styles.rankStatText}>{item.total_likes}</Text>
+                      </>
+                    )}
+                    {item.trail_count != null && (
+                      <>
+                        <Feather name="map" size={12} color={colors.textTertiary} style={{ marginLeft: item.total_likes != null ? 10 : 0 }} />
+                        <Text style={styles.rankStatText}>{item.trail_count}코스</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>가이드 랭킹이 없습니다</Text>
+            </View>
+          }
+        />
       ) : (
         <FlatList
           data={trails}

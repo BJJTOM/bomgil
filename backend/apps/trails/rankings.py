@@ -65,16 +65,20 @@ class PopularGuidesView(APIView):
     """인기 가이드 (코스 등록수 + 좋아요 합산)"""
 
     def get(self, request):
-        guides = (
+        guides = list(
             CustomUser.objects.filter(trails__status="approved")
             .annotate(
-                trail_count=Count("trails"),
+                annotated_trail_count=Count("trails"),
                 total_likes=Sum("trails__like_count"),
             )
             .order_by("-total_likes")[:20]
         )
         serializer = UserPublicSerializer(guides, many=True)
-        return Response(serializer.data)
+        data = list(serializer.data)
+        # UserPublicSerializer의 Meta.fields 엔 total_likes 가 없으므로 수동 주입.
+        for row, user in zip(data, guides):
+            row["total_likes"] = getattr(user, "total_likes", 0) or 0
+        return Response(data)
 
 
 class CollectionSerializer(serializers.ModelSerializer):

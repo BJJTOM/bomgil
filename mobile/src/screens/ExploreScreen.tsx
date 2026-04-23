@@ -20,7 +20,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import api from '../api/client';
 import { colors } from '../theme/colors';
 import RankingsInline from './RankingsInline';
-import { Trail, PaginatedResponse } from '../types';
+import { Trail } from '../types';
 import TrailCard from '../components/TrailCard';
 import { FadeInView } from '../components/FadeInView';
 import { useThemeStore } from '../stores/theme';
@@ -123,6 +123,7 @@ export default function ExploreScreen() {
   const [search, setSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'courses' | 'series' | 'rankings'>('courses');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [sortBy, setSortBy] = useState('-created_at');
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -189,9 +190,10 @@ export default function ExploreScreen() {
     return params;
   }, [filters, debouncedSearch, sortBy]);
 
-  // Pagination state
+  // Pagination state — 백엔드 `TrailPagination` 은 LimitOffsetPagination (기본 21개) 이므로
+  // 웹과 동일하게 limit/offset 파라미터를 사용해야 한다. 이전의 page/page_size 는 무시됐음.
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 21;
 
   // Reset page when filters/search change
   useEffect(() => {
@@ -209,7 +211,11 @@ export default function ExploreScreen() {
     queryKey: ['trails', queryParams, currentPage],
     queryFn: async () => {
       const { data: res } = await api.get('/trails/', {
-        params: { ...queryParams, page: currentPage, page_size: PAGE_SIZE },
+        params: {
+          ...queryParams,
+          limit: PAGE_SIZE,
+          offset: (currentPage - 1) * PAGE_SIZE,
+        },
       });
       return res;
     },
@@ -225,7 +231,7 @@ export default function ExploreScreen() {
     queryKey: ['trails-all'],
     queryFn: async () => {
       try {
-        const { data: res } = await api.get('/trails/', { params: { page_size: 50 } });
+        const { data: res } = await api.get('/trails/', { params: { limit: 50 } });
         return res;
       } catch { return { results: [] }; }
     },
@@ -468,6 +474,20 @@ export default function ExploreScreen() {
           )}
           <TouchableOpacity onPress={() => setSearchVisible(!searchVisible)} style={styles.searchToggleSmall}>
             <Feather name="search" size={16} color={searchVisible ? colors.primary : textTertColor} />
+          </TouchableOpacity>
+          {/* 목록 ↔ 지도 뷰 토글 */}
+          <TouchableOpacity
+            onPress={() => {
+              haptics.light();
+              setViewMode((m) => (m === 'list' ? 'map' : 'list'));
+            }}
+            style={[styles.searchToggleSmall, viewMode === 'map' && { backgroundColor: colors.primary + '15' }]}
+            activeOpacity={0.7}>
+            <Feather
+              name={viewMode === 'map' ? 'list' : 'map'}
+              size={16}
+              color={viewMode === 'map' ? colors.primary : textTertColor}
+            />
           </TouchableOpacity>
         </View>
 
@@ -739,6 +759,8 @@ export default function ExploreScreen() {
             <Text style={styles.emptyResetText}>다시 시도</Text>
           </TouchableOpacity>
         </View>
+      ) : viewMode === 'map' ? (
+        <ExploreMapView trails={trails} isDark={isDark} />
       ) : (
         <FlatList
           data={trails}
@@ -820,6 +842,95 @@ export default function ExploreScreen() {
       )}
       </>
       )}
+    </View>
+  );
+}
+
+// ── 지도 뷰 (ExploreScreen 내부 컴포넌트) ───────────────────────
+function ExploreMapView({ trails, isDark }: { trails: Trail[]; isDark: boolean }) {
+  const navigation = useNavigation<any>();
+  const points = React.useMemo(
+    () =>
+      trails
+        .map((t) => {
+          const lat = parseFloat(String((t as any).start_lat || 0));
+          const lng = parseFloat(String((t as any).start_lng || 0));
+          if (!lat || !lng || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+          return { id: t.id, title: t.title, lat, lng, trail: t };
+        })
+        .filter(Boolean) as Array<{ id: number; title: string; lat: number; lng: number; trail: Trail }>,
+    [trails],
+  );
+
+  let Mapbox: any = null;
+  try {
+    Mapbox = require('@rnmapbox/maps').default;
+  } catch {
+    // ignore
+  }
+
+  if (!Mapbox || points.length === 0) {
+    return (
+      <View style={[styles.mapEmpty, isDark && { backgroundColor: '#111' }]}>
+        <Feather name="map-pin" size={28} color={colors.textTertiary} />
+        <Text style={[styles.mapEmptyText, { color: isDark ? '#fff' : colors.textPrimary }]}>
+          표시할 코스 위치가 없습니다
+        </Text>
+        <Text style={[styles.mapEmptySub, { color: colors.textTertiary }]}>
+          필터를 바꾸거나 목록 뷰로 돌아가세요
+        </Text>
+      </View>
+    );
+  }
+
+  // 초기 bounds 계산
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  for (const p of points) {
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+  }
+  const bounds = {
+    ne: [maxLng + 0.02, maxLat + 0.02] as [number, number],
+    sw: [minLng - 0.02, minLat - 0.02] as [number, number],
+  };
+
+  const styleURL = isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/outdoors-v12';
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Mapbox.MapView
+        style={{ flex: 1 }}
+        styleURL={styleURL}
+        attributionEnabled={false}
+        logoEnabled={false}
+        scaleBarEnabled={false}
+        compassEnabled>
+        <Mapbox.Camera
+          bounds={bounds}
+          padding={{ paddingTop: 60, paddingBottom: 80, paddingLeft: 40, paddingRight: 40 }}
+          animationDuration={600}
+        />
+        {points.map((p) => (
+          <Mapbox.PointAnnotation
+            key={`mkr-${p.id}`}
+            id={`mkr-${p.id}`}
+            coordinate={[p.lng, p.lat]}
+            onSelected={() => navigation.navigate('TrailDetail', { id: p.id })}>
+            <View style={styles.mapMarker}>
+              <View style={styles.mapMarkerDot} />
+            </View>
+            <Mapbox.Callout title={p.title} />
+          </Mapbox.PointAnnotation>
+        ))}
+      </Mapbox.MapView>
+
+      {/* 하단 카운트 배지 */}
+      <View style={styles.mapBadge}>
+        <Feather name="map-pin" size={12} color="#fff" />
+        <Text style={styles.mapBadgeText}>{points.length}개 코스</Text>
+      </View>
     </View>
   );
 }
@@ -1195,5 +1306,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 18,
+  },
+  // ── 지도 뷰 ────────────────────────────────────────
+  mapEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 32,
+    backgroundColor: '#FAFAFA',
+  },
+  mapEmptyText: { fontSize: 15, fontWeight: '600' },
+  mapEmptySub: { fontSize: 12 },
+  mapMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45,74,46,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapMarkerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  mapBadge: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(25, 31, 40, 0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  mapBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

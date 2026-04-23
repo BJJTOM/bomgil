@@ -692,9 +692,9 @@ function TrailDetailScreenInner() {
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Text style={[styles.spotName, { color: textColor, flex: 1 }]} numberOfLines={1}>{spot?.name || ''}</Text>
-                          {spot.distance_from_start != null && (
+                          {spot.distance_from_start_km != null && (
                             <Text style={{ fontSize: 11, color: textTertColor, marginLeft: 8 }}>
-                              {parseFloat(String(spot.distance_from_start)).toFixed(1)}km
+                              {parseFloat(String(spot.distance_from_start_km)).toFixed(1)}km
                             </Text>
                           )}
                         </View>

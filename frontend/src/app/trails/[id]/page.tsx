@@ -473,10 +473,12 @@ export default function TrailDetailPage() {
   const mapMarkers = [...spotMarkers, ...poiMarkers];
 
   // Map marker click handler: open POI detail modal for POI markers
+  const nearbyPOIsRef = useRef(nearbyPOIs);
+  nearbyPOIsRef.current = nearbyPOIs;
   const handleMapMarkerClick = useCallback((markerId: number) => {
     if (markerId >= 90000) {
       const poiIndex = markerId - 90000;
-      const poi = nearbyPOIs[poiIndex] as any;
+      const poi = nearbyPOIsRef.current?.[poiIndex] as any;
       if (poi) {
         setMapSelectedPOI({
           name: poi.name,
@@ -491,7 +493,7 @@ export default function TrailDetailPage() {
         });
       }
     }
-  }, [nearbyPOIs]);
+  }, []);
 
   const avgRating =
     reviews.length > 0

@@ -636,6 +636,9 @@ function TrailDetailScreenInner() {
           )}
         </TouchableOpacity>
 
+        {/* ===== NEARBY POIs ===== */}
+        <NearbyPOICards trailId={trail.id} isDark={isDark} />
+
         {/* ===== ELEVATION PROFILE ===== */}
         {trail.path_data?.coordinates && (
           <ElevationProfile
@@ -1048,6 +1051,181 @@ function TrailDetailScreenInner() {
     </>
   );
 }
+
+// ─── Nearby POI Cards ─────────────────────────────────────────────────────
+
+const POI_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  '\uC74C\uC2DD\uC810': { bg: '#FFF7ED', text: '#C2410C' },
+  '\uAD00\uAD11\uC9C0': { bg: '#F0FDF4', text: '#15803D' },
+  '\uC219\uBC15': { bg: '#EFF6FF', text: '#1D4ED8' },
+  '\uBB38\uD654\uC2DC\uC124': { bg: '#FAF5FF', text: '#7E22CE' },
+  '\uB808\uD3EC\uCE20': { bg: '#F0FDFA', text: '#0F766E' },
+  '\uC1FC\uD551': { bg: '#FDF2F8', text: '#BE185D' },
+};
+
+const POI_CATEGORY_ICONS: Record<string, string> = {
+  '\uC74C\uC2DD\uC810': 'coffee',
+  '\uAD00\uAD11\uC9C0': 'compass',
+  '\uC219\uBC15': 'home',
+  '\uBB38\uD654\uC2DC\uC124': 'book-open',
+  '\uB808\uD3EC\uCE20': 'activity',
+  '\uC1FC\uD551': 'shopping-bag',
+};
+
+interface NearbyPOI {
+  name: string;
+  category: string;
+  content_type_id: string;
+  lat: number;
+  lng: number;
+  image: string;
+  address: string;
+  tel: string;
+}
+
+function NearbyPOICards({ trailId, isDark }: { trailId: number; isDark: boolean }) {
+  const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#191F28';
+  const textSecColor = isDark ? 'rgba(255,255,255,0.7)' : '#8B95A1';
+  const textTertColor = isDark ? 'rgba(255,255,255,0.6)' : '#B0B8C1';
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#F2F4F6';
+  const sectionBg = isDark ? '#1a1a1a' : '#F7F8FA';
+
+  const { data: pois, isLoading } = useQuery<NearbyPOI[]>({
+    queryKey: ['trail-nearby-poi', trailId],
+    queryFn: async () => {
+      const { data } = await api.get(`/trails/${trailId}/nearby/`);
+      return data;
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <View style={[nearbyStyles.container, { paddingHorizontal: 20 }]}>
+        <Text style={[nearbyStyles.title, { color: textColor }]}>{'\uC8FC\uBCC0 \uC815\uBCF4'}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={[nearbyStyles.card, { backgroundColor: sectionBg, borderColor }]}>
+              <View style={[nearbyStyles.cardImage, { backgroundColor: borderColor }]} />
+              <View style={{ padding: 8, gap: 6 }}>
+                <View style={{ height: 10, backgroundColor: borderColor, borderRadius: 4, width: '60%' }} />
+                <View style={{ height: 8, backgroundColor: borderColor, borderRadius: 4, width: '80%' }} />
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Empty: hide section
+  if (!pois || pois.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={[nearbyStyles.container, { paddingHorizontal: 20 }]}>
+      <Text style={[nearbyStyles.title, { color: textColor }]}>{'\uC8FC\uBCC0 \uC815\uBCF4'}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {pois.map((poi, idx) => {
+          const catColor = POI_CATEGORY_COLORS[poi.category] || { bg: sectionBg, text: textSecColor };
+          const catDarkBg = isDark ? 'rgba(255,255,255,0.08)' : catColor.bg;
+          const iconName = POI_CATEGORY_ICONS[poi.category] || 'map-pin';
+
+          return (
+            <View
+              key={`${poi.name}-${idx}`}
+              style={[nearbyStyles.card, { backgroundColor: cardBg, borderColor }]}
+            >
+              {/* Image or placeholder */}
+              <View style={[nearbyStyles.cardImage, { backgroundColor: sectionBg }]}>
+                {poi.image ? (
+                  <Image
+                    source={{ uri: poi.image }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name={iconName as any} size={24} color={textTertColor} />
+                  </View>
+                )}
+              </View>
+
+              {/* Info */}
+              <View style={nearbyStyles.cardInfo}>
+                <View style={[nearbyStyles.badge, { backgroundColor: catDarkBg }]}>
+                  <Text style={[nearbyStyles.badgeText, { color: isDark ? 'rgba(255,255,255,0.8)' : catColor.text }]}>
+                    {poi.category}
+                  </Text>
+                </View>
+                <Text style={[nearbyStyles.cardName, { color: textColor }]} numberOfLines={1}>
+                  {poi.name}
+                </Text>
+                {poi.address ? (
+                  <Text style={[nearbyStyles.cardAddr, { color: textTertColor }]} numberOfLines={1}>
+                    {poi.address}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const nearbyStyles = StyleSheet.create({
+  container: {
+    marginTop: 20,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: -0.2,
+  },
+  card: {
+    width: 180,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginRight: 10,
+  },
+  cardImage: {
+    width: '100%',
+    height: 80,
+    overflow: 'hidden',
+  },
+  cardInfo: {
+    padding: 8,
+    gap: 2,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 2,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  cardName: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  cardAddr: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

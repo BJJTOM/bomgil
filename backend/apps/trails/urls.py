@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .certificate import generate_certificate
+from .nearby import TrailNearbyPOIView
 from .gpx_export import GpxExportView
 from .gpx_import import GpxImportView
 from .og_image import generate_og_image
@@ -60,6 +61,8 @@ urlpatterns = [
     path("<int:pk>/og-image/", generate_og_image, name="trail-og-image"),
     # Completion certificate
     path("<int:pk>/certificate/", generate_certificate, name="trail-certificate"),
+    # Nearby POIs (Korea Tourism API proxy)
+    path("<int:pk>/nearby/", TrailNearbyPOIView.as_view(), name="trail-nearby-poi"),
     # Router
     path("", include(router.urls)),
 ]

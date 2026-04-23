@@ -22,6 +22,7 @@ import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { NearbyPOISection } from "@/components/NearbyPOISection";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -716,6 +717,9 @@ export default function TrailDetailPage() {
                 theme="dark"
               />
             </section>
+
+            {/* Nearby POIs */}
+            <NearbyPOISection trailId={trailId} language={language} />
 
             {/* Author — may be null for publicly-sourced trails (e.g. visitkorea) */}
             <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">

@@ -723,7 +723,6 @@ export default function TrailDetailPage() {
                   distance={tr.distance_km}
                   duration={String(tr.estimated_minutes)}
                   theme="dark"
-                  onMarkerClick={handleMapMarkerClick}
                 />
               </section>
 

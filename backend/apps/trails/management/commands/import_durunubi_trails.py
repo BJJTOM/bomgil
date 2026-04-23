@@ -280,6 +280,7 @@ class Command(BaseCommand):
         updated = 0
         skipped = 0
         errors = 0
+        no_gps = 0
 
         for idx, course in enumerate(all_courses):
             try:
@@ -288,6 +289,12 @@ class Command(BaseCommand):
                     created += 1
                 elif result == "updated":
                     updated += 1
+                elif result == "created_no_gps":
+                    created += 1
+                    no_gps += 1
+                elif result == "updated_no_gps":
+                    updated += 1
+                    no_gps += 1
                 else:
                     skipped += 1
             except Exception as exc:
@@ -305,7 +312,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f"  Progress: {idx + 1}/{len(all_courses)} "
                     f"(created={created}, updated={updated}, "
-                    f"skipped={skipped}, errors={errors})"
+                    f"skipped={skipped}, errors={errors}, no_gps={no_gps})"
                 )
 
         # ----------------------------------------------------------
@@ -319,6 +326,12 @@ class Command(BaseCommand):
                 f"updated={updated}, skipped={skipped}, errors={errors}"
             )
         )
+        if no_gps:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  {no_gps} trails saved WITHOUT GPS path data"
+                )
+            )
 
     def _process_course(self, course, idx, total, dry_run):
         """Fetch route GPS points and create/update the Trail.
@@ -388,29 +401,41 @@ class Command(BaseCommand):
                     self.style.ERROR(f"  GPX FAILED for {crs_idx}: {type(exc).__name__}: {exc}")
                 )
 
-        if not coordinates:
-            raise ValueError(
-                f"No GPS route points found for crsIdx={crs_idx}"
+        # Build path_data GeoJSON (empty if no coordinates parsed)
+        if coordinates:
+            path_data = {
+                "type": "LineString",
+                "coordinates": coordinates,
+            }
+            start_lng, start_lat = coordinates[0][0], coordinates[0][1]
+            end_lng, end_lat = coordinates[-1][0], coordinates[-1][1]
+
+            # Calculate elevation gain from GPS elevation data
+            elevation_gain = 0
+            for i in range(1, len(coordinates)):
+                if len(coordinates[i]) >= 3 and len(coordinates[i - 1]) >= 3:
+                    diff = coordinates[i][2] - coordinates[i - 1][2]
+                    if diff > 0:
+                        elevation_gain += diff
+            elevation_gain = round(elevation_gain) if elevation_gain > 0 else None
+        else:
+            self.stderr.write(
+                self.style.WARNING(
+                    f"  No GPS data for {crs_idx} ({title}) — "
+                    f"saving trail without path_data"
+                )
             )
-
-        # Build path_data GeoJSON
-        path_data = {
-            "type": "LineString",
-            "coordinates": coordinates,
-        }
-
-        # Start and end points from GPS route
-        start_lng, start_lat = coordinates[0][0], coordinates[0][1]
-        end_lng, end_lat = coordinates[-1][0], coordinates[-1][1]
-
-        # Calculate elevation gain from GPS elevation data
-        elevation_gain = 0
-        for i in range(1, len(coordinates)):
-            if len(coordinates[i]) >= 3 and len(coordinates[i - 1]) >= 3:
-                diff = coordinates[i][2] - coordinates[i - 1][2]
-                if diff > 0:
-                    elevation_gain += diff
-        elevation_gain = round(elevation_gain) if elevation_gain > 0 else None
+            path_data = {}
+            # Use courseList lat/lng as fallback start/end
+            start_lat = float(course.get("crsKorPosY", 0) or 0)
+            start_lng = float(course.get("crsKorPosX", 0) or 0)
+            if start_lat == 0 or start_lng == 0:
+                raise ValueError(
+                    f"No GPS data AND no fallback coordinates for crsIdx={crs_idx}"
+                )
+            end_lat = start_lat
+            end_lng = start_lng
+            elevation_gain = None
 
         # ----------------------------------------------------------
         # Parse course metadata
@@ -488,4 +513,19 @@ class Command(BaseCommand):
             defaults=defaults,
         )
 
-        return "created" if was_created else "updated"
+        # Diagnostic logging: verify path_data was persisted
+        coord_count = len(coordinates)
+        saved_path = trail.path_data or {}
+        saved_coords = len(saved_path.get("coordinates", []))
+        action = "CREATED" if was_created else "UPDATED"
+        gps_status = "" if coord_count > 0 else " [NO GPS]"
+        self.stdout.write(
+            f"  [{idx + 1}/{total}] {action} trail id={trail.id} "
+            f"\"{title}\" | {coord_count} GPS pts sent, "
+            f"{saved_coords} in DB | "
+            f"start=({trail.start_lat},{trail.start_lng}){gps_status}"
+        )
+
+        if was_created:
+            return "created" if coord_count > 0 else "created_no_gps"
+        return "updated" if coord_count > 0 else "updated_no_gps"

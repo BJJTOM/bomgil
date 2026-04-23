@@ -78,7 +78,11 @@
     "typeNature": "自然",
     "typeMixed": "综合",
     "viewList": "列表",
-    "viewMap": "地图"
+    "viewMap": "地图",
+    "tabAll": "全部路线",
+    "tabUser": "用户路线",
+    "tabOfficial": "官方路线",
+    "tabRankings": "排名"
   },
   "filter": {
     "region": "\u5730\u533A",

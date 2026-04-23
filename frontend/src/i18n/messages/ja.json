@@ -78,7 +78,11 @@
     "typeNature": "自然",
     "typeMixed": "複合",
     "viewList": "リスト",
-    "viewMap": "地図"
+    "viewMap": "地図",
+    "tabAll": "全コース",
+    "tabUser": "ユーザーコース",
+    "tabOfficial": "公式コース",
+    "tabRankings": "ランキング"
   },
   "filter": {
     "region": "地域",

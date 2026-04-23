@@ -220,11 +220,14 @@ export default function ExplorePage() {
           {/* Static HTML shell for SSR/crawlers */}
           <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
             <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
-              <div className="flex gap-6 mb-2">
-                <span className="relative pb-2 text-[15px] font-bold text-gray-900">
-                  코스 탐색
+              <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
+                <span className="relative pb-2 text-[15px] font-bold text-gray-900 whitespace-nowrap">
+                  전체 코스
                   <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
                 </span>
+                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">유저 코스</span>
+                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">공식 코스</span>
+                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">랭킹</span>
               </div>
             </div>
             <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
@@ -727,8 +730,11 @@ function ExploreContent() {
       if (v) params[k] = v;
     });
     if (search.trim()) params["search"] = search.trim();
+    // Tab-based is_official filter
+    if (activeTab === "user") params["is_official"] = "false";
+    else if (activeTab === "official") params["is_official"] = "true";
     return params;
-  }, [filters, sortBy, search, currentPage]);
+  }, [filters, sortBy, search, currentPage, activeTab]);
 
   // Use standard query with keepPreviousData for smooth page transitions
   const queryClient = useQueryClient();
@@ -803,8 +809,15 @@ function ExploreContent() {
     setCurrentPage(1);
   };
 
-  const [activeTab, setActiveTab] = useState<"courses" | "rankings">("courses");
+  const [activeTab, setActiveTab] = useState<"all" | "user" | "official" | "rankings">("all");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+
+  const handleTabChange = (tab: "all" | "user" | "official" | "rankings") => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  const isTrailsTab = activeTab === "all" || activeTab === "user" || activeTab === "official";
 
   // Total count label
   const totalCountLabel = useMemo(() => {
@@ -819,19 +832,30 @@ function ExploreContent() {
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
         <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
           {/* Tabs */}
-          <div className="flex gap-6 mb-2">
-            <button onClick={() => setActiveTab("courses")} className={`relative pb-2 text-[15px] font-medium ${activeTab === "courses" ? "text-gray-900 font-bold" : "text-gray-400"}`}>
-              {t("explore.title")}
-              {activeTab === "courses" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />}
-            </button>
-            <button onClick={() => setActiveTab("rankings")} className={`relative pb-2 text-[15px] font-medium ${activeTab === "rankings" ? "text-gray-900 font-bold" : "text-gray-400"}`}>
-              {t("rankings.title")}
-              {activeTab === "rankings" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />}
-            </button>
+          <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
+            {([
+              { key: "all" as const, label: t("explore.tabAll") },
+              { key: "user" as const, label: t("explore.tabUser") },
+              { key: "official" as const, label: t("explore.tabOfficial") },
+              { key: "rankings" as const, label: t("explore.tabRankings") },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key)}
+                className={`relative pb-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.key ? "text-gray-900 font-bold" : "text-gray-400"
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.key && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
-        {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
+        {isTrailsTab && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
           {/* Region quick-links */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {[
@@ -978,7 +1002,7 @@ function ExploreContent() {
         </div>
       )}
 
-      {activeTab === "courses" && <div className="max-w-5xl mx-auto px-5 py-5">
+      {isTrailsTab && <div className="max-w-5xl mx-auto px-5 py-5">
         {/* AI search results */}
         {aiMode ? (
           <>
@@ -1116,7 +1140,14 @@ function ExploreContent() {
                 />
               </>
             ) : (
-              <ExploreMap trails={trails} />
+              <>
+                <ExploreMap trails={trails} />
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
             )}
           </>
         )}

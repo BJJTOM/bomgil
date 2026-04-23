@@ -78,7 +78,11 @@
     "typeNature": "자연",
     "typeMixed": "복합",
     "viewList": "목록",
-    "viewMap": "지도"
+    "viewMap": "지도",
+    "tabAll": "전체 코스",
+    "tabUser": "유저 코스",
+    "tabOfficial": "공식 코스",
+    "tabRankings": "랭킹"
   },
   "filter": {
     "region": "지역",

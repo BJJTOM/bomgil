@@ -27,15 +27,15 @@ class Command(BaseCommand):
         call_command("seed_legal_documents")
 
         if not options["skip_trails"]:
-            self.stdout.write(self.style.NOTICE("▶ import_public_trails"))
+            self.stdout.write(self.style.NOTICE("▶ import_durunubi_trails"))
             try:
-                call_command("import_public_trails")
+                call_command("import_durunubi_trails")
             except Exception as exc:
                 self.stderr.write(self.style.WARNING(f"  skipped: {exc}"))
 
-            self.stdout.write(self.style.NOTICE("▶ cleanup_public_trails"))
+            self.stdout.write(self.style.NOTICE("▶ enrich_trail_images"))
             try:
-                call_command("cleanup_public_trails")
+                call_command("enrich_trail_images")
             except Exception as exc:
                 self.stderr.write(self.style.WARNING(f"  skipped: {exc}"))
 

@@ -111,9 +111,12 @@ admin.AdminSite.get_app_list = _patched_get_app_list
 
 # ── 대시보드 통계 주입 ──────────────────────────────────────
 _original_index = admin.AdminSite.index
+_DASHBOARD_CACHE_KEY = "moru_admin_dashboard_v2"
+_DASHBOARD_CACHE_TTL = 15  # seconds — 자동 새로고침 주기(30s)의 절반
 
 
-def _patched_index(self, request, extra_context=None):
+def _compute_dashboard_context():
+    """모든 대시보드 집계를 한 번에 계산. 결과는 Redis에 캐시 (15s)."""
     from datetime import timedelta
     from django.db.models import Count, Q
     from django.db.models.functions import TruncDate, TruncHour
@@ -193,7 +196,9 @@ def _patched_index(self, request, extra_context=None):
     # 7일 가입자 추이 + 24시간 시간당 로그인 추이 (차트용)
     signups_7d = []
     logins_24h_hourly = []
+    signups_24h_hourly = []
     posts_7d = []
+    extra_context_comments_7d = []
     try:
         today_date = now.date()
         days = [today_date - timedelta(days=i) for i in range(6, -1, -1)]
@@ -213,7 +218,7 @@ def _patched_index(self, request, extra_context=None):
         ]
 
         try:
-            from apps.community.models import Post
+            from apps.community.models import Post, PostComment
             post_rows = (
                 Post.objects
                 .filter(created_at__date__gte=days[0])
@@ -228,8 +233,22 @@ def _patched_index(self, request, extra_context=None):
                  "is_today": d == today_date}
                 for d in days
             ]
+            comment_rows = (
+                PostComment.objects
+                .filter(created_at__date__gte=days[0])
+                .annotate(d=TruncDate("created_at"))
+                .values("d").annotate(c=Count("id"))
+            )
+            comment_map = {r["d"]: r["c"] for r in comment_rows}
+            extra_context_comments_7d = [
+                {"label": d.strftime("%m/%d"),
+                 "short": d.strftime("%d"),
+                 "value": comment_map.get(d, 0),
+                 "is_today": d == today_date}
+                for d in days
+            ]
         except Exception:
-            pass
+            extra_context_comments_7d = []
 
         hour_start = now.replace(minute=0, second=0, microsecond=0)
         hours = [hour_start - timedelta(hours=i) for i in range(23, -1, -1)]
@@ -246,6 +265,66 @@ def _patched_index(self, request, extra_context=None):
              "is_now": h.hour == now.hour}
             for h in hours
         ]
+        signup_h_rows = (
+            CustomUser.objects
+            .filter(date_joined__gte=hours[0])
+            .annotate(h=TruncHour("date_joined"))
+            .values("h").annotate(c=Count("id"))
+        )
+        signup_h_map = {r["h"]: r["c"] for r in signup_h_rows}
+        signups_24h_hourly = [
+            {"label": h.strftime("%H"),
+             "value": signup_h_map.get(h, 0),
+             "is_now": h.hour == now.hour}
+            for h in hours
+        ]
+    except Exception:
+        signups_24h_hourly = []
+        extra_context_comments_7d = []
+
+    # ── 최근 7일 신고 사유별 집계 ────────────────────────────
+    reports_by_reason = []
+    try:
+        from apps.community.models import Report
+        last_7d = now - timedelta(days=7)
+        reason_map = dict(Report.REASON_CHOICES)
+        rows = (
+            Report.objects.filter(created_at__gte=last_7d)
+            .values("reason").annotate(c=Count("id")).order_by("-c")
+        )
+        reports_by_reason = [
+            {"key": r["reason"], "label": reason_map.get(r["reason"], r["reason"]), "value": r["c"]}
+            for r in rows
+        ]
+    except Exception:
+        pass
+
+    # ── 최근 7일 활발 유저 Top 5 (로그인 횟수 기준) ─────────
+    top_active_users = []
+    try:
+        last_7d = now - timedelta(days=7)
+        rows = (
+            LoginHistory.objects.filter(created_at__gte=last_7d)
+            .values("user_id")
+            .annotate(c=Count("id"))
+            .order_by("-c")[:5]
+        )
+        user_ids = [r["user_id"] for r in rows]
+        user_lookup = {
+            u.pk: u for u in CustomUser.objects.filter(pk__in=user_ids).only(
+                "id", "nickname", "username", "level",
+            )
+        }
+        for r in rows:
+            u = user_lookup.get(r["user_id"])
+            if not u:
+                continue
+            top_active_users.append({
+                "id": u.pk,
+                "nickname": u.nickname or u.username,
+                "level": u.level,
+                "logins": r["c"],
+            })
     except Exception:
         pass
 
@@ -255,15 +334,63 @@ def _patched_index(self, request, extra_context=None):
         except Exception:
             return floor
 
+    # ── 최근 가입 유저 10명 (메인 영역 하단 테이블용) ─────
+    recent_signups = []
+    try:
+        for u in CustomUser.objects.order_by("-date_joined").only(
+            "id", "nickname", "username", "email", "level",
+            "phone_verified", "is_deleted", "date_joined",
+            "last_login_ip", "preferred_language",
+        )[:10]:
+            recent_signups.append({
+                "id": u.pk,
+                "nickname": u.nickname or u.username,
+                "email": u.email,
+                "level": u.level,
+                "phone_verified": u.phone_verified,
+                "is_deleted": u.is_deleted,
+                "date_joined": u.date_joined,
+                "last_login_ip": u.last_login_ip,
+                "preferred_language": u.preferred_language,
+            })
+    except Exception:
+        pass
+
+    result = {
+        "moru_stats": stats,
+        "moru_recent_logins": recent_logins,
+        "moru_signups_7d": signups_7d,
+        "moru_signups_7d_max": _chart_max(signups_7d),
+        "moru_posts_7d": posts_7d,
+        "moru_posts_7d_max": _chart_max(posts_7d),
+        "moru_comments_7d": extra_context_comments_7d,
+        "moru_comments_7d_max": _chart_max(extra_context_comments_7d),
+        "moru_logins_24h": logins_24h_hourly,
+        "moru_logins_24h_max": _chart_max(logins_24h_hourly),
+        "moru_signups_24h": signups_24h_hourly,
+        "moru_signups_24h_max": _chart_max(signups_24h_hourly),
+        "moru_reports_by_reason": reports_by_reason,
+        "moru_reports_by_reason_max": max(
+            [r["value"] for r in reports_by_reason] + [1]
+        ),
+        "moru_top_active_users": top_active_users,
+        "moru_recent_signups": recent_signups,
+    }
+    return result
+
+
+def _patched_index(self, request, extra_context=None):
+    """admin index에 캐시된 대시보드 컨텍스트 주입."""
+    from django.core.cache import cache
+    data = cache.get(_DASHBOARD_CACHE_KEY)
+    if data is None:
+        try:
+            data = _compute_dashboard_context()
+            cache.set(_DASHBOARD_CACHE_KEY, data, timeout=_DASHBOARD_CACHE_TTL)
+        except Exception:
+            data = {}
     extra_context = dict(extra_context or {})
-    extra_context["moru_stats"] = stats
-    extra_context["moru_recent_logins"] = recent_logins
-    extra_context["moru_signups_7d"] = signups_7d
-    extra_context["moru_signups_7d_max"] = _chart_max(signups_7d)
-    extra_context["moru_posts_7d"] = posts_7d
-    extra_context["moru_posts_7d_max"] = _chart_max(posts_7d)
-    extra_context["moru_logins_24h"] = logins_24h_hourly
-    extra_context["moru_logins_24h_max"] = _chart_max(logins_24h_hourly)
+    extra_context.update(data or {})
     return _original_index(self, request, extra_context=extra_context)
 
 

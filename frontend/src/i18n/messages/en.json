@@ -78,7 +78,11 @@
     "typeNature": "Nature",
     "typeMixed": "Mixed",
     "viewList": "List",
-    "viewMap": "Map"
+    "viewMap": "Map",
+    "tabAll": "All Trails",
+    "tabUser": "User Trails",
+    "tabOfficial": "Official Trails",
+    "tabRankings": "Rankings"
   },
   "filter": {
     "region": "Region",

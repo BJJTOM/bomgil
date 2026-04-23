@@ -109,6 +109,7 @@ class TrailListSerializer(serializers.ModelSerializer):
             "cover_image", "thumbnail_url", "tags", "best_season", "status",
             "view_count", "like_count", "is_liked", "is_bookmarked", "is_completed",
             "created_at", "is_official", "source", "trail_type",
+            "start_lat", "start_lng",
         ]
 
     def get_cover_image(self, obj):

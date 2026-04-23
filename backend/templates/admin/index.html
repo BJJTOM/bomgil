@@ -4,9 +4,37 @@
 {% block content %}
 <div class="moru-index-layout">
   <div class="moru-index-main">
-    <div id="content-main">
+    <div id="content-main" class="moru-app-list-grid">
       {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
     </div>
+
+    {% if moru_recent_signups %}
+    <section class="moru-main-block">
+      <h2 class="moru-main-title">🧑 최근 가입 유저 10명</h2>
+      <table class="moru-main-table">
+        <thead>
+          <tr>
+            <th>닉네임</th><th>이메일</th><th>Lv</th><th>📱</th>
+            <th>국가</th><th>IP</th><th>가입</th><th>상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in moru_recent_signups %}
+          <tr>
+            <td><a href="{% url 'admin:accounts_customuser_change' u.id %}" class="moru-main-link">{{ u.nickname }}</a></td>
+            <td class="moru-mono">{{ u.email }}</td>
+            <td><span class="moru-lv">Lv.{{ u.level }}</span></td>
+            <td>{% if u.phone_verified %}<span class="moru-ok">✓</span>{% else %}<span class="moru-muted">—</span>{% endif %}</td>
+            <td class="moru-mono">{{ u.preferred_language|upper|default:"—" }}</td>
+            <td class="moru-mono">{{ u.last_login_ip|default:"—" }}</td>
+            <td class="moru-mono">{{ u.date_joined|date:"m/d H:i" }}</td>
+            <td>{% if u.is_deleted %}<span class="moru-tag moru-tag--danger">탈퇴</span>{% else %}<span class="moru-tag moru-tag--ok">활성</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
   </div>
 
   <aside class="moru-index-side">
@@ -24,18 +52,32 @@
             <span class="moru-hero-chip">24h 가입 <b>{{ moru_stats.signups_24h }}</b></span>
           </div>
         </div>
-        <div class="moru-hero-chart">
-          <div class="moru-chart-title">로그인 — 24시간 추이 (시간당)</div>
-          <div class="moru-barchart moru-barchart--tall">
-            {% for h in moru_logins_24h %}
-            <div class="moru-bar-col {% if h.is_now %}is-now{% endif %}" title="{{ h.label }}시 · {{ h.value }}건">
-              <div class="moru-bar" style="height: {% widthratio h.value moru_logins_24h_max 100 %}%;"
-                   data-v="{{ h.value }}"></div>
-              {% if forloop.counter0|divisibleby:6 %}
-              <div class="moru-bar-tick">{{ h.label }}</div>
-              {% endif %}
+        <div class="moru-hero-charts">
+          <div class="moru-hero-chart">
+            <div class="moru-chart-title">로그인 — 24시간 추이</div>
+            <div class="moru-barchart moru-barchart--tall">
+              {% for h in moru_logins_24h %}
+              <div class="moru-bar-col {% if h.is_now %}is-now{% endif %}" title="{{ h.label }}시 · {{ h.value }}건">
+                <div class="moru-bar" style="height: {% widthratio h.value moru_logins_24h_max 100 %}%;"></div>
+                {% if forloop.counter0|divisibleby:6 %}
+                <div class="moru-bar-tick">{{ h.label }}</div>
+                {% endif %}
+              </div>
+              {% endfor %}
             </div>
-            {% endfor %}
+          </div>
+          <div class="moru-hero-chart">
+            <div class="moru-chart-title">가입 — 24시간 추이</div>
+            <div class="moru-barchart moru-barchart--tall">
+              {% for h in moru_signups_24h %}
+              <div class="moru-bar-col {% if h.is_now %}is-now{% endif %}" title="{{ h.label }}시 · {{ h.value }}명">
+                <div class="moru-bar moru-bar--mint" style="height: {% widthratio h.value moru_signups_24h_max 100 %}%;"></div>
+                {% if forloop.counter0|divisibleby:6 %}
+                <div class="moru-bar-tick">{{ h.label }}</div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
       </div>
@@ -78,7 +120,7 @@
       </div>
     </section>
 
-    {# ── 가입자 / 게시글 7일 추이 ───────────────────────────── #}
+    {# ── 가입자 / 게시글 / 댓글 7일 추이 (3열) ───────────────── #}
     <section class="moru-side-block">
       <div class="moru-trend-grid">
         <div class="moru-trend-card">
@@ -91,7 +133,7 @@
             <div class="moru-barchart">
               {% for d in moru_signups_7d %}
               <div class="moru-bar-col {% if d.is_today %}is-now{% endif %}" title="{{ d.label }} · {{ d.value }}명">
-                <div class="moru-bar moru-bar--green" style="height: {% widthratio d.value moru_signups_7d_max 100 %}%;" data-v="{{ d.value }}"></div>
+                <div class="moru-bar moru-bar--green" style="height: {% widthratio d.value moru_signups_7d_max 100 %}%;"></div>
                 <div class="moru-bar-tick">{{ d.short }}</div>
               </div>
               {% endfor %}
@@ -109,12 +151,72 @@
             <div class="moru-barchart">
               {% for d in moru_posts_7d %}
               <div class="moru-bar-col {% if d.is_today %}is-now{% endif %}" title="{{ d.label }} · {{ d.value }}건">
-                <div class="moru-bar moru-bar--blue" style="height: {% widthratio d.value moru_posts_7d_max 100 %}%;" data-v="{{ d.value }}"></div>
+                <div class="moru-bar moru-bar--blue" style="height: {% widthratio d.value moru_posts_7d_max 100 %}%;"></div>
                 <div class="moru-bar-tick">{{ d.short }}</div>
               </div>
               {% endfor %}
             </div>
           </div>
+        </div>
+
+        <div class="moru-trend-card">
+          <div class="moru-chart-title">댓글 — 7일 추이</div>
+          <div class="moru-trend-main">
+            <div class="moru-trend-value">
+              {% with todays_value=moru_comments_7d|last %}{{ todays_value.value|default:0 }}{% endwith %}
+              <span class="moru-trend-small">오늘</span>
+            </div>
+            <div class="moru-barchart">
+              {% for d in moru_comments_7d %}
+              <div class="moru-bar-col {% if d.is_today %}is-now{% endif %}" title="{{ d.label }} · {{ d.value }}건">
+                <div class="moru-bar moru-bar--purple" style="height: {% widthratio d.value moru_comments_7d_max 100 %}%;"></div>
+                <div class="moru-bar-tick">{{ d.short }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ── 신고 사유 분포 + Top 활발 유저 (2열) ─────────────── #}
+    <section class="moru-side-block">
+      <div class="moru-split2">
+        <div class="moru-panel">
+          <div class="moru-panel-title">🚩 최근 7일 신고 사유</div>
+          {% if moru_reports_by_reason %}
+          <ul class="moru-distro">
+            {% for r in moru_reports_by_reason %}
+            <li>
+              <div class="moru-distro-row">
+                <span class="moru-distro-label">{{ r.label }}</span>
+                <span class="moru-distro-count">{{ r.value }}건</span>
+              </div>
+              <div class="moru-distro-bar"><div class="moru-distro-fill" style="width: {% widthratio r.value moru_reports_by_reason_max 100 %}%;"></div></div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="moru-empty">최근 7일 신고 없음</p>
+          {% endif %}
+        </div>
+
+        <div class="moru-panel">
+          <div class="moru-panel-title">🌟 활발한 유저 Top 5 <span class="moru-panel-sub">최근 7일 로그인 기준</span></div>
+          {% if moru_top_active_users %}
+          <ol class="moru-toplist">
+            {% for u in moru_top_active_users %}
+            <li>
+              <span class="moru-rank">{{ forloop.counter }}</span>
+              <a class="moru-top-name" href="{% url 'admin:accounts_customuser_change' u.id %}">{{ u.nickname }}</a>
+              <span class="moru-top-lv">Lv.{{ u.level }}</span>
+              <span class="moru-top-count">{{ u.logins }}회</span>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="moru-empty">아직 로그인 데이터가 없습니다.</p>
+          {% endif %}
         </div>
       </div>
     </section>
@@ -208,24 +310,79 @@
   body.dashboard #main { max-width: none !important; width: auto !important; }
   body.dashboard #content { padding: 24px 28px !important; }
 
-  /* 좌(앱 목록) / 우(대시보드) 1 : 2 */
+  /* 좌(앱 목록 + 최근 유저) / 우(대시보드) */
   .moru-index-layout {
     display: grid;
-    grid-template-columns: minmax(320px, 0.8fr) minmax(0, 2fr);
+    grid-template-columns: minmax(520px, 1.2fr) minmax(0, 1.5fr);
     gap: 28px;
     align-items: start;
     width: 100%;
   }
-  .moru-index-main { min-width: 0; }
+  .moru-index-main { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
   .moru-index-main #content-main,
   .moru-index-main .app-list,
-  .moru-index-main .dashboard,
-  .moru-index-main .module {
+  .moru-index-main .dashboard {
     max-width: 100% !important; width: 100% !important; box-sizing: border-box;
   }
-  .moru-index-main table { width: 100%; }
+  /* Django 앱 리스트를 2열 카드 그리드로 */
+  .moru-app-list-grid .app-list,
+  .moru-app-list-grid { display: block; }
+  .moru-index-main .app-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .moru-index-main .module {
+    background: #fff !important;
+    border: 1px solid #E5E8EB !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+  }
+  .moru-index-main .module table { width: 100%; }
+  .moru-index-main .module caption { padding: 10px 14px; font-size: 13px; }
 
-  .moru-index-side { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+  /* 최근 가입 유저 테이블 (메인 하단) */
+  .moru-main-block { }
+  .moru-main-title {
+    margin: 0 0 10px 2px; color: #2D4A2E; font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .moru-main-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: #fff; border: 1px solid #E5E8EB; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.04); font-size: 12px;
+  }
+  .moru-main-table thead th {
+    background: #F7F8FA !important; color: #6b7280 !important; font-weight: 600;
+    padding: 10px 12px; border-bottom: 1px solid #E5E8EB; text-align: left;
+  }
+  .moru-main-table tbody td {
+    padding: 9px 12px; border-bottom: 1px solid #F2F4F6; color: #191F28;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .moru-main-table tbody tr:last-child td { border-bottom: none; }
+  .moru-main-link { color: #2D4A2E; font-weight: 600; text-decoration: none; }
+  .moru-main-link:hover { color: #52a858; }
+  .moru-lv {
+    color: #2D4A2E; background: #E8F0E9; border-radius: 999px;
+    padding: 2px 8px; font-size: 10px; font-weight: 700;
+  }
+  .moru-ok { color: #22C55E; font-weight: 700; }
+  .moru-muted { color: #9CA3AF; }
+  .moru-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .moru-tag--ok { background: #DCFCE7; color: #166534; }
+  .moru-tag--danger { background: #FEE2E2; color: #991B1B; }
+
+  /* ── 우측 대시보드: sticky + 내부 스크롤 ─────────────────────── */
+  .moru-index-side {
+    min-width: 0; display: flex; flex-direction: column; gap: 18px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+  }
+  .moru-index-side::-webkit-scrollbar { width: 8px; }
+  .moru-index-side::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+  .moru-index-side::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
   .moru-side-block { min-width: 0; }
   .moru-side-title {
     margin: 0 0 12px 2px;
@@ -240,7 +397,7 @@
     background: linear-gradient(135deg, #2D4A2E 0%, #1b2f1c 100%);
     color: #fff;
     border-radius: 16px;
-    padding: 20px 22px;
+    padding: 16px 18px;
     box-shadow: 0 6px 24px -10px rgba(45,74,46,0.45);
   }
   .moru-hero-row {
@@ -257,7 +414,7 @@
   }
   .moru-hero-label { color: rgba(255,255,255,0.75); font-size: 13px; font-weight: 500; }
   .moru-hero-value {
-    color: #fff; font-size: 56px; font-weight: 800; line-height: 1; margin: 2px 0 10px 0;
+    color: #fff; font-size: 44px; font-weight: 800; line-height: 1; margin: 2px 0 8px 0;
     font-variant-numeric: tabular-nums;
   }
   .moru-hero-subrow { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -269,9 +426,16 @@
   }
   .moru-hero-chip b { color: #fff; font-weight: 700; margin-left: 2px; }
 
+  .moru-hero-charts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    min-width: 0;
+  }
   .moru-hero-chart { min-width: 0; }
   .moru-hero-chart .moru-chart-title { color: rgba(255,255,255,0.8); }
   .moru-hero-chart .moru-bar { background: linear-gradient(180deg, #A8E6CF, #52a858); }
+  .moru-hero-chart .moru-bar--mint { background: linear-gradient(180deg, #d4f5e4, #6dd4a8); }
   .moru-hero-chart .moru-bar-col.is-now .moru-bar { background: #fff; }
   .moru-hero-chart .moru-bar-tick { color: rgba(255,255,255,0.55); }
 
@@ -310,6 +474,8 @@
   .moru-bar:hover { opacity: 0.85; }
   .moru-bar--green { background: linear-gradient(180deg, #82c587, #2D4A2E); }
   .moru-bar--blue  { background: linear-gradient(180deg, #60A5FA, #2563EB); }
+  .moru-bar--purple{ background: linear-gradient(180deg, #C4B5FD, #7C3AED); }
+  .moru-bar--mint  { background: linear-gradient(180deg, #A8E6CF, #52a858); }
   .moru-bar-col.is-now .moru-bar { outline: 2px solid #A8E6CF; outline-offset: -1px; }
   .moru-bar-tick {
     color: #9CA3AF; font-size: 9px; margin-top: 3px;
@@ -323,18 +489,18 @@
     gap: 12px;
   }
   .moru-stat-card {
-    background: #fff; border: 1px solid #E5E8EB; border-radius: 14px;
-    padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
-    min-width: 0; min-height: 92px;
+    background: #fff; border: 1px solid #E5E8EB; border-radius: 12px;
+    padding: 11px 13px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+    min-width: 0; min-height: 80px;
   }
-  .moru-stat-label { color: #6b7280; font-size: 12px; font-weight: 500; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .moru-stat-value { color: #2D4A2E; font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .moru-stat-sub { color: #9CA3AF; font-size: 11px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .moru-stat-label { color: #6b7280; font-size: 11px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .moru-stat-value { color: #2D4A2E; font-size: 22px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .moru-stat-sub { color: #9CA3AF; font-size: 10px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ── 7일 추이 카드 ───────────────────────────────────── */
+  /* ── 7일 추이 카드 (3열) ────────────────────────────── */
   .moru-trend-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
   }
   .moru-trend-card {
@@ -366,6 +532,51 @@
   .moru-quick-text { display: flex; flex-direction: column; min-width: 0; }
   .moru-quick-text strong { color: #2D4A2E; font-size: 12px; line-height: 1.2; }
   .moru-quick-text span { color: #6b7280; font-size: 11px; margin-top: 2px; }
+
+  /* ── 신고 사유 분포 / Top 유저 (2열 패널) ─────────────── */
+  .moru-split2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .moru-panel {
+    background: #fff; border: 1px solid #E5E8EB; border-radius: 14px;
+    padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+  }
+  .moru-panel-title {
+    color: #2D4A2E; font-size: 13px; font-weight: 700; margin-bottom: 10px;
+  }
+  .moru-panel-sub {
+    color: #9CA3AF; font-weight: 500; font-size: 11px; margin-left: 6px;
+  }
+  .moru-distro { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .moru-distro-row { display: flex; justify-content: space-between; font-size: 12px; color: #191F28; }
+  .moru-distro-label { font-weight: 500; }
+  .moru-distro-count { color: #6b7280; font-variant-numeric: tabular-nums; }
+  .moru-distro-bar { height: 6px; background: #F2F4F6; border-radius: 999px; margin-top: 4px; overflow: hidden; }
+  .moru-distro-fill { height: 100%; background: linear-gradient(90deg, #FCA5A5, #EF4444); border-radius: 999px; }
+
+  .moru-toplist { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .moru-toplist li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; background: #F7F8FA; border-radius: 10px;
+    font-size: 12px;
+  }
+  .moru-rank {
+    width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+    background: #2D4A2E; color: #fff; border-radius: 999px;
+    font-weight: 700; font-size: 11px;
+  }
+  .moru-toplist li:nth-child(1) .moru-rank { background: #F59E0B; }
+  .moru-toplist li:nth-child(2) .moru-rank { background: #94A3B8; }
+  .moru-toplist li:nth-child(3) .moru-rank { background: #B45309; }
+  .moru-top-name { color: #191F28; font-weight: 600; text-decoration: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .moru-top-name:hover { color: #2D4A2E; }
+  .moru-top-lv {
+    color: #2D4A2E; background: #E8F0E9; border-radius: 999px;
+    padding: 2px 8px; font-size: 10px; font-weight: 700;
+  }
+  .moru-top-count { color: #6b7280; font-variant-numeric: tabular-nums; font-size: 11px; }
 
   /* ── Recent Logins / Actions ─────────────────────────── */
   .moru-recent-table {
@@ -399,14 +610,20 @@
   .moru-empty { color: #9CA3AF; font-size: 12px; padding: 10px 12px; background: #F7F8FA; border: 1px dashed #E5E8EB; border-radius: 10px; }
 
   /* 반응형 */
+  @media (max-width: 1400px) {
+    .moru-trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   @media (max-width: 1280px) {
     .moru-hero-row { grid-template-columns: 1fr; }
-    .moru-trend-grid { grid-template-columns: 1fr; }
+    .moru-hero-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .moru-split2 { grid-template-columns: 1fr; }
   }
   @media (max-width: 1100px) {
     .moru-index-layout { grid-template-columns: 1fr; }
     .moru-stat-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
     .moru-quick-links { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .moru-trend-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .moru-hero-charts { grid-template-columns: 1fr; }
   }
 </style>
 

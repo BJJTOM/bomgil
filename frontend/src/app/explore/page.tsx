@@ -708,6 +708,9 @@ function ExploreContent() {
     { value: "-distance_km", label: t("explore.sortDistanceLong") },
   ];
 
+  const [activeTab, setActiveTab] = useState<"all" | "user" | "official" | "rankings">("all");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+
   const [filters, setFilters] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     FILTER_CONFIG.forEach((f) => {
@@ -808,9 +811,6 @@ function ExploreContent() {
     setSortBy(value);
     setCurrentPage(1);
   };
-
-  const [activeTab, setActiveTab] = useState<"all" | "user" | "official" | "rankings">("all");
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const handleTabChange = (tab: "all" | "user" | "official" | "rankings") => {
     setActiveTab(tab);

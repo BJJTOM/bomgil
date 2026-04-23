@@ -7,34 +7,6 @@
     <div id="content-main" class="moru-app-list-grid">
       {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
     </div>
-
-    {% if moru_recent_signups %}
-    <section class="moru-main-block">
-      <h2 class="moru-main-title">🧑 최근 가입 유저 10명</h2>
-      <table class="moru-main-table">
-        <thead>
-          <tr>
-            <th>닉네임</th><th>이메일</th><th>Lv</th><th>📱</th>
-            <th>국가</th><th>IP</th><th>가입</th><th>상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in moru_recent_signups %}
-          <tr>
-            <td><a href="{% url 'admin:accounts_customuser_change' u.id %}" class="moru-main-link">{{ u.nickname }}</a></td>
-            <td class="moru-mono">{{ u.email }}</td>
-            <td><span class="moru-lv">Lv.{{ u.level }}</span></td>
-            <td>{% if u.phone_verified %}<span class="moru-ok">✓</span>{% else %}<span class="moru-muted">—</span>{% endif %}</td>
-            <td class="moru-mono">{{ u.preferred_language|upper|default:"—" }}</td>
-            <td class="moru-mono">{{ u.last_login_ip|default:"—" }}</td>
-            <td class="moru-mono">{{ u.date_joined|date:"m/d H:i" }}</td>
-            <td>{% if u.is_deleted %}<span class="moru-tag moru-tag--danger">탈퇴</span>{% else %}<span class="moru-tag moru-tag--ok">활성</span>{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-    {% endif %}
   </div>
 
   <aside class="moru-index-side">
@@ -308,13 +280,13 @@
   body.dashboard #container,
   body.dashboard #content,
   body.dashboard #main { max-width: none !important; width: auto !important; }
-  body.dashboard #content { padding: 24px 28px !important; }
+  body.dashboard #content { padding: 20px 20px !important; }
 
-  /* 좌(앱 목록 + 최근 유저) / 우(대시보드) */
+  /* 대시보드(우측)는 고정 폭, 좌측이 남는 공간 전부 흡수 */
   .moru-index-layout {
     display: grid;
-    grid-template-columns: minmax(520px, 1.2fr) minmax(0, 1.5fr);
-    gap: 28px;
+    grid-template-columns: minmax(300px, 1fr) minmax(900px, 1100px);
+    gap: 20px;
     align-items: start;
     width: 100%;
   }
@@ -324,10 +296,10 @@
   .moru-index-main .dashboard {
     max-width: 100% !important; width: 100% !important; box-sizing: border-box;
   }
-  /* Django 앱 리스트를 2열 카드 그리드로 */
+  /* Django 앱 리스트 — 세로 1열 카드 (좌측이 컴팩트하니 세로가 자연스러움) */
   .moru-app-list-grid .app-list,
   .moru-app-list-grid { display: block; }
-  .moru-index-main .app-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .moru-index-main .app-list { display: flex !important; flex-direction: column; gap: 14px; }
   .moru-index-main .module {
     background: #fff !important;
     border: 1px solid #E5E8EB !important;
@@ -338,51 +310,25 @@
   .moru-index-main .module table { width: 100%; }
   .moru-index-main .module caption { padding: 10px 14px; font-size: 13px; }
 
-  /* 최근 가입 유저 테이블 (메인 하단) */
-  .moru-main-block { }
-  .moru-main-title {
-    margin: 0 0 10px 2px; color: #2D4A2E; font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
-  }
-  .moru-main-table {
-    width: 100%; border-collapse: separate; border-spacing: 0;
-    background: #fff; border: 1px solid #E5E8EB; border-radius: 14px; overflow: hidden;
-    box-shadow: 0 1px 2px rgba(16,24,40,0.04); font-size: 12px;
-  }
-  .moru-main-table thead th {
-    background: #F7F8FA !important; color: #6b7280 !important; font-weight: 600;
-    padding: 10px 12px; border-bottom: 1px solid #E5E8EB; text-align: left;
-  }
-  .moru-main-table tbody td {
-    padding: 9px 12px; border-bottom: 1px solid #F2F4F6; color: #191F28;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .moru-main-table tbody tr:last-child td { border-bottom: none; }
-  .moru-main-link { color: #2D4A2E; font-weight: 600; text-decoration: none; }
-  .moru-main-link:hover { color: #52a858; }
-  .moru-lv {
-    color: #2D4A2E; background: #E8F0E9; border-radius: 999px;
-    padding: 2px 8px; font-size: 10px; font-weight: 700;
-  }
-  .moru-ok { color: #22C55E; font-weight: 700; }
-  .moru-muted { color: #9CA3AF; }
-  .moru-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
-  .moru-tag--ok { background: #DCFCE7; color: #166534; }
-  .moru-tag--danger { background: #FEE2E2; color: #991B1B; }
-
-  /* ── 우측 대시보드: sticky + 내부 스크롤 ─────────────────────── */
+  /* ── 우측 대시보드: sticky + 내부 스크롤, 끝까지 채움 ───────── */
   .moru-index-side {
-    min-width: 0; display: flex; flex-direction: column; gap: 18px;
+    min-width: 0; width: 100%;
+    display: flex; flex-direction: column; gap: 16px;
     position: sticky;
     top: 16px;
     max-height: calc(100vh - 32px);
     overflow-y: auto;
-    padding-right: 6px;
+    overflow-x: hidden;
+    padding: 0;
     scrollbar-width: thin;
     scrollbar-color: #CBD5E1 transparent;
   }
-  .moru-index-side::-webkit-scrollbar { width: 8px; }
+  .moru-index-side::-webkit-scrollbar { width: 6px; }
   .moru-index-side::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
   .moru-index-side::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  .moru-index-side > section,
+  .moru-index-side > .moru-side-block,
+  .moru-index-side > .moru-hero { width: 100%; box-sizing: border-box; }
   .moru-side-block { min-width: 0; }
   .moru-side-title {
     margin: 0 0 12px 2px;
@@ -485,8 +431,8 @@
   /* ── KPI 카드 ──────────────────────────────────────────── */
   .moru-stat-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
   .moru-stat-card {
     background: #fff; border: 1px solid #E5E8EB; border-radius: 12px;
@@ -515,7 +461,7 @@
   /* ── Quick Links ──────────────────────────────────────── */
   .moru-quick-links {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 10px;
   }
   .moru-quick-link {
@@ -610,7 +556,11 @@
   .moru-empty { color: #9CA3AF; font-size: 12px; padding: 10px 12px; background: #F7F8FA; border: 1px dashed #E5E8EB; border-radius: 10px; }
 
   /* 반응형 */
+  @media (max-width: 1500px) {
+    .moru-quick-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
   @media (max-width: 1400px) {
+    .moru-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .moru-trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 1280px) {
@@ -620,6 +570,7 @@
   }
   @media (max-width: 1100px) {
     .moru-index-layout { grid-template-columns: 1fr; }
+    .moru-index-side { position: static; max-height: none; overflow: visible; }
     .moru-stat-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
     .moru-quick-links { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     .moru-trend-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

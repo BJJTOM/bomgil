@@ -775,6 +775,34 @@ function ExploreContent() {
     }
   }, [currentPage, totalPages, queryParams, queryClient]);
 
+  // Prefetch other tabs' first page so tab switching feels instant
+  useEffect(() => {
+    const tabConfigs = [
+      { tab: "all", is_official: undefined },
+      { tab: "user", is_official: "false" },
+      { tab: "official", is_official: "true" },
+    ];
+    tabConfigs.forEach(({ tab, is_official }) => {
+      if (tab === activeTab) return;
+      const prefetchParams: Record<string, string> = {
+        ordering: sortBy,
+        limit: String(ITEMS_PER_PAGE),
+        offset: "0",
+      };
+      if (is_official !== undefined) prefetchParams["is_official"] = is_official;
+      queryClient.prefetchQuery({
+        queryKey: ["trails", "paginated", prefetchParams],
+        queryFn: async () => {
+          const { data } = await api.get("/trails/", { params: prefetchParams });
+          return data;
+        },
+        staleTime: 60_000,
+      });
+    });
+  // Only prefetch once on mount and when sortBy changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy]);
+
   const { data: popularData } = usePopularTrails();
   const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);
 
@@ -856,26 +884,34 @@ function ExploreContent() {
         </div>
 
         {isTrailsTab && <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
-          {/* Region quick-links */}
+          {/* Region quick-filters */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {[
-              { slug: "seoul", label: "서울", color: "#6B7280" },
-              { slug: "gyeonggi", label: "경기", color: "#22C55E" },
-              { slug: "incheon", label: "인천", color: "#0EA5E9" },
-              { slug: "gangwon", label: "강원", color: "#8B5CF6" },
-              { slug: "chungcheong", label: "충청", color: "#10B981" },
-              { slug: "gyeongsang", label: "경상", color: "#0284C7" },
-              { slug: "jeolla", label: "전라", color: "#D97706" },
-              { slug: "jeju", label: "제주", color: "#F97316" },
-            ].map((r) => (
-              <Link
-                key={r.slug}
-                href={`/explore/region/${r.slug}`}
-                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0F7F0] text-[#2D4A2E] rounded-full text-[12px] font-semibold hover:bg-[#E5EFE5] transition-colors">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
-                <span>{r.label}</span>
-              </Link>
-            ))}
+              { value: "서울", label: "서울", color: "#6B7280" },
+              { value: "경기", label: "경기", color: "#22C55E" },
+              { value: "인천", label: "인천", color: "#0EA5E9" },
+              { value: "강원", label: "강원", color: "#8B5CF6" },
+              { value: "충청", label: "충청", color: "#10B981" },
+              { value: "경상", label: "경상", color: "#0284C7" },
+              { value: "전라", label: "전라", color: "#D97706" },
+              { value: "제주", label: "제주", color: "#F97316" },
+            ].map((r) => {
+              const isActive = filters["region"] === r.value;
+              return (
+                <button
+                  key={r.value}
+                  onClick={() => handleFilterChange("region", isActive ? "" : r.value)}
+                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                    isActive
+                      ? "bg-[#2D4A2E] text-white"
+                      : "bg-[#F0F7F0] text-[#2D4A2E] hover:bg-[#E5EFE5]"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: isActive ? "#fff" : r.color }} />
+                  <span>{r.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search + AI Toggle */}

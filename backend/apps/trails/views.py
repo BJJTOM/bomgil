@@ -15,6 +15,8 @@ from config.permissions import IsOwnerOrReadOnly
 from config.throttles import TrailCreateThrottle
 from config.validators import validate_image_file
 
+from .filters import TrailFilter
+
 from .models import (
     StampPoint,
     Tag,
@@ -60,10 +62,7 @@ class TrailUpdateThrottle(UserRateThrottle):
 class TrailViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, IsTrailAllowed]
     pagination_class = TrailPagination
-    filterset_fields = [
-        "region", "country", "difficulty", "best_season", "status", "tags",
-        "is_official", "trail_type",
-    ]
+    filterset_class = TrailFilter
     search_fields = ["title", "description", "region", "tags__name", "tags__name_en"]
     ordering_fields = ["created_at", "like_count", "distance_km"]
     ordering = ["-created_at"]
@@ -250,7 +249,13 @@ class TrailViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def spots(self, request, pk=None):
         trail = self.get_object()
-        spots = trail.spots.all().order_by("order")
+        spots = (
+            trail.spots
+            .filter(is_hidden=False)
+            .select_related("author")
+            .prefetch_related("images")
+            .order_by("order")
+        )
         serializer = SpotSerializer(spots, many=True, context={"request": request})
         return Response(serializer.data)
 

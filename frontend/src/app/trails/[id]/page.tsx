@@ -239,6 +239,8 @@ export default function TrailDetailPage() {
   const tabBarRef = useRef<HTMLDivElement>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
   const tabIndicatorRef = useRef<HTMLDivElement>(null);
+  const nearbyPOIsRef = useRef(nearbyPOIs);
+  nearbyPOIsRef.current = nearbyPOIs;
 
   // ─── Tab from URL hash ──────────────────────────────────────────────────────
 
@@ -473,8 +475,6 @@ export default function TrailDetailPage() {
   const mapMarkers = [...spotMarkers, ...poiMarkers];
 
   // Map marker click handler: open POI detail modal for POI markers
-  const nearbyPOIsRef = useRef(nearbyPOIs);
-  nearbyPOIsRef.current = nearbyPOIs;
   const handleMapMarkerClick = useCallback((markerId: number) => {
     if (markerId >= 90000) {
       const poiIndex = markerId - 90000;

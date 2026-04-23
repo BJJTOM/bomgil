@@ -406,6 +406,22 @@ export default function TrailDetailPage() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
+  // ─── Derived data (must be before any early returns for hooks rules) ─────
+
+  const pathCoords = useMemo<[number, number][]>(
+    () => (trail?.path_data?.coordinates || []).map((c: any) => [c[0], c[1]] as [number, number]),
+    [trail?.path_data],
+  );
+  const mapMarkers = useMemo(() => {
+    return spots.map((s: Spot) => ({
+      id: s.id,
+      lat: parseFloat(s.lat),
+      lng: parseFloat(s.lng),
+      title: s.name,
+      emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
+    }));
+  }, [spots]);
+
   // ─── Loading state ──────────────────────────────────────────────────────────
 
   if (trailLoading) {
@@ -435,22 +451,9 @@ export default function TrailDetailPage() {
     );
   }
 
-  // ─── Derived data ───────────────────────────────────────────────────────────
+  // ─── Trail alias ────────────────────────────────────────────────────────────
 
   const tr: Trail = trail;
-  const pathCoords = useMemo<[number, number][]>(
-    () => (tr.path_data?.coordinates || []).map((c) => [c[0], c[1]] as [number, number]),
-    [tr.path_data],
-  );
-  const mapMarkers = useMemo(() => {
-    return spots.map((s: Spot) => ({
-      id: s.id,
-      lat: parseFloat(s.lat),
-      lng: parseFloat(s.lng),
-      title: s.name,
-      emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
-    }));
-  }, [spots]);
 
   const avgRating =
     reviews.length > 0

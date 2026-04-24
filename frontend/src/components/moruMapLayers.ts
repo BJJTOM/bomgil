@@ -457,17 +457,27 @@ export function addPeakElevationOverlay(
         'symbol-sort-key': [
           'case', ['has', 'ele'], ['-', 10000, ['get', 'ele']], 10000,
         ],
-        // 이름 + (줄바꿈) 고도 m — 줌에 따라 고도 숨김/표시
+        // 이름 + (줄바꿈) 고도 m. Mapbox는 `text-field` 내부의 `zoom`
+        // 표현식을 허용하지 않으므로 `step`을 최상위에 두어 줌 기준으로
+        // 포맷 블록 자체를 교체한다 (zoom<10 → 이름만, zoom≥10 → 이름+고도).
         'text-field': [
-          'format',
-          ['get', 'name'], { 'font-scale': 1.0 },
+          'step',
+          ['zoom'],
+          // 낮은 줌: 이름만
+          ['format', ['get', 'name'], { 'font-scale': 1.0 }],
+          10,
+          // 높은 줌: 이름 + 고도 (고도 없으면 이름만)
           [
-            'case',
-            ['all', ['has', 'ele'], ['>=', ['zoom'], 10]],
-            ['concat', '\n▲ ', ['to-string', ['get', 'ele']], ' m'],
-            '',
+            'format',
+            ['get', 'name'], { 'font-scale': 1.0 },
+            [
+              'case',
+              ['has', 'ele'],
+              ['concat', '\n▲ ', ['to-string', ['get', 'ele']], ' m'],
+              '',
+            ],
+            { 'font-scale': 0.75, 'text-color': theme === 'dark' ? '#A8E6CF' : '#7a5a28' },
           ],
-          { 'font-scale': 0.75, 'text-color': theme === 'dark' ? '#A8E6CF' : '#7a5a28' },
         ],
         'text-size': [
           'interpolate', ['linear'], ['zoom'],

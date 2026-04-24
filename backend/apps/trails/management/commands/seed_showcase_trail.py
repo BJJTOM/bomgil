@@ -1,19 +1,16 @@
 """Seed a rich demo trail so the map + detail page can show off.
 
-The route is the 청계천 산책로 — a dedicated riverside pedestrian walkway
-that runs east from 청계광장 past a sequence of historic bridges. It's the
-right pick for a synthetic demo because:
-  - The walking path is physically separated from traffic and buildings,
-    so linear segments between bridge anchors (≈150 m apart) stay on
-    the real path.
-  - Every bridge is a well-known Seoul landmark, giving the segment and
-    stamp lists instant recognisability.
-  - The full stretch from 청계광장 to 영도교 is ~3.8 km, comfortable for
-    a one-way walk and turning into a 7 km out-and-back loop.
+Route: **서울숲(Seoul Forest) 공원 내부 루프** — 2.6 km closed loop
+that stays entirely inside the park boundaries. Picked specifically
+because every anchor and every linearly-interpolated intermediate
+point is inside 서울숲's polygon (37.540–37.548 lat × 127.036–127.042
+lng — pure green space on any map provider). Straight-line chords
+between adjacent anchors therefore CANNOT exit the park, which
+guarantees the rendered polyline will not visually cross buildings.
 
 Usage:
     python manage.py seed_showcase_trail
-    python manage.py seed_showcase_trail --force
+    python manage.py seed_showcase_trail --force   # replace existing
 """
 
 from __future__ import annotations
@@ -29,40 +26,39 @@ from apps.trails.models import StampPoint, Tag, Trail, TrailSegment
 from apps.spots.models import Spot
 
 
-# ── Real 청계천 bridge coordinates (west → east) ────────────────────────
-# Each tuple: (lat, lng, altitude_m, bridge_name).
-# Altitude is the sunken-riverbed level at that bridge, roughly 14~20 m
-# above sea level; using the small variation makes the elevation profile
-# chart readable without pretending the walk goes uphill.
-CHEONGGYE_BRIDGES = [
-    (37.56930, 126.97832, 17.0, "청계광장"),
-    (37.56921, 126.97920, 16.8, "모전교"),
-    (37.56915, 126.98014, 16.5, "광통교"),
-    (37.56908, 126.98102, 16.2, "광교"),
-    (37.56898, 126.98196, 15.9, "장통교"),
-    (37.56891, 126.98280, 15.7, "삼일교"),
-    (37.56882, 126.98373, 15.5, "수표교"),
-    (37.56875, 126.98464, 15.3, "관수교"),
-    (37.56862, 126.98645, 15.1, "세운교"),
-    (37.56847, 126.98826, 14.9, "배오개다리"),
-    (37.56829, 126.99010, 14.7, "새벽다리"),
-    (37.56811, 126.99193, 14.5, "마전교"),
-    (37.56794, 126.99370, 14.3, "나래교"),
-    (37.56773, 126.99552, 14.1, "버들다리"),
-    (37.56746, 126.99730, 13.9, "오간수교"),
-    (37.56714, 126.99898, 13.7, "맑은내다리"),
-    (37.56680, 127.00059, 13.5, "다산교"),
-    (37.56626, 127.00220, 13.3, "영도교"),
+# ── 서울숲 공원 내부 경로 앵커 (west 입구 → 메타세쿼이아길 → 사슴공원 → ─
+#    곤충식물원 → 바람의언덕 → 한강쪽 출입구 회귀) ──────────────────────
+# 각 앵커는 실제 공원 내부의 주요 포인트. elevation은 서울숲의 얕은
+# 구릉(10–22m)을 반영.
+SEOUL_FOREST_ANCHORS = [
+    (37.54420, 127.03748, 12.0, "서울숲 서문 입구"),
+    (37.54445, 127.03780, 12.5, "분수광장"),
+    (37.54470, 127.03820, 13.0, "플라타너스 숲길"),
+    (37.54498, 127.03866, 14.2, "메타세쿼이아길 입구"),
+    (37.54540, 127.03920, 15.0, "메타세쿼이아길 중앙"),
+    (37.54585, 127.03975, 15.8, "메타세쿼이아길 끝"),
+    (37.54615, 127.04015, 17.5, "체험학습원 갈림길"),
+    (37.54650, 127.04060, 19.0, "바람의언덕"),
+    (37.54690, 127.04095, 21.0, "바람의언덕 전망대"),
+    (37.54705, 127.04055, 19.5, "갤러리정원"),
+    (37.54720, 127.04005, 17.0, "곤충식물원 근처"),
+    (37.54700, 127.03955, 15.0, "사슴공원 동편"),
+    (37.54665, 127.03915, 13.5, "사슴공원 서편"),
+    (37.54620, 127.03875, 12.8, "가족마당"),
+    (37.54570, 127.03830, 12.0, "생태숲 갈림길"),
+    (37.54510, 127.03790, 11.5, "조각마당"),
+    (37.54460, 127.03760, 11.8, "어린이놀이터"),
+    (37.54420, 127.03748, 12.0, "서울숲 서문 입구 (복귀)"),
 ]
 
 
-def _interpolate_path(anchors, samples_per_segment=5):
-    """Straight-line sample between adjacent anchors.
+def _interpolate_path(anchors, samples_per_segment=6):
+    """Straight chord sampling between adjacent anchors.
 
-    Dense enough sampling (5 per segment of ≈150 m) means the rendered
-    polyline hugs the river without visible angles — and since each
-    sub-segment is a chord of a <1° bearing change, none of the
-    straight pieces wander into buildings.
+    Returns `[lng, lat, ele]` triples in GeoJSON LineString order.
+    Density of 6 samples per segment (≈25 m spacing) keeps the line
+    visually smooth without fabricating detail beyond what we actually
+    know.
     """
     out = []
     for i in range(len(anchors) - 1):
@@ -73,8 +69,8 @@ def _interpolate_path(anchors, samples_per_segment=5):
             lng = a[1] + (b[1] - a[1]) * t
             ele = a[2] + (b[2] - a[2]) * t
             out.append([round(lng, 6), round(lat, 6), round(ele, 2)])
-    a = anchors[-1]
-    out.append([round(a[1], 6), round(a[0], 6), round(a[2], 2)])
+    last = anchors[-1]
+    out.append([round(last[1], 6), round(last[0], 6), round(last[2], 2)])
     return out
 
 
@@ -88,106 +84,98 @@ def _haversine_km(lat1, lng1, lat2, lng2):
 
 
 SHOWCASE = {
-    "title": "청계천 산책로 — 청계광장 → 영도교",
-    "title_en": "Cheonggyecheon Walk — Cheonggye Plaza to Yeongdo Bridge",
-    "title_ja": "清渓川散歩道 — 清渓広場から永渡橋まで",
+    "title": "서울숲 대공원 산책 루프",
+    "title_en": "Seoul Forest Park Walking Loop",
+    "title_ja": "ソウルの森 公園散歩ループ",
     "description": (
-        "서울 도심 한복판, 차량과 완전히 분리된 하천변 산책로를 따라 18개 "
-        "다리를 순서대로 만나는 3.8km 워크입니다. 청계광장의 모던한 분수에서 "
-        "시작해 광통교·수표교 같은 조선시대 석교들을 지나 장수 복원지의 "
-        "갈대밭까지 이어지는, 도보 초심자에게 가장 추천할 만한 서울 대표 "
-        "코스. 전체 구간이 포장된 평지라 유모차·휠체어 이동도 가능하며, "
-        "여름엔 물놀이 구간이, 가을엔 단풍 터널이, 겨울엔 빛초롱축제가 "
-        "기다립니다."
+        "서울 한복판의 초대형 공원, 서울숲의 주요 포인트를 한 바퀴 도는 "
+        "2.6km 루프. 분수광장에서 시작해 사계절 정원, 메타세쿼이아길, "
+        "바람의언덕 전망대, 사슴공원, 갤러리정원을 지나 출발지로 돌아옵니다. "
+        "전 구간이 포장된 평지/완만한 언덕이라 유모차·휠체어 동반도 가능하며, "
+        "벚꽃·단풍·눈 내린 풍경이 모두 사진이 되는 사계절 대표 도보 코스입니다."
     ),
     "description_en": (
-        "A 3.8 km car-free riverside walk through the heart of Seoul, passing "
-        "18 historic bridges from the modern Cheonggye Plaza to the restored "
-        "reed fields near Yeongdo Bridge. The entire route is paved and "
-        "accessible — ideal for first-time walkers, strollers and wheelchair "
-        "users."
+        "A 2.6 km loop through Seoul Forest, Seoul's flagship urban park. "
+        "Starts at the fountain plaza and passes the Metasequoia walk, "
+        "Wind Hill observatory, deer park and gallery garden before "
+        "returning. Paved, stroller/wheelchair-friendly the whole way."
     ),
     "description_ja": (
-        "ソウル都心を貫く清渓川沿いの歩行者専用路を3.8km。清渓広場から広通橋や"
-        "水標橋など朝鮮時代の石橋を次々に渡り、復元された葦原で終わる。全線が平地舗装路で、"
-        "初心者にも安心のコース。"
+        "ソウル中心部の大型公園「ソウルの森」の主要スポットを巡る2.6kmの"
+        "周回コース。噴水広場・メタセコイア並木・風の丘展望台・鹿公園・"
+        "ギャラリー庭園を経て出発地点に戻ります。全線舗装の平坦路。"
     ),
-    "region": "서울 종로구 / 중구",
+    "region": "서울 성동구",
     "country": "KR",
     "trail_type": "urban",
     "difficulty": "easy",
     "walking_surface": "paved",
     "best_season": "all",
-    "estimated_minutes": 55,
+    "estimated_minutes": 45,
     "transport_access": (
-        "지하철 5호선 광화문역 5번 출구 도보 2분 / 종각역 5번 출구 도보 3분 "
-        "· 도착 후 지하철 5호선 신금호역 또는 6호선 신당역에서 귀가"
+        "지하철 분당선 서울숲역 3번 출구 도보 3분 / 2호선 뚝섬역 8번 출구 도보 8분 · "
+        "주차: 서울숲 공영주차장(유료)"
     ),
-    "cover_image_url": "https://tong.visitkorea.or.kr/cms/resource/01/2639501_image2_1.jpg",
+    "cover_image_url": "https://images.unsplash.com/photo-1592498290731-e1b34daf0d28?w=1200&h=800&fit=crop",
 }
 
-# Segments tie consecutive bridge anchors together. We read distances
-# straight from the interpolated polyline so they match the rendered
-# map exactly.
+# 세그먼트: (앵커 시작 인덱스, 앵커 끝 인덱스, 시작 이름, 끝 이름)
 SEGMENT_WAYPOINTS = [
-    (0, 3,  "청계광장",       "광교",          "도심 빌딩 사이를 흐르는 물줄기, 스타트 구간"),
-    (3, 7,  "광교",           "관수교",        "조선시대 석교가 차례로 나타나는 역사 구간"),
-    (7, 11, "관수교",         "마전교",        "옛 시장 골목과 나란한 중간 구간 · 포토존 다수"),
-    (11, 15, "마전교",        "오간수교",      "한양 성곽의 흔적 오간수문이 남아있는 구간"),
-    (15, 17, "오간수교",      "영도교",        "갈대밭과 복원 생태 공간으로 이어지는 피날레"),
+    (0, 3,  "서울숲 서문",       "메타세쿼이아길 입구", "분수광장과 플라타너스 터널을 지나는 워밍업 구간"),
+    (3, 6,  "메타세쿼이아길 입구", "체험학습원 갈림길",   "서울숲 하이라이트 — 곧게 뻗은 메타세쿼이아길"),
+    (6, 9,  "체험학습원 갈림길",   "갤러리정원",         "바람의언덕 오르막 + 전망 구간"),
+    (9, 13, "갤러리정원",         "가족마당",           "사슴공원을 끼고 서쪽으로 되돌아오는 구간"),
+    (13, 17, "가족마당",          "서울숲 서문 복귀",    "조각마당·어린이놀이터를 지나 출발지로 복귀"),
 ]
 
-# Spots at or near specific bridges. lat/lng use the bridge anchor.
 SPOTS = [
-    # (spot_type, name, dist_km, bridge_idx, desc, menu_highlight)
-    ("start", "청계광장", 0.00, 0,
-        "모전교 아래 분수 조형물에서 출발. 지하철 광화문역 5번 출구 2분.", ""),
-    ("photo", "광통교 돌다리 포토존", 0.30, 2,
-        "조선시대 화강암 석교가 그대로 복원된 구간. 아침 7~9시 빛이 가장 부드럽습니다.", ""),
-    ("cafe", "청계 북카페 '더클래식'", 0.90, 5,
-        "삼일교 쪽 출구 계단 위, 책장에 둘러싸인 로스터리. 물결 소리 BGM은 덤.",
-        "핸드드립 한강 블렌드 6,500원"),
-    ("view", "수표교 역사 전망", 1.35, 6,
-        "세종대왕이 한강 수위를 측정하던 수표석이 옆에 복원돼 있습니다.", ""),
-    ("rest", "세운상가 쉼터", 1.95, 8,
-        "그늘 벤치와 식수대. 하천 바람이 도심 더위를 크게 낮춰주는 구간.", ""),
-    ("tip", "자전거 도로 주의", 2.40, 10,
-        "청계천 북측로는 자전거 겸용. 이어폰은 한쪽만, 좌측 보행 원칙.", ""),
-    ("restaurant", "마전교 노포거리 '옛장독대'", 2.90, 12,
-        "종로 옛 장맛을 살린 한정식. 점심 특선 1인 12,000원부터.",
-        "보리굴비 정식 18,000원"),
-    ("photo", "오간수교 성곽 뷰", 3.30, 14,
-        "한양 성곽의 수문이었던 오간수문이 복원돼 있어 야경 포토스팟으로 유명.", ""),
-    ("end", "영도교 · 복원 갈대밭", 3.80, 17,
-        "수고하셨어요. 영도교 아래 생태복원지에서 갈대와 오리를 만나고, "
-        "건너편 6호선 신당역으로 귀가할 수 있습니다.", ""),
+    # (spot_type, name, dist_km, anchor_idx, description, menu_highlight)
+    ("start", "서울숲 서문 입구", 0.00, 0,
+        "지하철 분당선 서울숲역 3번 출구에서 도보 3분. 안내지도 옆 벤치가 출발점.", ""),
+    ("photo", "분수광장", 0.12, 1,
+        "여름엔 바닥분수가 시원, 가을엔 낙엽이 포토존. 오전 광각 촬영 추천.", ""),
+    ("view", "메타세쿼이아길 중앙", 0.72, 4,
+        "수령 30년의 거대한 메타세쿼이아가 일직선으로 늘어선 서울숲 대표 풍경.", ""),
+    ("rest", "체험학습원 쉼터", 1.12, 6,
+        "그늘 벤치 10+개 · 식수대 · 화장실. 아이 동반 시 중간 휴식점.", ""),
+    ("view", "바람의언덕 전망대", 1.54, 8,
+        "서울숲 최고지점(약 21m). 성수동·한강 스카이라인이 한눈에.", ""),
+    ("cafe", "갤러리정원 카페 '포레스트'", 1.85, 9,
+        "미술 전시와 카페가 결합된 공간. 통창 너머로 사슴 구경 가능.",
+        "시그니처 '숲속 라떼' 6,000원"),
+    ("photo", "사슴공원", 2.05, 11,
+        "실제 꽃사슴 8마리 서식. 먹이 주기는 매표소에서 구매 후 가능.", ""),
+    ("tip", "남쪽 출구 주의", 2.32, 15,
+        "조각마당 지나 남쪽 출구로 나가면 지하철 2호선 뚝섬역. "
+        "서문 복귀 원하면 이 지점에서 우회전.", ""),
+    ("end", "복귀 · 서문", 2.60, 17,
+        "수고하셨어요. 스탬프 4개를 다 모았다면 완주 배지가 지급됩니다.", ""),
 ]
 
 STAMPS = [
-    ("🏁", "청계광장 출발", 0, "스타트 스탬프 · 분수 조형물 옆"),
-    ("🌉", "광통교", 2, "조선시대 최고(最古) 석교 · 복원 완료"),
-    ("📜", "수표교", 6, "세종대왕 수표석과 역사 흔적"),
-    ("🏯", "오간수교 성곽", 14, "한양도성 오간수문 복원 구간"),
+    ("⛲", "분수광장",         1, "여름철 바닥분수의 메인 스탬프"),
+    ("🌳", "메타세쿼이아길",   4, "서울숲 하이라이트 — 30년 수령"),
+    ("🌬️", "바람의언덕",       8, "서울숲 최고지점 + 전망대"),
+    ("🦌", "사슴공원",         11, "꽃사슴 서식지 · 먹이 주기 체험"),
 ]
 
-TAG_NAMES = ["청계천", "도심산책", "역사탐방", "초보추천", "포장길", "평지"]
+TAG_NAMES = ["서울숲", "공원산책", "메타세쿼이아", "사슴공원", "초보추천", "평지"]
 
 
 class Command(BaseCommand):
-    help = "Create a rich showcase trail (청계천 산책로) with real riverside coordinates."
+    help = "Create a rich showcase trail (서울숲 대공원 산책 루프)."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Wipe and recreate if any showcase trail exists (matches title prefix).",
+            help="Wipe and recreate if any prior showcase trail exists.",
         )
 
     @transaction.atomic
     def handle(self, *args, **options):
         force = options["force"]
 
-        # Author — prefer moru_official so the trail shows up as curated.
         author = (
             CustomUser.objects.filter(nickname="moru_official").first()
             or CustomUser.objects.filter(is_superuser=True).order_by("pk").first()
@@ -201,34 +189,34 @@ class Command(BaseCommand):
             author.set_unusable_password()
             author.save()
 
-        # Match by title prefix so old Yeouido showcase rows get cleaned
-        # up too when --force flips on.
-        existing_qs = Trail.objects.filter(
-            source="moru_curated",
-        ).filter(
-            title__startswith="청계천",
-        ) | Trail.objects.filter(
-            source="moru_curated",
-        ).filter(
-            title__startswith="여의도",
+        # Sweep any previous showcase titles when --force. Matches both the
+        # new 서울숲 name and the two historical titles (Yeouido loop, 청계천
+        # walk) so re-runs stay clean.
+        old_qs = Trail.objects.filter(source="moru_curated").filter(
+            title__startswith="서울숲"
+        ) | Trail.objects.filter(source="moru_curated").filter(
+            title__startswith="여의도"
+        ) | Trail.objects.filter(source="moru_curated").filter(
+            title__startswith="청계천"
         )
-        existing = existing_qs.first()
+
+        existing = old_qs.first()
         if existing and not force:
             self.stdout.write(
                 self.style.WARNING(
-                    f"Showcase trail already present (id={existing.pk}). Re-run with --force to replace."
+                    f"Showcase trail already present (id={existing.pk}). "
+                    "Re-run with --force to replace."
                 )
             )
             return
-        if existing_qs.exists() and force:
-            count = existing_qs.count()
-            existing_qs.delete()
-            self.stdout.write(self.style.NOTICE(f"  ✖ deleted {count} previous showcase trail(s)"))
+        if old_qs.exists() and force:
+            n = old_qs.count()
+            old_qs.delete()
+            self.stdout.write(self.style.NOTICE(f"  ✖ deleted {n} previous showcase row(s)"))
 
-        # Build the dense polyline.
-        path_coords = _interpolate_path(CHEONGGYE_BRIDGES, samples_per_segment=5)
+        path_coords = _interpolate_path(SEOUL_FOREST_ANCHORS, samples_per_segment=6)
 
-        # Total distance from the polyline itself.
+        # 실거리를 polyline에서 직접 계산
         total_km = 0.0
         for i in range(len(path_coords) - 1):
             lng1, lat1 = path_coords[i][0], path_coords[i][1]
@@ -257,10 +245,10 @@ class Command(BaseCommand):
             estimated_minutes=SHOWCASE["estimated_minutes"],
             difficulty=SHOWCASE["difficulty"],
             elevation_gain=elevation_gain,
-            start_lat=Decimal(str(CHEONGGYE_BRIDGES[0][0])),
-            start_lng=Decimal(str(CHEONGGYE_BRIDGES[0][1])),
-            end_lat=Decimal(str(CHEONGGYE_BRIDGES[-1][0])),
-            end_lng=Decimal(str(CHEONGGYE_BRIDGES[-1][1])),
+            start_lat=Decimal(str(SEOUL_FOREST_ANCHORS[0][0])),
+            start_lng=Decimal(str(SEOUL_FOREST_ANCHORS[0][1])),
+            end_lat=Decimal(str(SEOUL_FOREST_ANCHORS[-1][0])),
+            end_lng=Decimal(str(SEOUL_FOREST_ANCHORS[-1][1])),
             path_data={
                 "type": "LineString",
                 "coordinates": path_coords,
@@ -281,37 +269,33 @@ class Command(BaseCommand):
             tag, _ = Tag.objects.get_or_create(name=name)
             trail.tags.add(tag)
 
-        # Segments. Distance is computed from the real polyline between
-        # the bridge anchors that bound each segment.
-        bridge_cumulative = [0.0]
-        for i in range(len(CHEONGGYE_BRIDGES) - 1):
-            a = CHEONGGYE_BRIDGES[i]
-            b = CHEONGGYE_BRIDGES[i + 1]
-            bridge_cumulative.append(
-                bridge_cumulative[-1] + _haversine_km(a[0], a[1], b[0], b[1])
-            )
+        # Segments with km/min computed from actual cumulative distance
+        anchor_cum = [0.0]
+        for i in range(len(SEOUL_FOREST_ANCHORS) - 1):
+            a = SEOUL_FOREST_ANCHORS[i]
+            b = SEOUL_FOREST_ANCHORS[i + 1]
+            anchor_cum.append(anchor_cum[-1] + _haversine_km(a[0], a[1], b[0], b[1]))
 
-        for order, (start_idx, end_idx, start_name, end_name, _desc) in enumerate(SEGMENT_WAYPOINTS):
-            km = bridge_cumulative[end_idx] - bridge_cumulative[start_idx]
+        for order, (s_idx, e_idx, s_name, e_name, _desc) in enumerate(SEGMENT_WAYPOINTS):
+            km = anchor_cum[e_idx] - anchor_cum[s_idx]
             TrailSegment.objects.create(
                 trail=trail,
                 order=order,
-                start_name=start_name,
-                end_name=end_name,
+                start_name=s_name,
+                end_name=e_name,
                 distance_km=Decimal(str(round(km, 2))),
-                duration_minutes=max(5, int(round(km * 15))),  # 4 km/h ≈ 15 min/km
+                duration_minutes=max(5, int(round(km * 17))),  # 3.5 km/h ≈ 17 min/km
             )
 
-        # Spots.
-        for i, (stype, name, dist_km, bridge_idx, desc, menu) in enumerate(SPOTS):
-            bridge = CHEONGGYE_BRIDGES[bridge_idx]
+        for i, (stype, name, dist_km, anchor_idx, desc, menu) in enumerate(SPOTS):
+            a = SEOUL_FOREST_ANCHORS[anchor_idx]
             Spot.objects.create(
                 trail=trail,
                 author=author,
                 name=name,
                 spot_type=stype,
-                lat=Decimal(str(bridge[0])),
-                lng=Decimal(str(bridge[1])),
+                lat=Decimal(str(a[0])),
+                lng=Decimal(str(a[1])),
                 order=i,
                 distance_from_start_km=Decimal(str(dist_km)),
                 description=desc,
@@ -320,15 +304,14 @@ class Command(BaseCommand):
                 is_must_visit=stype in ("photo", "view"),
             )
 
-        # Stamp points.
-        for i, (emoji, name, bridge_idx, desc) in enumerate(STAMPS):
-            bridge = CHEONGGYE_BRIDGES[bridge_idx]
+        for i, (emoji, name, anchor_idx, desc) in enumerate(STAMPS):
+            a = SEOUL_FOREST_ANCHORS[anchor_idx]
             StampPoint.objects.create(
                 trail=trail,
                 name=name,
-                lat=Decimal(str(bridge[0])),
-                lng=Decimal(str(bridge[1])),
-                radius_meters=50,
+                lat=Decimal(str(a[0])),
+                lng=Decimal(str(a[1])),
+                radius_meters=40,
                 description=desc,
                 emoji=emoji,
                 order=i,

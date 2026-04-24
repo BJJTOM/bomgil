@@ -538,8 +538,11 @@ export function MapView({
       if (!showPOIMarkers) return;
       const currentZoom = map.getZoom();
       markers.forEach((m, idx) => {
+        // Wrapper는 **항상 24×24 고정**. 내부 dot 크기가 줌에 따라
+        // 바뀌어도 Mapbox가 앵커로 계산하는 박스가 그대로라 좌표가
+        // 드리프트하지 않는다. 이름 라벨도 absolute라 박스에 영향 없음.
         const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer";
+        wrapper.style.cssText = "position:relative;width:24px;height:24px;cursor:pointer;pointer-events:auto";
 
         // 번호 표시 여부: 줌 13 이상
         const showNumber = currentZoom >= 13;
@@ -551,12 +554,13 @@ export function MapView({
         const dotSize = showNumber ? 16 : 12;
 
         const el = document.createElement("div");
-        el.style.cssText = `width:${dotSize}px;height:${dotSize}px;background:${bgColor};border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);transition:transform 0.15s ease;display:flex;align-items:center;justify-content:center`;
+        el.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${dotSize}px;height:${dotSize}px;background:${bgColor};border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);transition:width 0.15s ease,height 0.15s ease;display:flex;align-items:center;justify-content:center`;
         if (showNumber) {
           el.innerHTML = `<span style="color:${textColor};font-size:9px;font-weight:700;line-height:1;pointer-events:none">${spotNum}</span>`;
         }
 
-        // 줌 변경 시 번호 표시/숨김 업데이트
+        // 줌 변경 시 번호 표시/숨김 업데이트 (size 변화는 absolute
+        // 트랜스폼으로 중앙 고정되므로 wrapper 박스·지리 좌표에 영향 없음)
         const zoomHandler = () => {
           const z = map.getZoom();
           if (z >= 13) {
@@ -571,7 +575,9 @@ export function MapView({
         };
         map.on("zoom", zoomHandler);
 
-        // Hover name label (appears on hover, not popup)
+        // Hover name label (appears on hover, not popup).
+        // bottom:100% + marginBottom 로 dot 기준 위쪽에 고정 배치.
+        // wrapper 가 24×24 고정이므로 어떤 줌이든 동일한 위치.
         const nameLabel = document.createElement("div");
         nameLabel.style.cssText = `
           position:absolute;bottom:100%;left:50%;transform:translateX(-50%);

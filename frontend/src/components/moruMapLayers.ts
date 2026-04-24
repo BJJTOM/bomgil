@@ -605,7 +605,7 @@ export function drawMoruTrailLine(
     roadLabelLayer || undefined
   );
 
-  // (3) main — 실제 보이는 선
+  // (3) main — 실제 보이는 선 (green→red 그래디언트, line-gradient 사용)
   map.addLayer(
     {
       id: 'moru-trail-main',
@@ -613,7 +613,6 @@ export function drawMoruTrailLine(
       source: 'moru-trail',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': color,
         'line-width': [
           'interpolate', ['linear'], ['zoom'],
           10, 2.2,
@@ -621,6 +620,17 @@ export function drawMoruTrailLine(
           18, 6,
         ],
         'line-opacity': 0.95,
+        // line-gradient: green (출발) → amber (중간) → red (도착)
+        // lineMetrics: true 가 source 에 설정되어 있어야 동작
+        'line-gradient': [
+          'interpolate',
+          ['linear'],
+          ['line-progress'],
+          0, '#34C759',      // 출발: green
+          0.35, color,       // 중반 전: trail color
+          0.65, '#FFB347',   // 중반 후: warm amber
+          1, '#FF3B30',      // 도착: red
+        ],
       },
     },
     roadLabelLayer || undefined

@@ -3,6 +3,67 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { MapView } from "./MapView";
 
+// ─── Current Location Button ──────────────────────────────────────────────
+
+function CurrentLocationButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-lg"
+      aria-label="현재 위치"
+      type="button"
+    >
+      {loading ? (
+        <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+// ─── Trail Info Overlay (compact card) ────────────────────────────────────
+
+function TrailInfoOverlay({ title, distance, duration }: { title?: string; distance?: string; duration?: string }) {
+  if (!title && !distance && !duration) return null;
+
+  const formatDuration = (dur: string) => {
+    const mins = Number(dur);
+    if (isNaN(mins)) return dur;
+    if (mins >= 60) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h}시간${m > 0 ? ` ${m}분` : ''}`;
+    }
+    return `${mins}분`;
+  };
+
+  return (
+    <div className="bg-black/60 backdrop-blur-md rounded-xl px-3 py-2 border border-white/10 max-w-[200px]">
+      {title && (
+        <div className="text-white text-[13px] font-bold truncate leading-tight">{title}</div>
+      )}
+      {(distance || duration) && (
+        <div className="flex items-center gap-2.5 mt-0.5">
+          {distance && (
+            <span className="text-white/80 text-[11px] font-medium">
+              {parseFloat(distance).toFixed(1)} km
+            </span>
+          )}
+          {duration && (
+            <span className="text-white/60 text-[11px] font-medium">
+              {formatDuration(duration)}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface MapFullscreenProps {
   open: boolean;
   onClose: () => void;
@@ -279,6 +340,10 @@ export function MapFullscreen({
   theme = "light",
   onMarkerClick,
 }: MapFullscreenProps) {
+  const [terrain3D, setTerrain3D] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
   // Build elevation profile from raw coordinates
   const elevationProfile = useMemo(() => {
     if (rawCoordinates && rawCoordinates.length >= 2) {
@@ -302,7 +367,35 @@ export function MapFullscreen({
     };
   }, [open, onClose]);
 
+  // Reset states when closed
+  useEffect(() => {
+    if (!open) {
+      setTerrain3D(false);
+      setUserLocation(null);
+    }
+  }, [open]);
+
+  const handleLocate = useCallback(() => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
+
   if (!open) return null;
+
+  // Compute the center for MapView — prefer user location if set, otherwise trail start
+  const mapCenter = userLocation || (pathCoordinates && pathCoordinates.length > 0
+    ? { lat: pathCoordinates[0][1], lng: pathCoordinates[0][0] }
+    : undefined);
 
   return (
     <div className="fixed inset-0 z-[9999] bg-[#f0f4f0]" style={{ contain: "layout style" }}>
@@ -311,13 +404,13 @@ export function MapFullscreen({
           pathCoordinates={pathCoordinates}
           markers={markers}
           theme={theme}
-          showStats={!!(distance || duration)}
-          distance={distance}
-          duration={duration}
           className="w-full h-full"
           onMarkerClick={onMarkerClick}
           showNavigationControl
           enableScrollZoom
+          terrain3D={terrain3D}
+          showTerrainToggle={false}
+          center={mapCenter}
         />
       </div>
 
@@ -348,6 +441,39 @@ export function MapFullscreen({
         </button>
       </div>
 
+      {/* Trail info overlay (top-left, below top bar) */}
+      <div className="absolute z-[10000] left-4" style={{ top: "calc(max(env(safe-area-inset-top), 16px) + 56px)" }}>
+        <TrailInfoOverlay title={title} distance={distance} duration={duration} />
+      </div>
+
+      {/* Terrain 3D toggle (top-right, below top bar) */}
+      <div className="absolute z-[10000] right-4" style={{ top: "calc(max(env(safe-area-inset-top), 16px) + 56px)" }}>
+        <button
+          onClick={() => setTerrain3D((v) => !v)}
+          className="w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-lg"
+          style={{
+            background: terrain3D ? "rgba(74,222,128,0.85)" : "rgba(0,0,0,0.6)",
+            color: terrain3D ? "#0a1a10" : "#fff",
+          }}
+          aria-label="3D 지형 토글"
+          type="button"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 3L2 9l10 6 10-6-10-6z" />
+            <path d="M2 17l10 6 10-6" />
+            <path d="M2 13l10 6 10-6" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Current location button (bottom-left) */}
+      <div
+        className="absolute z-[10000] left-4"
+        style={{ bottom: elevationProfile ? "calc(70px + 16px)" : "16px" }}
+      >
+        <CurrentLocationButton onClick={handleLocate} loading={locating} />
+      </div>
+
       {/* Elevation profile bar at bottom */}
       {elevationProfile && <ElevationBar profile={elevationProfile} />}
     </div>
@@ -363,7 +489,7 @@ export function MapExpandButton({ onClick, className = "" }: MapExpandButtonProp
   return (
     <button
       onClick={onClick}
-      className={`absolute top-3 right-3 z-[1000] w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-lg ${className}`}
+      className={`absolute top-3 left-3 z-[1000] w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-lg ${className}`}
       aria-label="전체화면"
       type="button"
     >

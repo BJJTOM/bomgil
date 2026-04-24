@@ -1027,7 +1027,7 @@ export default function TrailDetailPage() {
 
               {/* Interactive Map */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                <div className="h-[260px] md:h-[340px] relative">
+                <div className="h-[300px] md:h-[400px] relative">
                   <MapView
                     country={tr.country}
                     center={{
@@ -1039,12 +1039,15 @@ export default function TrailDetailPage() {
                     pathCoordinates={pathCoords}
                     theme="light"
                     locale="ko"
-                    showStats
-                    distance={tr.distance_km}
-                    duration={String(tr.estimated_minutes)}
                     onMarkerClick={handleMapMarkerClick}
                   />
                   <MapExpandButton onClick={() => setMapFullscreen(true)} />
+                  <button
+                    onClick={() => setMapFullscreen(true)}
+                    className="absolute bottom-3 right-3 z-[1000] text-[11px] font-medium text-white/80 bg-black/50 backdrop-blur-sm rounded-lg px-2.5 py-1 border border-white/10 hover:bg-black/70 transition-colors"
+                  >
+                    지도 크게 보기
+                  </button>
                 </div>
                 <MapFullscreen
                   open={mapFullscreen}

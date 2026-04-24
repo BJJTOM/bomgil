@@ -332,19 +332,39 @@ export function MapView({
         // 1km 마다 거리 마커
         addTrailDistanceMarkers(map, pathCoordinates, theme);
 
-        // 시작/종료 마커 (작고 또렷한 점)
+        // 시작/종료 마커 (라벨 + pulse 애니메이션 포함)
         if (pathCoordinates.length > 1) {
+          // ── Start marker ──
           const startEl = document.createElement("div");
           startEl.style.cssText =
-            "width:14px;height:14px;background:#34C759;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(52,199,89,0.5);z-index:5";
+            "position:relative;display:flex;flex-direction:column;align-items:center;z-index:10;pointer-events:none";
+          startEl.innerHTML = `
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;width:28px;height:28px">
+              <div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(52,199,89,0.25);animation:moru-pulse 2s ease-out infinite"></div>
+              <div style="width:20px;height:20px;background:#34C759;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(52,199,89,0.5);display:flex;align-items:center;justify-content:center;z-index:2">
+                <span style="color:white;font-size:10px;font-weight:800;line-height:1">S</span>
+              </div>
+            </div>
+            <div style="margin-top:2px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;white-space:nowrap;letter-spacing:0.02em">출발</div>
+          `;
           const startMarker = new mapboxgl.Marker({ element: startEl, anchor: "center" })
             .setLngLat(pathCoordinates[0] as [number, number])
             .addTo(map);
           markersRef.current.push(startMarker);
 
+          // ── End marker ──
           const endEl = document.createElement("div");
           endEl.style.cssText =
-            "width:14px;height:14px;background:#FF3B30;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(255,59,48,0.5);z-index:5";
+            "position:relative;display:flex;flex-direction:column;align-items:center;z-index:10;pointer-events:none";
+          endEl.innerHTML = `
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;width:28px;height:28px">
+              <div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,59,48,0.25);animation:moru-pulse 2s ease-out infinite 0.5s"></div>
+              <div style="width:20px;height:20px;background:#FF3B30;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(255,59,48,0.5);display:flex;align-items:center;justify-content:center;z-index:2">
+                <span style="color:white;font-size:10px;font-weight:800;line-height:1">E</span>
+              </div>
+            </div>
+            <div style="margin-top:2px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;white-space:nowrap;letter-spacing:0.02em">도착</div>
+          `;
           const endMarker = new mapboxgl.Marker({ element: endEl, anchor: "center" })
             .setLngLat(pathCoordinates[pathCoordinates.length - 1] as [number, number])
             .addTo(map);
@@ -378,8 +398,11 @@ export function MapView({
           .addTo(map);
       }
 
-      // 스팟(POI) 마커
+      // 스팟(POI) 마커 — 호버 시 이름 라벨 표시, 클릭 시 팝업
       markers.forEach((m) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer";
+
         const el = document.createElement("div");
         if (m.emoji) {
           el.style.cssText = `width:36px;height:36px;background:${
@@ -388,30 +411,60 @@ export function MapView({
             isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.15)"
           };border:2px solid ${
             isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)"
-          };font-size:18px;backdrop-filter:blur(8px);cursor:pointer`;
+          };font-size:18px;backdrop-filter:blur(8px);transition:transform 0.15s ease`;
           el.innerHTML = `<span>${m.emoji}</span>`;
         } else {
-          el.style.cssText = `width:12px;height:12px;background:${
+          el.style.cssText = `width:14px;height:14px;background:${
             isDark ? "#A8E6CF" : "#2D4A2E"
-          };border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);cursor:pointer`;
+          };border-radius:50%;border:2.5px solid white;box-shadow:0 1px 8px rgba(0,0,0,0.25);transition:transform 0.15s ease`;
         }
+
+        // Hover name label (appears on hover, not popup)
+        const nameLabel = document.createElement("div");
+        nameLabel.style.cssText = `
+          position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+          margin-bottom:4px;white-space:nowrap;
+          background:${isDark ? "rgba(20,20,20,0.9)" : "rgba(255,255,255,0.95)"};
+          color:${isDark ? "#fff" : "#191F28"};
+          font-family:'Pretendard Variable',system-ui,sans-serif;
+          font-size:11px;font-weight:600;
+          padding:3px 8px;border-radius:8px;
+          box-shadow:0 2px 8px rgba(0,0,0,${isDark ? "0.4" : "0.12"});
+          border:1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)"};
+          backdrop-filter:blur(6px);
+          pointer-events:none;opacity:0;transition:opacity 0.15s ease;
+          z-index:20;
+        `;
+        nameLabel.textContent = m.title;
+
+        wrapper.appendChild(nameLabel);
+        wrapper.appendChild(el);
+
+        wrapper.addEventListener("mouseenter", () => {
+          nameLabel.style.opacity = "1";
+          el.style.transform = "scale(1.12)";
+        });
+        wrapper.addEventListener("mouseleave", () => {
+          nameLabel.style.opacity = "0";
+          el.style.transform = "scale(1)";
+        });
 
         const popupHtml = `<div style="font-family:'Pretendard Variable',sans-serif;font-size:13px;font-weight:600;padding:2px 4px;color:${
           isDark ? "#fff" : "#191F28"
         }">${m.title}</div>`;
         const popup = new mapboxgl.Popup({
           closeButton: false,
-          offset: [0, m.emoji ? -20 : -8],
+          offset: [0, m.emoji ? -24 : -12],
           className: isDark ? "mapbox-popup-dark" : "mapbox-popup-clean",
         }).setHTML(popupHtml);
         popupsRef.current.push(popup);
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        const marker = new mapboxgl.Marker({ element: wrapper, anchor: "center" })
           .setLngLat([m.lng, m.lat])
           .setPopup(popup)
           .addTo(map);
 
-        el.addEventListener("click", (e) => {
+        wrapper.addEventListener("click", (e) => {
           e.stopPropagation();
           if (onMarkerClick) onMarkerClick(m.id);
         });
@@ -490,6 +543,20 @@ export function MapView({
           }
           50% {
             transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        @keyframes moru-pulse {
+          0% {
+            transform: scale(1);
+            opacity: 0.5;
+          }
+          70% {
+            transform: scale(1.8);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1.8);
             opacity: 0;
           }
         }

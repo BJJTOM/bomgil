@@ -23,7 +23,7 @@ import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NearbyPOISection, POIDetailModal } from "@/components/NearbyPOISection";
+import { POIDetailModal } from "@/components/NearbyPOISection";
 import type { NearbyPOI } from "@/components/NearbyPOISection";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -1035,7 +1035,7 @@ export default function TrailDetailPage() {
               {/* Description with show more/less */}
               <DescriptionSection description={tr.description} tags={tr.tags || []} language={language} />
 
-              {/* Interactive Map */}
+              {/* Interactive Map + 구간별 거리/시간 (통합된 맵 카드) */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
                 <div className="h-[300px] md:h-[400px] relative">
                   <MapView
@@ -1062,6 +1062,17 @@ export default function TrailDetailPage() {
                     지도 크게 보기
                   </button>
                 </div>
+                {/* 구간별 거리/시간 — 지도 바로 아래, 같은 카드 하단에 배치 */}
+                {Array.isArray(tr.segments) && tr.segments.length > 0 && (
+                  <div className="p-4 border-t border-border-light dark:border-white/5 bg-bg-secondary/40 dark:bg-white/[0.02]">
+                    <ErrorBoundary fallback={null}>
+                      <TrailSegments
+                        segments={tr.segments}
+                        title={language === "ko" ? "구간별 거리 · 시간" : language === "ja" ? "区間別 距離・時間" : language === "zh" ? "分段距离 · 时间" : "Segments"}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                )}
                 <MapFullscreen
                   open={mapFullscreen}
                   onClose={() => setMapFullscreen(false)}
@@ -1076,9 +1087,6 @@ export default function TrailDetailPage() {
                   onMarkerClick={handleMapMarkerClick}
                 />
               </section>
-
-              {/* Nearby POIs */}
-              <NearbyPOISection trailId={trailId} language={language} />
 
               {/* Elevation Profile — require a real coordinates array before
                   touching .length; public imports carry path_data: {} */}
@@ -1106,18 +1114,6 @@ export default function TrailDetailPage() {
                   <div className={`h-1.5 flex-1 rounded-full ${tr.difficulty === "hard" ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"}`} />
                 </div>
               </section>
-
-              {/* Trail Segments */}
-              {Array.isArray(tr.segments) && tr.segments.length > 0 && (
-                <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                  <h2 className="text-sm font-bold text-text-primary mb-3">
-                    {language === "ko" ? "구간별 거리 / 시간" : language === "ja" ? "区間別距離・時間" : language === "zh" ? "分段距离 / 时间" : "Segments"}
-                  </h2>
-                  <ErrorBoundary fallback={null}>
-                    <TrailSegments segments={tr.segments} />
-                  </ErrorBoundary>
-                </section>
-              )}
 
               {/* Spot Timeline */}
               {Array.isArray(spots) && spots.length > 0 && (

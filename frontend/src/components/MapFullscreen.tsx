@@ -1203,15 +1203,8 @@ export function MapFullscreen({
         </div>
       )}
 
-      {/* Feature 1: Waypoint card slider (above elevation bar) */}
-      {markers && markers.length >= 2 && (
-        <WaypointCardSlider
-          markers={markersWithDistance}
-          activeIndex={activeWaypointIndex}
-          onCardTap={handleWaypointTap}
-          bottomOffset={elevationProfile ? 70 : 0}
-        />
-      )}
+      {/* Waypoint card slider removed per user request — it re-centered the
+          map on tap, which conflicted with the user's manual map panning. */}
 
       {/* Slope legend (bottom-right, above elevation bar) */}
       {slopeView && (

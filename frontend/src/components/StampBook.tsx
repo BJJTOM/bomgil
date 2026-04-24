@@ -55,11 +55,18 @@ function useCollectStamp(trailId: number) {
   });
 }
 
-interface StampBookProps {
-  trailId: number;
+/** Public — used by the Live Walk overlay to fetch + watch stamps. */
+export function useTrailStampsPublic(trailId: number) {
+  return useTrailStamps(trailId);
 }
 
-export function StampBook({ trailId }: StampBookProps) {
+interface StampBookProps {
+  trailId: number;
+  /** Called when user clicks the "GPS로 자동 수집 시작" button. */
+  onStartLiveWalk?: () => void;
+}
+
+export function StampBook({ trailId, onStartLiveWalk }: StampBookProps) {
   const { data: stamps = [], isLoading } = useTrailStamps(trailId);
   const { isAuthenticated } = useAuthStore();
   const collectStamp = useCollectStamp(trailId);
@@ -116,13 +123,27 @@ export function StampBook({ trailId }: StampBookProps) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3">
         <h2 className="text-[17px] font-bold text-text-primary">
           스탬프북
         </h2>
-        <span className="text-[13px] font-medium text-text-secondary">
-          {collectedCount}/{totalCount} 수집완료
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-medium text-text-secondary whitespace-nowrap">
+            {collectedCount}/{totalCount}
+          </span>
+          {onStartLiveWalk && isAuthenticated && collectedCount < totalCount && (
+            <button
+              onClick={onStartLiveWalk}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary text-white text-[11.5px] font-semibold active:scale-95 transition-transform"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+              </span>
+              <span>GPS 자동 수집</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Progress bar */}

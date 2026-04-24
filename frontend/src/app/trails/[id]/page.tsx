@@ -13,7 +13,8 @@ import { SpotTimeline } from "@/components/SpotTimeline";
 import { ReviewCard } from "@/components/ReviewCard";
 import { MapView } from "@/components/MapView";
 import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
-import { StampBook } from "@/components/StampBook";
+import { StampBook, useTrailStampsPublic } from "@/components/StampBook";
+import { LiveWalkOverlay } from "@/components/LiveWalkOverlay";
 import { ElevationProfile } from "@/components/ElevationProfile";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -486,27 +487,27 @@ function HeroImageCarousel({
       </button>
 
       {/* Action buttons overlay */}
-      <div className="absolute top-4 right-4 md:top-5 flex items-center gap-1.5 z-10" style={{ top: "max(env(safe-area-inset-top, 12px), 12px)" }}>
+      <div className="absolute top-4 right-4 md:top-5 flex items-center gap-2 z-10" style={{ top: "max(env(safe-area-inset-top, 12px), 12px)" }}>
         <button
           onClick={onToggleLike}
-          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all active:scale-95"
           title={isLiked ? (language === "ko" ? "좋아요 취소" : "Unlike") : (language === "ko" ? "좋아요" : "Like")}
         >
-          <IconHeart size={16} filled={isLiked} className={isLiked ? "text-red-400" : "text-white"} />
+          <IconHeart size={17} filled={isLiked} className={isLiked ? "text-red-400" : "text-white"} />
         </button>
         <button
           onClick={onToggleSave}
-          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all active:scale-95"
           title={isSaved ? (language === "ko" ? "저장 해제" : "Unsave") : (language === "ko" ? "저장" : "Save")}
         >
-          <IconBookmark size={16} filled={isSaved} className={isSaved ? "text-amber-400" : "text-white"} />
+          <IconBookmark size={17} filled={isSaved} className={isSaved ? "text-amber-400" : "text-white"} />
         </button>
         <button
           onClick={onShare}
-          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all active:scale-95"
           title={language === "ko" ? "공유" : "Share"}
         >
-          <IconShare size={16} className="text-white" />
+          <IconShare size={17} className="text-white" />
         </button>
       </div>
 
@@ -578,6 +579,8 @@ export default function TrailDetailPage() {
   const [certLoading, setCertLoading] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [mapSelectedPOI, setMapSelectedPOI] = useState<NearbyPOI | null>(null);
+  const [liveWalkOpen, setLiveWalkOpen] = useState(false);
+  const { data: trailStamps = [] } = useTrailStampsPublic(trailId);
   const createReview = useCreateReview(trailId);
 
   const [linkCopied, setLinkCopied] = useState(false);
@@ -959,32 +962,29 @@ export default function TrailDetailPage() {
       />
 
       {/* ================================================================== */}
-      {/* STATS BAR (text labels, below hero, above tabs)                    */}
+      {/* STATS BAR — 3-column grid on mobile, flex row on ≥md               */}
       {/* ================================================================== */}
       <div className="bg-surface border-b border-border-light">
         <div className="max-w-3xl mx-auto px-5 py-2.5">
-          <div className="flex items-center">
-            {/* Distance */}
-            <div className="flex flex-col items-center flex-1 min-w-0">
+          <div className="grid grid-cols-3 md:flex md:items-center gap-y-2">
+            <div className="flex flex-col items-center md:flex-1 md:min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.distance[language] || STAT_LABELS.distance.en}</span>
               <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{formatDistance(tr.distance_km)}</span>
             </div>
-            <div className="w-px h-7 bg-border-light flex-shrink-0" />
-            {/* Time */}
-            <div className="flex flex-col items-center flex-1 min-w-0">
+            <div className="hidden md:block w-px h-7 bg-border-light flex-shrink-0" />
+            <div className="flex flex-col items-center md:flex-1 md:min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.time[language] || STAT_LABELS.time.en}</span>
               <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{formatDuration(tr.estimated_minutes)}</span>
             </div>
-            <div className="w-px h-7 bg-border-light flex-shrink-0" />
-            {/* Difficulty */}
-            <div className="flex flex-col items-center flex-1 min-w-0">
+            <div className="hidden md:block w-px h-7 bg-border-light flex-shrink-0" />
+            <div className="flex flex-col items-center md:flex-1 md:min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.difficulty[language] || STAT_LABELS.difficulty.en}</span>
               <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{difficultyLabel}</span>
             </div>
             {tr.elevation_gain && (
               <>
-                <div className="w-px h-7 bg-border-light flex-shrink-0" />
-                <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="hidden md:block w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center md:flex-1 md:min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.elevation[language] || STAT_LABELS.elevation.en}</span>
                   <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">+{tr.elevation_gain}m</span>
                 </div>
@@ -992,8 +992,8 @@ export default function TrailDetailPage() {
             )}
             {estimatedCalories && (
               <>
-                <div className="w-px h-7 bg-border-light flex-shrink-0" />
-                <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="hidden md:block w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center md:flex-1 md:min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.calories[language] || STAT_LABELS.calories.en}</span>
                   <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{estimatedCalories.toLocaleString()}kcal</span>
                 </div>
@@ -1001,10 +1001,10 @@ export default function TrailDetailPage() {
             )}
             {avgRating && (
               <>
-                <div className="w-px h-7 bg-border-light flex-shrink-0" />
-                <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="hidden md:block w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center md:flex-1 md:min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.rating[language] || STAT_LABELS.rating.en}</span>
-                  <span className="text-[15px] font-bold text-text-primary mt-0.5 flex items-center gap-1">
+                  <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 flex items-center gap-1 whitespace-nowrap">
                     <IconStar size={12} filled className="text-yellow-400" />
                     {avgRating}
                   </span>
@@ -1018,7 +1018,10 @@ export default function TrailDetailPage() {
       {/* ================================================================== */}
       {/* STICKY TAB BAR (tabs only, no action buttons)                      */}
       {/* ================================================================== */}
-      <div className="sticky top-0 md:top-16 z-30 bg-surface border-b border-border-light">
+      <div
+        className="sticky top-0 md:top-16 z-30 bg-surface border-b border-border-light"
+        style={{ paddingTop: "env(safe-area-inset-top, 0)" }}
+      >
         <div className="max-w-3xl mx-auto px-5">
           {/* Utility row: Edit (compact) */}
           {isAuthenticated && user && tr.author && user.id === tr.author.id && (
@@ -1036,14 +1039,17 @@ export default function TrailDetailPage() {
             </div>
           )}
 
-          {/* Tab bar */}
-          <div ref={tabBarRef} className="relative flex">
+          {/* Tab bar — overflow-x scroll on mobile for long/many tabs */}
+          <div
+            ref={tabBarRef}
+            className="relative flex overflow-x-auto scrollbar-hide md:overflow-visible"
+          >
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 data-tab={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex-1 md:flex-none md:px-5 py-2.5 text-[13px] md:text-[14px] font-semibold text-center transition-colors duration-200 relative ${
+                className={`flex-1 md:flex-none md:px-5 px-3 py-2.5 text-[13px] md:text-[14px] font-semibold text-center whitespace-nowrap transition-colors duration-200 relative ${
                   activeTab === tab.id
                     ? "text-primary"
                     : "text-text-tertiary hover:text-text-secondary"
@@ -1176,7 +1182,10 @@ export default function TrailDetailPage() {
               {/* Stamp Book */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
                 <ErrorBoundary fallback={null}>
-                  <StampBook trailId={trailId} />
+                  <StampBook
+                    trailId={trailId}
+                    onStartLiveWalk={() => setLiveWalkOpen(true)}
+                  />
                 </ErrorBoundary>
               </section>
 
@@ -1278,11 +1287,21 @@ export default function TrailDetailPage() {
               <div className="pt-1 space-y-2">
                 <button
                   onClick={() => {
-                    alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
+                    if (!isAuthenticated) {
+                      globalToast(
+                        language === "ko" ? "로그인 후 이용할 수 있어요." : "Please log in first.",
+                        "info",
+                      );
+                      return;
+                    }
+                    setLiveWalkOpen(true);
                   }}
                   className="w-full py-3.5 bg-primary text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                 >
-                  <IconSmartphone size={16} />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="3" fill="currentColor" />
+                  </svg>
                   {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
                 </button>
                 <button
@@ -1570,11 +1589,21 @@ export default function TrailDetailPage() {
             <div className="pt-1">
               <button
                 onClick={() => {
-                  alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
+                  if (!isAuthenticated) {
+                    globalToast(
+                      language === "ko" ? "로그인 후 이용할 수 있어요." : "Please log in first.",
+                      "info",
+                    );
+                    return;
+                  }
+                  setLiveWalkOpen(true);
                 }}
                 className="w-full py-3.5 bg-primary text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
               >
-                <IconSmartphone size={16} />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="3" fill="currentColor" />
+                </svg>
                 {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
               </button>
             </div>
@@ -1596,6 +1625,21 @@ export default function TrailDetailPage() {
           poi={mapSelectedPOI}
           onClose={() => setMapSelectedPOI(null)}
           language={language}
+        />
+      )}
+
+      {/* ================================================================== */}
+      {/* Live Walk overlay — continuous GPS + auto stamp award            */}
+      {/* ================================================================== */}
+      {liveWalkOpen && (
+        <LiveWalkOverlay
+          open={liveWalkOpen}
+          onClose={() => setLiveWalkOpen(false)}
+          trailId={trailId}
+          trailTitle={tr.title}
+          pathCoordinates={pathCoords}
+          stamps={trailStamps}
+          mapCenter={{ lat: parseFloat(tr.start_lat), lng: parseFloat(tr.start_lng) }}
         />
       )}
 

@@ -12,7 +12,7 @@ interface Props {
   map: any;
   /** LineString coordinates [lng, lat][]. */
   coords: [number, number][];
-  /** Auto-play once when map + coords first become ready. Default true. */
+  /** Auto-play on mount. Default false — user taps ▶ to start. */
   autoPlay?: boolean;
   /** Expose cinematic camera-follow button. Default true on fullscreen. */
   allowCinematic?: boolean;
@@ -28,7 +28,7 @@ interface Props {
 export function RouteAnimationControls({
   map,
   coords,
-  autoPlay = true,
+  autoPlay = false,
   allowCinematic = false,
   position = "bottom-left",
 }: Props) {
@@ -37,8 +37,11 @@ export function RouteAnimationControls({
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [mode, setMode] = useState<"trace" | "cinematic">("trace");
+  // Idle = no animation running and none ever completed → show the
+  // condensed "코스 따라가기" CTA. Expands to full progress bar during
+  // and after playback.
+  const idle = !isPlaying && progress === 0;
 
-  // Cleanup on unmount or when coords change
   useEffect(() => {
     return () => {
       controllerRef.current?.stop();
@@ -46,16 +49,13 @@ export function RouteAnimationControls({
     };
   }, [coords]);
 
-  // Auto-play once, after both map and coords are ready + user hasn't
-  // opted into reduced motion.
+  // Opt-in autoplay (disabled by default). MapFullscreen / detail map
+  // both pass autoPlay={false} now — the user starts it themselves.
   useEffect(() => {
     if (!autoPlay || autoplayedRef.current) return;
     if (!map || !coords || coords.length < 2) return;
     if (prefersReducedMotion()) return;
-
     autoplayedRef.current = true;
-    // Short delay so the map idle-settles (bounds fit, peak labels)
-    // before we start the reveal.
     const t = setTimeout(() => play("trace"), 650);
     return () => clearTimeout(t);
   }, [map, coords, autoPlay]);
@@ -73,9 +73,7 @@ export function RouteAnimationControls({
         setIsPlaying(false);
         setProgress(1);
       },
-      onAbort: () => {
-        setIsPlaying(false);
-      },
+      onAbort: () => setIsPlaying(false),
     });
   };
 
@@ -83,6 +81,7 @@ export function RouteAnimationControls({
     controllerRef.current?.stop();
     controllerRef.current = null;
     setIsPlaying(false);
+    setProgress(0);
   };
 
   const cornerClass =
@@ -94,15 +93,37 @@ export function RouteAnimationControls({
           ? "left-3 top-3"
           : "right-3 top-3";
 
+  // ── Idle: single CTA button. Expands on click. ────────────────────
+  if (idle) {
+    return (
+      <div className={`absolute ${cornerClass} z-20 pointer-events-none`}>
+        <button
+          onClick={() => play("trace")}
+          className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/75 hover:bg-black/85 backdrop-blur-md border border-white/15 pl-2.5 pr-3.5 py-2 text-white shadow-lg active:scale-95 transition-all"
+          aria-label="코스 따라가기 애니메이션 재생"
+        >
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FFB770] text-black">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+          <span className="text-[12px] font-semibold tracking-tight">
+            코스 따라가기
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  // ── Playing / finished: full controls pill ────────────────────────
   return (
     <div className={`absolute ${cornerClass} z-20 pointer-events-none`}>
-      <div className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 px-2.5 py-1.5 shadow-lg">
+      <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/75 backdrop-blur-md border border-white/15 pl-1.5 pr-3 py-1.5 shadow-lg">
         {isPlaying ? (
           <button
             onClick={stop}
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
             aria-label="정지"
-            title="정지"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
               <rect x="6" y="6" width="12" height="12" rx="1.5" />
@@ -110,50 +131,59 @@ export function RouteAnimationControls({
           </button>
         ) : (
           <button
-            onClick={() => play("trace")}
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+            onClick={() => play(mode)}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFB770] hover:bg-[#FFC38C] text-black transition-colors"
             aria-label={progress >= 1 ? "다시 보기" : "재생"}
-            title={progress >= 1 ? "다시 보기" : "재생"}
           >
             {progress >= 1 ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
               </svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
           </button>
         )}
 
-        {/* Progress bar */}
-        <div className="w-28 h-1 rounded-full bg-white/15 overflow-hidden">
-          <div
-            className="h-full bg-[#FFB770] transition-[width] duration-100"
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
+        <div className="flex items-center gap-1.5">
+          <div className="w-24 h-1.5 rounded-full bg-white/15 overflow-hidden">
+            <div
+              className="h-full bg-[#FFB770] transition-[width] duration-100"
+              style={{ width: `${Math.round(progress * 100)}%` }}
+            />
+          </div>
+          <span className="text-[10.5px] font-en text-white/80 tabular-nums w-8 text-right">
+            {Math.round(progress * 100)}%
+          </span>
         </div>
-
-        <span className="text-[10.5px] font-en text-white/80 tabular-nums w-7 text-right">
-          {Math.round(progress * 100)}%
-        </span>
 
         {allowCinematic && (
           <button
-            onClick={() => play(isPlaying && mode === "cinematic" ? "trace" : "cinematic")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10.5px] font-semibold transition-colors ${
+            onClick={() => play(mode === "cinematic" && isPlaying ? "trace" : "cinematic")}
+            className={`flex items-center gap-1 px-2.5 h-7 rounded-full text-[10.5px] font-semibold transition-colors ${
               mode === "cinematic" && isPlaying
                 ? "bg-[#FFB770] text-black"
                 : "bg-white/15 text-white hover:bg-white/25"
             }`}
-            aria-label="시네마틱 프리뷰"
             title="시네마틱 프리뷰 (카메라 따라가기)"
           >
             <span>🎬</span>
-            <span>시네마틱</span>
+            <span className="hidden sm:inline">시네마틱</span>
           </button>
         )}
+
+        <button
+          onClick={stop}
+          className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-white/15 transition-colors text-white/70 hover:text-white"
+          aria-label="닫기"
+          title="닫기"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M6 6l12 12M6 18L18 6" />
+          </svg>
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -57,8 +57,19 @@ import { ElevationProfile } from '../components/ElevationProfile';
 import { TrailSegments } from '../components/TrailSegments';
 import { TrailConditionBanner } from '../components/TrailConditionBanner';
 import StampBook from '../components/StampBook';
+import TrailCard from '../components/TrailCard';
 import { useThemeStore } from '../stores/theme';
 import { useAuthStore } from '../stores/auth';
+
+// ─── Tab Types ──────────────────────────────────────────────────────────────
+type TabId = 'overview' | 'album' | 'reviews' | 'records';
+
+const TAB_CONFIG: { id: TabId; label: string }[] = [
+  { id: 'overview', label: '코스 소개' },
+  { id: 'album', label: '앨범' },
+  { id: 'reviews', label: '리뷰' },
+  { id: 'records', label: '기록' },
+];
 
 const { width } = Dimensions.get('window');
 
@@ -218,6 +229,10 @@ function TrailDetailScreenInner() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [linkCopiedVisible, setLinkCopiedVisible] = useState(false);
+  const linkCopiedOpacity = useRef(new Animated.Value(0)).current;
+
   const likeScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -287,6 +302,38 @@ function TrailDetailScreenInner() {
     retry: 1,
     staleTime: 60000,
   });
+
+  // Activities for the "records" tab
+  const { data: activities = [] } = useQuery({
+    queryKey: ['trail-activities', trailId],
+    queryFn: async () => {
+      const { data } = await api.get('/activities/', {
+        params: { trail: trailId, page_size: 20 },
+      });
+      return (data?.results ?? data) || [];
+    },
+    enabled: !!trailId && activeTab === 'records',
+    retry: 1,
+    staleTime: 60000,
+  });
+
+  // Similar trails for the "overview" tab bottom
+  const { data: similarTrailsRaw = [] } = useQuery<Trail[]>({
+    queryKey: ['similar-trails', trailId],
+    queryFn: async () => {
+      const { data } = await api.get('/trails/', {
+        params: { ordering: '-like_count', limit: '5' },
+      });
+      return Array.isArray(data) ? data : data.results ?? [];
+    },
+    staleTime: 1000 * 60 * 10,
+    retry: 1,
+  });
+
+  const similarTrails = useMemo(
+    () => similarTrailsRaw.filter((t: Trail) => t.id !== trailId).slice(0, 4),
+    [similarTrailsRaw, trailId],
+  );
 
   const likeMutation = useMutation({
     mutationFn: async () => (await api.post(`/trails/${trailId}/like/`)).data,
@@ -379,6 +426,46 @@ function TrailDetailScreenInner() {
       });
     } catch {}
   };
+
+  const handleCopyLink = useCallback(async () => {
+    const url = `https://moruwalk.com/trails/${trailId}`;
+    try {
+      // Try share first — native share sheet handles copy for iOS/Android
+      await Share.share({ message: url });
+    } catch {
+      // If share is cancelled, still show toast
+    }
+    // Show toast
+    setLinkCopiedVisible(true);
+    Animated.sequence([
+      Animated.timing(linkCopiedOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1500),
+      Animated.timing(linkCopiedOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setLinkCopiedVisible(false));
+  }, [trailId, linkCopiedOpacity]);
+
+  // Collect all album images from reviews + spots
+  const albumImages = useMemo(() => {
+    const imgs: { src: string; caption?: string }[] = [];
+    for (const review of (reviews || [])) {
+      if (review.images && review.images.length > 0) {
+        for (const img of review.images) {
+          imgs.push({
+            src: img.image,
+            caption: review.content ? `${review.author?.nickname || ''} - ${review.content.slice(0, 60)}` : undefined,
+          });
+        }
+      }
+    }
+    for (const spot of (spots || [])) {
+      if (spot.images && spot.images.length > 0) {
+        for (const img of spot.images) {
+          imgs.push({ src: img.image, caption: spot.name || undefined });
+        }
+      }
+    }
+    return imgs;
+  }, [reviews, spots]);
 
   const handleLike = () => {
     Vibration.vibrate(10);
@@ -606,6 +693,27 @@ function TrailDetailScreenInner() {
           })()}
         </View>
 
+        {/* ===== TAB BAR (matching web's 4 tabs) ===== */}
+        <View style={[styles.tabBar, { backgroundColor: cardBg, borderBottomColor: borderColor }]}>
+          {TAB_CONFIG.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.tabItem]}
+              onPress={() => setActiveTab(tab.id)}
+              activeOpacity={0.7}>
+              <Text style={[styles.tabText, { color: textTertColor }, activeTab === tab.id && { color: colors.primary, fontWeight: '700' }]}>
+                {tab.label}
+              </Text>
+              {activeTab === tab.id && (
+                <View style={styles.tabIndicator} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ═══════════════════ TAB 1: 코스 소개 ═══════════════════ */}
+        {activeTab === 'overview' && (<>
+
         {/* Series-membership chips */}
         {Array.isArray((trail as any).series) && (trail as any).series.length > 0 && (
           <View style={styles.seriesRow}>
@@ -716,7 +824,7 @@ function TrailDetailScreenInner() {
               region={trail.region}
               country={trail.country}
               height={260}
-              theme="dark"
+              theme="light"
               spots={(spots || []).map((s: Spot) => ({ lat: parseFloat(String(s.lat)), lng: parseFloat(String(s.lng)), name: s.name, type: s.spot_type }))}
             />
           ) : (
@@ -919,18 +1027,115 @@ function TrailDetailScreenInner() {
           </View>
         </View>
 
-        {/* ===== REVIEWS ===== */}
-        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+        {/* Similar Trails */}
+        {similarTrails.length > 0 && (
+          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{'비슷한 코스'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {similarTrails.map((st: Trail) => (
+                <View key={st.id} style={{ width: 260 }}>
+                  <TrailCard
+                    trail={st}
+                    compact
+                    onPress={() => navigation.navigate('TrailDetail', { id: st.id })}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* CTA + Link Copy buttons */}
+        <View style={{ paddingHorizontal: 20, marginTop: 16, gap: 8 }}>
+          <TouchableOpacity
+            style={styles.ctaBtn}
+            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
+            activeOpacity={0.88}>
+            <Text style={styles.ctaBtnText}>
+              {trail.is_completed ? '\uB2E4\uC2DC \uAC77\uAE30' : '\uC774 \uCF54\uC2A4\uB85C \uAC77\uAE30 \uC2DC\uC791'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.linkCopyBtn, { borderColor: isDark ? 'rgba(255,255,255,0.15)' : borderColor }]}
+            onPress={handleCopyLink}
+            activeOpacity={0.7}>
+            <Feather name="copy" size={15} color={textSecColor} />
+            <Text style={[styles.linkCopyBtnText, { color: textSecColor }]}>{'링크 복사'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Offline Save */}
+        <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 20 }}>
+          <TouchableOpacity
+            style={[styles.offlineSaveBtn, { borderColor: isDark ? 'rgba(255,255,255,0.15)' : borderColor }]}
+            onPress={handleSaveOffline}
+            disabled={savingOffline}
+            activeOpacity={0.7}>
+            <Feather
+              name={savedOffline ? 'check-circle' : 'download'}
+              size={16}
+              color={savedOffline ? colors.primary : textSecColor}
+            />
+            <Text style={[styles.offlineSaveBtnText, { color: savedOffline ? colors.primary : textSecColor }]}>
+              {savedOffline ? '\uC624\uD504\uB77C\uC778 \uC800\uC7A5\uB428' : '\uC624\uD504\uB77C\uC778\uC73C\uB85C \uC800\uC7A5'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        </>)}
+
+        {/* ═══════════════════ TAB 2: 앨범 ═══════════════════ */}
+        {activeTab === 'album' && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
+            {albumImages.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Feather name="image" size={40} color={textTertColor} style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 14, color: textTertColor }}>{'아직 등록된 사진이 없어요'}</Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
+                {albumImages.map((img, i) => {
+                  const imageSize = (width - 40 - 4) / 3;
+                  return (
+                    <TouchableOpacity
+                      key={`${img.src}-${i}`}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setViewerImages(albumImages.map((x) => x.src));
+                        setViewerIndex(i);
+                        setViewerVisible(true);
+                      }}>
+                      <Image
+                        source={{ uri: img.src }}
+                        style={{ width: imageSize, height: imageSize, borderRadius: 2 }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ═══════════════════ TAB 3: 리뷰 ═══════════════════ */}
+        {activeTab === 'reviews' && (
+        <View style={[styles.contentBlock, { paddingHorizontal: 20, paddingBottom: 20 }]}>
           <View style={styles.reviewsHeader}>
             <View style={styles.reviewsTitleRow}>
-              <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>{'\uB9AC\uBDF0'}</Text>
-              {avgRating && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-                  <Feather name="star" size={14} color="#FFB800" />
-                  <Text style={styles.ratingInline}>
-                    {avgRating} ({safeReviews.length})
-                  </Text>
+              {avgRating ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 26, fontWeight: '700', color: textColor }}>{avgRating}</Text>
+                  <View>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Feather key={s} name="star" size={13} color={s <= Math.round(Number(avgRating)) ? '#FFB800' : '#E5E8EB'} />
+                      ))}
+                    </View>
+                    <Text style={{ fontSize: 11, color: textTertColor, marginTop: 2 }}>{safeReviews.length}{'개 리뷰'}</Text>
+                  </View>
                 </View>
+              ) : (
+                <Text style={{ fontSize: 14, color: textTertColor }}>{'아직 리뷰가 없어요'}</Text>
               )}
             </View>
             <TouchableOpacity
@@ -1020,7 +1225,7 @@ function TrailDetailScreenInner() {
               <Text style={[styles.emptyReviewsSub, { color: textTertColor }]}>{'\uCCAB \uBC88\uC9F8 \uB9AC\uBDF0\uB97C \uC791\uC131\uD574\uBCF4\uC138\uC694'}</Text>
             </View>
           )}
-          {safeReviews.slice(0, 5).map((review: Review) => (
+          {safeReviews.map((review: Review) => (
             <View key={review.id} style={[styles.reviewItem, { borderBottomColor: borderColor }]}>
               <View style={styles.reviewTop}>
                 <View style={[styles.reviewAvatarSmall, { backgroundColor: sectionBg }]}>
@@ -1075,84 +1280,141 @@ function TrailDetailScreenInner() {
             </View>
           ))}
         </View>
+        )}
 
-        {/* ===== WALKERS ===== */}
-        {trailWalkers.length > 0 && (
-          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              {'\uC774 \uCF54\uC2A4\uB97C \uAC78\uC740 \uC0AC\uB78C'}{' '}
-              <Text style={[styles.sectionCount, { color: textSecColor }]}>{trailWalkers.length}</Text>
-            </Text>
-            <View style={styles.walkersRow}>
-              {trailWalkers.slice(0, 5).map((walker: any, index: number) => (
-                <TouchableOpacity
-                  key={walker.id}
-                  style={[styles.walkerItem, index > 0 && { marginLeft: -8 }]}
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
-                  <View style={[styles.walkerAvatar, { borderColor: cardBg }]}>
-                    {walker.profile_image ? (
-                      <Image source={{ uri: walker.profile_image }} style={styles.walkerAvatarImg} />
-                    ) : (
-                      <Text style={[styles.walkerAvatarFallback, { color: textSecColor }]}>
-                        {(walker.nickname || '?')[0]}
+        {/* ═══════════════════ TAB 4: 기록 ═══════════════════ */}
+        {activeTab === 'records' && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
+            {/* Activity Records */}
+            {activities.length > 0 ? (
+              <View style={{ backgroundColor: cardBg, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: textTertColor, marginBottom: 10 }}>
+                  {'총 '}{activities.length}{'회 완주'}
+                </Text>
+                {activities.slice(0, 10).map((act: any) => (
+                  <TouchableOpacity
+                    key={act.id}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: borderColor }}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (act.user?.nickname) navigation.navigate('Profile', { nickname: act.user.nickname });
+                    }}>
+                    <View style={[styles.reviewAvatarSmall, { backgroundColor: sectionBg, marginRight: 10 }]}>
+                      {act.user?.profile_image ? (
+                        <Image source={{ uri: act.user.profile_image }} style={styles.reviewAvatarImg} />
+                      ) : (
+                        <Feather name="user" size={14} color={textSecColor} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: textColor }}>{act.user?.nickname || ''}</Text>
+                      <Text style={{ fontSize: 11, color: textTertColor }}>
+                        {act.distance_km ? `${parseFloat(act.distance_km).toFixed(1)}km` : '-'}
+                        {act.duration_minutes ? ` · ${Math.floor(act.duration_minutes / 60)}시간 ${act.duration_minutes % 60}분` : ''}
                       </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-              {trailWalkers.length > 5 && (
-                <View style={[styles.walkerItem, { marginLeft: -8 }]}>
-                  <View style={[styles.walkerMoreBadge, { borderColor: cardBg }]}>
-                    <Text style={styles.walkerMoreText}>+{trailWalkers.length - 5}</Text>
-                  </View>
+                    </View>
+                    <View style={{ backgroundColor: sectionBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: textTertColor }}>{(act.source || '').replace('_', ' ')}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 36, backgroundColor: cardBg, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, marginBottom: 16 }}>
+                <Feather name="activity" size={40} color={textTertColor} style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 14, color: textTertColor }}>{'아직 활동 기록이 없어요'}</Text>
+              </View>
+            )}
+
+            {/* Walkers */}
+            {trailWalkers.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                  {'이 코스를 걸은 사람'}{' '}
+                  <Text style={[styles.sectionCount, { color: textSecColor }]}>{trailWalkers.length}</Text>
+                </Text>
+                <View style={styles.walkersRow}>
+                  {trailWalkers.slice(0, 5).map((walker: any, index: number) => (
+                    <TouchableOpacity
+                      key={walker.id}
+                      style={[styles.walkerItem, index > 0 && { marginLeft: -8 }]}
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
+                      <View style={[styles.walkerAvatar, { borderColor: cardBg }]}>
+                        {walker.profile_image ? (
+                          <Image source={{ uri: walker.profile_image }} style={styles.walkerAvatarImg} />
+                        ) : (
+                          <Text style={[styles.walkerAvatarFallback, { color: textSecColor }]}>
+                            {(walker.nickname || '?')[0]}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {trailWalkers.length > 5 && (
+                    <View style={[styles.walkerItem, { marginLeft: -8 }]}>
+                      <View style={[styles.walkerMoreBadge, { borderColor: cardBg }]}>
+                        <Text style={styles.walkerMoreText}>+{trailWalkers.length - 5}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <View style={styles.walkerNamesRow}>
-              {trailWalkers.slice(0, 5).map((walker: any) => (
-                <TouchableOpacity
-                  key={walker.id}
-                  onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
-                  <Text style={[styles.walkerName, { color: isDark ? '#4ADE80' : '#2D4A2E', backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.06)' }]}>{walker.nickname}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                <View style={styles.walkerNamesRow}>
+                  {trailWalkers.slice(0, 5).map((walker: any) => (
+                    <TouchableOpacity
+                      key={walker.id}
+                      onPress={() => navigation.navigate('Profile', { nickname: walker.nickname })}>
+                      <Text style={[styles.walkerName, { color: isDark ? '#4ADE80' : '#2D4A2E', backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.06)' }]}>{walker.nickname}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* CTA Button */}
+            <TouchableOpacity
+              style={styles.ctaBtn}
+              onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
+              activeOpacity={0.88}>
+              <Text style={styles.ctaBtnText}>
+                {trail.is_completed ? '\uB2E4\uC2DC \uAC77\uAE30' : '\uC774 \uCF54\uC2A4\uB85C \uAC77\uAE30 \uC2DC\uC791'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* ===== OFFLINE SAVE BUTTON (secondary) ===== */}
-        <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-          <TouchableOpacity
-            style={[styles.offlineSaveBtn, { borderColor: isDark ? 'rgba(255,255,255,0.15)' : borderColor }]}
-            onPress={handleSaveOffline}
-            disabled={savingOffline}
-            activeOpacity={0.7}>
-            <Feather
-              name={savedOffline ? 'check-circle' : 'download'}
-              size={16}
-              color={savedOffline ? colors.primary : textSecColor}
-            />
-            <Text style={[styles.offlineSaveBtnText, { color: savedOffline ? colors.primary : textSecColor }]}>
-              {savedOffline ? '\uC624\uD504\uB77C\uC778 \uC800\uC7A5\uB428' : '\uC624\uD504\uB77C\uC778\uC73C\uB85C \uC800\uC7A5'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ===== CTA BUTTON — Change #6: in scroll flow, not fixed ===== */}
-        <View style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 20 }}>
-          <TouchableOpacity
-            style={styles.ctaBtn}
-            onPress={() => navigation.navigate('Walk', { trailId: trail.id, trail })}
-            activeOpacity={0.88}>
-            <Text style={styles.ctaBtnText}>
-              {trail.is_completed ? '\uB2E4\uC2DC \uAC77\uAE30' : '\uC774 \uCF54\uC2A4\uB85C \uAC77\uAE30 \uC2DC\uC791'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
+
+      {/* Link Copied Toast */}
+      {linkCopiedVisible && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 100,
+            alignSelf: 'center',
+            zIndex: 50,
+            opacity: linkCopiedOpacity,
+          }}
+          pointerEvents="none"
+        >
+          <View style={{
+            backgroundColor: isDark ? '#e5e5e5' : '#1f2937',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 999,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
+          }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#1f2937' : '#fff' }}>
+              {'링크가 복사되었습니다'}
+            </Text>
+          </View>
+        </Animated.View>
+      )}
 
       {/* Fullscreen Image Viewer */}
       <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={() => setViewerVisible(false)}>
@@ -2424,7 +2686,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // -- CTA button (Change #6: in-flow, not fixed) --------------------
+  // -- Tab bar -------------------------------------------------------
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F6',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    position: 'relative',
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '20%',
+    right: '20%',
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#2D4A2E',
+  },
+
+  // -- Link copy button -----------------------------------------------
+  linkCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F2F4F6',
+  },
+  linkCopyBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // -- CTA button (in-flow, not fixed) --------------------
   ctaBtn: {
     backgroundColor: '#2D4A2E',
     paddingVertical: 16,

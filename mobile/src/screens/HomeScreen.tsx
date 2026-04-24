@@ -486,34 +486,6 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* ============================================================= */}
-        {/* Discover by Country                                            */}
-        {/* ============================================================= */}
-        <FadeInView delay={100}>
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('discoverTitle', language)}</Text>
-            <View style={styles.countryGrid}>
-              {DISCOVER_COUNTRIES.map((country) => (
-                <TouchableOpacity
-                  key={country.code}
-                  style={[styles.countryItem, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}
-                  activeOpacity={0.6}
-                  onPress={() =>
-                    navigation.navigate('Explore', { country: country.code })
-                  }>
-                  <Text style={styles.countryEmoji}>{country.emoji}</Text>
-                  <View style={styles.countryTextWrap}>
-                    <Text style={[styles.countryName, { color: textColor }]}>{country.name}</Text>
-                    <Text style={styles.countryDesc} numberOfLines={1}>
-                      {country.desc}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </FadeInView>
-
         {/* Merged Trail Section (today + popular + recommended)           */}
         {/* ============================================================= */}
         <FadeInView delay={200}>
@@ -598,6 +570,34 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+        </FadeInView>
+
+        {/* ============================================================= */}
+        {/* Discover by Country                                            */}
+        {/* ============================================================= */}
+        <FadeInView delay={100}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('discoverTitle', language)}</Text>
+            <View style={styles.countryGrid}>
+              {DISCOVER_COUNTRIES.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={[styles.countryItem, isDark && { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.1)' }]}
+                  activeOpacity={0.6}
+                  onPress={() =>
+                    navigation.navigate('Explore', { country: country.code })
+                  }>
+                  <Text style={styles.countryEmoji}>{country.emoji}</Text>
+                  <View style={styles.countryTextWrap}>
+                    <Text style={[styles.countryName, { color: textColor }]}>{country.name}</Text>
+                    <Text style={styles.countryDesc} numberOfLines={1}>
+                      {country.desc}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </FadeInView>
 

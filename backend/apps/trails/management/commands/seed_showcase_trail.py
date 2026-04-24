@@ -1,14 +1,19 @@
 """Seed a rich demo trail so the map + detail page can show off.
 
-Everything is fabricated but realistic: a ~4.8km looping walk around
-Yeouido Hangang Park (여의도 한강공원). The path carries ~60 GPS
-points with synthesised elevation so the new elevation profile and
-flythrough features have something to render, plus segments, spots,
-stamp points, tags, and cover image.
+The route is the 청계천 산책로 — a dedicated riverside pedestrian walkway
+that runs east from 청계광장 past a sequence of historic bridges. It's the
+right pick for a synthetic demo because:
+  - The walking path is physically separated from traffic and buildings,
+    so linear segments between bridge anchors (≈150 m apart) stay on
+    the real path.
+  - Every bridge is a well-known Seoul landmark, giving the segment and
+    stamp lists instant recognisability.
+  - The full stretch from 청계광장 to 영도교 is ~3.8 km, comfortable for
+    a one-way walk and turning into a 7 km out-and-back loop.
 
 Usage:
     python manage.py seed_showcase_trail
-    python manage.py seed_showcase_trail --slug yeouido-cherry --force
+    python manage.py seed_showcase_trail --force
 """
 
 from __future__ import annotations
@@ -24,163 +29,165 @@ from apps.trails.models import StampPoint, Tag, Trail, TrailSegment
 from apps.spots.models import Spot
 
 
-# ── Yeouido loop: real coordinates hand-picked for a scenic ~4.8km walk ──
-# Generated below by sampling an ellipse through these anchor points.
-YEOUIDO_ANCHORS = [
-    (37.526470, 126.934170),  # 한강공원 여의도 입구
-    (37.528150, 126.926830),  # 벚꽃길 중앙
-    (37.526650, 126.919800),  # 국회의사당 앞
-    (37.523620, 126.917400),  # 마포대교 남단
-    (37.519330, 126.923050),  # 여의나루역 쪽
-    (37.520650, 126.931500),  # 요트 선착장
-    (37.524380, 126.935400),  # 한강공원 동쪽
-    (37.526470, 126.934170),  # 다시 출발지 (loop close)
+# ── Real 청계천 bridge coordinates (west → east) ────────────────────────
+# Each tuple: (lat, lng, altitude_m, bridge_name).
+# Altitude is the sunken-riverbed level at that bridge, roughly 14~20 m
+# above sea level; using the small variation makes the elevation profile
+# chart readable without pretending the walk goes uphill.
+CHEONGGYE_BRIDGES = [
+    (37.56930, 126.97832, 17.0, "청계광장"),
+    (37.56921, 126.97920, 16.8, "모전교"),
+    (37.56915, 126.98014, 16.5, "광통교"),
+    (37.56908, 126.98102, 16.2, "광교"),
+    (37.56898, 126.98196, 15.9, "장통교"),
+    (37.56891, 126.98280, 15.7, "삼일교"),
+    (37.56882, 126.98373, 15.5, "수표교"),
+    (37.56875, 126.98464, 15.3, "관수교"),
+    (37.56862, 126.98645, 15.1, "세운교"),
+    (37.56847, 126.98826, 14.9, "배오개다리"),
+    (37.56829, 126.99010, 14.7, "새벽다리"),
+    (37.56811, 126.99193, 14.5, "마전교"),
+    (37.56794, 126.99370, 14.3, "나래교"),
+    (37.56773, 126.99552, 14.1, "버들다리"),
+    (37.56746, 126.99730, 13.9, "오간수교"),
+    (37.56714, 126.99898, 13.7, "맑은내다리"),
+    (37.56680, 127.00059, 13.5, "다산교"),
+    (37.56626, 127.00220, 13.3, "영도교"),
 ]
 
 
-def _sample_path(anchors, points_per_segment=8):
-    """Catmull-Rom-style smooth sampling for a nicer polyline."""
-    coords = []
+def _interpolate_path(anchors, samples_per_segment=5):
+    """Straight-line sample between adjacent anchors.
+
+    Dense enough sampling (5 per segment of ≈150 m) means the rendered
+    polyline hugs the river without visible angles — and since each
+    sub-segment is a chord of a <1° bearing change, none of the
+    straight pieces wander into buildings.
+    """
+    out = []
     for i in range(len(anchors) - 1):
-        p0 = anchors[max(0, i - 1)]
-        p1 = anchors[i]
-        p2 = anchors[i + 1]
-        p3 = anchors[min(len(anchors) - 1, i + 2)]
-        for s in range(points_per_segment):
-            t = s / points_per_segment
-            t2, t3 = t * t, t * t * t
-            lat = 0.5 * (
-                (2 * p1[0])
-                + (-p0[0] + p2[0]) * t
-                + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
-                + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3
-            )
-            lng = 0.5 * (
-                (2 * p1[1])
-                + (-p0[1] + p2[1]) * t
-                + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
-                + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3
-            )
-            coords.append((lat, lng))
-    coords.append(anchors[-1])
-    return coords
+        a, b = anchors[i], anchors[i + 1]
+        for s in range(samples_per_segment):
+            t = s / samples_per_segment
+            lat = a[0] + (b[0] - a[0]) * t
+            lng = a[1] + (b[1] - a[1]) * t
+            ele = a[2] + (b[2] - a[2]) * t
+            out.append([round(lng, 6), round(lat, 6), round(ele, 2)])
+    a = anchors[-1]
+    out.append([round(a[1], 6), round(a[0], 6), round(a[2], 2)])
+    return out
 
 
-def _haversine_km(a, b):
+def _haversine_km(lat1, lng1, lat2, lng2):
     R = 6371.0
-    lat1, lng1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lng2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlng = lat2 - lat1, lng2 - lng1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    h = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlng / 2) ** 2
     return 2 * R * math.asin(math.sqrt(h))
 
 
-def _add_elevation(coords):
-    """Add a gentle synthesised elevation (m) to each [lat, lng].
-
-    Simulates a mild hill + riverside flat so the elevation chart has
-    something interesting to plot without pretending to be real terrain.
-    Returns `[lng, lat, ele]` tuples because our GeoJSON convention is
-    [lng, lat] first.
-    """
-    n = len(coords)
-    result = []
-    for i, (lat, lng) in enumerate(coords):
-        t = i / max(1, n - 1)
-        # Two-peak wave, baseline 18m near Han river
-        ele = 18 + 14 * math.sin(t * math.pi * 2) + 8 * math.sin(t * math.pi * 5)
-        result.append([round(lng, 6), round(lat, 6), round(ele, 1)])
-    return result
-
-
 SHOWCASE = {
-    "slug": "yeouido-cherry",
-    "title": "여의도 벚꽃길 한강 루프",
-    "title_en": "Yeouido Cherry Blossom Hangang Loop",
-    "title_ja": "汝矣島の桜並木 漢江ループ",
+    "title": "청계천 산책로 — 청계광장 → 영도교",
+    "title_en": "Cheonggyecheon Walk — Cheonggye Plaza to Yeongdo Bridge",
+    "title_ja": "清渓川散歩道 — 清渓広場から永渡橋まで",
     "description": (
-        "봄이면 벚꽃이 터널을 이루고, 사계절 내내 한강 위 윤슬이 반짝이는 서울의 "
-        "대표 산책 코스. 국회의사당·마포대교·요트 선착장을 한 바퀴 도는 4.8km "
-        "순환 루트로, 어디서 시작해도 30분이면 카페와 전망 포인트를 만날 수 있습니다. "
-        "초보자에게도 부담 없는 평지 위주의 포장길 + 자전거도로 병행 코스."
+        "서울 도심 한복판, 차량과 완전히 분리된 하천변 산책로를 따라 18개 "
+        "다리를 순서대로 만나는 3.8km 워크입니다. 청계광장의 모던한 분수에서 "
+        "시작해 광통교·수표교 같은 조선시대 석교들을 지나 장수 복원지의 "
+        "갈대밭까지 이어지는, 도보 초심자에게 가장 추천할 만한 서울 대표 "
+        "코스. 전체 구간이 포장된 평지라 유모차·휠체어 이동도 가능하며, "
+        "여름엔 물놀이 구간이, 가을엔 단풍 터널이, 겨울엔 빛초롱축제가 "
+        "기다립니다."
     ),
     "description_en": (
-        "A spring cherry-blossom canopy and year-round Han River sparkle on Seoul's "
-        "most beloved urban walk. A 4.8 km loop past the National Assembly, "
-        "Mapo Bridge and the yacht marina — easy paved paths the whole way."
+        "A 3.8 km car-free riverside walk through the heart of Seoul, passing "
+        "18 historic bridges from the modern Cheonggye Plaza to the restored "
+        "reed fields near Yeongdo Bridge. The entire route is paved and "
+        "accessible — ideal for first-time walkers, strollers and wheelchair "
+        "users."
     ),
     "description_ja": (
-        "春は桜のトンネル、四季を通じて漢江のきらめきが楽しめるソウル定番の散歩道。"
-        "国会議事堂・麻浦大橋・ヨットマリーナを巡る4.8kmの周回コース、全線舗装路で初心者にもやさしい。"
+        "ソウル都心を貫く清渓川沿いの歩行者専用路を3.8km。清渓広場から広通橋や"
+        "水標橋など朝鮮時代の石橋を次々に渡り、復元された葦原で終わる。全線が平地舗装路で、"
+        "初心者にも安心のコース。"
     ),
-    "region": "서울 영등포구",
+    "region": "서울 종로구 / 중구",
     "country": "KR",
     "trail_type": "urban",
     "difficulty": "easy",
     "walking_surface": "paved",
-    "best_season": "spring",
-    "estimated_minutes": 70,
-    "transport_access": "지하철 5호선 여의나루역 2번 출구 도보 5분 / 9호선 국회의사당역 4번 출구 도보 8분",
-    "cover_image_url": "https://tong.visitkorea.or.kr/cms/resource/86/2596286_image2_1.jpg",
+    "best_season": "all",
+    "estimated_minutes": 55,
+    "transport_access": (
+        "지하철 5호선 광화문역 5번 출구 도보 2분 / 종각역 5번 출구 도보 3분 "
+        "· 도착 후 지하철 5호선 신금호역 또는 6호선 신당역에서 귀가"
+    ),
+    "cover_image_url": "https://tong.visitkorea.or.kr/cms/resource/01/2639501_image2_1.jpg",
 }
 
-SEGMENTS = [
-    ("한강공원 입구", "벚꽃길 중앙광장", 0.8, 12),
-    ("벚꽃길 중앙광장", "국회의사당 앞 전망", 1.1, 17),
-    ("국회의사당 앞 전망", "마포대교 남단 쉼터", 0.9, 14),
-    ("마포대교 남단 쉼터", "여의나루 야경 포인트", 1.0, 15),
-    ("여의나루 야경 포인트", "요트 선착장 & 복귀", 1.0, 12),
+# Segments tie consecutive bridge anchors together. We read distances
+# straight from the interpolated polyline so they match the rendered
+# map exactly.
+SEGMENT_WAYPOINTS = [
+    (0, 3,  "청계광장",       "광교",          "도심 빌딩 사이를 흐르는 물줄기, 스타트 구간"),
+    (3, 7,  "광교",           "관수교",        "조선시대 석교가 차례로 나타나는 역사 구간"),
+    (7, 11, "관수교",         "마전교",        "옛 시장 골목과 나란한 중간 구간 · 포토존 다수"),
+    (11, 15, "마전교",        "오간수교",      "한양 성곽의 흔적 오간수문이 남아있는 구간"),
+    (15, 17, "오간수교",      "영도교",        "갈대밭과 복원 생태 공간으로 이어지는 피날레"),
 ]
 
+# Spots at or near specific bridges. lat/lng use the bridge anchor.
 SPOTS = [
-    # (spot_type, name, dist_km, lat, lng, desc, menu_highlight)
-    ("start", "한강공원 여의도 입구", 0.0, 37.526470, 126.934170,
-        "지하철 5호선 여의나루역 2번 출구에서 5분. 지도 간판 옆이 출발점입니다.", ""),
-    ("cafe", "더리버 카페", 0.4, 37.527120, 126.930600,
-        "한강 뷰가 풍경화처럼 펼쳐지는 2층 루프탑 카페. 평일 오전은 자리 여유 있음.",
-        "시그니처 '한강 라떼' 6,500원"),
-    ("photo", "벚꽃 터널 포토존", 0.9, 37.528020, 126.926440,
-        "3~4월 벚꽃 만개 시 가장 붐비는 구간. 이른 아침 7~8시가 인생샷 골든타임.", ""),
-    ("view", "국회의사당 뷰 전망대", 1.9, 37.526650, 126.919800,
-        "의사당 돔과 한강 다리가 한 프레임. 일몰 20분 전부터 조명이 켜집니다.", ""),
-    ("rest", "마포대교 남단 쉼터", 2.8, 37.523620, 126.917400,
-        "그늘 벤치 8개, 식수대 있음. 한강 바람이 가장 시원한 구간.", ""),
-    ("tip", "자전거 주의 구간", 3.1, 37.521600, 126.919200,
-        "보행자-자전거 분리선이 흐립니다. 이어폰은 한쪽만 끼시는 걸 추천.", ""),
-    ("view", "여의나루 야경 포인트", 3.8, 37.519330, 126.923050,
-        "해 질 녘 마포대교가 황금빛으로 물듭니다. 삼각대 설치 가능.", ""),
-    ("restaurant", "한강 치맥 포장마차", 4.2, 37.520650, 126.931500,
-        "요트 선착장 앞 간이 포차. 라면·치킨·맥주 기본 세트. 현금/카드 모두 OK.",
-        "치킨 한 마리 + 맥주 23,000원"),
-    ("end", "복귀 · 출발지", 4.8, 37.526470, 126.934170,
-        "수고하셨어요! 스탬프 4개를 모두 모으면 완주 배지가 지급됩니다.", ""),
+    # (spot_type, name, dist_km, bridge_idx, desc, menu_highlight)
+    ("start", "청계광장", 0.00, 0,
+        "모전교 아래 분수 조형물에서 출발. 지하철 광화문역 5번 출구 2분.", ""),
+    ("photo", "광통교 돌다리 포토존", 0.30, 2,
+        "조선시대 화강암 석교가 그대로 복원된 구간. 아침 7~9시 빛이 가장 부드럽습니다.", ""),
+    ("cafe", "청계 북카페 '더클래식'", 0.90, 5,
+        "삼일교 쪽 출구 계단 위, 책장에 둘러싸인 로스터리. 물결 소리 BGM은 덤.",
+        "핸드드립 한강 블렌드 6,500원"),
+    ("view", "수표교 역사 전망", 1.35, 6,
+        "세종대왕이 한강 수위를 측정하던 수표석이 옆에 복원돼 있습니다.", ""),
+    ("rest", "세운상가 쉼터", 1.95, 8,
+        "그늘 벤치와 식수대. 하천 바람이 도심 더위를 크게 낮춰주는 구간.", ""),
+    ("tip", "자전거 도로 주의", 2.40, 10,
+        "청계천 북측로는 자전거 겸용. 이어폰은 한쪽만, 좌측 보행 원칙.", ""),
+    ("restaurant", "마전교 노포거리 '옛장독대'", 2.90, 12,
+        "종로 옛 장맛을 살린 한정식. 점심 특선 1인 12,000원부터.",
+        "보리굴비 정식 18,000원"),
+    ("photo", "오간수교 성곽 뷰", 3.30, 14,
+        "한양 성곽의 수문이었던 오간수문이 복원돼 있어 야경 포토스팟으로 유명.", ""),
+    ("end", "영도교 · 복원 갈대밭", 3.80, 17,
+        "수고하셨어요. 영도교 아래 생태복원지에서 갈대와 오리를 만나고, "
+        "건너편 6호선 신당역으로 귀가할 수 있습니다.", ""),
 ]
 
 STAMPS = [
-    ("🌸", "벚꽃 터널", 37.528020, 126.926440, "봄 벚꽃 터널의 한복판"),
-    ("🏛️", "국회 전망", 37.526650, 126.919800, "국회의사당 전망 포인트"),
-    ("🌉", "마포대교", 37.523620, 126.917400, "마포대교 남단 쉼터"),
-    ("🌃", "여의나루 야경", 37.519330, 126.923050, "한강 야경 포토 포인트"),
+    ("🏁", "청계광장 출발", 0, "스타트 스탬프 · 분수 조형물 옆"),
+    ("🌉", "광통교", 2, "조선시대 최고(最古) 석교 · 복원 완료"),
+    ("📜", "수표교", 6, "세종대왕 수표석과 역사 흔적"),
+    ("🏯", "오간수교 성곽", 14, "한양도성 오간수문 복원 구간"),
 ]
 
-TAG_NAMES = ["한강", "벚꽃", "도심산책", "야경", "초보추천", "포장길"]
+TAG_NAMES = ["청계천", "도심산책", "역사탐방", "초보추천", "포장길", "평지"]
 
 
 class Command(BaseCommand):
-    help = "Create a rich showcase trail (여의도 한강 벚꽃길) with path, segments, spots, stamps."
+    help = "Create a rich showcase trail (청계천 산책로) with real riverside coordinates."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Wipe and recreate if the showcase trail already exists.",
+            help="Wipe and recreate if any showcase trail exists (matches title prefix).",
         )
 
     @transaction.atomic
     def handle(self, *args, **options):
         force = options["force"]
 
-        # Pick an author — prefer existing moru_official, else the first superuser.
+        # Author — prefer moru_official so the trail shows up as curated.
         author = (
             CustomUser.objects.filter(nickname="moru_official").first()
             or CustomUser.objects.filter(is_superuser=True).order_by("pk").first()
@@ -194,29 +201,41 @@ class Command(BaseCommand):
             author.set_unusable_password()
             author.save()
 
-        # Identify existing showcase by title to make the command idempotent.
-        existing = Trail.objects.filter(title=SHOWCASE["title"]).first()
+        # Match by title prefix so old Yeouido showcase rows get cleaned
+        # up too when --force flips on.
+        existing_qs = Trail.objects.filter(
+            source="moru_curated",
+        ).filter(
+            title__startswith="청계천",
+        ) | Trail.objects.filter(
+            source="moru_curated",
+        ).filter(
+            title__startswith="여의도",
+        )
+        existing = existing_qs.first()
         if existing and not force:
             self.stdout.write(
                 self.style.WARNING(
-                    f"Trail already exists (id={existing.pk}). Re-run with --force to replace."
+                    f"Showcase trail already present (id={existing.pk}). Re-run with --force to replace."
                 )
             )
             return
-        if existing and force:
-            existing.delete()
-            self.stdout.write(self.style.NOTICE("  ✖ deleted previous showcase trail"))
+        if existing_qs.exists() and force:
+            count = existing_qs.count()
+            existing_qs.delete()
+            self.stdout.write(self.style.NOTICE(f"  ✖ deleted {count} previous showcase trail(s)"))
 
-        # Build the path with elevation.
-        raw_coords = _sample_path(YEOUIDO_ANCHORS, points_per_segment=9)
-        path_coords = _add_elevation(raw_coords)  # [[lng, lat, ele], …]
+        # Build the dense polyline.
+        path_coords = _interpolate_path(CHEONGGYE_BRIDGES, samples_per_segment=5)
 
-        # Accurate distance from the sampled polyline (override the 4.8 guess).
-        total_km = sum(
-            _haversine_km(raw_coords[i], raw_coords[i + 1])
-            for i in range(len(raw_coords) - 1)
-        )
+        # Total distance from the polyline itself.
+        total_km = 0.0
+        for i in range(len(path_coords) - 1):
+            lng1, lat1 = path_coords[i][0], path_coords[i][1]
+            lng2, lat2 = path_coords[i + 1][0], path_coords[i + 1][1]
+            total_km += _haversine_km(lat1, lng1, lat2, lng2)
         total_km = round(total_km, 2)
+
         elevation_gain = int(
             sum(
                 max(0, path_coords[i + 1][2] - path_coords[i][2])
@@ -238,10 +257,10 @@ class Command(BaseCommand):
             estimated_minutes=SHOWCASE["estimated_minutes"],
             difficulty=SHOWCASE["difficulty"],
             elevation_gain=elevation_gain,
-            start_lat=Decimal(str(raw_coords[0][0])),
-            start_lng=Decimal(str(raw_coords[0][1])),
-            end_lat=Decimal(str(raw_coords[-1][0])),
-            end_lng=Decimal(str(raw_coords[-1][1])),
+            start_lat=Decimal(str(CHEONGGYE_BRIDGES[0][0])),
+            start_lng=Decimal(str(CHEONGGYE_BRIDGES[0][1])),
+            end_lat=Decimal(str(CHEONGGYE_BRIDGES[-1][0])),
+            end_lng=Decimal(str(CHEONGGYE_BRIDGES[-1][1])),
             path_data={
                 "type": "LineString",
                 "coordinates": path_coords,
@@ -258,31 +277,41 @@ class Command(BaseCommand):
             source_url="",
         )
 
-        # Tags
         for name in TAG_NAMES:
             tag, _ = Tag.objects.get_or_create(name=name)
             trail.tags.add(tag)
 
-        # Segments
-        for i, (start, end, km, minutes) in enumerate(SEGMENTS):
-            TrailSegment.objects.create(
-                trail=trail,
-                order=i,
-                start_name=start,
-                end_name=end,
-                distance_km=Decimal(str(km)),
-                duration_minutes=minutes,
+        # Segments. Distance is computed from the real polyline between
+        # the bridge anchors that bound each segment.
+        bridge_cumulative = [0.0]
+        for i in range(len(CHEONGGYE_BRIDGES) - 1):
+            a = CHEONGGYE_BRIDGES[i]
+            b = CHEONGGYE_BRIDGES[i + 1]
+            bridge_cumulative.append(
+                bridge_cumulative[-1] + _haversine_km(a[0], a[1], b[0], b[1])
             )
 
-        # Spots
-        for i, (stype, name, dist_km, lat, lng, desc, menu) in enumerate(SPOTS):
+        for order, (start_idx, end_idx, start_name, end_name, _desc) in enumerate(SEGMENT_WAYPOINTS):
+            km = bridge_cumulative[end_idx] - bridge_cumulative[start_idx]
+            TrailSegment.objects.create(
+                trail=trail,
+                order=order,
+                start_name=start_name,
+                end_name=end_name,
+                distance_km=Decimal(str(round(km, 2))),
+                duration_minutes=max(5, int(round(km * 15))),  # 4 km/h ≈ 15 min/km
+            )
+
+        # Spots.
+        for i, (stype, name, dist_km, bridge_idx, desc, menu) in enumerate(SPOTS):
+            bridge = CHEONGGYE_BRIDGES[bridge_idx]
             Spot.objects.create(
                 trail=trail,
                 author=author,
                 name=name,
                 spot_type=stype,
-                lat=Decimal(str(lat)),
-                lng=Decimal(str(lng)),
+                lat=Decimal(str(bridge[0])),
+                lng=Decimal(str(bridge[1])),
                 order=i,
                 distance_from_start_km=Decimal(str(dist_km)),
                 description=desc,
@@ -291,13 +320,14 @@ class Command(BaseCommand):
                 is_must_visit=stype in ("photo", "view"),
             )
 
-        # Stamp points
-        for i, (emoji, name, lat, lng, desc) in enumerate(STAMPS):
+        # Stamp points.
+        for i, (emoji, name, bridge_idx, desc) in enumerate(STAMPS):
+            bridge = CHEONGGYE_BRIDGES[bridge_idx]
             StampPoint.objects.create(
                 trail=trail,
                 name=name,
-                lat=Decimal(str(lat)),
-                lng=Decimal(str(lng)),
+                lat=Decimal(str(bridge[0])),
+                lng=Decimal(str(bridge[1])),
                 radius_meters=50,
                 description=desc,
                 emoji=emoji,
@@ -306,7 +336,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"\n✓ showcase trail created — id={trail.pk}  /  {total_km}km  /  "
-            f"{len(path_coords)}pts  /  {len(SEGMENTS)}segments  /  "
+            f"{len(path_coords)}pts  /  {len(SEGMENT_WAYPOINTS)}segments  /  "
             f"{len(SPOTS)}spots  /  {len(STAMPS)}stamps"
         ))
         self.stdout.write(f"  web: https://moruwalk.com/trails/{trail.pk}")

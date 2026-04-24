@@ -28,6 +28,7 @@ import type { NearbyPOI } from "@/components/NearbyPOISection";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { TrailCard } from "@/components/TrailCard";
+import { globalToast } from "@/lib/globalToast";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -665,15 +666,32 @@ export default function TrailDetailPage() {
 
   const handleHeroShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    if (navigator.share) {
+    // navigator.share opens the native iOS/Android share sheet which
+    // already lists KakaoTalk, Messages, Instagram, etc. Fallback to
+    // clipboard on desktop.
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
       try {
-        await navigator.share({ title: trail?.title, text: trail?.description, url });
-      } catch {}
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        alert(language === "ko" ? "링크가 복사되었습니다" : "Link copied");
-      } catch {}
+        await (navigator as any).share({
+          title: trail?.title,
+          text: trail?.description?.slice(0, 120),
+          url,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === "AbortError") return; // user cancelled
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      globalToast(
+        language === "ko" ? "링크가 복사됐어요" : "Link copied",
+        "success",
+      );
+    } catch {
+      globalToast(
+        language === "ko" ? "복사에 실패했어요" : "Copy failed",
+        "error",
+      );
     }
   };
 

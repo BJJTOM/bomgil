@@ -38,6 +38,30 @@ function TrailTypeIcon({ type, size = 14 }: { type: string; size?: number }) {
   );
 }
 
+/**
+ * Region-themed emoji + gradient for trails without a cover image.
+ * Spreads visual variety across the hundreds of public-API trails that
+ * came in with `cover_image: null`, so Explore no longer looks like a
+ * grid of identical placeholder tiles.
+ */
+function fallbackTheme(trail: Trail): { emoji: string; gradient: string } {
+  const type = trail.trail_type;
+  if (type === "coastal") return { emoji: "🌊", gradient: "from-[#A3C9E2] to-[#3D7EB5]" };
+  if (type === "urban") return { emoji: "🏙️", gradient: "from-[#D9C8B4] to-[#6B5A45]" };
+  if (type === "cultural") return { emoji: "🏯", gradient: "from-[#E9D5B4] to-[#8B6F3E]" };
+  if (type === "nature") return { emoji: "🌲", gradient: "from-[#BFD8BD] to-[#3D6B4A]" };
+  if (type === "village") return { emoji: "🏘️", gradient: "from-[#EAD9A8] to-[#A8883D]" };
+  const region = (trail.region || "").toLowerCase();
+  if (region.includes("제주")) return { emoji: "🏝️", gradient: "from-[#B7E0E6] to-[#3E8B9A]" };
+  if (region.includes("부산") || region.includes("해운대"))
+    return { emoji: "🌊", gradient: "from-[#A3C9E2] to-[#3D7EB5]" };
+  if (region.includes("강원") || region.includes("설악"))
+    return { emoji: "⛰️", gradient: "from-[#A8C0A3] to-[#4A7C59]" };
+  if (region.includes("서울") || region.includes("종로") || region.includes("성동"))
+    return { emoji: "🏙️", gradient: "from-[#D9C8B4] to-[#6B5A45]" };
+  return { emoji: "🥾", gradient: "from-[#C9D8C5] to-[#6B8A6E]" };
+}
+
 /** Star rating display */
 function StarRating({ rating, count }: { rating?: number; count?: number }) {
   if (!rating && !count) return null;
@@ -67,9 +91,14 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
           {trail.cover_image || trail.thumbnail_url ? (
             <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-accent-light to-accent flex items-center justify-center">
-              <TrailTypeIcon type={trail.trail_type} size={28} />
-            </div>
+            (() => {
+              const { emoji, gradient } = fallbackTheme(trail);
+              return (
+                <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                  <span className="text-[36px] leading-none select-none" aria-hidden>{emoji}</span>
+                </div>
+              );
+            })()
           )}
         </div>
         <div className="p-3.5 flex-1 min-w-0 flex flex-col justify-between">
@@ -100,9 +129,19 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
         {trail.cover_image || trail.thumbnail_url ? (
           <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-accent-light to-primary-100 flex items-center justify-center">
-            <TrailTypeIcon type={trail.trail_type} size={40} />
-          </div>
+          (() => {
+            const { emoji, gradient } = fallbackTheme(trail);
+            return (
+              <div className={`w-full h-full bg-gradient-to-br ${gradient} flex flex-col items-center justify-center gap-1`}>
+                <span className="text-[56px] leading-none select-none drop-shadow-sm" aria-hidden>
+                  {emoji}
+                </span>
+                <span className="text-[11px] text-white/85 font-semibold tracking-wide">
+                  {trail.region}
+                </span>
+              </div>
+            );
+          })()
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 flex gap-1.5">

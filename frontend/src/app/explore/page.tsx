@@ -211,35 +211,38 @@ function ExploreEmptyState({
   );
 }
 
+// --- Suspense fallback shell (SSR/crawler friendly) ---
+function ExploreShell() {
+  const { t } = useT();
+  return (
+    <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
+      <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
+        <div className="max-w-5xl mx-auto px-5 pt-6 md:pt-3">
+          <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
+            <span className="relative pb-2 text-[15px] font-bold text-gray-900 whitespace-nowrap">
+              {t("explore.tabAll")}
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
+            </span>
+            <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">{t("explore.tabUser")}</span>
+            <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">{t("explore.tabOfficial")}</span>
+            <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">{t("explore.tabRankings")}</span>
+          </div>
+        </div>
+        <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
+          <div className="animate-pulse bg-gray-200 rounded-[12px] h-10 w-full" />
+        </div>
+      </div>
+      <div className="max-w-5xl mx-auto px-5 py-5">
+        <SkeletonGrid />
+      </div>
+    </div>
+  );
+}
+
 // --- Main Explore Page ---
 export default function ExplorePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
-          {/* Static HTML shell for SSR/crawlers */}
-          <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-            <div className="max-w-5xl mx-auto px-5 pt-6 md:pt-3">
-              <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
-                <span className="relative pb-2 text-[15px] font-bold text-gray-900 whitespace-nowrap">
-                  전체 코스
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 rounded-full" />
-                </span>
-                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">유저 코스</span>
-                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">공식 코스</span>
-                <span className="pb-2 text-[15px] font-medium text-gray-400 whitespace-nowrap">랭킹</span>
-              </div>
-            </div>
-            <div className="max-w-5xl mx-auto px-5 pb-3 space-y-2.5">
-              <div className="animate-pulse bg-gray-200 rounded-[12px] h-10 w-full" />
-            </div>
-          </div>
-          <div className="max-w-5xl mx-auto px-5 py-5">
-            <SkeletonGrid />
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<ExploreShell />}>
       <ExploreContent />
     </Suspense>
   );

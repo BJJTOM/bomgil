@@ -1,0 +1,55 @@
+import { ImageResponse } from "next/og";
+
+export const runtime = "edge";
+export const contentType = "image/png";
+
+// Cache for 7 days at the edge. Static brand image — no reason to
+// regenerate on every scrape.
+export const revalidate = 60 * 60 * 24 * 7;
+
+export async function GET() {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "linear-gradient(135deg, #2D4A2E 0%, #3D6B4A 60%, #A8E6CF 100%)",
+          color: "#ffffff",
+          fontFamily: "system-ui, sans-serif",
+        }}
+      >
+        <div style={{ fontSize: 150, marginBottom: 24, lineHeight: 1 }}>🌿</div>
+        <div
+          style={{
+            fontSize: 100,
+            fontWeight: 800,
+            letterSpacing: -3,
+            marginBottom: 12,
+          }}
+        >
+          Moru
+        </div>
+        <div style={{ fontSize: 36, opacity: 0.9, fontWeight: 500 }}>
+          함께 걷고, 함께 기록하는 도보여행
+        </div>
+        <div
+          style={{
+            marginTop: 36,
+            fontSize: 22,
+            opacity: 0.7,
+            letterSpacing: 6,
+          }}
+        >
+          MORUWALK.COM
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630 },
+  );
+}

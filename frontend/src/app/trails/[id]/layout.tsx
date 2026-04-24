@@ -13,6 +13,8 @@ import type { Metadata } from "next";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
+const SITE_URL = "https://moruwalk.com";
+const OG_DEFAULT = `${SITE_URL}/og-default`;
 
 // Revalidate at most every 15 minutes per trail.
 export const revalidate = 900;
@@ -50,10 +52,8 @@ export async function generateMetadata(
   const description =
     trail.description?.slice(0, 160) ||
     `${region} ${distance} 걷기 코스. Moru에서 확인하세요.`;
-  const image = trail.cover_image || trail.thumbnail_url || undefined;
-  const ogImage = image
-    ? [{ url: image, width: 1200, height: 630, alt: title }]
-    : undefined;
+  const image = trail.cover_image || trail.thumbnail_url || OG_DEFAULT;
+  const ogImage = [{ url: image, width: 1200, height: 630, alt: title }];
 
   return {
     title: `${title} · ${region} · Moru`,
@@ -69,10 +69,10 @@ export async function generateMetadata(
       card: "summary_large_image",
       title,
       description,
-      images: image ? [image] : undefined,
+      images: [image],
     },
     alternates: {
-      canonical: `https://moruwalk.com/trails/${id}`,
+      canonical: `${SITE_URL}/trails/${id}`,
     },
   };
 }

@@ -52,12 +52,14 @@ export function Footer() {
         </div>
 
         {/* Links */}
-        <div className="flex justify-center gap-4 text-[12px] text-text-tertiary">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[12px] text-text-tertiary">
           <Link href="/privacy" className="hover:text-text-primary transition-colors">개인정보처리방침</Link>
           <span className="text-border-light">|</span>
           <Link href="/terms" className="hover:text-text-primary transition-colors">이용약관</Link>
           <span className="text-border-light">|</span>
           <Link href="/notices" className="hover:text-text-primary transition-colors">공지사항</Link>
+          <span className="text-border-light">|</span>
+          <Link href="/feedback" className="hover:text-text-primary transition-colors">의견 보내기</Link>
         </div>
 
         {/* Business info */}

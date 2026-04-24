@@ -248,10 +248,10 @@ export default function Home() {
               {heroSubTexts[language] ?? heroSubTexts.en}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
-              <Link href="/explore" className="bg-white text-primary px-7 py-3.5 rounded-button text-[15px] font-semibold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]">
+              <Link href="/explore" className="bg-white text-primary px-8 py-4 rounded-full text-[15px] font-bold shadow-[0_4px_20px_rgba(255,255,255,0.3)] hover:shadow-[0_6px_28px_rgba(255,255,255,0.45)] hover:scale-[1.03] transition-all duration-200 active:scale-[0.97]">
                 {t("home.exploreButton")}
               </Link>
-              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium shadow-lg hover:bg-white/25 hover:shadow-xl transition-all active:scale-[0.98]">
+              <Link href="/trails/new" className="border-2 border-white/40 text-white px-8 py-4 rounded-full text-[15px] font-semibold hover:bg-white/15 hover:border-white/60 hover:scale-[1.03] transition-all duration-200 active:scale-[0.97]">
                 {t("home.ctaButton")}
               </Link>
             </div>

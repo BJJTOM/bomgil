@@ -659,7 +659,6 @@ export function MapView({
           <RouteAnimationControls
             map={mapInstanceRef.current}
             coords={pathCoordinates}
-            autoPlay
             allowCinematic={allowCinematicAnimation}
             position="bottom-left"
           />

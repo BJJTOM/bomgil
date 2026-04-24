@@ -1062,6 +1062,8 @@ export function MapFullscreen({
           center={mapCenter}
           onMapReady={handleMapReady}
           showPOIMarkers={showPOIMarkers}
+          enableRouteAnimation
+          allowCinematicAnimation
         />
       </div>
 

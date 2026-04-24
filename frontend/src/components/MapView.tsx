@@ -31,6 +31,7 @@ import {
   enhanceMapLabels,
   type MoruMapLocale,
 } from "./moruMapLayers";
+import { RouteAnimationControls } from "./RouteAnimationControls";
 
 interface MapViewProps {
   country?: string;
@@ -78,6 +79,10 @@ interface MapViewProps {
   totalDuration?: number;
   /** POI(스팟) 마커 표시 여부 (기본 true). false 면 마커 렌더링 스킵. */
   showPOIMarkers?: boolean;
+  /** 경로 애니메이션 (start→end trace + 워커 dot) 활성화. 기본 false. */
+  enableRouteAnimation?: boolean;
+  /** 시네마틱 카메라 모드 버튼 노출. 기본 false (fullscreen 전용). */
+  allowCinematicAnimation?: boolean;
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -128,6 +133,8 @@ export function MapView({
   totalDistance,
   totalDuration,
   showPOIMarkers = true,
+  enableRouteAnimation = false,
+  allowCinematicAnimation = false,
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -643,6 +650,20 @@ export function MapView({
       style={{ background: isDark ? "#1a1a2e" : "#f0f4f0" }}
     >
       <div ref={mapRef} className="w-full h-full" />
+
+      {/* Route trace animation controls */}
+      {enableRouteAnimation &&
+        loaded &&
+        pathCoordinates &&
+        pathCoordinates.length >= 2 && (
+          <RouteAnimationControls
+            map={mapInstanceRef.current}
+            coords={pathCoordinates}
+            autoPlay
+            allowCinematic={allowCinematicAnimation}
+            position="bottom-left"
+          />
+        )}
 
       {/* 3D 토글 버튼 */}
       {showTerrainToggle && loaded && (

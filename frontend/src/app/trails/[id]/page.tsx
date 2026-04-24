@@ -1093,6 +1093,7 @@ export default function TrailDetailPage() {
                     theme="light"
                     locale="ko"
                     onMarkerClick={handleMapMarkerClick}
+                    enableRouteAnimation
                   />
                   <MapExpandButton onClick={() => setMapFullscreen(true)} />
                   <button

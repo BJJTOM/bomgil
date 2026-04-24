@@ -1,11 +1,6 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const contentType = "image/png";
-
-// Cache for 7 days at the edge. Static brand image — no reason to
-// regenerate on every scrape.
-export const revalidate = 60 * 60 * 24 * 7;
 
 export async function GET() {
   return new ImageResponse(

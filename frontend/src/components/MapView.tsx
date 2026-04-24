@@ -64,6 +64,10 @@ interface MapViewProps {
   enhanceLabels?: boolean;
   /** POI 라벨 밀도 ('default' | 'dense', 기본 'dense'). */
   labelDensity?: "default" | "dense";
+  /** 줌/내비 컨트롤 표시 (기본 false — fullscreen 모드에서만 true). */
+  showNavigationControl?: boolean;
+  /** 스크롤 줌 활성화 (기본 false — fullscreen 모드에서만 true). */
+  enableScrollZoom?: boolean;
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -107,6 +111,8 @@ export function MapView({
   showTerrainToggle = true,
   enhanceLabels = true,
   labelDensity = "dense",
+  showNavigationControl = false,
+  enableScrollZoom = false,
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -146,13 +152,22 @@ export function MapView({
           zoom,
           pitch: 0, // 3D 토글 시 setPitch 로 변경
           attributionControl: false,
+          dragRotate: false,
+          touchZoomRotate: true, // zoom 허용, rotation 은 아래에서 비활성
+          scrollZoom: enableScrollZoom, // 인라인 맵에선 false, fullscreen 에서만 true
           // 무료 티어 보호 — 전 세계 줌 범위는 그대로 두되 로우레벨 조작 최소화
         });
 
-        map.addControl(
-          new mapboxgl.NavigationControl({ showCompass: false }),
-          "bottom-right"
-        );
+        // touchZoomRotate 는 pinch zoom + rotation 둘 다 포함. zoom 만 남기고 rotation 비활성.
+        map.touchZoomRotate.disableRotation();
+
+        // NavigationControl 은 fullscreen 모드에서만 표시
+        if (showNavigationControl) {
+          map.addControl(
+            new mapboxgl.NavigationControl({ showCompass: false }),
+            "bottom-right"
+          );
+        }
         map.addControl(
           new mapboxgl.AttributionControl({ compact: true }),
           "bottom-right"

@@ -316,6 +316,8 @@ export function MapFullscreen({
           duration={duration}
           className="w-full h-full"
           onMarkerClick={onMarkerClick}
+          showNavigationControl
+          enableScrollZoom
         />
       </div>
 

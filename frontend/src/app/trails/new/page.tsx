@@ -85,6 +85,7 @@ interface SpotForm {
   price_range: string;
   tip: string;
   is_must_visit: boolean;
+  image: File | null;
 }
 
 function haversineDistance(
@@ -210,8 +211,11 @@ export default function NewTrailPage() {
     [],
   );
 
-  // Auto-calculate distance when coordinates change
+  // Auto-calculate distance when coordinates change (manual mode only).
+  // In draw mode, TrailDrawMap provides the OSRM-routed distance via handleDrawChange,
+  // so we must NOT overwrite it with a straight-line haversine estimate.
   useEffect(() => {
+    if (drawMode) return; // draw mode uses OSRM route distance
     const sLat = parseFloat(form.start_lat);
     const sLng = parseFloat(form.start_lng);
     const eLat = parseFloat(form.end_lat);
@@ -221,7 +225,7 @@ export default function NewTrailPage() {
       const dist = haversineDistance(sLat, sLng, eLat, eLng);
       setForm((prev) => ({ ...prev, distance_km: dist.toFixed(2) }));
     }
-  }, [form.start_lat, form.start_lng, form.end_lat, form.end_lng]);
+  }, [form.start_lat, form.start_lng, form.end_lat, form.end_lng, drawMode]);
 
   // Sync circular course
   useEffect(() => {
@@ -270,11 +274,12 @@ export default function NewTrailPage() {
         price_range: "",
         tip: "",
         is_must_visit: false,
+        image: null,
       },
     ]);
   };
 
-  const updateSpot = (index: number, key: string, value: string | boolean) => {
+  const updateSpot = (index: number, key: string, value: string | boolean | File | null) => {
     setSpots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, [key]: value } : s))
     );
@@ -434,24 +439,45 @@ export default function NewTrailPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Create spots
+      // Create spots (with optional image)
       for (let i = 0; i < spots.length; i++) {
         const spot = spots[i];
         if (spot.name && spot.lat && spot.lng) {
-          await api.post("/spots/", {
-            trail: trail.id,
-            name: spot.name,
-            spot_type: spot.spot_type,
-            lat: spot.lat,
-            lng: spot.lng,
-            description: spot.description,
-            menu_highlight: spot.menu_highlight,
-            price_range: spot.price_range,
-            tip: spot.tip,
-            is_must_visit: spot.is_must_visit,
-            order: i,
-            distance_from_start_km: "0",
-          });
+          if (spot.image) {
+            // Use FormData when image is attached
+            const spotData = new FormData();
+            spotData.append("trail", String(trail.id));
+            spotData.append("name", spot.name);
+            spotData.append("spot_type", spot.spot_type);
+            spotData.append("lat", spot.lat);
+            spotData.append("lng", spot.lng);
+            spotData.append("description", spot.description);
+            spotData.append("menu_highlight", spot.menu_highlight);
+            spotData.append("price_range", spot.price_range);
+            spotData.append("tip", spot.tip);
+            spotData.append("is_must_visit", String(spot.is_must_visit));
+            spotData.append("order", String(i));
+            spotData.append("distance_from_start_km", "0");
+            spotData.append("image", spot.image);
+            await api.post("/spots/", spotData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+          } else {
+            await api.post("/spots/", {
+              trail: trail.id,
+              name: spot.name,
+              spot_type: spot.spot_type,
+              lat: spot.lat,
+              lng: spot.lng,
+              description: spot.description,
+              menu_highlight: spot.menu_highlight,
+              price_range: spot.price_range,
+              tip: spot.tip,
+              is_must_visit: spot.is_must_visit,
+              order: i,
+              distance_from_start_km: "0",
+            });
+          }
         }
       }
 
@@ -1237,6 +1263,66 @@ export default function NewTrailPage() {
                       className="input-field resize-none"
                     />
                   </Field>
+
+                  {/* Spot reference photo */}
+                  <div>
+                    <label className="text-sm font-medium text-text-primary block mb-2">
+                      참고 사진
+                    </label>
+                    {spot.image ? (
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-[60px] h-[60px] rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          <img
+                            src={URL.createObjectURL(spot.image)}
+                            alt={`${spot.name || "경유지"} 사진`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-text-secondary truncate">{spot.image.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => updateSpot(i, "image", null)}
+                            className="mt-1 text-xs text-danger hover:underline"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                        <label
+                          className="px-3 py-1.5 bg-gray-100 text-text-secondary rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-200 transition-colors"
+                        >
+                          변경
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) updateSpot(i, "image", file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label
+                        className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                      >
+                        <span className="text-lg">{"📷"}</span>
+                        <span className="text-sm text-text-secondary">사진 추가</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) updateSpot(i, "image", file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
 
                   {(spot.spot_type === "restaurant" ||
                     spot.spot_type === "cafe") && (

@@ -15,6 +15,7 @@ import { MapView } from "@/components/MapView";
 import { MapFullscreen, MapExpandButton } from "@/components/MapFullscreen";
 import { StampBook } from "@/components/StampBook";
 import { ElevationProfile } from "@/components/ElevationProfile";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDistance, formatDuration, SPOT_TYPE_LABELS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
@@ -177,7 +178,7 @@ const STAT_LABELS = {
 
 // ─── Tab Types ───────────────────────────────────────────────────────────────
 
-type TabId = "overview" | "reviews" | "records";
+type TabId = "overview" | "album" | "reviews" | "records";
 
 interface TabConfig {
   id: TabId;
@@ -186,6 +187,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: "overview", label: { ko: "코스 소개", en: "Course Overview", ja: "コース紹介", zh: "路线简介" } },
+  { id: "album", label: { ko: "앨범", en: "Album", ja: "アルバム", zh: "相册" } },
   { id: "reviews", label: { ko: "리뷰", en: "Reviews", ja: "レビュー", zh: "评价" } },
   { id: "records", label: { ko: "기록", en: "Records", ja: "記録", zh: "记录" } },
 ];
@@ -261,6 +263,110 @@ function DescriptionSection({
         </div>
       )}
     </section>
+  );
+}
+
+// ─── Album Tab Component ────────────────────────────────────────────────────
+
+function AlbumTab({
+  reviews,
+  spots,
+  language,
+}: {
+  reviews: any[];
+  spots: any[];
+  language: string;
+}) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Collect all images from reviews and spots
+  const allImages = useMemo(() => {
+    const imgs: { src: string; caption?: string }[] = [];
+    // Images from reviews
+    for (const review of reviews) {
+      if (review.images && review.images.length > 0) {
+        for (const img of review.images) {
+          imgs.push({
+            src: img.image,
+            caption: review.content ? `${review.author?.nickname || ""} - ${review.content.slice(0, 60)}${review.content.length > 60 ? "..." : ""}` : undefined,
+          });
+        }
+      }
+    }
+    // Images from spots
+    for (const spot of spots) {
+      if (spot.images && spot.images.length > 0) {
+        for (const img of spot.images) {
+          imgs.push({
+            src: img.image,
+            caption: spot.name || undefined,
+          });
+        }
+      }
+    }
+    return imgs;
+  }, [reviews, spots]);
+
+  const emptyLabel =
+    language === "ko"
+      ? "아직 등록된 사진이 없어요"
+      : language === "ja"
+      ? "まだ写真が登録されていません"
+      : language === "zh"
+      ? "暂无照片"
+      : "No photos yet";
+
+  if (allImages.length === 0) {
+    return (
+      <div className="animate-fade-in">
+        <div className="text-center py-16 rounded-2xl bg-white dark:bg-gray-900 shadow-sm">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary mx-auto mb-3">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          <p className="text-sm text-text-tertiary">{emptyLabel}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      {/* Instagram explore-style grid */}
+      <div className="grid grid-cols-3 gap-0.5 rounded-2xl overflow-hidden">
+        {allImages.map((img, i) => (
+          <button
+            key={`${img.src}-${i}`}
+            type="button"
+            onClick={() => {
+              setLightboxIndex(i);
+              setLightboxOpen(true);
+            }}
+            className="relative aspect-square overflow-hidden bg-bg-secondary active:opacity-80 transition-opacity"
+          >
+            <img
+              src={img.src}
+              alt={img.caption || ""}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </button>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <PhotoLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          images={allImages}
+        />
+      )}
+    </div>
   );
 }
 
@@ -348,13 +454,14 @@ function HeroImageCarousel({
       {/* Back button */}
       <button
         onClick={() => window.history.back()}
-        className="absolute top-14 left-4 md:top-5 bg-black/40 backdrop-blur-md w-9 h-9 rounded-full flex items-center justify-center border border-white/10 z-10"
+        className="absolute top-4 left-4 md:top-5 bg-black/40 backdrop-blur-md w-9 h-9 rounded-full flex items-center justify-center border border-white/10 z-10"
+        style={{ top: "max(env(safe-area-inset-top, 12px), 12px)" }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
 
       {/* Action buttons overlay */}
-      <div className="absolute top-14 right-4 md:top-5 flex items-center gap-1.5 z-10">
+      <div className="absolute top-4 right-4 md:top-5 flex items-center gap-1.5 z-10" style={{ top: "max(env(safe-area-inset-top, 12px), 12px)" }}>
         <button
           onClick={onToggleLike}
           className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
@@ -759,41 +866,41 @@ export default function TrailDetailPage() {
       {/* STATS BAR (text labels, below hero, above tabs)                    */}
       {/* ================================================================== */}
       <div className="bg-surface border-b border-border-light">
-        <div className="max-w-3xl mx-auto px-5 py-3">
+        <div className="max-w-3xl mx-auto px-5 py-2.5">
           <div className="flex items-center">
             {/* Distance */}
-            <div className="flex flex-col items-center flex-1">
-              <span className="text-[11px] font-medium text-text-tertiary">{STAT_LABELS.distance[language] || STAT_LABELS.distance.en}</span>
-              <span className="text-[15px] font-bold text-text-primary">{formatDistance(tr.distance_km)}</span>
+            <div className="flex flex-col items-center flex-1 min-w-0">
+              <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.distance[language] || STAT_LABELS.distance.en}</span>
+              <span className="text-[15px] font-bold text-text-primary mt-0.5">{formatDistance(tr.distance_km)}</span>
             </div>
-            <div className="w-px h-8 bg-border-light" />
+            <div className="w-px h-7 bg-border-light flex-shrink-0" />
             {/* Time */}
-            <div className="flex flex-col items-center flex-1">
-              <span className="text-[11px] font-medium text-text-tertiary">{STAT_LABELS.time[language] || STAT_LABELS.time.en}</span>
-              <span className="text-[15px] font-bold text-text-primary">{formatDuration(tr.estimated_minutes)}</span>
+            <div className="flex flex-col items-center flex-1 min-w-0">
+              <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.time[language] || STAT_LABELS.time.en}</span>
+              <span className="text-[15px] font-bold text-text-primary mt-0.5">{formatDuration(tr.estimated_minutes)}</span>
             </div>
-            <div className="w-px h-8 bg-border-light" />
+            <div className="w-px h-7 bg-border-light flex-shrink-0" />
             {/* Difficulty */}
-            <div className="flex flex-col items-center flex-1">
-              <span className="text-[11px] font-medium text-text-tertiary">{STAT_LABELS.difficulty[language] || STAT_LABELS.difficulty.en}</span>
-              <span className="text-[15px] font-bold text-text-primary">{difficultyLabel}</span>
+            <div className="flex flex-col items-center flex-1 min-w-0">
+              <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.difficulty[language] || STAT_LABELS.difficulty.en}</span>
+              <span className="text-[15px] font-bold text-text-primary mt-0.5">{difficultyLabel}</span>
             </div>
             {tr.elevation_gain && (
               <>
-                <div className="w-px h-8 bg-border-light" />
-                <div className="flex flex-col items-center flex-1">
-                  <span className="text-[11px] font-medium text-text-tertiary">{STAT_LABELS.elevation[language] || STAT_LABELS.elevation.en}</span>
-                  <span className="text-[15px] font-bold text-text-primary">+{tr.elevation_gain}m</span>
+                <div className="w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.elevation[language] || STAT_LABELS.elevation.en}</span>
+                  <span className="text-[15px] font-bold text-text-primary mt-0.5">+{tr.elevation_gain}m</span>
                 </div>
               </>
             )}
             {avgRating && (
               <>
-                <div className="w-px h-8 bg-border-light" />
-                <div className="flex flex-col items-center flex-1">
-                  <span className="text-[11px] font-medium text-text-tertiary">{STAT_LABELS.rating[language] || STAT_LABELS.rating.en}</span>
-                  <span className="text-[15px] font-bold text-text-primary flex items-center gap-1">
-                    <IconStar size={13} filled className="text-yellow-400" />
+                <div className="w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.rating[language] || STAT_LABELS.rating.en}</span>
+                  <span className="text-[15px] font-bold text-text-primary mt-0.5 flex items-center gap-1">
+                    <IconStar size={12} filled className="text-yellow-400" />
                     {avgRating}
                   </span>
                 </div>
@@ -889,75 +996,17 @@ export default function TrailDetailPage() {
                   onClose={() => setMapFullscreen(false)}
                   title={tr.title}
                   pathCoordinates={pathCoords}
+                  rawCoordinates={Array.isArray(tr.path_data?.coordinates) ? tr.path_data!.coordinates : undefined}
                   markers={mapMarkers}
                   distance={tr.distance_km}
                   duration={String(tr.estimated_minutes)}
-                  theme="dark"
+                  theme="light"
                   onMarkerClick={handleMapMarkerClick}
                 />
               </section>
 
               {/* Nearby POIs */}
               <NearbyPOISection trailId={trailId} language={language} />
-
-              {/* Author — may be null for publicly-sourced trails (e.g. visitkorea) */}
-              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                {tr.author ? (
-                  <Link
-                    href={`/profile/${tr.author.nickname}`}
-                    className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {tr.author.profile_image ? (
-                        <Image
-                          src={tr.author.profile_image}
-                          alt={tr.author.nickname}
-                          width={36}
-                          height={36}
-                          className="object-cover"
-                        />
-                      ) : (
-                        <IconUser size={18} className="text-primary/60" />
-                      )}
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
-                      {tr.author.is_guide && (
-                        <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
-                          {t("trail.certifiedGuide")}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <IconUser size={18} className="text-primary/60" />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <p className="text-[13px] font-semibold text-text-primary">
-                        {tr.source === "visitkorea"
-                          ? language === "ko"
-                            ? "한국관광공사"
-                            : language === "ja"
-                            ? "韓国観光公社"
-                            : language === "zh"
-                            ? "韩国观光公社"
-                            : "Korea Tourism Organization"
-                          : language === "ko"
-                          ? "공식 코스"
-                          : "Official course"}
-                      </p>
-                      <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
-                        {language === "ko" ? "공공 데이터" : language === "ja" ? "公共データ" : language === "zh" ? "公共数据" : "Public data"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              {/* ─── Separator between overview and course detail sections ─── */}
-              <div className="border-t border-border-light" />
 
               {/* Elevation Profile — require a real coordinates array before
                   touching .length; public imports carry path_data: {} */}
@@ -1005,6 +1054,84 @@ export default function TrailDetailPage() {
                 </ErrorBoundary>
               </section>
 
+              {/* ─── Separator before author ─── */}
+              <div className="border-t border-border-light" />
+
+              {/* Author / Source — at the bottom of overview */}
+              <section className="rounded-2xl bg-white dark:bg-gray-900 p-3.5 shadow-sm">
+                {tr.author ? (
+                  <Link
+                    href={`/profile/${tr.author.nickname}`}
+                    className="flex items-center gap-3 hover:bg-bg-secondary -m-1 p-1 rounded-[10px] transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-[#A8E6CF]/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {tr.author.profile_image ? (
+                        <Image
+                          src={tr.author.profile_image}
+                          alt={tr.author.nickname}
+                          width={36}
+                          height={36}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <IconUser size={18} className="text-primary/60" />
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <p className="text-[13px] font-semibold text-text-primary">{tr.author.nickname}</p>
+                      {tr.author.is_guide && (
+                        <span className="text-[10px] bg-[#f0f7f0] text-primary px-1.5 py-0.5 rounded-pill font-medium mt-0.5 inline-block w-fit">
+                          {t("trail.certifiedGuide")}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary">
+                        <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[12px] font-medium text-text-secondary">
+                          {tr.source === "visitkorea"
+                            ? language === "ko"
+                              ? "한국관광공사"
+                              : language === "ja"
+                              ? "韓国観光公社"
+                              : language === "zh"
+                              ? "韩国观光公社"
+                              : "Korea Tourism Organization"
+                            : tr.source === "durunubi"
+                            ? language === "ko"
+                              ? "두루누비"
+                              : "Durunubi"
+                            : language === "ko"
+                            ? "공식 코스"
+                            : "Official course"}
+                        </p>
+                        <span className="text-[9px] bg-bg-secondary text-text-tertiary px-1.5 py-0.5 rounded-full font-medium">
+                          {language === "ko" ? "공식" : language === "ja" ? "公式" : language === "zh" ? "官方" : "Official"}
+                        </span>
+                      </div>
+                      {tr.source_url && (
+                        <a
+                          href={tr.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-text-tertiary hover:text-primary transition-colors mt-0.5"
+                        >
+                          {language === "ko" ? "원본 보기" : language === "ja" ? "元のソース" : language === "zh" ? "查看来源" : "View source"}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+
               {/* Start walking CTA — natural end of overview */}
               <div className="pt-1">
                 <button
@@ -1019,6 +1146,11 @@ export default function TrailDetailPage() {
               </div>
             </div>
           </ErrorBoundary>
+        )}
+
+        {/* ─── Tab 2: Album ─── */}
+        {activeTab === "album" && (
+          <AlbumTab reviews={reviews} spots={spots} language={language} />
         )}
 
         {/* ─── Tab 3: Reviews ─── */}

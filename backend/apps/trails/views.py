@@ -93,6 +93,12 @@ class TrailViewSet(viewsets.ModelViewSet):
             # 일반 유저는 approved만, 관리자는 status 필터 가능
             if not is_staff:
                 qs = qs.filter(status="approved")
+                # 프라이버시 — private 은 본인에게만 리스트 노출
+                if self.request.user.is_authenticated:
+                    from django.db.models import Q
+                    qs = qs.filter(Q(visibility="public") | Q(author=self.request.user))
+                else:
+                    qs = qs.filter(visibility="public")
             # Category filters (time / distance) via query params
             # These map user-facing buckets to ranges on estimated_minutes
             # and distance_km. Kept here instead of filterset so the bucket
@@ -106,16 +112,17 @@ class TrailViewSet(viewsets.ModelViewSet):
             elif time_bucket == "full":  # 4+ hours
                 qs = qs.filter(estimated_minutes__gt=240)
         elif self.action == "retrieve":
-            # 상세 보기는 approved이거나 작성자 본인 (또는 staff)
+            # 상세 보기는 (approved AND public) 이거나 작성자 본인, 또는 staff
             if is_staff:
                 pass
             elif self.request.user.is_authenticated:
                 from django.db.models import Q
                 qs = qs.filter(
-                    Q(status="approved") | Q(author=self.request.user)
+                    Q(author=self.request.user)
+                    | (Q(status="approved") & Q(visibility="public"))
                 )
             else:
-                qs = qs.filter(status="approved")
+                qs = qs.filter(status="approved", visibility="public")
         return qs
 
     def get_serializer_class(self):

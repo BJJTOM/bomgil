@@ -107,6 +107,7 @@ class TrailListSerializer(serializers.ModelSerializer):
             "id", "author", "title", "region", "country",
             "distance_km", "estimated_minutes", "difficulty",
             "cover_image", "thumbnail_url", "tags", "best_season", "status",
+            "visibility",
             "view_count", "like_count", "is_liked", "is_bookmarked", "is_completed",
             "created_at", "is_official", "source", "trail_type",
             "start_lat", "start_lng",
@@ -403,7 +404,8 @@ class TrailCreateSerializer(serializers.ModelSerializer):
             "region", "country", "distance_km", "estimated_minutes",
             "difficulty", "elevation_gain",
             "start_lat", "start_lng", "end_lat", "end_lng",
-            "path_data", "cover_image", "tag_ids", "tags", "best_season", "status",
+            "path_data", "cover_image", "tag_ids", "tags", "best_season",
+            "status", "visibility", "trail_type",
         ]
         read_only_fields = ["id"]
 

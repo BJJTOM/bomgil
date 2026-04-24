@@ -35,6 +35,11 @@ class Trail(models.Model):
         ("approved", "승인됨"),
         ("rejected", "반려됨"),
     ]
+    # 유저 프라이버시 (승인 status 와 직교) — 승인된 코스여도 나만 보기가 가능해야 함
+    VISIBILITY_CHOICES = [
+        ("private", "나만 보기"),
+        ("public", "공유 (공개)"),
+    ]
     TRAIL_TYPE_CHOICES = [
         ("urban", "도심산책"),
         ("coastal", "해안길"),
@@ -78,6 +83,11 @@ class Trail(models.Model):
     tags = models.ManyToManyField(Tag, blank=True, related_name="trails")
     best_season = models.CharField(max_length=10, choices=SEASON_CHOICES, default="all")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    # 공개/비공개 — 나만의 코스로 저장하고 싶을 때 private 로 둘 수 있음
+    visibility = models.CharField(
+        max_length=10, choices=VISIBILITY_CHOICES, default="private", db_index=True,
+        help_text="private: 본인만 조회 / public: 공개 피드 노출",
+    )
     rejection_reason = models.TextField(blank=True)
     view_count = models.PositiveIntegerField(default=0)
     like_count = models.PositiveIntegerField(default=0)

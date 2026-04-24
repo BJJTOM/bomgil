@@ -1291,6 +1291,7 @@ function WalkScreenInner() {
         <Mapbox.MapView
           style={{ flex: 1 }}
           styleURL="mapbox://styles/mapbox/outdoors-v12"
+          localizeLabels={{ locale: 'ko' }}
           attributionEnabled={false}
           logoEnabled={false}
           scrollEnabled={true}

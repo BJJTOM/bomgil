@@ -166,6 +166,7 @@ export default function SafeMapView({
         <MapView
           style={{ flex: 1 }}
           styleURL="mapbox://styles/mapbox/outdoors-v12"
+          localizeLabels={{ locale: 'ko' }}
           scrollEnabled={true}
           zoomEnabled={true}
           pitchEnabled={false}
@@ -204,8 +205,8 @@ export default function SafeMapView({
                 id="pathLineOutline"
                 style={{
                   lineColor: 'rgba(20, 30, 25, 0.55)',
-                  lineWidth: 9,
-                  lineOpacity: 0.85,
+                  lineWidth: 6.5,
+                  lineOpacity: 0.82,
                   lineCap: 'round',
                   lineJoin: 'round',
                 }}
@@ -215,11 +216,11 @@ export default function SafeMapView({
                 id="pathLineGlow"
                 style={{
                   lineColor: '#FFB770',
-                  lineWidth: 13,
-                  lineOpacity: 0.28,
+                  lineWidth: 9,
+                  lineOpacity: 0.25,
                   lineCap: 'round',
                   lineJoin: 'round',
-                  lineBlur: 4,
+                  lineBlur: 3,
                 }}
                 aboveLayerID="pathLineOutline"
               />
@@ -227,7 +228,7 @@ export default function SafeMapView({
               <LineLayer
                 id="pathLine"
                 style={{
-                  lineWidth: 5.5,
+                  lineWidth: 3.8,
                   lineOpacity: 0.97,
                   lineCap: 'round',
                   lineJoin: 'round',

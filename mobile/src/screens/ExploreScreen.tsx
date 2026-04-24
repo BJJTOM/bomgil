@@ -365,7 +365,9 @@ export default function ExploreScreen() {
               </View>
             )}
 
-        {/* Filter Row */}
+        {/* Filter Row — sort + all filter chips scroll together; small
+            utility toggles stay pinned on the right so search / view
+            toggle are always reachable. */}
         <View style={[styles.filterRow, { borderTopColor: borderColor }]}>
           {!aiMode ? (
             <ScrollView
@@ -373,6 +375,18 @@ export default function ExploreScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.chipRow}
               style={{ flex: 1 }}>
+              {/* Sort chip (was pinned; now scrolls first) */}
+              <TouchableOpacity
+                onPress={() => setShowSortModal(true)}
+                style={[styles.chip, { backgroundColor: chipBg }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.chipText, { color: textSecColor }]}>
+                  {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}
+                </Text>
+                <Text style={[styles.chipArrow, { color: textTertColor }]}>{' \u25BE'}</Text>
+              </TouchableOpacity>
+
               {FILTER_CHIPS.map((filter) => {
                 const isActive = !!filters[filter.key];
                 const activeLabel = isActive
@@ -422,12 +436,7 @@ export default function ExploreScreen() {
               </Text>
             </View>
           )}
-          <TouchableOpacity onPress={() => setShowSortModal(true)} style={[styles.sortBtn, { backgroundColor: chipBg }]} activeOpacity={0.7}>
-            <Text style={[styles.sortBtnText, { color: textSecColor }]}>
-              {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || '인기순'}{' \u25BE'}
-            </Text>
-          </TouchableOpacity>
-          {/* AI toggle button */}
+          {/* Pinned right-side utility toggles */}
           {aiAvailable && (
             <TouchableOpacity
               onPress={() => {
@@ -451,7 +460,6 @@ export default function ExploreScreen() {
           <TouchableOpacity onPress={() => setSearchVisible(!searchVisible)} style={styles.searchToggleSmall}>
             <Feather name="search" size={16} color={searchVisible ? colors.primary : textTertColor} />
           </TouchableOpacity>
-          {/* 목록 ↔ 지도 뷰 토글 */}
           <TouchableOpacity
             onPress={() => {
               haptics.light();
@@ -754,6 +762,7 @@ function ExploreMapView({ trails, isDark }: { trails: Trail[]; isDark: boolean }
       <Mapbox.MapView
         style={{ flex: 1 }}
         styleURL={styleURL}
+        localizeLabels={{ locale: 'ko' }}
         attributionEnabled={false}
         logoEnabled={false}
         scaleBarEnabled={false}

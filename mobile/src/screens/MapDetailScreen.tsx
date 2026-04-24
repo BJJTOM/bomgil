@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Mapbox from '@rnmapbox/maps';
 import { colors } from '../theme/colors';
+import { ElevationProfile } from '../components/ElevationProfile';
 
 const { height: SH } = Dimensions.get('window');
 
@@ -68,23 +69,30 @@ export default function MapDetailScreen() {
     geometry: { type: 'LineString' as const, coordinates: pathCoordinates },
   } : null;
 
-  // Route trace animation: reveal the polyline from start → end by
-  // setting `lineTrimOffset: [progress, 1]` via @rnmapbox/maps. A walker
-  // dot is sampled along the path and updated each frame.
-  const [traceProgress, setTraceProgress] = useState(1); // 1 = fully visible
+  // Route trace animation: reveal the polyline from start → end.
+  //
+  // Mapbox `line-trim-offset: [start, end]` HIDES the range [start,end].
+  // To reveal from start forward, we trim [revealed, 1] with `revealed`
+  // growing from 0 (fully hidden) → 1 (fully shown):
+  //   revealed=0  → [0, 1]   → whole line hidden
+  //   revealed=.5 → [0.5, 1] → shows 0-50%, hides 50-100%
+  //   revealed=1  → [1, 1]   → nothing trimmed, fully visible
+  //
+  // Idle default is 1 (fully drawn). The old code inverted this and the
+  // line appeared to fade *away* instead of reveal forward.
+  const [revealed, setRevealed] = useState(1);
   const [animating, setAnimating] = useState(false);
   const rafRef = useRef<number | null>(null);
-  const walkerCoord = hasPath
-    ? sampleAlong(pathCoordinates, Math.max(0, Math.min(1, 1 - traceProgress)))
-    : null;
-  const walkerGeoJSON =
-    animating && walkerCoord
-      ? {
-          type: 'Feature' as const,
-          properties: {},
-          geometry: { type: 'Point' as const, coordinates: walkerCoord },
-        }
+  const walkerCoord =
+    hasPath && animating
+      ? sampleAlong(pathCoordinates, Math.max(0, Math.min(1, revealed)))
       : null;
+  const walkerGeoJSON =
+    walkerCoord && {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: { type: 'Point' as const, coordinates: walkerCoord },
+    };
 
   const startAnimation = () => {
     if (!hasPath) return;
@@ -92,21 +100,17 @@ export default function MapDetailScreen() {
     const duration = 5200;
     const started = Date.now();
     setAnimating(true);
-    setTraceProgress(1);
+    setRevealed(0); // start with the line fully hidden
     const tick = () => {
       const t = (Date.now() - started) / duration;
       if (t >= 1) {
-        setTraceProgress(0);
-        // Linger for a beat, then remove the walker so the arrows come back
-        setTimeout(() => {
-          setAnimating(false);
-          setTraceProgress(1);
-        }, 700);
+        setRevealed(1); // fully drawn
+        setTimeout(() => setAnimating(false), 700);
         return;
       }
-      // easeOutCubic — 1 - (1 - t)^3
+      // easeOutCubic for a natural finish
       const eased = 1 - Math.pow(1 - t, 3);
-      setTraceProgress(1 - eased);
+      setRevealed(eased);
       rafRef.current = requestAnimationFrame(tick) as unknown as number;
     };
     rafRef.current = requestAnimationFrame(tick) as unknown as number;
@@ -118,7 +122,7 @@ export default function MapDetailScreen() {
       rafRef.current = null;
     }
     setAnimating(false);
-    setTraceProgress(1);
+    setRevealed(1);
   };
 
   useEffect(() => () => cancelAnimation(), []);
@@ -131,6 +135,7 @@ export default function MapDetailScreen() {
       <Mapbox.MapView
         style={{ flex: 1 }}
         styleURL="mapbox://styles/mapbox/outdoors-v12"
+        localizeLabels={{ locale: 'ko' }}
         attributionEnabled={false}
         logoEnabled={false}
         scrollEnabled={true}
@@ -179,43 +184,41 @@ export default function MapDetailScreen() {
           />
         </Mapbox.RasterDemSource>
 
-        {/* Route — outline → glow → main gradient. Matches the web's
-            drawMoruTrailLine 3-layer stack. High contrast against the
-            light outdoor basemap: dark navy outline + warm amber gradient
-            reads clearly over green/tan terrain. */}
+        {/* Route — outline → glow → main gradient. Matches web's
+            drawMoruTrailLine 3-layer stack. Slimmed down per feedback
+            that 6/10 px read as too thick on a detail map. */}
         {routeGeoJSON && (
           <Mapbox.ShapeSource id="route" shape={routeGeoJSON} lineMetrics>
             <Mapbox.LineLayer
               id="routeOutline"
               style={{
                 lineColor: 'rgba(20, 30, 25, 0.55)',
-                lineWidth: 10,
-                lineOpacity: 0.85,
+                lineWidth: 7,
+                lineOpacity: 0.82,
                 lineCap: 'round',
                 lineJoin: 'round',
-                lineTrimOffset: [traceProgress, 1],
+                lineTrimOffset: [revealed, 1],
               }}
             />
             <Mapbox.LineLayer
               id="routeGlow"
               style={{
                 lineColor: '#FFB770',
-                lineWidth: 14,
-                lineOpacity: 0.3,
-                lineBlur: 4,
+                lineWidth: 10,
+                lineOpacity: 0.25,
+                lineBlur: 3,
                 lineCap: 'round',
                 lineJoin: 'round',
-                lineTrimOffset: [traceProgress, 1],
+                lineTrimOffset: [revealed, 1],
               }}
             />
             <Mapbox.LineLayer
               id="routeLine"
               style={{
-                lineWidth: 6,
+                lineWidth: 4,
                 lineOpacity: 0.98,
                 lineCap: 'round',
                 lineJoin: 'round',
-                // Gradient only works because of lineMetrics on the source
                 lineGradient: [
                   'interpolate',
                   ['linear'],
@@ -225,7 +228,7 @@ export default function MapDetailScreen() {
                   0.65, '#FFB347',
                   1, '#FF3B30',
                 ] as any,
-                lineTrimOffset: [traceProgress, 1],
+                lineTrimOffset: [revealed, 1],
               }}
             />
           </Mapbox.ShapeSource>
@@ -279,45 +282,71 @@ export default function MapDetailScreen() {
         ))}
       </Mapbox.MapView>
 
-      {/* Top overlay — back + title */}
+      {/* Top overlay — back + title + compact stat chips all in one row
+          so the map stays clean. */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>{'←'}</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Bottom stats overlay */}
-      {(distance || duration) && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-          <View style={styles.statPill}>
-            <Text style={styles.statValue}>{typeof distance === 'number' ? distance.toFixed(2) : distance || '0'}</Text>
-            <Text style={styles.statLabel}>km</Text>
-          </View>
-          {duration != null && (
-            <View style={styles.statPill}>
-              <Text style={styles.statValue}>{typeof duration === 'number' ? (duration >= 60 ? `${Math.floor(duration/60)}h${duration%60}m` : `${duration}m`) : duration}</Text>
-              <Text style={styles.statLabel}>시간</Text>
-            </View>
-          )}
-          {spots.length > 0 && (
-            <View style={styles.statPill}>
-              <Text style={styles.statValue}>{spots.length}</Text>
-              <Text style={styles.statLabel}>스팟</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          {(distance != null || duration != null || spots.length > 0) && (
+            <View style={styles.topStatsRow}>
+              {distance != null && (
+                <Text style={styles.topStatText}>
+                  <Text style={styles.topStatValue}>
+                    {typeof distance === 'number' ? distance.toFixed(1) : distance}
+                  </Text>
+                  km
+                </Text>
+              )}
+              {duration != null && (
+                <>
+                  <Text style={styles.topStatDot}>·</Text>
+                  <Text style={styles.topStatText}>
+                    <Text style={styles.topStatValue}>
+                      {typeof duration === 'number'
+                        ? duration >= 60
+                          ? `${Math.floor(duration / 60)}h${duration % 60}`
+                          : `${duration}`
+                        : duration}
+                    </Text>
+                    {typeof duration === 'number' && duration >= 60 ? 'm' : '분'}
+                  </Text>
+                </>
+              )}
+              {spots.length > 0 && (
+                <>
+                  <Text style={styles.topStatDot}>·</Text>
+                  <Text style={styles.topStatText}>
+                    <Text style={styles.topStatValue}>{spots.length}</Text>
+                    스팟
+                  </Text>
+                </>
+              )}
             </View>
           )}
         </View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {/* Elevation profile at the bottom — only renders if path has
+          enough elevation data. ~110 dp tall strip pinned above the
+          safe area. Matches web MapFullscreen's layout. */}
+      {hasPath && (
+        <View style={[styles.elevStrip, { paddingBottom: insets.bottom }]}>
+          <ElevationProfile coordinates={pathCoordinates as any} height={88} />
+        </View>
       )}
 
-      {/* Route trace animation trigger */}
+      {/* Route trace animation trigger — floats above elevation strip */}
       {hasPath && (
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={animating ? cancelAnimation : startAnimation}
           style={[
             styles.traceBtn,
-            { bottom: insets.bottom + ((distance || duration) ? 70 : 16) },
+            { bottom: insets.bottom + 132 },
             animating && styles.traceBtnActive,
           ]}
         >
@@ -338,7 +367,47 @@ export default function MapDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#F2F4F0',
+  },
+  elevStrip: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  topStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 3,
+  },
+  topStatText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  topStatValue: {
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  topStatDot: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   topBar: {
     position: 'absolute',
@@ -350,6 +419,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     zIndex: 10,
+    // Subtle dark gradient so the white title + stats read over the
+    // light outdoor basemap.
+    backgroundColor: 'rgba(0,0,0,0.22)',
   },
   backBtn: {
     width: 40,

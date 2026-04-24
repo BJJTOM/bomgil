@@ -9,9 +9,10 @@
 #
 # Flags (set in Render → Environment when you want them on, then unset
 # after the deploy finishes):
-#   MORU_SEED_TRAILS=1   → runs import_durunubi_trails + enrich_trail_images
-#   MORU_SEED_SERIES=1   → runs seed_trail_series
+#   MORU_SEED_TRAILS=1    → runs import_durunubi_trails + enrich_trail_images
+#   MORU_SEED_SERIES=1    → runs seed_trail_series
 #   MORU_SANITIZE_USERS=1 → runs sanitize_phone_usernames
+#   MORU_SEED_SHOWCASE=1  → runs seed_showcase_trail --force (one-off, unset after)
 #
 # Alternative: `python manage.py seed_all` triggers every seed on demand.
 set -o errexit
@@ -63,6 +64,14 @@ if [ "${MORU_SEED_SERIES:-0}" = "1" ]; then
     || echo "seed_trail_series failed — continuing"
 else
   echo "=== Skipping trail series seed (set MORU_SEED_SERIES=1 to enable) ==="
+fi
+
+if [ "${MORU_SEED_SHOWCASE:-0}" = "1" ]; then
+  echo "=== Seeding showcase trail (여의도 한강 벚꽃길) ==="
+  MORU_DISABLE_REVALIDATE=1 python manage.py seed_showcase_trail --force \
+    || echo "seed_showcase_trail failed — continuing"
+else
+  echo "=== Skipping showcase trail seed (set MORU_SEED_SHOWCASE=1 to enable) ==="
 fi
 
 echo "=== Build complete ==="

@@ -95,15 +95,6 @@ const FILTER_CHIPS = [
       { value: 'all', label: '사계절' },
     ],
   },
-  {
-    key: 'is_official',
-    label: '출처',
-    options: [
-      { value: '', label: '전체' },
-      { value: 'true', label: '✓ 공식' },
-      { value: 'false', label: '유저' },
-    ],
-  },
 ];
 
 export default function ExploreScreen() {
@@ -122,7 +113,7 @@ export default function ExploreScreen() {
 
   const [search, setSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'courses' | 'series' | 'rankings'>('courses');
+  const [activeTab, setActiveTab] = useState<'all' | 'user' | 'official' | 'rankings'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [sortBy, setSortBy] = useState('-created_at');
   const [filters, setFilters] = useState<Record<string, string>>(() => {
@@ -187,8 +178,11 @@ export default function ExploreScreen() {
       if (v) params[k] = v;
     });
     if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    // Tab-based is_official filter (matches web)
+    if (activeTab === 'user') params.is_official = 'false';
+    else if (activeTab === 'official') params.is_official = 'true';
     return params;
-  }, [filters, debouncedSearch, sortBy]);
+  }, [filters, debouncedSearch, sortBy, activeTab]);
 
   // Pagination state — 백엔드 `TrailPagination` 은 LimitOffsetPagination (기본 21개) 이므로
   // 웹과 동일하게 limit/offset 파라미터를 사용해야 한다. 이전의 page/page_size 는 무시됐음.
@@ -237,22 +231,6 @@ export default function ExploreScreen() {
     },
     staleTime: 60000,
   });
-
-  // Series for the new "시리즈" tab. Fetched lazily — only when the
-  // user actually switches to the series tab — so we don't pay for
-  // an extra request if they only ever look at trail listings.
-  const { data: seriesData, refetch: refetchSeries, isRefetching: seriesRefetching } = useQuery({
-    queryKey: ['trail-series-list'],
-    queryFn: async () => {
-      try {
-        const { data: res } = await api.get('/trails/series/');
-        return Array.isArray(res) ? res : (res?.results ?? []);
-      } catch { return []; }
-    },
-    enabled: activeTab === 'series',
-    staleTime: 60 * 1000,
-  });
-  const seriesList = seriesData || [];
 
   // Helper: check if a trail has an image (cover_image or thumbnail_url)
   const trailHasImage = useCallback((trail: Trail): boolean => {
@@ -344,25 +322,23 @@ export default function ExploreScreen() {
       {/* Header — Tabs */}
       <View style={[styles.header, { backgroundColor: cardBg }]}>
         <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'courses' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('courses')}>
-            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'courses' && { color: textColor }]}>코스</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'series' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('series')}>
-            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'series' && { color: textColor }]}>시리즈</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'rankings' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('rankings')}>
-            <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === 'rankings' && { color: textColor }]}>랭킹</Text>
-          </TouchableOpacity>
+          {([
+            { key: 'all' as const, label: '전체 코스' },
+            { key: 'user' as const, label: '유저 코스' },
+            { key: 'official' as const, label: '공식 코스' },
+            { key: 'rankings' as const, label: '랭킹' },
+          ]).map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
+              onPress={() => { setActiveTab(tab.key); setCurrentPage(1); }}>
+              <Text style={[styles.tabBtnText, { color: textTertColor }, activeTab === tab.key && { color: textColor }]}>{tab.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Filter Row + Search (courses tab only) */}
-        {activeTab === 'courses' && (
+        {/* Filter Row + Search (trails tabs only) */}
+        {(activeTab === 'all' || activeTab === 'user' || activeTab === 'official') && (
           <>
             {searchVisible && (
               <View style={[styles.searchBar, { backgroundColor: aiMode ? '#F0F0FF' : chipBg }]}>
@@ -553,133 +529,6 @@ export default function ExploreScreen() {
       {/* Content — courses, series, or rankings */}
       {activeTab === 'rankings' ? (
         <RankingsInline />
-      ) : activeTab === 'series' ? (
-        // Series listing: bigger cards with progress bars. Reuses
-        // exactly the same shape the dedicated TrailSeriesListScreen
-        // uses, so users see consistent UI whether they enter from
-        // home or explore.
-        <FlatList
-          data={seriesList}
-          keyExtractor={(item: any) => `xs-${item.id}`}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={seriesRefetching}
-              onRefresh={refetchSeries}
-              tintColor={colors.primary}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.loadingCenter}>
-              <Feather name="activity" size={40} color={isDark ? '#4ADE80' : '#2D4A2E'} style={{ marginBottom: 12 }} />
-              <Text style={[styles.emptyTitle, { color: textColor }]}>아직 시리즈가 없어요</Text>
-              <Text style={[styles.emptyDesc, { color: textTertColor }]}>
-                곧 새로운 장거리 챌린지를 추가할 예정이에요
-              </Text>
-            </View>
-          }
-          renderItem={({ item }: any) => {
-            const pct = Math.min(100, item.progress_pct || 0);
-            return (
-              <TouchableOpacity
-                style={[
-                  {
-                    backgroundColor: cardBg,
-                    padding: 16,
-                    borderRadius: 18,
-                    marginBottom: 4,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 10,
-                    elevation: 2,
-                  },
-                ]}
-                activeOpacity={0.85}
-                onPress={() =>
-                  navigation.navigate('TrailSeriesDetail', { slug: item.slug })
-                }>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 16,
-                      backgroundColor: isDark ? '#2a3a2b' : '#F0F7F0',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                    {item.accent_emoji ? (
-                      <Text style={{ fontSize: 24 }}>{item.accent_emoji}</Text>
-                    ) : (
-                      <Feather name="activity" size={24} color={isDark ? '#4ADE80' : '#2D4A2E'} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text
-                      style={{
-                        color: textColor,
-                        fontSize: 16,
-                        fontWeight: '700',
-                        marginBottom: 3,
-                      }}
-                      numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Text
-                      style={{ color: textSecColor, fontSize: 12, fontWeight: '500' }}
-                      numberOfLines={1}>
-                      {item.subtitle || item.region || ''}
-                    </Text>
-                  </View>
-                  {item.is_featured && (
-                    <View
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 11,
-                        backgroundColor: '#F59E0B',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                      <Feather name="star" size={10} color="#fff" />
-                    </View>
-                  )}
-                </View>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 10 }}>
-                  <View
-                    style={{
-                      flex: 1,
-                      height: 8,
-                      borderRadius: 4,
-                      overflow: 'hidden',
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#EEF1F4',
-                    }}>
-                    <View
-                      style={{
-                        height: '100%',
-                        width: `${pct}%`,
-                        backgroundColor: '#2D4A2E',
-                      }}
-                    />
-                  </View>
-                  <Text
-                    style={{
-                      color: textSecColor,
-                      fontSize: 12,
-                      fontWeight: '700',
-                      minWidth: 40,
-                      textAlign: 'right',
-                    }}>
-                    {item.progress_completed}/{item.progress_total}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
       ) : aiMode ? (
       <>
         {/* AI Search Results */}
@@ -963,7 +812,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   tabBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textTertiary,
   },

@@ -22,7 +22,10 @@ import { useT } from "@/stores/language";
 import { TrailSegments } from "@/components/TrailSegments";
 import { TrailConditionBanner } from "@/components/TrailConditionBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NearbyPOISection } from "@/components/NearbyPOISection";
+import { NearbyPOISection, POIDetailModal } from "@/components/NearbyPOISection";
+import type { NearbyPOI } from "@/components/NearbyPOISection";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -220,7 +223,18 @@ export default function TrailDetailPage() {
   const [certBlobUrl, setCertBlobUrl] = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [mapSelectedPOI, setMapSelectedPOI] = useState<NearbyPOI | null>(null);
   const createReview = useCreateReview(trailId);
+
+  const { data: nearbyPOIs = [] } = useQuery<NearbyPOI[]>({
+    queryKey: ["trail-nearby-poi", trailId],
+    queryFn: async () => {
+      const { data } = await api.get(`/trails/${trailId}/nearby/`);
+      return data;
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
 
   const tabBarRef = useRef<HTMLDivElement>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
@@ -397,7 +411,7 @@ export default function TrailDetailPage() {
   };
 
   function formatActivityDuration(minutes: number | null) {
-    if (!minutes) return "-";
+    if (minutes == null) return "-";
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     if (language === "ko") return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
@@ -413,14 +427,30 @@ export default function TrailDetailPage() {
     [trail?.path_data],
   );
   const mapMarkers = useMemo(() => {
-    return spots.map((s: Spot) => ({
+    const POI_CATEGORY_EMOJI: Record<string, string> = {
+      "음식점": "🍽️",
+      "관광지": "🏞️",
+      "숙박": "🏠",
+      "문화시설": "🏛️",
+      "레포츠": "⚡",
+      "쇼핑": "🛍️",
+    };
+    const spotMarkers = spots.map((s: Spot) => ({
       id: s.id,
       lat: parseFloat(s.lat),
       lng: parseFloat(s.lng),
       title: s.name,
       emoji: SPOT_TYPE_LABELS[s.spot_type]?.emoji,
     }));
-  }, [spots]);
+    const poiMarkers = nearbyPOIs.map((poi, idx) => ({
+      id: -(idx + 1), // negative IDs to distinguish from spot IDs
+      lat: poi.lat,
+      lng: poi.lng,
+      title: poi.name,
+      emoji: POI_CATEGORY_EMOJI[poi.category] || "📍",
+    }));
+    return [...spotMarkers, ...poiMarkers];
+  }, [spots, nearbyPOIs]);
 
   // ─── Loading state ──────────────────────────────────────────────────────────
 
@@ -454,6 +484,19 @@ export default function TrailDetailPage() {
   // ─── Trail alias ────────────────────────────────────────────────────────────
 
   const tr: Trail = trail;
+
+  // Plain function — NOT a hook, safe after early returns
+  function handleMapMarkerClick(markerId: number) {
+    // POI markers have negative IDs: -(index + 1)
+    if (markerId < 0) {
+      const poiIndex = -(markerId + 1);
+      const poi = nearbyPOIs[poiIndex];
+      if (poi) {
+        setMapSelectedPOI(poi);
+      }
+    }
+    // Positive IDs are spot markers — no action needed (they have popups)
+  }
 
   const avgRating =
     reviews.length > 0
@@ -549,7 +592,7 @@ export default function TrailDetailPage() {
             </span>
             <span className="ml-auto flex items-center gap-1 text-[11px] text-white/70 font-medium">
               <IconEye size={12} className="text-white/60" />
-              <span>{tr.view_count.toLocaleString()}</span>
+              <span>{(tr.view_count ?? 0).toLocaleString()}</span>
             </span>
           </div>
           <h1 className="text-2xl md:text-[28px] font-extrabold leading-tight line-clamp-2">{tr.title}</h1>
@@ -714,6 +757,7 @@ export default function TrailDetailPage() {
                     showStats
                     distance={tr.distance_km}
                     duration={String(tr.estimated_minutes)}
+                    onMarkerClick={handleMapMarkerClick}
                   />
                   <MapExpandButton onClick={() => setMapFullscreen(true)} />
                 </div>
@@ -726,6 +770,7 @@ export default function TrailDetailPage() {
                   distance={tr.distance_km}
                   duration={String(tr.estimated_minutes)}
                   theme="dark"
+                  onMarkerClick={handleMapMarkerClick}
                 />
               </section>
 
@@ -1135,6 +1180,18 @@ export default function TrailDetailPage() {
       {/* ================================================================== */}
       {/* Certificate Modal                                                  */}
       {/* ================================================================== */}
+      {/* ================================================================== */}
+      {/* POI Detail Modal (from map marker click)                         */}
+      {/* ================================================================== */}
+      {mapSelectedPOI && (
+        <POIDetailModal
+          contentId={mapSelectedPOI.content_id || ""}
+          poi={mapSelectedPOI}
+          onClose={() => setMapSelectedPOI(null)}
+          language={language}
+        />
+      )}
+
       {showCertificate && certBlobUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"

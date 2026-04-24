@@ -586,7 +586,15 @@ function TrailDetailScreenInner() {
 
         {/* ===== DESCRIPTION — Change #1: no "소개" title, directly after stats ===== */}
         <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-          <Text style={[styles.descText, { color: textColor }]}>{trail?.description || ''}</Text>
+          <View>
+            {(trail?.description || '').split('\n').map((paragraph: string, i: number) => (
+              paragraph.trim() ? (
+                <Text key={i} style={[styles.descText, { color: textColor }, i > 0 && { marginTop: 10 }]}>
+                  {paragraph}
+                </Text>
+              ) : null
+            ))}
+          </View>
           {(trail?.tags || []).length > 0 && (
             <View style={styles.tagsRow}>
               {(trail?.tags || []).map((tag) => (
@@ -638,6 +646,39 @@ function TrailDetailScreenInner() {
 
         {/* ===== NEARBY POIs ===== */}
         <NearbyPOICards trailId={trail.id} isDark={isDark} />
+
+        {/* ===== AUTHOR (moved up to match web flow) ===== */}
+        {trail.author && (
+          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+            <TouchableOpacity
+              style={[styles.authorCard, { backgroundColor: sectionBg }]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
+              <View style={styles.authorAvatar}>
+                {trail.author.profile_image ? (
+                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                ) : (
+                  <Feather name="user" size={18} color={textSecColor} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
+                  {trail.author.is_guide && (
+                    <View style={[styles.guideBadge, { backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.08)' }]}>
+                      <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+                    </View>
+                  )}
+                </View>
+                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
+              </View>
+              <Feather name="chevron-right" size={16} color={textTertColor} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ===== SECTION SEPARATOR (matches web) ===== */}
+        <View style={{ marginHorizontal: 20, marginTop: 20, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: borderColor }} />
 
         {/* ===== ELEVATION PROFILE ===== */}
         {trail.path_data?.coordinates && (
@@ -905,36 +946,6 @@ function TrailDetailScreenInner() {
             </View>
           ))}
         </View>
-
-        {/* ===== AUTHOR ===== */}
-        {trail.author && (
-          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-            <TouchableOpacity
-              style={[styles.authorCard, { backgroundColor: sectionBg }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
-              <View style={styles.authorAvatar}>
-                {trail.author.profile_image ? (
-                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
-                ) : (
-                  <Feather name="user" size={18} color={textSecColor} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
-                  {trail.author.is_guide && (
-                    <View style={[styles.guideBadge, { backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.08)' }]}>
-                      <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
-                    </View>
-                  )}
-                </View>
-                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
-              </View>
-              <Feather name="chevron-right" size={16} color={textTertColor} />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* ===== WALKERS ===== */}
         {trailWalkers.length > 0 && (

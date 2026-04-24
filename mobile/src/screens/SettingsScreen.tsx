@@ -217,6 +217,7 @@ export default function SettingsScreen() {
           title: '정보',
           items: [
             { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
+            { icon: 'message-square', label: '의견 보내기', onPress: () => navigation.navigate('Feedback') },
             { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
             { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
             { icon: 'info', label: t.settings.version, value: '1.0.0' },
@@ -270,6 +271,7 @@ export default function SettingsScreen() {
           title: '정보',
           items: [
             { icon: 'bell', label: t.settings.notice, onPress: () => navigation.navigate('Notice') },
+            { icon: 'message-square', label: '의견 보내기', onPress: () => navigation.navigate('Feedback') },
             { icon: 'file-text', label: t.settings.terms, onPress: () => navigation.navigate('Terms') },
             { icon: 'shield', label: t.settings.privacy, onPress: () => navigation.navigate('Privacy') },
             { icon: 'info', label: t.settings.version, value: '1.0.0' },

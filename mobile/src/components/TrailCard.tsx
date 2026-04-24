@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { colors } from '../theme/colors';
 import { useThemeStore } from '../stores/theme';
@@ -65,6 +66,29 @@ function formatCount(n: number | null | undefined): string {
   return String(n);
 }
 
+/**
+ * Region/type-aware emoji + gradient for trails without a cover image.
+ * Matches the web TrailCard fallback so the visual identity is the
+ * same across both platforms.
+ */
+function fallbackTheme(trail: Trail): { emoji: string; gradient: [string, string] } {
+  const type = trail.trail_type;
+  if (type === 'coastal') return { emoji: '🌊', gradient: ['#A3C9E2', '#3D7EB5'] };
+  if (type === 'urban') return { emoji: '🏙️', gradient: ['#D9C8B4', '#6B5A45'] };
+  if (type === 'cultural') return { emoji: '🏯', gradient: ['#E9D5B4', '#8B6F3E'] };
+  if (type === 'nature') return { emoji: '🌲', gradient: ['#BFD8BD', '#3D6B4A'] };
+  if (type === 'village') return { emoji: '🏘️', gradient: ['#EAD9A8', '#A8883D'] };
+  const region = (trail.region || '').toLowerCase();
+  if (region.includes('제주')) return { emoji: '🏝️', gradient: ['#B7E0E6', '#3E8B9A'] };
+  if (region.includes('부산') || region.includes('해운대'))
+    return { emoji: '🌊', gradient: ['#A3C9E2', '#3D7EB5'] };
+  if (region.includes('강원') || region.includes('설악'))
+    return { emoji: '⛰️', gradient: ['#A8C0A3', '#4A7C59'] };
+  if (region.includes('서울') || region.includes('종로') || region.includes('성동'))
+    return { emoji: '🏙️', gradient: ['#D9C8B4', '#6B5A45'] };
+  return { emoji: '🥾', gradient: ['#C9D8C5', '#6B8A6E'] };
+}
+
 export default function TrailCard({
   trail,
   onPress,
@@ -82,6 +106,14 @@ export default function TrailCard({
   const trailIcon = TRAIL_TYPE_ICON[trail.trail_type] || TRAIL_TYPE_ICON.mixed;
   const effectiveVariant = compact ? 'compact' : variant;
 
+  // Broken-image tracking — if the CDN URL 404s at runtime, swap to the
+  // gradient+emoji fallback instead of leaving a blank box.
+  const [imgBroken, setImgBroken] = useState(false);
+  const rawUri =
+    resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url);
+  const showImage = !!rawUri && !imgBroken;
+  const theme = fallbackTheme(trail);
+
   // Rating data (optional from API)
   const avgRating = trail.avg_rating;
   const reviewCount = trail.review_count;
@@ -94,16 +126,22 @@ export default function TrailCard({
         onPress={onPress}
         activeOpacity={0.85}>
         <View style={styles.horizontalImage}>
-          {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
+          {showImage ? (
             <Image
-              source={{ uri: (resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url))! }}
+              source={{ uri: rawUri! }}
               style={styles.horizontalImg}
               resizeMode="cover"
+              onError={() => setImgBroken(true)}
             />
           ) : (
-            <View style={[styles.horizontalPlaceholder, { backgroundColor: imagePlaceholderBg }]}>
-              <Feather name={trailIcon.name} size={20} color={trailIcon.color} />
-            </View>
+            <LinearGradient
+              colors={theme.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.horizontalPlaceholder}
+            >
+              <Text style={{ fontSize: 32 }}>{theme.emoji}</Text>
+            </LinearGradient>
           )}
         </View>
         <View style={styles.horizontalContent}>
@@ -137,16 +175,27 @@ export default function TrailCard({
       activeOpacity={0.85}>
       {/* Image */}
       <View style={[styles.imageContainer, { height: imageHeight }]}>
-        {resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url) ? (
+        {showImage ? (
           <Image
-            source={{ uri: (resolveImageUrl(trail.cover_image) || resolveImageUrl(trail.thumbnail_url))! }}
+            source={{ uri: rawUri! }}
             style={styles.image}
             resizeMode="cover"
+            onError={() => setImgBroken(true)}
           />
         ) : (
-          <View style={[styles.imagePlaceholder, { backgroundColor: imagePlaceholderBg }]}>
-            <Feather name={trailIcon.name} size={36} color={trailIcon.color} />
-          </View>
+          <LinearGradient
+            colors={theme.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.imagePlaceholder}
+          >
+            <Text style={{ fontSize: 56 }}>{theme.emoji}</Text>
+            {!!trail.region && (
+              <Text style={styles.fallbackRegion} numberOfLines={1}>
+                {trail.region}
+              </Text>
+            )}
+          </LinearGradient>
         )}
 
         {/* Liked heart top right */}
@@ -241,9 +290,15 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fallbackRegion: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 4,
   },
   likedBadge: {
     position: 'absolute',

@@ -48,6 +48,7 @@ import BookmarkedTrailsScreen from '../screens/BookmarkedTrailsScreen';
 import TrailSeriesListScreen from '../screens/TrailSeriesListScreen';
 import TrailSeriesDetailScreen from '../screens/TrailSeriesDetailScreen';
 import TrailConditionsScreen from '../screens/TrailConditionsScreen';
+import FeedbackScreen from '../screens/FeedbackScreen';
 import { useThemeStore } from '../stores/theme';
 import WalkStatsScreen from '../screens/WalkStatsScreen';
 import StrideCalibrationScreen from '../screens/StrideCalibrationScreen';
@@ -251,6 +252,7 @@ export default function AppNavigator() {
         <Stack.Screen name="LikedTrails" component={LikedTrailsScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="Notice" component={NoticeScreen} />
+        <Stack.Screen name="Feedback" component={FeedbackScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />
         <Stack.Screen name="SavedTrails" component={SavedTrailsScreen} />

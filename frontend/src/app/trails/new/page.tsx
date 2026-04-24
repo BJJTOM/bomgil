@@ -139,6 +139,9 @@ export default function NewTrailPage() {
     transport_access: "",
     is_multi_day: false,
     total_days: 1,
+    // 공개/비공개 — 기본은 "나만 보기" (사용자 보호 원칙).
+    // 공유를 원할 때 명시적으로 "public" 선택
+    visibility: "private" as "private" | "public",
   });
 
   const [spots, setSpots] = useState<SpotForm[]>([]);
@@ -279,6 +282,17 @@ export default function NewTrailPage() {
 
   const removeSpot = (index: number) => {
     setSpots((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // 위/아래 버튼으로 경유지 순서 변경 (Komoot 의 드래그 재정렬 대체, 터치 친화적)
+  const moveSpot = (from: number, to: number) => {
+    setSpots((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = prev.slice();
+      const [m] = next.splice(from, 1);
+      next.splice(to, 0, m);
+      return next;
+    });
   };
 
   const useCurrentLocation = (target: "start" | "end") => {
@@ -1133,13 +1147,35 @@ export default function NewTrailPage() {
                       </span>
                       경유지 {i + 1}
                     </span>
-                    <button
-                      onClick={() => removeSpot(i)}
-                      type="button"
-                      className="text-danger text-sm hover:underline"
-                    >
-                      삭제
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveSpot(i, i - 1)}
+                        disabled={i === 0}
+                        className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="위로 이동"
+                        title="위로 이동"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveSpot(i, i + 1)}
+                        disabled={i === spots.length - 1}
+                        className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="아래로 이동"
+                        title="아래로 이동"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        onClick={() => removeSpot(i)}
+                        type="button"
+                        className="ml-1 text-danger text-sm hover:underline"
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1437,6 +1473,60 @@ export default function NewTrailPage() {
                   done={images.length > 0}
                   label="커버 이미지 1장 이상"
                 />
+              </div>
+            </SectionCard>
+
+            {/* 공개 범위 — 나만 보기 vs 공유 */}
+            <SectionCard title="공개 범위">
+              <p className="text-xs text-text-secondary mb-3">
+                등록 직후 적용됩니다. 언제든 변경할 수 있어요.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  {
+                    value: "private",
+                    icon: "🔒",
+                    title: "나만 보기",
+                    desc: "내 코스 목록에만 보이고, 공개 피드엔 노출되지 않아요.",
+                  },
+                  {
+                    value: "public",
+                    icon: "🌍",
+                    title: "공유 (공개)",
+                    desc: "관리자 승인 후 모든 사용자가 볼 수 있어요.",
+                  },
+                ].map((opt) => {
+                  const selected = form.visibility === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        updateForm(
+                          "visibility",
+                          opt.value as "private" | "public",
+                        )
+                      }
+                      className={`text-left p-4 rounded-xl border-2 transition-all ${
+                        selected
+                          ? "border-primary bg-primary/5"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{opt.icon}</div>
+                      <div
+                        className={`text-sm font-bold mb-1 ${
+                          selected ? "text-primary" : "text-text-primary"
+                        }`}
+                      >
+                        {opt.title}
+                      </div>
+                      <div className="text-xs text-text-secondary leading-relaxed">
+                        {opt.desc}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </SectionCard>
 

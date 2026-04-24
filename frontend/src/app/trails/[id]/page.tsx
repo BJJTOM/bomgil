@@ -27,6 +27,7 @@ import { NearbyPOISection, POIDetailModal } from "@/components/NearbyPOISection"
 import type { NearbyPOI } from "@/components/NearbyPOISection";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { TrailCard } from "@/components/TrailCard";
 import type { Trail, Spot, ActivityTrack } from "@/types";
 
 // ─── SVG Icon Components ────────────────────────────────────────────────────
@@ -173,6 +174,7 @@ const STAT_LABELS = {
   time: { ko: "시간", en: "Time", ja: "時間", zh: "时间" },
   difficulty: { ko: "난이도", en: "Difficulty", ja: "難易度", zh: "难度" },
   elevation: { ko: "고도", en: "Elev.", ja: "標高", zh: "海拔" },
+  calories: { ko: "칼로리", en: "Calories", ja: "カロリー", zh: "卡路里" },
   rating: { ko: "평점", en: "Rating", ja: "評価", zh: "评分" },
 };
 
@@ -555,6 +557,8 @@ export default function TrailDetailPage() {
   const [mapSelectedPOI, setMapSelectedPOI] = useState<NearbyPOI | null>(null);
   const createReview = useCreateReview(trailId);
 
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const { data: nearbyPOIs = [] } = useQuery<NearbyPOI[]>({
     queryKey: ["trail-nearby-poi", trailId],
     queryFn: async () => {
@@ -562,6 +566,20 @@ export default function TrailDetailPage() {
       return data;
     },
     staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  // Feature 3: Similar trails
+  const { data: similarTrailsRaw = [] } = useQuery<Trail[]>({
+    queryKey: ["similar-trails", trailId],
+    queryFn: async () => {
+      const { data } = await api.get("/trails/", {
+        params: { ordering: "-like_count", limit: "5" },
+      });
+      // API may return { results: [...] } or [...]
+      return Array.isArray(data) ? data : data.results ?? [];
+    },
+    staleTime: 1000 * 60 * 10,
     retry: 1,
   });
 
@@ -773,6 +791,26 @@ export default function TrailDetailPage() {
     return [...spotMarkers, ...poiMarkers];
   }, [spots, nearbyPOIs]);
 
+  // Feature 2: Estimated calories
+  const estimatedCalories = useMemo(() => {
+    const dist = parseFloat(trail?.distance_km ?? "0");
+    const elev = trail?.elevation_gain ?? 0;
+    if (dist <= 0) return null;
+    return Math.round(dist * 65 + elev * 0.5);
+  }, [trail?.distance_km, trail?.elevation_gain]);
+
+  // Feature 3: Similar trails (filtered, excluding current)
+  const similarTrails = useMemo(() => {
+    return similarTrailsRaw.filter((t: Trail) => t.id !== trailId).slice(0, 4);
+  }, [similarTrailsRaw, trailId]);
+
+  // Feature 4: Link copy toast timeout
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timer = setTimeout(() => setLinkCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [linkCopied]);
+
   // ─── Loading state ──────────────────────────────────────────────────────────
 
   if (trailLoading) {
@@ -807,6 +845,14 @@ export default function TrailDetailPage() {
   const tr: Trail = trail;
 
   // Plain function — NOT a hook, safe after early returns
+  async function handleCopyLink() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+    } catch {}
+  }
+
   function handleMapMarkerClick(markerId: number) {
     // POI markers have negative IDs: -(index + 1)
     if (markerId < 0) {
@@ -891,6 +937,15 @@ export default function TrailDetailPage() {
                 <div className="flex flex-col items-center flex-1 min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.elevation[language] || STAT_LABELS.elevation.en}</span>
                   <span className="text-[15px] font-bold text-text-primary mt-0.5">+{tr.elevation_gain}m</span>
+                </div>
+              </>
+            )}
+            {estimatedCalories && (
+              <>
+                <div className="w-px h-7 bg-border-light flex-shrink-0" />
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.calories[language] || STAT_LABELS.calories.en}</span>
+                  <span className="text-[15px] font-bold text-text-primary mt-0.5">{language === "ko" ? "약 " : "~"}{estimatedCalories.toLocaleString()} kcal</span>
                 </div>
               </>
             )}
@@ -1018,6 +1073,45 @@ export default function TrailDetailPage() {
                 </section>
               )}
 
+              {/* Difficulty / Elevation Visualization */}
+              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                <h2 className="text-sm font-bold text-text-primary mb-3">
+                  {language === "ko" ? "난이도" : language === "ja" ? "難易度" : language === "zh" ? "难度" : "Difficulty"}
+                </h2>
+                {/* Difficulty bar */}
+                <div className="flex rounded-full overflow-hidden h-3 mb-2">
+                  <div className={`flex-1 ${tr.difficulty === "easy" ? "bg-green-500" : "bg-green-500/20 dark:bg-green-500/10"} transition-colors`} />
+                  <div className={`flex-1 ${tr.difficulty === "moderate" ? "bg-amber-500" : "bg-amber-500/20 dark:bg-amber-500/10"} transition-colors`} />
+                  <div className={`flex-1 ${tr.difficulty === "hard" ? "bg-red-500" : "bg-red-500/20 dark:bg-red-500/10"} transition-colors`} />
+                </div>
+                <div className="flex text-[11px] text-text-tertiary">
+                  <span className={`flex-1 text-left ${tr.difficulty === "easy" ? "font-bold text-green-600 dark:text-green-400" : ""}`}>
+                    {DIFFICULTY_LABELS.easy[language] || "Easy"}
+                  </span>
+                  <span className={`flex-1 text-center ${tr.difficulty === "moderate" ? "font-bold text-amber-600 dark:text-amber-400" : ""}`}>
+                    {DIFFICULTY_LABELS.moderate[language] || "Moderate"}
+                  </span>
+                  <span className={`flex-1 text-right ${tr.difficulty === "hard" ? "font-bold text-red-600 dark:text-red-400" : ""}`}>
+                    {DIFFICULTY_LABELS.hard[language] || "Hard"}
+                  </span>
+                </div>
+                {/* Elevation comparison */}
+                {tr.elevation_gain != null && tr.elevation_gain > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border-light flex items-center gap-2 text-[12px] text-text-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary flex-shrink-0">
+                      <path d="M3 21h18M9 8l3-5 3 5M12 3v18" />
+                    </svg>
+                    <span>
+                      +{tr.elevation_gain}m{" "}
+                      <span className="text-text-tertiary">
+                        ({language === "ko" ? "아파트 약" : language === "ja" ? "マンション約" : language === "zh" ? "约" : "~"}{" "}
+                        {Math.round(tr.elevation_gain / 3)}{language === "ko" ? "층 높이" : language === "ja" ? "階の高さ" : language === "zh" ? "层楼高" : " floors"})
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </section>
+
               {/* Trail Segments */}
               {Array.isArray(tr.segments) && tr.segments.length > 0 && (
                 <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
@@ -1132,8 +1226,24 @@ export default function TrailDetailPage() {
                 )}
               </section>
 
-              {/* Start walking CTA — natural end of overview */}
-              <div className="pt-1">
+              {/* Similar Trails */}
+              {similarTrails.length > 0 && (
+                <section>
+                  <h2 className="text-sm font-bold text-text-primary mb-3">
+                    {language === "ko" ? "비슷한 코스" : language === "ja" ? "似たようなコース" : language === "zh" ? "类似路线" : "Similar Trails"}
+                  </h2>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+                    {similarTrails.map((st: Trail) => (
+                      <div key={st.id} className="flex-shrink-0 w-[260px]">
+                        <TrailCard trail={st} variant="compact" />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Start walking CTA + copy link — natural end of overview */}
+              <div className="pt-1 space-y-2">
                 <button
                   onClick={() => {
                     alert(language === "ko" ? "걷기 기록은 모바일 앱에서 시작할 수 있어요." : language === "ja" ? "ウォーキング記録はモバイルアプリで開始できます。" : language === "zh" ? "请在移动应用中开始步行记录。" : "Start walk recording in the mobile app.");
@@ -1142,6 +1252,16 @@ export default function TrailDetailPage() {
                 >
                   <IconSmartphone size={16} />
                   {language === "ko" ? "이 코스로 걷기 시작" : language === "ja" ? "このコースを歩き始める" : language === "zh" ? "开始步行此路线" : "Start walking this trail"}
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full py-3 border border-border-light rounded-2xl text-[14px] font-semibold text-text-secondary flex items-center justify-center gap-2 hover:bg-bg-secondary active:scale-[0.98] transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                  </svg>
+                  {language === "ko" ? "링크 복사" : language === "ja" ? "リンクをコピー" : language === "zh" ? "复制链接" : "Copy Link"}
                 </button>
               </div>
             </div>
@@ -1445,6 +1565,15 @@ export default function TrailDetailPage() {
           onClose={() => setMapSelectedPOI(null)}
           language={language}
         />
+      )}
+
+      {/* Link copied toast */}
+      {linkCopied && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[13px] font-medium px-4 py-2.5 rounded-full shadow-lg">
+            {language === "ko" ? "링크가 복사되었습니다" : language === "ja" ? "リンクをコピーしました" : language === "zh" ? "链接已复制" : "Link copied"}
+          </div>
+        </div>
       )}
 
       {showCertificate && certBlobUrl && (

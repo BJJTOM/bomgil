@@ -12,7 +12,7 @@ from .models import (
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
     Notice, SiteConfig,
-    LegalDocument,
+    LegalDocument, Feedback,
 )
 from .serializers import (
     PostListSerializer, PostDetailSerializer, PostCreateSerializer, PostUpdateSerializer,
@@ -21,7 +21,7 @@ from .serializers import (
     GroupMessageSerializer, GroupMemberSerializer,
     ChallengeListSerializer, ChallengeDetailSerializer,
     ChallengeParticipantSerializer,
-    NoticeSerializer,
+    NoticeSerializer, FeedbackSerializer,
 )
 
 
@@ -130,6 +130,16 @@ class GroupCreateThrottle(throttling.UserRateThrottle):
 class GroupMessageThrottle(throttling.UserRateThrottle):
     scope = 'group_message'
     rate = '120/hour'
+
+
+class FeedbackAnonThrottle(throttling.AnonRateThrottle):
+    scope = 'feedback_anon'
+    rate = '5/hour'
+
+
+class FeedbackUserThrottle(throttling.UserRateThrottle):
+    scope = 'feedback_user'
+    rate = '20/hour'
 
 
 class PostCreateView(generics.CreateAPIView):
@@ -727,3 +737,23 @@ class LegalDocumentAdminDetailView(APIView):
             return Response(status=404)
         doc.delete()
         return Response(status=204)
+
+
+# ──────────────────────────────────────
+# 사용자 피드백 (베타 인박스)
+# ──────────────────────────────────────
+
+class FeedbackCreateView(generics.CreateAPIView):
+    """
+    Public endpoint — accepts feedback from anonymous and authenticated users.
+    Logged-in users get attached via `user`; anonymous users may leave an email.
+    """
+    serializer_class = FeedbackSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [FeedbackAnonThrottle, FeedbackUserThrottle]
+
+    def perform_create(self, serializer):
+        req = self.request
+        ua = (req.META.get('HTTP_USER_AGENT') or '')[:300]
+        user = req.user if req.user.is_authenticated else None
+        serializer.save(user=user, user_agent=ua)

@@ -429,3 +429,47 @@ class LegalDocument(models.Model):
             .order_by("-effective_from", "-created_at")
             .first()
         )
+
+
+# ──────────────────────────────────────
+# 사용자 피드백 (Beta feedback inbox)
+# ──────────────────────────────────────
+
+class Feedback(models.Model):
+    CATEGORY_CHOICES = [
+        ('bug', '버그'),
+        ('feature', '기능제안'),
+        ('ux', '사용성'),
+        ('content', '코스/정보 오류'),
+        ('other', '기타'),
+    ]
+    STATUS_CHOICES = [
+        ('open', '열림'),
+        ('reviewed', '확인'),
+        ('resolved', '해결'),
+        ('wontfix', '보류'),
+    ]
+
+    category = models.CharField(max_length=16, choices=CATEGORY_CHOICES)
+    message = models.TextField(max_length=2000)
+    email = models.EmailField(blank=True, default='')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='feedbacks',
+    )
+    url = models.CharField(max_length=500, blank=True, default='')
+    user_agent = models.CharField(max_length=300, blank=True, default='')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='open')
+    admin_note = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "피드백"
+        verbose_name_plural = "피드백"
+
+    def __str__(self):
+        who = self.user.nickname if self.user_id else (self.email or '익명')
+        return f"[{self.get_category_display()}] {who} · {self.created_at:%Y-%m-%d}"

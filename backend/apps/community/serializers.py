@@ -4,7 +4,7 @@ from .models import (
     Post, PostImage, PostComment, PostLike, CommentLike, PostBookmark, Report, UserBlock,
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
-    Notice,
+    Notice, Feedback,
 )
 
 
@@ -331,3 +331,25 @@ class NoticeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notice
         fields = ['id', 'title', 'content', 'is_pinned', 'created_at', 'updated_at']
+
+
+# ──────────────────────────────────────
+# 사용자 피드백
+# ──────────────────────────────────────
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = ['category', 'message', 'email', 'url']
+
+    def validate_message(self, value):
+        value = sanitize(value).strip()
+        if len(value) < 5:
+            raise serializers.ValidationError("내용을 5자 이상 작성해 주세요.")
+        return value
+
+    def validate_email(self, value):
+        return value.strip()
+
+    def validate_url(self, value):
+        return (value or '')[:500]

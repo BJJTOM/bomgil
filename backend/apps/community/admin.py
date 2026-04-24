@@ -24,7 +24,7 @@ from .models import (
     Group, GroupMember, GroupMessage,
     Challenge, ChallengeParticipant,
     Notice, SiteConfig,
-    LegalDocument,
+    LegalDocument, Feedback,
 )
 
 
@@ -41,6 +41,7 @@ _COMMUNITY_ORDER = [
     "ChallengeParticipant",  # 챌린지 참가자
     "Report",                # 신고
     "UserBlock",             # 유저 차단
+    "Feedback",              # 베타 피드백
     "SiteConfig",            # 사이트 설정
     "LegalDocument",         # 약관·방침 문서
     "Notice",                # 공지사항 (항상 맨 아래)
@@ -693,3 +694,48 @@ class LegalDocumentAdmin(admin.ModelAdmin):
         ('기본', {'fields': ['slug', 'title', 'version', 'effective_from', 'is_published']}),
         ('본문 (Markdown)', {'fields': ['body_markdown']}),
     ]
+
+
+# ── Feedback ────────────────────────────────────────────────────────
+@admin.action(description='선택한 피드백을 "확인" 상태로 변경')
+def action_mark_feedback_reviewed(modeladmin, request, queryset):
+    queryset.update(status='reviewed')
+
+
+@admin.action(description='선택한 피드백을 "해결" 상태로 변경')
+def action_mark_feedback_resolved(modeladmin, request, queryset):
+    queryset.update(status='resolved')
+
+
+@admin.action(description='선택한 피드백을 "보류" 상태로 변경')
+def action_mark_feedback_wontfix(modeladmin, request, queryset):
+    queryset.update(status='wontfix')
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'category', 'status', 'message_preview',
+        'user', 'email', 'url', 'created_at',
+    ]
+    list_filter = ['category', 'status', 'created_at']
+    search_fields = ['message', 'email', 'user__nickname', 'url']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    list_editable = ['status']
+    readonly_fields = ['created_at', 'user_agent', 'url']
+    actions = [
+        action_mark_feedback_reviewed,
+        action_mark_feedback_resolved,
+        action_mark_feedback_wontfix,
+    ]
+    fieldsets = [
+        ('내용', {'fields': [('category', 'status'), 'message', 'admin_note']}),
+        ('제보자', {'fields': [('user', 'email')]}),
+        ('메타', {'fields': ['url', 'user_agent', 'created_at']}),
+    ]
+
+    @admin.display(description='메시지')
+    def message_preview(self, obj):
+        text = (obj.message or '').strip().replace('\n', ' ')
+        return (text[:60] + '…') if len(text) > 60 else text

@@ -55,4 +55,7 @@ urlpatterns = [
     path('legal/<slug:slug>/', views.LegalDocumentPublicView.as_view(), name='legal-public'),
     path('admin/legal/', views.LegalDocumentListAdminView.as_view(), name='legal-admin-list'),
     path('admin/legal/<int:pk>/', views.LegalDocumentAdminDetailView.as_view(), name='legal-admin-detail'),
+
+    # 사용자 피드백 (베타)
+    path('feedback/', views.FeedbackCreateView.as_view(), name='feedback-create'),
 ]

@@ -561,8 +561,18 @@ export default function TrailDetailPage() {
 
   const { data: nearbyPOIs = [] } = useQuery<NearbyPOI[]>({
     queryKey: ["trail-nearby-poi", trailId],
+    // Guard: the id comes from the URL and is briefly NaN/0 on the
+    // very first render. Without this, we fire /trails/NaN/nearby/
+    // which returns 404 with "코스를 찾을 수 없습니다" and the global
+    // axios toast surfaces it to the user as a visible error — but
+    // nothing is actually wrong.
+    enabled: Number.isFinite(trailId) && trailId > 0,
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${trailId}/nearby/`);
+      // `_silent` prevents the interceptor from toasting a 404 here;
+      // empty nearby data is handled inline by the card component.
+      const { data } = await api.get(`/trails/${trailId}/nearby/`, {
+        _silent: true,
+      } as any);
       return data;
     },
     staleTime: 1000 * 60 * 30,

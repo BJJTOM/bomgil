@@ -63,27 +63,22 @@ const nextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "8001",
-      },
-      {
-        protocol: "https",
-        hostname: "**.onrender.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.r2.cloudflarestorage.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.cloudflare.com",
-      },
-      {
-        protocol: "https",
-        hostname: "tong.visitkorea.or.kr",
-      },
+      { protocol: "http", hostname: "localhost", port: "8001" },
+      { protocol: "https", hostname: "**.onrender.com" },
+      { protocol: "https", hostname: "**.r2.cloudflarestorage.com" },
+      { protocol: "https", hostname: "**.cloudflare.com" },
+      { protocol: "https", hostname: "tong.visitkorea.or.kr" },
+      // Our own backend (profile uploads / custom covers)
+      { protocol: "https", hostname: "api.moruwalk.com" },
+      { protocol: "https", hostname: "moruwalk.com" },
+      // Social-login profile images
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "k.kakaocdn.net" },
+      { protocol: "https", hostname: "img1.kakaocdn.net" },
+      { protocol: "https", hostname: "t1.kakaocdn.net" },
+      { protocol: "https", hostname: "phinf.pstatic.net" },
+      // Stock images referenced by any legacy seed data
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async headers() {

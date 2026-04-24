@@ -89,7 +89,8 @@ BUKCHON_META = {
         "지하철 3호선 안국역 3번 출구 도보 0분 · 경복궁역 도보 10분 · "
         "주차는 강력히 비추(좁은 골목 · 인근 공영주차장 만차 상시)"
     ),
-    "cover_image_url": "https://images.unsplash.com/photo-1578986568381-0c3f9f1c7c5a?w=1200&h=800&fit=crop",
+    # Empty → TrailCard renders the gradient + region emoji fallback.
+    "cover_image_url": "",
     "elevation_gain_hint": 45,
 }
 
@@ -190,7 +191,7 @@ BANPO_META = {
         "도착: 지하철 7호선 뚝섬유원지역 1번 출구 · "
         "편도 이동이라 지하철 복귀 권장"
     ),
-    "cover_image_url": "https://images.unsplash.com/photo-1617005082134-5a9e7a56d79f?w=1200&h=800&fit=crop",
+    "cover_image_url": "",
     "elevation_gain_hint": 8,
 }
 

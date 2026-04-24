@@ -116,7 +116,10 @@ SHOWCASE = {
         "지하철 분당선 서울숲역 3번 출구 도보 3분 / 2호선 뚝섬역 8번 출구 도보 8분 · "
         "주차: 서울숲 공영주차장(유료)"
     ),
-    "cover_image_url": "https://images.unsplash.com/photo-1592498290731-e1b34daf0d28?w=1200&h=800&fit=crop",
+    # Intentionally blank — TrailCard renders a gradient + emoji fallback when
+    # cover_image/thumbnail_url is empty, which looks better than a random
+    # stock photo and avoids 404 risk.
+    "cover_image_url": "",
 }
 
 # 세그먼트: (앵커 시작 인덱스, 앵커 끝 인덱스, 시작 이름, 끝 이름)

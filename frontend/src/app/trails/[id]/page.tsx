@@ -394,14 +394,22 @@ function HeroImageCarousel({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [brokenImgs, setBrokenImgs] = useState<Set<string>>(new Set());
 
-  // Collect all available images
+  // Collect all available images, skipping any the browser already
+  // failed to load (prevents stale/404 URLs from leaving a blank hero)
   const heroImages = useMemo(() => {
     const imgs: string[] = [];
-    if (tr.cover_image) imgs.push(tr.cover_image);
-    if (tr.thumbnail_url && tr.thumbnail_url !== tr.cover_image) imgs.push(tr.thumbnail_url);
+    if (tr.cover_image && !brokenImgs.has(tr.cover_image)) imgs.push(tr.cover_image);
+    if (
+      tr.thumbnail_url &&
+      tr.thumbnail_url !== tr.cover_image &&
+      !brokenImgs.has(tr.thumbnail_url)
+    ) {
+      imgs.push(tr.thumbnail_url);
+    }
     return imgs;
-  }, [tr.cover_image, tr.thumbnail_url]);
+  }, [tr.cover_image, tr.thumbnail_url, brokenImgs]);
 
   const hasMultiple = heroImages.length > 1;
 
@@ -434,6 +442,13 @@ function HeroImageCarousel({
                   src={src}
                   alt={`${tr.title} ${i + 1}`}
                   className="w-full h-full object-cover"
+                  onError={() =>
+                    setBrokenImgs((prev) => {
+                      const next = new Set(prev);
+                      next.add(src);
+                      return next;
+                    })
+                  }
                 />
               </div>
             ))}
@@ -443,6 +458,13 @@ function HeroImageCarousel({
             src={heroImages[0]}
             alt={tr.title}
             className="w-full h-full object-cover"
+            onError={() =>
+              setBrokenImgs((prev) => {
+                const next = new Set(prev);
+                next.add(heroImages[0]);
+                return next;
+              })
+            }
           />
         )
       ) : (

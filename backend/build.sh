@@ -83,4 +83,11 @@ else
   echo "=== Skipping showcase pack seed (set MORU_SEED_SHOWCASE_PACK=1 to enable) ==="
 fi
 
+# Always-safe idempotent cleanup: the original showcase seed used
+# invented Unsplash photo IDs that all return 404. This wipes them so
+# the TrailCard gradient fallback renders instead of a broken image.
+echo "=== Clearing broken showcase thumbnails (idempotent, fast) ==="
+python manage.py fix_showcase_thumbnails \
+  || echo "fix_showcase_thumbnails failed — continuing"
+
 echo "=== Build complete ==="

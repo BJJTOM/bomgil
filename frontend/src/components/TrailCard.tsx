@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { formatDistance, formatDuration, TRAIL_TYPE_CONFIG, TRAIL_TYPE_ICON_PATHS } from "@/lib/utils";
 import type { Trail } from "@/types";
@@ -80,6 +81,9 @@ function StarRating({ rating, count }: { rating?: number; count?: number }) {
 
 export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
   const trailType = TRAIL_TYPE_CONFIG[trail.trail_type] || TRAIL_TYPE_CONFIG.mixed;
+  const [imgBroken, setImgBroken] = useState(false);
+  const rawSrc = trail.cover_image || trail.thumbnail_url || "";
+  const showImage = !!rawSrc && !imgBroken;
 
   if (variant === "horizontal") {
     return (
@@ -88,8 +92,13 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
         className="flex card-hover overflow-hidden active:scale-[0.98]"
       >
         <div className="relative w-28 h-28 flex-shrink-0">
-          {trail.cover_image || trail.thumbnail_url ? (
-            <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
+          {showImage ? (
+            <img
+              src={rawSrc}
+              alt={trail.title}
+              className="w-full h-full object-cover"
+              onError={() => setImgBroken(true)}
+            />
           ) : (
             (() => {
               const { emoji, gradient } = fallbackTheme(trail);
@@ -126,8 +135,13 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
       className={`block card-hover overflow-hidden ${variant === "compact" ? "min-w-[280px]" : ""}`}
     >
       <div className="relative h-36 md:h-44 w-full">
-        {trail.cover_image || trail.thumbnail_url ? (
-          <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
+        {showImage ? (
+          <img
+            src={rawSrc}
+            alt={trail.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgBroken(true)}
+          />
         ) : (
           (() => {
             const { emoji, gradient } = fallbackTheme(trail);

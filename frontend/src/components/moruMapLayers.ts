@@ -31,6 +31,10 @@ const MORU_LAYER_IDS = [
   'moru-sky',
   'moru-peaks',
   'moru-3d-buildings',
+  'moru-paths-casing',
+  'moru-paths',
+  'moru-km-markers',
+  'moru-km-markers-dot',
 ];
 const MORU_SOURCE_IDS = [
   'moru-dem',
@@ -38,6 +42,7 @@ const MORU_SOURCE_IDS = [
   'moru-trail',
   'moru-trail-endpoints',
   'moru-peaks',
+  'moru-km-markers',
 ];
 
 // 언어별 Mapbox name_* 필드 표현식. 여러 후보 필드를 coalesce 로 순회해서
@@ -159,7 +164,8 @@ export function applyMoruBaseLayers(map: any, opts: MoruBaseLayerOptions = {}) {
           type: 'line',
           source: 'moru-terrain-vector',
           'source-layer': 'contour',
-          minzoom: 12,
+          // 보조 등고선 — 줌 13부터 (이전 12 → 타일 비용·GPU 부담 완화)
+          minzoom: 13,
           filter: ['!=', ['get', 'index'], 10],
           layout: {
             visibility: 'visible',
@@ -181,7 +187,8 @@ export function applyMoruBaseLayers(map: any, opts: MoruBaseLayerOptions = {}) {
           type: 'line',
           source: 'moru-terrain-vector',
           'source-layer': 'contour',
-          minzoom: 11,
+          // 주등고선 — 줌 12부터 (이전 11)
+          minzoom: 12,
           // index === 10 (주등고선) 만
           filter: ['==', ['get', 'index'], 10],
           layout: {
@@ -620,28 +627,44 @@ export function drawMoruTrailLine(
   );
 
   // (4) arrows — 진행 방향 symbol. 스프라이트 없는 환경에서도 안전하게
-  //   "▶︎" 텍스트를 symbol 로 올림. line-center 로 일정 간격 반복 X →
-  //   line-placement 로 라인을 따라 반복 배치.
+  //   ▸ (filled triangle) 을 line 을 따라 일정 간격으로 배치.
+  //   줌 레벨에 따라 간격과 크기 자동 조절 → 너무 빽빽해지거나 흩어지는 것 방지.
   if (showArrows) {
     map.addLayer(
       {
         id: 'moru-trail-arrows',
         type: 'symbol',
         source: 'moru-trail',
-        minzoom: 13,
+        minzoom: 12,
         layout: {
           'symbol-placement': 'line',
-          'symbol-spacing': 140,
-          'text-field': '▶',
-          'text-size': 12,
+          // 줌 낮을 땐 200px 간격, 높을 땐 100px (더 자주)
+          'symbol-spacing': [
+            'interpolate', ['linear'], ['zoom'],
+            12, 200,
+            14, 140,
+            17, 100,
+          ],
+          'text-field': '▸',
+          'text-size': [
+            'interpolate', ['linear'], ['zoom'],
+            12, 12,
+            14, 16,
+            18, 22,
+          ],
           'text-keep-upright': false,
           'text-allow-overlap': true,
           'text-ignore-placement': true,
+          // 라인 방향에 맞춰 자연스럽게 회전 — pitch/rotation 모드 map 고정
+          'text-rotation-alignment': 'map',
+          'text-pitch-alignment': 'map',
         },
         paint: {
+          // 진행 방향을 즉시 인지하도록 어두운 삼각형 + 트레일 컬러 후광
           'text-color': theme === 'dark' ? '#0a1a10' : '#ffffff',
           'text-halo-color': color,
-          'text-halo-width': 1.4,
+          'text-halo-width': 2.2,
+          'text-halo-blur': 0.2,
         },
       },
       roadLabelLayer || undefined
@@ -760,7 +783,9 @@ export function enhanceMapLabels(
         4, 11, 8, 14, 12, 18,
       ]);
     } else if (id.includes('poi-label')) {
-      // 음식점, 카페, 관광지, 공원…
+      // POI (음식점/카페/관광지/공원/학교…)
+      // 핵심: 한 곳에 몰리지 않도록 text-padding 을 키워 서로 떨어뜨리고
+      // 중요도(filterrank, Mapbox Streets 제공) 에 따라 줌 레벨로 점진 노출
       trySet(map, id, 'paint', 'text-color', secondaryText);
       trySet(map, id, 'layout', 'text-size', [
         'interpolate', ['linear'], ['zoom'],
@@ -768,12 +793,47 @@ export function enhanceMapLabels(
         15, 11.5,
         18, 13,
       ]);
+      // 라벨간 최소 거리 확보 → 클러스터 완화, 빈 영역 POI 살아남음
+      trySet(map, id, 'layout', 'text-padding', 10);
+      trySet(map, id, 'layout', 'icon-padding', 6);
+      // symbol-sort-key: 낮은 filterrank(=중요) 가 우선 렌더 → overlap 시 중요한 게 남음
+      trySet(map, id, 'layout', 'symbol-sort-key', [
+        'case', ['has', 'filterrank'], ['get', 'filterrank'], 5,
+      ]);
+      trySet(map, id, 'layout', 'visibility', 'visible');
       if (density === 'dense') {
-        // POI 는 기본적으로 overlap 우선순위가 낮아 많이 사라짐.
-        // 밀도를 올리기 위해 icon 이 있는 경우도 text 표시 유지.
         trySet(map, id, 'layout', 'text-optional', true);
         trySet(map, id, 'layout', 'icon-optional', false);
+      } else {
+        trySet(map, id, 'layout', 'text-optional', false);
+        trySet(map, id, 'layout', 'icon-optional', true);
       }
+      // 중요도별 줌 게이팅: filterrank 1은 줌 13부터, 2는 14부터, 3→15, 4→16, 5→17
+      // sparse 한 외곽은 중요 POI 가 빠르게 뜨고 도심은 줌인에 따라 점진 노출
+      try {
+        const existingFilter = map.getFilter(id);
+        const existingKey = JSON.stringify(existingFilter || null);
+        if (!existingKey.includes('__moru_rank_gate__')) {
+          const rankGate: any[] = [
+            'step', ['zoom'],
+            ['case', ['has', 'filterrank'], ['<=', ['get', 'filterrank'], 1], true],
+            14, ['case', ['has', 'filterrank'], ['<=', ['get', 'filterrank'], 2], true],
+            15, ['case', ['has', 'filterrank'], ['<=', ['get', 'filterrank'], 3], true],
+            16, ['case', ['has', 'filterrank'], ['<=', ['get', 'filterrank'], 4], true],
+            17, true,
+          ];
+          // 마커(서명) 를 literal 로 숨겨두어 재실행 시 스킵
+          const marker: any[] = ['literal', '__moru_rank_gate__'];
+          const withMarker: any[] = [
+            'all',
+            existingFilter && Array.isArray(existingFilter) ? existingFilter : ['==', ['literal', true], true],
+            rankGate,
+            // noop condition only to carry signature
+            ['!=', marker, ['literal', '_']],
+          ];
+          map.setFilter(id, withMarker);
+        }
+      } catch { /* filter 설정 실패 시 기본값 그대로 */ }
     } else if (id.includes('transit-label')) {
       // 역·정류장
       trySet(map, id, 'paint', 'text-color', primaryText);
@@ -797,6 +857,235 @@ export function enhanceMapLabels(
       trySet(map, id, 'paint', 'text-color', secondaryText);
     }
   }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 8.A 보행로/산책로/등산로 강조 (Komoot 의 핵심 - 도보 여행에 필수)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * OSM 도로 데이터에서 path / footway / pedestrian / track / steps / cycleway 를
+ * 필터해 Komoot 처럼 또렷한 점선으로 렌더. 차도와 구분되어 "걸을 수 있는 길" 이
+ * 명확히 보인다.
+ *
+ * 2 layer stack: 외곽선(casing) + 메인(dashed). 줌에 따라 두께/점 간격 조정.
+ * 기본 Mapbox streets-v12 의 composite source 를 사용.
+ */
+export function applyHikingPathsLayer(
+  map: any,
+  theme: 'dark' | 'light' = 'light'
+) {
+  if (!map || !map.isStyleLoaded()) return;
+  if (!map.getSource('composite')) return;
+
+  // 필터: 보행/등산 가능 도로 계급
+  const pedFilter: any[] = [
+    'match',
+    ['get', 'class'],
+    ['path', 'footway', 'pedestrian', 'track', 'steps', 'cycleway', 'hiking'],
+    true,
+    false,
+  ];
+
+  const labelLayer = findLayerId(map, [
+    'road-label',
+    'road-label-simple',
+    'road-label-navigation',
+  ]);
+
+  // (1) Casing — 흰색(또는 진한 바탕) 외곽선으로 지형/잔디 위에서 도드라짐
+  const casingColor = theme === 'dark' ? '#0a1a10' : '#ffffff';
+  const pathMain = theme === 'dark' ? '#A8E6CF' : '#a0571f'; // Komoot 특유의 따뜻한 앰버
+
+  if (!map.getLayer('moru-paths-casing')) {
+    try {
+      map.addLayer(
+        {
+          id: 'moru-paths-casing',
+          type: 'line',
+          source: 'composite',
+          'source-layer': 'road',
+          minzoom: 12,
+          filter: pedFilter,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': casingColor,
+            'line-width': [
+              'interpolate', ['linear'], ['zoom'],
+              12, 1.6,
+              14, 2.6,
+              16, 4.2,
+              18, 5.5,
+            ],
+            'line-opacity': theme === 'dark' ? 0.55 : 0.85,
+          },
+        },
+        labelLayer || undefined
+      );
+    } catch { /* noop */ }
+  } else {
+    // 테마/색 변경 시
+    try { map.setPaintProperty('moru-paths-casing', 'line-color', casingColor); } catch {}
+  }
+
+  // (2) Main — Komoot 느낌의 dashed. 줌 14 부터 실선 가까워짐
+  if (!map.getLayer('moru-paths')) {
+    try {
+      map.addLayer(
+        {
+          id: 'moru-paths',
+          type: 'line',
+          source: 'composite',
+          'source-layer': 'road',
+          minzoom: 12,
+          filter: pedFilter,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': pathMain,
+            'line-width': [
+              'interpolate', ['linear'], ['zoom'],
+              12, 0.9,
+              14, 1.8,
+              16, 2.8,
+              18, 3.6,
+            ],
+            'line-opacity': 0.95,
+            'line-dasharray': [2, 1.4],
+          },
+        },
+        labelLayer || undefined
+      );
+    } catch { /* noop */ }
+  } else {
+    try { map.setPaintProperty('moru-paths', 'line-color', pathMain); } catch {}
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 8.B 트레일 km 마커 (1, 2, 3 … 숫자가 코스 위에 따라붙음)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 유저의 트레일 경로(coords) 를 1 km 간격으로 샘플링하여 숫자 뱃지 마커 생성.
+ * Komoot 가 투어 라인 위에 km 숫자를 박아놓는 바로 그 디자인.
+ *
+ * - haversine 으로 누적 거리 계산
+ * - 1km 마다 라인 상 정확한 보간 위치를 찍어 GeoJSON 으로 구성
+ * - circle 레이어(흰 바탕 + 테두리) + symbol 레이어(숫자) 2-layer
+ */
+export function addTrailDistanceMarkers(
+  map: any,
+  coords: [number, number][] | null | undefined,
+  theme: 'dark' | 'light' = 'light'
+) {
+  if (!map) return;
+
+  // 기존 제거 (라인 갱신 시마다 다시 그림)
+  for (const id of ['moru-km-markers', 'moru-km-markers-dot']) {
+    if (map.getLayer(id)) { try { map.removeLayer(id); } catch {} }
+  }
+  if (map.getSource('moru-km-markers')) {
+    try { map.removeSource('moru-km-markers'); } catch {}
+  }
+
+  if (!coords || coords.length < 2) return;
+
+  const R = 6371; // km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dist = (a: [number, number], b: [number, number]) => {
+    const dLat = toRad(b[1] - a[1]);
+    const dLng = toRad(b[0] - a[0]);
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  };
+
+  const points: Array<{ km: number; coord: [number, number] }> = [];
+  let cum = 0;
+  let nextKm = 1;
+  for (let i = 1; i < coords.length; i++) {
+    const segment = dist(coords[i - 1], coords[i]);
+    while (cum + segment >= nextKm) {
+      const frac = (nextKm - cum) / segment;
+      const lng = coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * frac;
+      const lat = coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * frac;
+      points.push({ km: nextKm, coord: [lng, lat] });
+      nextKm += 1;
+      // 너무 긴 구간 1개가 여러 km 넘길 수도 있어 while 로 반복
+    }
+    cum += segment;
+  }
+
+  if (points.length === 0) return;
+
+  const fc = {
+    type: 'FeatureCollection' as const,
+    features: points.map((p) => ({
+      type: 'Feature' as const,
+      properties: { km: p.km, label: String(p.km) },
+      geometry: { type: 'Point' as const, coordinates: p.coord },
+    })),
+  };
+
+  map.addSource('moru-km-markers', { type: 'geojson', data: fc });
+
+  const labelLayer = findLayerId(map, ['road-label', 'settlement-minor-label']);
+  const primary = theme === 'dark' ? '#A8E6CF' : '#2D4A2E';
+  const onPrimary = theme === 'dark' ? '#0a1a10' : '#ffffff';
+
+  // circle 바탕
+  try {
+    map.addLayer(
+      {
+        id: 'moru-km-markers-dot',
+        type: 'circle',
+        source: 'moru-km-markers',
+        minzoom: 12,
+        paint: {
+          'circle-color': primary,
+          'circle-stroke-color': onPrimary,
+          'circle-stroke-width': 2,
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            12, 7,
+            15, 10,
+            18, 12,
+          ],
+          'circle-opacity': 0.95,
+        },
+      },
+      labelLayer || undefined
+    );
+  } catch { /* noop */ }
+
+  // 숫자
+  try {
+    map.addLayer(
+      {
+        id: 'moru-km-markers',
+        type: 'symbol',
+        source: 'moru-km-markers',
+        minzoom: 12,
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': [
+            'interpolate', ['linear'], ['zoom'],
+            12, 10,
+            15, 12,
+            18, 14,
+          ],
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': onPrimary,
+        },
+      },
+      labelLayer || undefined
+    );
+  } catch { /* noop */ }
 }
 
 // ────────────────────────────────────────────────────────────────

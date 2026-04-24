@@ -190,6 +190,228 @@ const TABS: TabConfig[] = [
   { id: "records", label: { ko: "기록", en: "Records", ja: "記録", zh: "记录" } },
 ];
 
+// ─── Description Section with Show More/Less ────────────────────────────────
+
+function DescriptionSection({
+  description,
+  tags,
+  language,
+}: {
+  description: string;
+  tags: { id: number; name: string }[];
+  language: string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [needsTruncation, setNeedsTruncation] = useState(false);
+  const textRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      // Check if content exceeds ~4 lines (approximately 96px at 15px font with 1.8 line-height)
+      const lineHeight = 15 * 1.8; // font-size * line-height
+      const maxHeight = lineHeight * 4;
+      setNeedsTruncation(textRef.current.scrollHeight > maxHeight + 10);
+    }
+  }, [description]);
+
+  const showMoreLabel = language === "ko" ? "더보기" : language === "ja" ? "もっと見る" : language === "zh" ? "查看更多" : "Show more";
+  const showLessLabel = language === "ko" ? "접기" : language === "ja" ? "閉じる" : language === "zh" ? "收起" : "Show less";
+
+  return (
+    <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+      <div className="relative">
+        <div
+          ref={textRef}
+          className="text-[15px] leading-[1.8] text-text-primary font-normal whitespace-pre-line overflow-hidden transition-[max-height] duration-300 ease-in-out"
+          style={{
+            maxHeight: !isExpanded && needsTruncation ? "108px" : `${textRef.current?.scrollHeight ?? 9999}px`,
+          }}
+        >
+          {description
+            ? description.split("\n").map((paragraph, i) => (
+                <p key={i} className={i > 0 ? "mt-3" : ""}>
+                  {paragraph}
+                </p>
+              ))
+            : null}
+        </div>
+        {/* Fade-out gradient when truncated */}
+        {needsTruncation && !isExpanded && (
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none" />
+        )}
+      </div>
+      {needsTruncation && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-1 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          {isExpanded ? showLessLabel : showMoreLabel}
+        </button>
+      )}
+      {tags.length > 0 && (
+        <div className="flex gap-1.5 mt-3 flex-wrap">
+          {tags.map((tag) => (
+            <span
+              key={tag.id}
+              className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-medium bg-bg-secondary text-text-secondary"
+            >
+              #{tag.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Hero Image Carousel ─────────────────────────────────────────────────────
+
+function HeroImageCarousel({
+  trail: tr,
+  language,
+  isLiked,
+  isSaved,
+  onToggleLike,
+  onToggleSave,
+  onShare,
+}: {
+  trail: Trail;
+  language: string;
+  isLiked: boolean;
+  isSaved: boolean;
+  onToggleLike: () => void;
+  onToggleSave: () => void;
+  onShare: () => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Collect all available images
+  const heroImages = useMemo(() => {
+    const imgs: string[] = [];
+    if (tr.cover_image) imgs.push(tr.cover_image);
+    if (tr.thumbnail_url && tr.thumbnail_url !== tr.cover_image) imgs.push(tr.thumbnail_url);
+    return imgs;
+  }, [tr.cover_image, tr.thumbnail_url]);
+
+  const hasMultiple = heroImages.length > 1;
+
+  // Track scroll position for dot indicators
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !hasMultiple) return;
+    const handleScroll = () => {
+      const scrollLeft = el.scrollLeft;
+      const width = el.offsetWidth;
+      const idx = Math.round(scrollLeft / width);
+      setActiveIndex(Math.min(idx, heroImages.length - 1));
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [hasMultiple, heroImages.length]);
+
+  return (
+    <div className="relative h-[260px] md:h-72 bg-primary">
+      {heroImages.length > 0 ? (
+        hasMultiple ? (
+          <div
+            ref={scrollRef}
+            className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {heroImages.map((src, i) => (
+              <div key={i} className="w-full h-full flex-shrink-0 snap-center">
+                <img
+                  src={src}
+                  alt={`${tr.title} ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <img
+            src={heroImages[0]}
+            alt={tr.title}
+            className="w-full h-full object-cover"
+          />
+        )
+      ) : (
+        <div className="w-full h-full bg-gradient-to-br from-[#2D4A2E] to-[#3A5C3B] flex items-center justify-center">
+          <IconHikingPath size={72} className="text-white/20" />
+        </div>
+      )}
+
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
+
+      {/* Back button */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-14 left-4 md:top-5 bg-black/40 backdrop-blur-md w-9 h-9 rounded-full flex items-center justify-center border border-white/10 z-10"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+
+      {/* Action buttons overlay */}
+      <div className="absolute top-14 right-4 md:top-5 flex items-center gap-1.5 z-10">
+        <button
+          onClick={onToggleLike}
+          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          title={isLiked ? (language === "ko" ? "좋아요 취소" : "Unlike") : (language === "ko" ? "좋아요" : "Like")}
+        >
+          <IconHeart size={16} filled={isLiked} className={isLiked ? "text-red-400" : "text-white"} />
+        </button>
+        <button
+          onClick={onToggleSave}
+          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          title={isSaved ? (language === "ko" ? "저장 해제" : "Unsave") : (language === "ko" ? "저장" : "Save")}
+        >
+          <IconBookmark size={16} filled={isSaved} className={isSaved ? "text-amber-400" : "text-white"} />
+        </button>
+        <button
+          onClick={onShare}
+          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
+          title={language === "ko" ? "공유" : "Share"}
+        >
+          <IconShare size={16} className="text-white" />
+        </button>
+      </div>
+
+      {/* Hero overlay content: badges + title + view count */}
+      <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 text-white z-10">
+        <div className="flex items-center gap-2 mb-1">
+          <DifficultyBadge difficulty={tr.difficulty} />
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm font-medium">
+            {tr.region}
+          </span>
+          <span className="ml-auto flex items-center gap-1 text-[11px] text-white/70 font-medium">
+            <IconEye size={12} className="text-white/60" />
+            <span>{(tr.view_count ?? 0).toLocaleString()}</span>
+          </span>
+        </div>
+        <h1 className="text-2xl md:text-[28px] font-extrabold leading-tight line-clamp-2">{tr.title}</h1>
+
+        {/* Dot indicators for multiple images */}
+        {hasMultiple && (
+          <div className="flex items-center justify-center gap-1.5 mt-2.5">
+            {heroImages.map((_, i) => (
+              <span
+                key={i}
+                className={`block rounded-full transition-all duration-300 ${
+                  i === activeIndex
+                    ? "w-5 h-1.5 bg-white"
+                    : "w-1.5 h-1.5 bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 export default function TrailDetailPage() {
@@ -366,14 +588,6 @@ export default function TrailDetailPage() {
     }
   };
 
-  const handleGpxDownload = () => {
-    const apiBase =
-      process.env.NODE_ENV === "development"
-        ? "/api/v1"
-        : process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
-    window.open(`${apiBase}/trails/${trailId}/gpx/`, "_blank");
-  };
-
   const loadCertificate = async () => {
     if (certBlobUrl) {
       setShowCertificate(true);
@@ -531,73 +745,15 @@ export default function TrailDetailPage() {
       {/* ================================================================== */}
       {/* HERO SECTION                                                       */}
       {/* ================================================================== */}
-      <div className="relative h-[260px] md:h-72 bg-primary">
-        {tr.cover_image || tr.thumbnail_url ? (
-          <img
-            src={tr.cover_image || tr.thumbnail_url}
-            alt={tr.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#2D4A2E] to-[#3A5C3B] flex items-center justify-center">
-            <IconHikingPath size={72} className="text-white/20" />
-          </div>
-        )}
-
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-
-        {/* Back button */}
-        <button
-          onClick={() => window.history.back()}
-          className="absolute top-14 left-4 md:top-5 bg-black/40 backdrop-blur-md w-9 h-9 rounded-full flex items-center justify-center border border-white/10 z-10"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
-
-        {/* Action buttons overlay (bottom-right, over the image) */}
-        <div className="absolute top-14 right-4 md:top-5 flex items-center gap-1.5 z-10">
-          {/* Like */}
-          <button
-            onClick={() => toggleLike.mutate(trailId)}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
-            title={tr.is_liked ? (language === "ko" ? "좋아요 취소" : "Unlike") : (language === "ko" ? "좋아요" : "Like")}
-          >
-            <IconHeart size={16} filled={tr.is_liked} className={tr.is_liked ? "text-red-400" : "text-white"} />
-          </button>
-          {/* Save */}
-          <button
-            onClick={handleToggleSave}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
-            title={isSaved ? (language === "ko" ? "저장 해제" : "Unsave") : (language === "ko" ? "저장" : "Save")}
-          >
-            <IconBookmark size={16} filled={isSaved} className={isSaved ? "text-amber-400" : "text-white"} />
-          </button>
-          {/* Share */}
-          <button
-            onClick={handleHeroShare}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all"
-            title={language === "ko" ? "공유" : "Share"}
-          >
-            <IconShare size={16} className="text-white" />
-          </button>
-        </div>
-
-        {/* Hero overlay content: badges + title + view count */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 text-white z-10">
-          <div className="flex items-center gap-2 mb-1">
-            <DifficultyBadge difficulty={tr.difficulty} />
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm font-medium">
-              {tr.region}
-            </span>
-            <span className="ml-auto flex items-center gap-1 text-[11px] text-white/70 font-medium">
-              <IconEye size={12} className="text-white/60" />
-              <span>{(tr.view_count ?? 0).toLocaleString()}</span>
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-[28px] font-extrabold leading-tight line-clamp-2">{tr.title}</h1>
-        </div>
-      </div>
+      <HeroImageCarousel
+        trail={tr}
+        language={language}
+        isLiked={tr.is_liked}
+        isSaved={isSaved}
+        onToggleLike={() => toggleLike.mutate(trailId)}
+        onToggleSave={handleToggleSave}
+        onShare={handleHeroShare}
+      />
 
       {/* ================================================================== */}
       {/* STATS BAR (text labels, below hero, above tabs)                    */}
@@ -652,21 +808,9 @@ export default function TrailDetailPage() {
       {/* ================================================================== */}
       <div className="sticky top-0 md:top-16 z-30 bg-surface border-b border-border-light">
         <div className="max-w-3xl mx-auto px-5">
-          {/* Utility row: GPX + Edit (compact) */}
-          <div className="flex items-center justify-end gap-1.5 pt-1.5 pb-0.5">
-            <button
-              onClick={handleGpxDownload}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
-              title="GPX"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              GPX
-            </button>
-            {isAuthenticated && user && tr.author && user.id === tr.author.id && (
+          {/* Utility row: Edit (compact) */}
+          {isAuthenticated && user && tr.author && user.id === tr.author.id && (
+            <div className="flex items-center justify-end gap-1.5 pt-1.5 pb-0.5">
               <Link
                 href={`/trails/${trailId}/edit`}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
@@ -677,8 +821,8 @@ export default function TrailDetailPage() {
                 </svg>
                 {language === "ko" ? "수정" : language === "ja" ? "編集" : language === "zh" ? "编辑" : "Edit"}
               </Link>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Tab bar */}
           <div ref={tabBarRef} className="relative flex">
@@ -716,30 +860,8 @@ export default function TrailDetailPage() {
               {/* Trail Condition Banner */}
               <TrailConditionBanner condition={tr.latest_condition} language={language} />
 
-              {/* Description (no card title — content speaks for itself) */}
-              <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <div className="text-[15px] leading-[1.8] text-text-primary font-normal whitespace-pre-line">
-                  {tr.description
-                    ? tr.description.split("\n").map((paragraph, i) => (
-                        <p key={i} className={i > 0 ? "mt-3" : ""}>
-                          {paragraph}
-                        </p>
-                      ))
-                    : null}
-                </div>
-                {(tr.tags || []).length > 0 && (
-                  <div className="flex gap-1.5 mt-3 flex-wrap">
-                    {(tr.tags || []).map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-medium bg-bg-secondary text-text-secondary"
-                      >
-                        #{tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </section>
+              {/* Description with show more/less */}
+              <DescriptionSection description={tr.description} tags={tr.tags || []} language={language} />
 
               {/* Interactive Map */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 shadow-sm overflow-hidden">

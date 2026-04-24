@@ -119,17 +119,19 @@ export function ExploreMap({ trails }: ExploreMapProps) {
         const lng = parseFloat(trail.start_lng);
         bounds.extend([lng, lat]);
 
-        // Custom green dot marker
+        // Custom green dot marker with pulse ring
         const el = document.createElement("div");
         el.style.cssText =
-          "width:14px;height:14px;background:#2D4A2E;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 8px rgba(45,74,46,0.4);transition:transform 0.15s ease;cursor:pointer";
+          "width:16px;height:16px;background:#2D4A2E;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 10px rgba(45,74,46,0.35),0 0 0 3px rgba(45,74,46,0.12);transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s ease;cursor:pointer";
 
         // Hover effect
         el.addEventListener("mouseenter", () => {
-          el.style.transform = "scale(1.4)";
+          el.style.transform = "scale(1.35)";
+          el.style.boxShadow = "0 3px 14px rgba(45,74,46,0.45),0 0 0 5px rgba(45,74,46,0.15)";
         });
         el.addEventListener("mouseleave", () => {
           el.style.transform = "scale(1)";
+          el.style.boxShadow = "0 2px 10px rgba(45,74,46,0.35),0 0 0 3px rgba(45,74,46,0.12)";
         });
 
         // Difficulty config
@@ -139,30 +141,30 @@ export function ExploreMap({ trails }: ExploreMapProps) {
         // Build popup HTML
         const thumbnailSrc = trail.thumbnail_url || trail.cover_image;
         const thumbnailHtml = thumbnailSrc
-          ? `<img src="${thumbnailSrc}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:8px 8px 0 0;display:block;" />`
-          : `<div style="width:100%;height:72px;background:linear-gradient(135deg,#d4f5e4,#A8E6CF);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;font-size:28px;">&#x1f97e;</div>`;
+          ? `<img src="${thumbnailSrc}" alt="" style="width:100%;height:100px;object-fit:cover;display:block;" />`
+          : `<div style="width:100%;height:80px;background:linear-gradient(135deg,#d4f5e4,#A8E6CF);display:flex;align-items:center;justify-content:center;font-size:28px;">&#x1f97e;</div>`;
 
         const popupContent = `
-          <div style="width:200px;font-family:'Pretendard Variable','Pretendard',sans-serif;cursor:pointer;" data-trail-id="${trail.id}">
+          <div style="width:210px;font-family:'Pretendard Variable','Pretendard',sans-serif;cursor:pointer;" data-trail-id="${trail.id}">
             ${thumbnailHtml}
             <div style="padding:10px 12px 12px;">
-              <div style="font-size:14px;font-weight:700;color:#191F28;line-height:1.3;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <div style="font-size:13px;font-weight:700;color:#191F28;line-height:1.35;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                 ${trail.title}
               </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                 <span style="
                   display:inline-block;
                   padding:2px 8px;
                   border-radius:20px;
-                  font-size:11px;
+                  font-size:10px;
                   font-weight:600;
                   color:${diff.color};
                   background:${trail.difficulty === "easy" ? "#E8F5E9" : trail.difficulty === "moderate" ? "#FFF3E0" : "#FFEBEE"};
                 ">${diff.label}</span>
-                <span style="font-size:12px;color:#8B95A1;font-weight:500;">
+                <span style="font-size:11px;color:#8B95A1;font-weight:500;">
                   ${formatDistance(trail.distance_km)}
                 </span>
-                ${trail.region ? `<span style="font-size:12px;color:#B0B8C1;">&#183;</span><span style="font-size:12px;color:#8B95A1;">${trail.region}</span>` : ""}
+                ${trail.region ? `<span style="font-size:11px;color:#B0B8C1;">&#183;</span><span style="font-size:11px;color:#8B95A1;">${trail.region}</span>` : ""}
               </div>
             </div>
           </div>
@@ -219,12 +221,12 @@ export function ExploreMap({ trails }: ExploreMapProps) {
   }, [trails, loaded, router]);
 
   return (
-    <div className="relative w-full h-[60vh] md:h-[500px] rounded-card overflow-hidden shadow-card">
-      <div ref={mapRef} className="w-full h-full" />
+    <div className="relative w-full h-[55vh] md:h-[500px] rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)]">
+      <div ref={mapRef} className="absolute inset-0" />
 
       {/* Loading state */}
       {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-[#f0f4f0] rounded-card">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-[#f0f4f0]">
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
               <div
@@ -239,7 +241,7 @@ export function ExploreMap({ trails }: ExploreMapProps) {
 
       {/* Trail count badge */}
       {loaded && trails.length > 0 && (
-        <div className="absolute top-3 left-3 z-[1000] bg-white/90 backdrop-blur-md rounded-pill px-3 py-1.5 shadow-soft">
+        <div className="absolute top-3 left-3 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full px-3 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
           <span className="text-[12px] font-semibold text-primary">
             {trails.filter(
               (t) =>
@@ -256,12 +258,16 @@ export function ExploreMap({ trails }: ExploreMapProps) {
       <style jsx global>{`
         .explore-map-popup .mapboxgl-popup-content {
           padding: 0;
-          border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+          border-radius: 14px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
           overflow: hidden;
+          border: 1px solid rgba(0, 0, 0, 0.04);
         }
         .explore-map-popup .mapboxgl-popup-tip {
           border-top-color: white;
+        }
+        .explore-map-popup .mapboxgl-popup-close-button {
+          display: none;
         }
       `}</style>
     </div>

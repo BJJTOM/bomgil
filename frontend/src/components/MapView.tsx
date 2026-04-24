@@ -20,7 +20,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
   addPeakElevationOverlay,
+  addTrailDistanceMarkers,
   apply3DBuildings,
+  applyHikingPathsLayer,
   applyMoruAtmosphere,
   applyMoruBaseLayers,
   applyMoruLabelLocale,
@@ -165,30 +167,47 @@ export function MapView({
             terrainExaggeration: 1.3,
             theme,
           });
-          applyMoruAtmosphere(map, theme);
-          apply3DBuildings(map, theme);
+          // Atmosphere 는 3D 모드에서만 — 2D pitch 에선 효과가 없고 프레임 비용만 발생
+          if (terrain3DState) applyMoruAtmosphere(map, theme);
+          applyHikingPathsLayer(map, theme);
           if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
           applyMoruLabelLocale(map, locale);
-          // 스타일 내부 타일 로드가 비동기라 약간의 지연 후 한 번 더 적용 →
-          // 뒤늦게 추가되는 symbol layer 까지 한글화 확실히 커버
-          setTimeout(() => applyMoruLabelLocale(map, locale), 250);
-          setTimeout(() => applyMoruLabelLocale(map, locale), 1000);
+          setTimeout(() => applyMoruLabelLocale(map, locale), 300);
           if (terrain3DState) map.easeTo({ pitch: 55, duration: 400 });
           setLoaded(true);
         });
 
-        // 스타일 내부 로딩 중 발생하는 'styledata' 이벤트에서도 재적용
+        // styledata — 1.5s 쿨다운 타임스로틀.
+        // 이전엔 매 styledata 마다 applyMoruLabelLocale + enhanceMapLabels 둘 다
+        // 실행했는데, setLayoutProperty / setFilter 가 또 styledata 를 트리거
+        // 하면서 과부하가 발생. 여기선 최소한만.
+        let _lastLocaleApply = 0;
         map.on("styledata", () => {
           if (!map.isStyleLoaded()) return;
+          const now = Date.now();
+          if (now - _lastLocaleApply < 1500) return;
+          _lastLocaleApply = now;
           applyMoruLabelLocale(map, locale);
-          if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
         });
 
-        // 이동·줌이 끝날 때마다 봉우리 고도 재샘플링 (DEM 기반)
+        // ── idle: 디바운스 + 줌/위치 변화 임계치 + 중복 실행 방지 ──
+        // 이전엔 매 idle 마다 label+peak 재적용 → setLayoutProperty 가 repaint 를
+        // 유발 → 또 idle → 무한 루프에 가까운 부하 발생.
+        // 여기선 쿨다운(2.5s) + 의미있는 변화가 있을 때만 재샘플링.
+        let _lastIdleRun = 0;
+        let _lastZoom = -1;
+        let _lastCenterKey = '';
         map.on("idle", () => {
           if (!map.isStyleLoaded()) return;
-          // 한글 라벨 최후 보루 — idle 시점에도 재적용
-          applyMoruLabelLocale(map, locale);
+          const now = Date.now();
+          if (now - _lastIdleRun < 2500) return;
+          const z = Math.round(map.getZoom() * 10) / 10;
+          const c = map.getCenter();
+          const ck = `${c.lng.toFixed(3)}|${c.lat.toFixed(3)}`;
+          if (z === _lastZoom && ck === _lastCenterKey) return;
+          _lastIdleRun = now;
+          _lastZoom = z;
+          _lastCenterKey = ck;
           if (peakLabels) addPeakElevationOverlay(map, theme);
         });
       } catch (err) {
@@ -239,7 +258,13 @@ export function MapView({
       terrainExaggeration: 1.3,
       theme,
     });
-    // 3D on → pitch 55, off → pitch 0
+    // Atmosphere 는 3D 모드일 때만. 2D 로 내려오면 fog/sky 비활성화 (GPU 비용 절감)
+    if (terrain3DState) {
+      applyMoruAtmosphere(map, theme);
+    } else {
+      try { map.setFog(null as any); } catch {}
+      if (map.getLayer('moru-sky')) { try { map.removeLayer('moru-sky'); } catch {} }
+    }
     map.easeTo({ pitch: terrain3DState ? 55 : 0, duration: 500 });
   }, [loaded, terrain3DState, showContours, theme]);
 
@@ -281,13 +306,16 @@ export function MapView({
         posMarkerRef.current = null;
       }
 
-      // 트레일 라인 (Komoot 스타일)
+      // 트레일 라인 (Komoot 스타일 앰버 톤)
       if (pathCoordinates && pathCoordinates.length > 0) {
         drawMoruTrailLine(map, pathCoordinates, {
           theme,
           showArrows: true,
-          color: isDark ? "#A8E6CF" : "#2D4A2E",
+          // Komoot 의 시그니처 컬러: 따뜻한 오렌지 앰버
+          color: isDark ? "#FFB770" : "#E8563D",
         });
+        // 1km 마다 거리 마커
+        addTrailDistanceMarkers(map, pathCoordinates, theme);
 
         // 시작/종료 마커 (작고 또렷한 점)
         if (pathCoordinates.length > 1) {
@@ -318,6 +346,7 @@ export function MapView({
         }
       } else {
         drawMoruTrailLine(map, null);
+        addTrailDistanceMarkers(map, null, theme);
       }
 
       // 현재 위치 마커 (pulse)

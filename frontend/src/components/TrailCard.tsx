@@ -96,7 +96,7 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
       href={`/trails/${trail.id}`}
       className={`block card-hover overflow-hidden ${variant === "compact" ? "min-w-[280px]" : ""}`}
     >
-      <div className="relative h-44 w-full">
+      <div className="relative h-36 md:h-44 w-full">
         {trail.cover_image || trail.thumbnail_url ? (
           <img src={trail.cover_image || trail.thumbnail_url} alt={trail.title} className="w-full h-full object-cover" />
         ) : (
@@ -105,7 +105,7 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-        <div className="absolute top-3 left-3 flex gap-1.5">
+        <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 flex gap-1.5">
           <DifficultyBadge difficulty={trail.difficulty} />
           {trail.is_multi_day && trail.total_days && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-[11px] font-semibold bg-white/90 text-primary backdrop-blur-sm">
@@ -114,52 +114,52 @@ export function TrailCard({ trail, variant = "default" }: TrailCardProps) {
           )}
         </div>
         {trail.is_liked && (
-          <div className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4B4B" stroke="none">
+          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 w-7 h-7 md:w-8 md:h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FF4B4B" stroke="none" className="md:w-4 md:h-4">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
           </div>
         )}
       </div>
-      <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-1.5">
+      <div className="p-3 md:p-4">
+        <div className="flex items-center gap-1.5 mb-1 md:mb-1.5">
           <span
             className="inline-block w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: trailType.color }}
           />
-          <span className="text-[12px] text-text-secondary">{trailType.label}</span>
-          <span className="text-[12px] text-text-tertiary">· {trail.region}</span>
+          <span className="text-[11px] md:text-[12px] text-text-secondary">{trailType.label}</span>
+          <span className="text-[11px] md:text-[12px] text-text-tertiary">· {trail.region}</span>
         </div>
-        <h3 className="font-semibold text-[16px] leading-snug truncate">{trail.title}</h3>
+        <h3 className="font-semibold text-[14px] md:text-[16px] leading-snug truncate">{trail.title}</h3>
 
         {/* Rating + completion row */}
         {(trail.avg_rating || trail.review_count || trail.completion_count) ? (
-          <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-3 mt-1 md:mt-1.5">
             <StarRating rating={trail.avg_rating} count={trail.review_count} />
             {(trail.completion_count ?? 0) > 0 && (
-              <span className="text-[11px] text-text-tertiary font-medium">
+              <span className="text-[10px] md:text-[11px] text-text-tertiary font-medium">
                 {trail.completion_count}명 완주
               </span>
             )}
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2 mt-2.5 text-[13px] text-text-secondary">
+        <div className="flex items-center gap-1.5 md:gap-2 mt-2 md:mt-2.5 text-[12px] md:text-[13px] text-text-secondary">
           <span className="font-en font-medium">{formatDistance(trail.distance_km)}</span>
           <span className="text-text-tertiary">·</span>
           <span>{formatDuration(trail.estimated_minutes)}</span>
           <span className="text-text-tertiary">·</span>
           <span className="flex items-center gap-0.5">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF4B4B" stroke="none">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="#FF4B4B" stroke="none" className="md:w-3 md:h-3">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
             {trail.like_count}
           </span>
         </div>
         {trail.tags?.length > 0 && (
-          <div className="flex gap-1.5 mt-3 flex-wrap">
+          <div className="flex gap-1 md:gap-1.5 mt-2 md:mt-3 flex-wrap">
             {trail.tags.slice(0, 3).map((tag) => (
-              <span key={tag.id} className="chip !py-1 !text-[11px]">
+              <span key={tag.id} className="chip !py-0.5 md:!py-1 !text-[10px] md:!text-[11px]">
                 #{tag.name}
               </span>
             ))}

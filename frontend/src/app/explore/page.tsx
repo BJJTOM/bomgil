@@ -345,12 +345,16 @@ function InlineRankings() {
     queryKey: ["rankings", "weekly"],
     queryFn: async () => (await api.get("/trails/rankings/weekly/")).data,
     enabled: tab === "weekly",
+    staleTime: 60_000,
+    placeholderData: (prev: Trail[] | undefined) => prev,
   });
 
   const { data: monthlyTrails = [], isLoading: monthlyLoading } = useQuery<Trail[]>({
     queryKey: ["rankings", "monthly"],
     queryFn: async () => (await api.get("/trails/rankings/monthly/")).data,
     enabled: tab === "monthly",
+    staleTime: 60_000,
+    placeholderData: (prev: Trail[] | undefined) => prev,
   });
 
   const { data: regionTrails = [], isLoading: regionLoading } = useQuery<Trail[]>({
@@ -358,6 +362,8 @@ function InlineRankings() {
     queryFn: async () =>
       (await api.get(`/trails/rankings/region/?region=${region}`)).data,
     enabled: tab === "region",
+    staleTime: 60_000,
+    placeholderData: (prev: Trail[] | undefined) => prev,
   });
 
   const { data: guides = [], isLoading: guidesLoading } = useQuery<
@@ -366,6 +372,8 @@ function InlineRankings() {
     queryKey: ["rankings", "guides"],
     queryFn: async () => (await api.get("/trails/rankings/guides/")).data,
     enabled: tab === "guides",
+    staleTime: 60_000,
+    placeholderData: (prev: any) => prev,
   });
 
   const TABS = [
@@ -789,6 +797,11 @@ function ExploreContent() {
         limit: String(ITEMS_PER_PAGE),
         offset: "0",
       };
+      // Apply current filters to prefetched tabs for consistency
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) prefetchParams[k] = v;
+      });
+      if (search.trim()) prefetchParams["search"] = search.trim();
       if (is_official !== undefined) prefetchParams["is_official"] = is_official;
       queryClient.prefetchQuery({
         queryKey: ["trails", "paginated", prefetchParams],
@@ -799,9 +812,18 @@ function ExploreContent() {
         staleTime: 60_000,
       });
     });
-  // Only prefetch once on mount and when sortBy changes
+  // Prefetch on mount, when sortBy changes, and when filters change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy]);
+  }, [sortBy, filters, search]);
+
+  // Prefetch rankings data when user might switch to rankings tab
+  const prefetchRankings = useCallback(() => {
+    queryClient.prefetchQuery({
+      queryKey: ["rankings", "weekly"],
+      queryFn: async () => (await api.get("/trails/rankings/weekly/")).data,
+      staleTime: 60_000,
+    });
+  }, [queryClient]);
 
   const { data: popularData } = usePopularTrails();
   const popularTrails: Trail[] = (popularData?.results ?? popularData ?? []).slice(0, 3);
@@ -870,6 +892,30 @@ function ExploreContent() {
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
+                onMouseEnter={() => {
+                  // Prefetch data for the tab on hover for faster switching
+                  if (tab.key === "rankings") {
+                    prefetchRankings();
+                  } else if (tab.key !== activeTab) {
+                    const prefetchParams: Record<string, string> = {
+                      ordering: sortBy,
+                      limit: String(ITEMS_PER_PAGE),
+                      offset: "0",
+                    };
+                    Object.entries(filters).forEach(([k, v]) => { if (v) prefetchParams[k] = v; });
+                    if (search.trim()) prefetchParams["search"] = search.trim();
+                    if (tab.key === "user") prefetchParams["is_official"] = "false";
+                    else if (tab.key === "official") prefetchParams["is_official"] = "true";
+                    queryClient.prefetchQuery({
+                      queryKey: ["trails", "paginated", prefetchParams],
+                      queryFn: async () => {
+                        const { data } = await api.get("/trails/", { params: prefetchParams });
+                        return data;
+                      },
+                      staleTime: 60_000,
+                    });
+                  }
+                }}
                 className={`relative pb-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab.key ? "text-gray-900 font-bold" : "text-gray-400"
                 }`}

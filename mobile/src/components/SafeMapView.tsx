@@ -165,7 +165,7 @@ export default function SafeMapView({
       <MapErrorBoundary fallback={fallback}>
         <MapView
           style={{ flex: 1 }}
-          styleURL={theme === 'dark' ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/outdoors-v12"}
+          styleURL="mapbox://styles/mapbox/outdoors-v12"
           scrollEnabled={true}
           zoomEnabled={true}
           pitchEnabled={false}
@@ -178,10 +178,12 @@ export default function SafeMapView({
                   bounds: {
                     ne: bounds.ne,
                     sw: bounds.sw,
-                    paddingTop: 50,
-                    paddingBottom: 50,
-                    paddingLeft: 50,
-                    paddingRight: 50,
+                    // Tighter padding so the path actually fills the
+                    // card without microscopic lines at the centre.
+                    paddingTop: 28,
+                    paddingBottom: 28,
+                    paddingLeft: 28,
+                    paddingRight: 28,
                   },
                 }
               : {
@@ -191,43 +193,55 @@ export default function SafeMapView({
             animationDuration={0}
           />
 
-          {/* Path lines — triple-line premium effect */}
+          {/* Path lines — Moru premium 3-layer stack with lineGradient.
+              Uses lineMetrics on the source so the gradient expression
+              below actually renders. High-contrast palette reads well
+              on the outdoors-v12 base. */}
           {pathGeoJSON && (
-            <ShapeSource id="pathSource" shape={pathGeoJSON}>
-              {/* Outer glow */}
+            <ShapeSource id="pathSource" shape={pathGeoJSON} lineMetrics>
+              {/* Dark outline for separation against light terrain */}
+              <LineLayer
+                id="pathLineOutline"
+                style={{
+                  lineColor: 'rgba(20, 30, 25, 0.55)',
+                  lineWidth: 9,
+                  lineOpacity: 0.85,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
+              {/* Warm glow */}
               <LineLayer
                 id="pathLineGlow"
                 style={{
-                  lineColor: theme === 'dark' ? '#4ADE80' : '#2D4A2E',
-                  lineWidth: 14,
-                  lineOpacity: theme === 'dark' ? 0.15 : 0.1,
+                  lineColor: '#FFB770',
+                  lineWidth: 13,
+                  lineOpacity: 0.28,
                   lineCap: 'round',
                   lineJoin: 'round',
                   lineBlur: 4,
                 }}
+                aboveLayerID="pathLineOutline"
               />
-              {/* White/dark border */}
-              <LineLayer
-                id="pathLineBorder"
-                style={{
-                  lineColor: theme === 'dark' ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
-                  lineWidth: 8,
-                  lineOpacity: 0.9,
-                  lineCap: 'round',
-                  lineJoin: 'round',
-                }}
-                aboveLayerID="pathLineGlow"
-              />
-              {/* Main route line */}
+              {/* Main route line with gradient — green start → red end */}
               <LineLayer
                 id="pathLine"
                 style={{
-                  lineColor: theme === 'dark' ? '#4ADE80' : '#2D4A2E',
-                  lineWidth: 4.5,
+                  lineWidth: 5.5,
+                  lineOpacity: 0.97,
                   lineCap: 'round',
                   lineJoin: 'round',
+                  lineGradient: [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, '#34C759',
+                    0.35, '#E8563D',
+                    0.65, '#FFB347',
+                    1, '#FF3B30',
+                  ] as any,
                 }}
-                aboveLayerID="pathLineBorder"
+                aboveLayerID="pathLineGlow"
               />
             </ShapeSource>
           )}

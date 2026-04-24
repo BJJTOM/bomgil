@@ -745,7 +745,9 @@ function ExploreMapView({ trails, isDark }: { trails: Trail[]; isDark: boolean }
     sw: [minLng - 0.02, minLat - 0.02] as [number, number],
   };
 
-  const styleURL = isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/outdoors-v12';
+  // Force the enhanced outdoor style everywhere — hillshade + contours
+  // are baked into outdoors-v12 and the trail gradient reads best on it.
+  const styleURL = 'mapbox://styles/mapbox/outdoors-v12';
 
   return (
     <View style={{ flex: 1 }}>

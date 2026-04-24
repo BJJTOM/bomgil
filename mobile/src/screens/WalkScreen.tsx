@@ -1290,7 +1290,7 @@ function WalkScreenInner() {
         ) : (
         <Mapbox.MapView
           style={{ flex: 1 }}
-          styleURL="mapbox://styles/mapbox/dark-v11"
+          styleURL="mapbox://styles/mapbox/outdoors-v12"
           attributionEnabled={false}
           logoEnabled={false}
           scrollEnabled={true}

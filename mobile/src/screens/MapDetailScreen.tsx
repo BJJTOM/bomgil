@@ -125,12 +125,12 @@ export default function MapDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Full screen map */}
       <Mapbox.MapView
         style={{ flex: 1 }}
-        styleURL="mapbox://styles/mapbox/dark-v11"
+        styleURL="mapbox://styles/mapbox/outdoors-v12"
         attributionEnabled={false}
         logoEnabled={false}
         scrollEnabled={true}
@@ -139,40 +139,95 @@ export default function MapDetailScreen() {
         rotateEnabled={true}>
 
         <Mapbox.Camera
-          {...(bounds ? {
-            bounds: {
-              ne: bounds.ne,
-              sw: bounds.sw,
-              paddingTop: 100,
-              paddingBottom: 150,
-              paddingLeft: 60,
-              paddingRight: 60,
-            },
-          } : {
-            centerCoordinate: [startLng || 126.978, startLat || 37.5665],
-            zoomLevel: 15,
-          })}
+          {...(bounds
+            ? {
+                bounds: {
+                  ne: bounds.ne,
+                  sw: bounds.sw,
+                  // Tighter padding so the route fills the screen and
+                  // visibly lands between the top bar and bottom stats.
+                  paddingTop: insets.top + 70,
+                  paddingBottom: 140,
+                  paddingLeft: 40,
+                  paddingRight: 40,
+                },
+              }
+            : {
+                centerCoordinate: [startLng || 126.978, startLat || 37.5665],
+                zoomLevel: 15,
+              })}
           animationDuration={500}
         />
 
-        {/* Route — lineTrimOffset animates 0→1 during trace preview */}
+        {/* Hillshade — adds the subtle relief shading the web map has.
+            The outdoors-v12 style ships a DEM source; we just need to
+            render it as a hillshade layer on top of the base. */}
+        <Mapbox.RasterDemSource
+          id="moru-dem-mobile"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+          tileSize={512}
+        >
+          <Mapbox.HillshadeLayer
+            id="moru-hillshade"
+            sourceID="moru-dem-mobile"
+            style={{
+              hillshadeExaggeration: 0.55,
+              hillshadeShadowColor: 'rgba(30, 40, 30, 0.35)',
+              hillshadeHighlightColor: 'rgba(255, 248, 230, 0.5)',
+              hillshadeAccentColor: 'rgba(80, 120, 80, 0.3)',
+            }}
+          />
+        </Mapbox.RasterDemSource>
+
+        {/* Route — outline → glow → main gradient. Matches the web's
+            drawMoruTrailLine 3-layer stack. High contrast against the
+            light outdoor basemap: dark navy outline + warm amber gradient
+            reads clearly over green/tan terrain. */}
         {routeGeoJSON && (
-          <Mapbox.ShapeSource id="route" shape={routeGeoJSON}>
-            <Mapbox.LineLayer id="routeGlow" style={{
-              lineColor: '#4ADE80', lineWidth: 16, lineOpacity: 0.12,
-              lineCap: 'round', lineJoin: 'round', lineBlur: 4,
-              lineTrimOffset: [traceProgress, 1],
-            }} />
-            <Mapbox.LineLayer id="routeBorder" style={{
-              lineColor: 'rgba(255,255,255,0.3)', lineWidth: 8,
-              lineOpacity: 0.9, lineCap: 'round', lineJoin: 'round',
-              lineTrimOffset: [traceProgress, 1],
-            }} />
-            <Mapbox.LineLayer id="routeLine" style={{
-              lineColor: '#4ADE80', lineWidth: 4.5,
-              lineCap: 'round', lineJoin: 'round',
-              lineTrimOffset: [traceProgress, 1],
-            }} />
+          <Mapbox.ShapeSource id="route" shape={routeGeoJSON} lineMetrics>
+            <Mapbox.LineLayer
+              id="routeOutline"
+              style={{
+                lineColor: 'rgba(20, 30, 25, 0.55)',
+                lineWidth: 10,
+                lineOpacity: 0.85,
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineTrimOffset: [traceProgress, 1],
+              }}
+            />
+            <Mapbox.LineLayer
+              id="routeGlow"
+              style={{
+                lineColor: '#FFB770',
+                lineWidth: 14,
+                lineOpacity: 0.3,
+                lineBlur: 4,
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineTrimOffset: [traceProgress, 1],
+              }}
+            />
+            <Mapbox.LineLayer
+              id="routeLine"
+              style={{
+                lineWidth: 6,
+                lineOpacity: 0.98,
+                lineCap: 'round',
+                lineJoin: 'round',
+                // Gradient only works because of lineMetrics on the source
+                lineGradient: [
+                  'interpolate',
+                  ['linear'],
+                  ['line-progress'],
+                  0, '#34C759',
+                  0.35, '#E8563D',
+                  0.65, '#FFB347',
+                  1, '#FF3B30',
+                ] as any,
+                lineTrimOffset: [traceProgress, 1],
+              }}
+            />
           </Mapbox.ShapeSource>
         )}
 

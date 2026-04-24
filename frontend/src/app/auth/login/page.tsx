@@ -56,6 +56,14 @@ export default function LoginPage() {
   return (
     <div className="md:pt-16 min-h-screen flex items-center justify-center px-5">
       <div className="w-full max-w-[400px]">
+        <div className="mb-6">
+          <button
+            onClick={() => window.history.back()}
+            className="w-9 h-9 rounded-full bg-bg-secondary flex items-center justify-center hover:bg-border-light transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
         <div className="text-center mb-10">
           <h1 className="text-[28px] font-bold text-primary tracking-tight" style={{ fontFamily: "'DM Sans', 'Sora', sans-serif" }}>Moru</h1>
           <p className="text-text-secondary text-[15px] mt-1">{t("loginPage.tagline")}</p>
@@ -129,7 +137,6 @@ export default function LoginPage() {
               href="/auth/phone"
               className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 text-primary rounded-button text-[14px] font-bold hover:bg-primary/15 transition-colors"
             >
-              <span className="text-[16px]">📱</span>
               전화번호로 시작하기
             </Link>
             <button

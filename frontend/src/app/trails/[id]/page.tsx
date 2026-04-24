@@ -753,7 +753,8 @@ export default function TrailDetailPage() {
                     zoom={14}
                     markers={mapMarkers}
                     pathCoordinates={pathCoords}
-                    theme="dark"
+                    theme="light"
+                    locale="ko"
                     showStats
                     distance={tr.distance_km}
                     duration={String(tr.estimated_minutes)}

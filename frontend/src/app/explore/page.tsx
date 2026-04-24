@@ -219,7 +219,7 @@ export default function ExplorePage() {
         <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
           {/* Static HTML shell for SSR/crawlers */}
           <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-            <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
+            <div className="max-w-5xl mx-auto px-5 pt-6 md:pt-3">
               <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
                 <span className="relative pb-2 text-[15px] font-bold text-gray-900 whitespace-nowrap">
                   전체 코스
@@ -858,7 +858,7 @@ function ExploreContent() {
     <div className="md:pt-16 min-h-screen" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Tabs + Search Header */}
       <div className="sticky top-0 md:top-[60px] z-30 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]">
-        <div className="max-w-5xl mx-auto px-5 pt-14 md:pt-3">
+        <div className="max-w-5xl mx-auto px-5 pt-6 md:pt-3">
           {/* Tabs */}
           <div className="flex gap-4 mb-2 overflow-x-auto scrollbar-hide">
             {([

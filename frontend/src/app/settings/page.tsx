@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -90,13 +91,13 @@ export default function SettingsPage() {
           { label: language === "ko" ? "비밀번호 변경" : "Change Password", href: "/settings/password", icon: "lock" },
         ] : [
           { label: language === "ko" ? "로그인" : "Login", href: "/auth/login", icon: "key" },
-          { label: language === "ko" ? "회원가입" : "Sign Up", href: "/auth/register", icon: "user" },
         ]),
       ],
     },
     {
       title: language === "ko" ? "앱 설정" : "App Settings",
       items: [
+        { label: language === "ko" ? "테마" : "Theme", value: themeMode === "light" ? (language === "ko" ? "라이트" : "Light") : themeMode === "dark" ? (language === "ko" ? "다크" : "Dark") : (language === "ko" ? "시스템" : "System"), icon: "sun", action: "theme" },
         { label: language === "ko" ? "언어 설정" : "Language", value: LANGUAGES.find(l => l.code === language)?.label, icon: "globe", action: "language" },
         { label: language === "ko" ? "알림 설정" : "Notifications", href: "/notifications", icon: "bell" },
         { label: language === "ko" ? "공지사항" : "Notices", href: "/notices", icon: "megaphone" },
@@ -117,8 +118,16 @@ export default function SettingsPage() {
     <div className="md:pt-[60px] min-h-screen bg-warm pb-24">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="px-5 pt-14 md:pt-6 pb-4">
-          <h1 className="text-[22px] font-bold">{language === "ko" ? "설정" : "Settings"}</h1>
+        <div className="px-5 pt-6 md:pt-6 pb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.history.back()}
+              className="w-9 h-9 rounded-full bg-bg-secondary flex items-center justify-center hover:bg-border-light transition-colors"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <h1 className="text-[22px] font-bold">{language === "ko" ? "설정" : "Settings"}</h1>
+          </div>
         </div>
 
         {/* User card (if logged in) */}
@@ -192,36 +201,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Theme toggle */}
-        <div className="mb-4">
-          <p className="px-5 text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">
-            {language === "ko" ? "테마" : "Theme"}
-          </p>
-          <div className="mx-5 bg-surface rounded-card shadow-soft p-3 flex gap-2">
-            {([
-              { key: "light", ko: "라이트", en: "Light", emoji: "☀️" },
-              { key: "dark", ko: "다크", en: "Dark", emoji: "🌙" },
-              { key: "system", ko: "시스템", en: "System", emoji: "💻" },
-            ] as const).map((opt) => {
-              const active = themeMode === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  onClick={() => setThemeMode(opt.key as ThemeMode)}
-                  className={`flex-1 py-3 rounded-button text-[13px] font-semibold transition-all ${
-                    active
-                      ? "bg-primary text-white shadow-soft"
-                      : "bg-bg-secondary text-text-secondary hover:bg-border-light"
-                  }`}
-                >
-                  <div className="text-xl mb-0.5">{opt.emoji}</div>
-                  {language === "ko" ? opt.ko : opt.en}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Sections */}
         {sections.map((section) => (
           <div key={section.title} className="mb-4">
@@ -242,6 +221,7 @@ export default function SettingsPage() {
                   "file-text": <Icon.FileText size={18} className="text-gray-500" />,
                   "shield": <Icon.Shield size={18} className="text-gray-500" />,
                   "info": <Icon.Info size={18} className="text-gray-500" />,
+                  "sun": <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
                 };
                 const content = (
                   <div className="flex items-center gap-3 px-4 py-3.5">
@@ -257,6 +237,9 @@ export default function SettingsPage() {
                 }
                 if (item.action === "language") {
                   return <div key={item.label} onClick={() => setShowLangModal(true)} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
+                }
+                if (item.action === "theme") {
+                  return <div key={item.label} onClick={() => setShowThemeModal(true)} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
                 }
                 return <div key={item.label} className="hover:bg-bg-secondary transition-colors cursor-pointer">{content}</div>;
               })}
@@ -315,6 +298,38 @@ export default function SettingsPage() {
                 {language === lang.code && <span className="text-primary font-bold">✓</span>}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Theme Modal */}
+      {showThemeModal && (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center px-10" onClick={() => setShowThemeModal(false)}>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-[20px] p-6 w-full max-w-[320px]" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-[17px] font-bold text-center mb-4">{language === "ko" ? "테마 설정" : "Theme"}</h3>
+            <div className="flex gap-2">
+              {([
+                { key: "light" as const, ko: "라이트", en: "Light", emoji: "☀️" },
+                { key: "dark" as const, ko: "다크", en: "Dark", emoji: "🌙" },
+                { key: "system" as const, ko: "시스템", en: "System", emoji: "💻" },
+              ]).map((opt) => {
+                const active = themeMode === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => { setThemeMode(opt.key as ThemeMode); setShowThemeModal(false); }}
+                    className={`flex-1 py-3 rounded-button text-[13px] font-semibold transition-all ${
+                      active
+                        ? "bg-primary text-white shadow-soft"
+                        : "bg-bg-secondary text-text-secondary hover:bg-border-light"
+                    }`}
+                  >
+                    <div className="text-xl mb-0.5">{opt.emoji}</div>
+                    {language === "ko" ? opt.ko : opt.en}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

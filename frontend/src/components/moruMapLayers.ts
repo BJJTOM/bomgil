@@ -29,18 +29,32 @@ const MORU_LAYER_IDS = [
   'moru-trail-start',
   'moru-trail-end',
   'moru-sky',
+  'moru-peaks',
+  'moru-3d-buildings',
 ];
 const MORU_SOURCE_IDS = [
   'moru-dem',
   'moru-terrain-vector',
   'moru-trail',
   'moru-trail-endpoints',
+  'moru-peaks',
 ];
 
-// 언어별 Mapbox name_* 필드 표현식. 대상 언어 → 없으면 'name' 로 fallback
+// 언어별 Mapbox name_* 필드 표현식. 여러 후보 필드를 coalesce 로 순회해서
+// 누락된 경우에도 반드시 한글(또는 현지어)이 나오도록.
+//
+// OSM/Mapbox 는 같은 장소에도 name_ko / name_kr / name_ko-KR / name 등 표기가
+// 섞여 있다. 이 중 하나라도 있으면 그대로, 아니면 최후의 'name'(현지어) 로 폴백.
 function localeExpression(locale: MoruMapLocale): any[] {
-  const field = locale === 'zh' ? 'name_zh-Hans' : `name_${locale}`;
-  return ['coalesce', ['get', field], ['get', 'name']];
+  const fallbacks =
+    locale === 'ko'
+      ? ['name_ko', 'name_ko-KR', 'name_kr', 'name']
+      : locale === 'zh'
+        ? ['name_zh-Hans', 'name_zh-Hant', 'name_zh', 'name']
+        : locale === 'ja'
+          ? ['name_ja', 'name_ja-Latn', 'name']
+          : ['name_en', 'name'];
+  return ['coalesce', ...fallbacks.map((f) => ['get', f])];
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -99,12 +113,14 @@ export function applyMoruBaseLayers(map: any, opts: MoruBaseLayerOptions = {}) {
           source: 'moru-dem',
           type: 'hillshade',
           paint: {
-            // 다크 배경에선 그림자 부드럽게, 빛 강조
-            'hillshade-shadow-color': theme === 'dark' ? '#000000' : '#555555',
+            // Komoot 느낌: 따뜻한 브라운 계열 음영, 부드러운 하이라이트
+            'hillshade-shadow-color':
+              theme === 'dark' ? '#000000' : '#6b5a3a',
             'hillshade-highlight-color':
-              theme === 'dark' ? '#8da896' : '#ffffff',
-            'hillshade-accent-color': theme === 'dark' ? '#4b6a56' : '#666666',
-            'hillshade-exaggeration': 0.55,
+              theme === 'dark' ? '#8da896' : '#f5efe0',
+            'hillshade-accent-color':
+              theme === 'dark' ? '#4b6a56' : '#8a7a50',
+            'hillshade-exaggeration': theme === 'dark' ? 0.55 : 0.45,
             'hillshade-illumination-anchor': 'viewport',
             'hillshade-illumination-direction': 335,
           },
@@ -133,7 +149,8 @@ export function applyMoruBaseLayers(map: any, opts: MoruBaseLayerOptions = {}) {
     });
   }
 
-  const contourColor = theme === 'dark' ? '#56D89B' : '#2D4A2E';
+  // Komoot 의 라이트 테마 등고선은 부드러운 브라운. 다크 테마에선 민트 그린.
+  const contourColor = theme === 'dark' ? '#56D89B' : '#8a6a3a';
   if (contours) {
     if (!map.getLayer('moru-contour-minor')) {
       map.addLayer(
@@ -192,23 +209,29 @@ export function applyMoruBaseLayers(map: any, opts: MoruBaseLayerOptions = {}) {
 
 /**
  * 현재 스타일의 모든 symbol 레이어의 text-field 를 해당 언어로 전환.
- * 예: locale='en' 이면 Seoul, Busan … locale='ja' 면 ソウル, 釜山 …
- *
- * Mapbox dark-v11 의 symbol layers 는 text-field 가 이미 name 혹은 coalesce
- * 형태로 되어 있어 set 가능. 일부 커스텀 스타일에선 무시될 수 있음.
+ *  - 한국어 설정이면 Seoul → "서울", Mt. Bukhan → "북한산" 식으로 강제
+ *  - text-field 가 원래 없는(icon-only) 레이어는 건드리지 않음
+ *  - isStyleLoaded 가 false 면 style.load 를 기다렸다 재시도
  */
 export function applyMoruLabelLocale(map: any, locale: MoruMapLocale) {
-  if (!map || !map.isStyleLoaded()) return;
+  if (!map) return;
+  if (!map.isStyleLoaded()) {
+    try { map.once('style.load', () => applyMoruLabelLocale(map, locale)); } catch {}
+    return;
+  }
   const expr = localeExpression(locale);
-  const layers = map.getStyle()?.layers ?? [];
+  const layers: any[] = map.getStyle()?.layers ?? [];
   for (const layer of layers) {
     if (layer.type !== 'symbol') continue;
-    // 우리가 추가한 레이어는 건드리지 않음
-    if (layer.id?.startsWith('moru-')) continue;
+    const id: string = layer.id ?? '';
+    if (!id || id.startsWith('moru-')) continue;
     try {
-      map.setLayoutProperty(layer.id, 'text-field', expr);
+      const existing = map.getLayoutProperty(id, 'text-field');
+      // text-field 자체가 없는 icon-only 레이어는 스킵 (강제로 넣으면 깨짐)
+      if (existing === undefined || existing === null) continue;
+      map.setLayoutProperty(id, 'text-field', expr);
     } catch {
-      // 일부 레이어는 text-field 미지원 — 무시
+      /* 일부 스타일 layer 는 text-field 미지원 → 조용히 무시 */
     }
   }
 }
@@ -282,6 +305,201 @@ export function emphasizePeakLabels(map: any, theme: 'dark' | 'light' = 'dark') 
     );
   } catch {
     // 스타일에 따라 property 자체가 없을 수 있음 — 조용히 무시
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 4.5. 봉우리 고도 자동 표시 (DEM 샘플링)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 문제: Mapbox natural-point-label 의 mountain_peak 피처는 `ele` 가 있는 봉우리도
+ * 있지만, 영종도 구봉산처럼 `ele` 가 비어있는 곳이 많다.
+ *
+ * 해결: DEM 소스를 상시 활성화(setTerrain, exaggeration 1)한 뒤 `queryTerrainElevation`
+ * 으로 좌표별 고도를 런타임에 샘플링 → 별도의 symbol 소스(moru-peaks)에 "이름 + 고도 m"
+ * 로 그린다. 원래의 natural-point-label 텍스트는 가려서 중복을 피함.
+ *
+ * idempotent — 호출마다 소스 내용만 갱신.
+ * 비용: 뷰포트 기준 queryRenderedFeatures 1회 + 피처당 DEM 1샘플링. 무겁지 않음.
+ */
+export function addPeakElevationOverlay(
+  map: any,
+  theme: 'dark' | 'light' = 'light'
+) {
+  if (!map || !map.isStyleLoaded()) return;
+
+  // 1) DEM 이 세팅되어 있지 않으면 고도 샘플링을 못하므로 exaggeration 1 로 켠다.
+  //    pitch 가 0 일 땐 시각적 차이 없음.
+  try {
+    const curTerrain = map.getTerrain?.();
+    if (!curTerrain) {
+      map.setTerrain({ source: 'moru-dem', exaggeration: 1 });
+    }
+  } catch {
+    /* DEM 소스 아직 없음 — 먼저 applyMoruBaseLayers 호출 필요 */
+    return;
+  }
+
+  // 2) 현재 뷰포트의 natural_label / natural-point-label 피처 추출
+  const layers: string[] = [];
+  for (const id of ['natural-point-label', 'natural_label']) {
+    if (map.getLayer(id)) layers.push(id);
+  }
+  if (layers.length === 0) return;
+
+  let features: any[] = [];
+  try {
+    features = map.queryRenderedFeatures({ layers });
+  } catch {
+    return;
+  }
+
+  // 3) 봉우리(mountain) 타입만 + 좌표 중복 제거
+  const peaks: Array<{
+    id: string;
+    lng: number;
+    lat: number;
+    name: string;
+    ele: number | null;
+  }> = [];
+  const seen = new Set<string>();
+  for (const f of features) {
+    const cls = f.properties?.class || f.properties?.maki || '';
+    // mountain_peak / volcano / peak 다양한 표기 처리
+    if (!/peak|volcano|mountain/i.test(String(cls))) continue;
+    const g = f.geometry;
+    if (!g || g.type !== 'Point') continue;
+    const [lng, lat] = g.coordinates as [number, number];
+    const key = `${lng.toFixed(4)}|${lat.toFixed(4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const name =
+      f.properties?.name_ko ||
+      f.properties?.name_kr ||
+      f.properties?.name ||
+      '';
+    if (!name) continue;
+
+    // DEM 샘플링 (없으면 null)
+    let ele: number | null = null;
+    try {
+      const q = map.queryTerrainElevation([lng, lat], { exaggerated: false });
+      if (typeof q === 'number' && isFinite(q)) ele = Math.round(q);
+    } catch {
+      ele = null;
+    }
+
+    // 원본 속성에 ele 가 있으면 우선
+    if (f.properties?.ele != null) {
+      const raw = Number(f.properties.ele);
+      if (isFinite(raw)) ele = Math.round(raw);
+    }
+
+    peaks.push({ id: key, lng, lat, name, ele });
+  }
+
+  // 4) GeoJSON 갱신
+  const fc = {
+    type: 'FeatureCollection' as const,
+    features: peaks.map((p) => ({
+      type: 'Feature' as const,
+      properties: {
+        name: p.name,
+        ele: p.ele,
+        label: p.ele != null ? `${p.name}\n${p.ele} m` : p.name,
+      },
+      geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+    })),
+  };
+
+  if (map.getSource('moru-peaks')) {
+    try {
+      map.getSource('moru-peaks').setData(fc);
+    } catch {
+      /* noop */
+    }
+  } else {
+    map.addSource('moru-peaks', { type: 'geojson', data: fc });
+  }
+
+  // 5) 기존 natural-point-label 텍스트 숨김 (중복 방지)
+  //    완전 제거 대신 text 만 빈 문자열로 덮어써서 원 레이어 구조는 유지.
+  for (const lid of layers) {
+    try {
+      map.setLayoutProperty(lid, 'text-field', '');
+      map.setLayoutProperty(lid, 'icon-image', 'mountain-11');
+    } catch {
+      /* 지원 안 하는 스타일은 무시 */
+    }
+  }
+
+  // 6) 봉우리 라벨 레이어 — Komoot 스타일 (이름 큰글씨 + 고도 작은 글씨)
+  if (!map.getLayer('moru-peaks')) {
+    map.addLayer({
+      id: 'moru-peaks',
+      type: 'symbol',
+      source: 'moru-peaks',
+      minzoom: 9,
+      layout: {
+        // 높은 봉우리 우선 표시
+        'symbol-sort-key': [
+          'case', ['has', 'ele'], ['-', 10000, ['get', 'ele']], 10000,
+        ],
+        // 이름 + (줄바꿈) 고도 m — 줌에 따라 고도 숨김/표시
+        'text-field': [
+          'format',
+          ['get', 'name'], { 'font-scale': 1.0 },
+          [
+            'case',
+            ['all', ['has', 'ele'], ['>=', ['zoom'], 10]],
+            ['concat', '\n▲ ', ['to-string', ['get', 'ele']], ' m'],
+            '',
+          ],
+          { 'font-scale': 0.75, 'text-color': theme === 'dark' ? '#A8E6CF' : '#7a5a28' },
+        ],
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          9, 11,
+          12, 13,
+          15, 15,
+        ],
+        'text-offset': [0, 0.9],
+        'text-anchor': 'top',
+        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+        'text-line-height': 1.15,
+        'text-letter-spacing': 0.01,
+        'text-allow-overlap': false,
+        'text-optional': true,
+        'text-padding': 6,
+        'icon-image': 'mountain-11',
+        'icon-size': 1.1,
+        'icon-allow-overlap': true,
+      },
+      paint: {
+        'text-color': theme === 'dark' ? '#F0FAF3' : '#1a1a1a',
+        'text-halo-color':
+          theme === 'dark' ? 'rgba(8,16,12,0.9)' : 'rgba(255,255,255,0.98)',
+        'text-halo-width': 2.0,
+        'text-halo-blur': 0.3,
+      },
+    });
+  } else {
+    try {
+      map.setPaintProperty(
+        'moru-peaks',
+        'text-color',
+        theme === 'dark' ? '#F0FAF3' : '#1a1a1a'
+      );
+      map.setPaintProperty(
+        'moru-peaks',
+        'text-halo-color',
+        theme === 'dark' ? 'rgba(8,16,12,0.9)' : 'rgba(255,255,255,0.98)'
+      );
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -572,7 +790,67 @@ export function enhanceMapLabels(
       ]);
     } else if (id.includes('water-point-label')) {
       trySet(map, id, 'paint', 'text-color', theme === 'dark' ? '#8FD6FF' : '#1E5FAA');
+    } else if (id.includes('airport-label')) {
+      trySet(map, id, 'paint', 'text-color', primaryText);
+    } else if (id.includes('building-number-label')) {
+      trySet(map, id, 'layout', 'visibility', 'visible');
+      trySet(map, id, 'paint', 'text-color', secondaryText);
     }
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 8. 3D Buildings (고해상도 줌에서 도심 디테일)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 줌 15+ 에서 건물 3D extrusion 추가.  Komoot 같은 지도앱이 도심에서 건물을
+ * 입체적으로 보여주는 효과. outdoors-v12 / dark-v11 모두 'building' 소스
+ * (composite tileset) 를 포함한다.
+ */
+export function apply3DBuildings(map: any, theme: 'dark' | 'light' = 'light') {
+  if (!map || !map.isStyleLoaded()) return;
+  if (map.getLayer('moru-3d-buildings')) return;
+
+  // 'building' 소스-레이어가 composite 에 존재해야 함
+  const sources = map.getStyle()?.sources ?? {};
+  const hasComposite = Object.keys(sources).some((k) =>
+    typeof sources[k]?.url === 'string' && sources[k].url.includes('mapbox-streets')
+  ) || !!map.getSource('composite');
+
+  if (!hasComposite) return;
+
+  const labelLayer = findLayerId(map, ['road-label', 'settlement-minor-label']);
+
+  try {
+    map.addLayer(
+      {
+        id: 'moru-3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', ['get', 'extrude'], 'true'],
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+          'fill-extrusion-color':
+            theme === 'dark' ? '#2a2f2e' : '#e9e4d6',
+          'fill-extrusion-height': [
+            'interpolate', ['linear'], ['zoom'],
+            15, 0,
+            16, ['get', 'height'],
+          ],
+          'fill-extrusion-base': [
+            'interpolate', ['linear'], ['zoom'],
+            15, 0,
+            16, ['get', 'min_height'],
+          ],
+          'fill-extrusion-opacity': theme === 'dark' ? 0.75 : 0.85,
+        },
+      },
+      labelLayer || undefined
+    );
+  } catch {
+    /* 일부 스타일(outdoors-v12)엔 building 소스-레이어가 'building' 외 다른 이름일 수 있음 */
   }
 }
 

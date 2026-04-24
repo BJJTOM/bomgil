@@ -19,12 +19,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
+  addPeakElevationOverlay,
+  apply3DBuildings,
   applyMoruAtmosphere,
   applyMoruBaseLayers,
   applyMoruLabelLocale,
   cleanupMoruLayers,
   drawMoruTrailLine,
-  emphasizePeakLabels,
   enhanceMapLabels,
   type MoruMapLocale,
 } from "./moruMapLayers";
@@ -157,7 +158,6 @@ export function MapView({
 
         map.on("load", () => {
           mapInstanceRef.current = map;
-          // Komoot 스타일 레이어 적용
           applyMoruBaseLayers(map, {
             hillshade: true,
             contours: showContours,
@@ -166,20 +166,30 @@ export function MapView({
             theme,
           });
           applyMoruAtmosphere(map, theme);
+          apply3DBuildings(map, theme);
           if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
-          if (peakLabels) emphasizePeakLabels(map, theme);
           applyMoruLabelLocale(map, locale);
+          // 스타일 내부 타일 로드가 비동기라 약간의 지연 후 한 번 더 적용 →
+          // 뒤늦게 추가되는 symbol layer 까지 한글화 확실히 커버
+          setTimeout(() => applyMoruLabelLocale(map, locale), 250);
+          setTimeout(() => applyMoruLabelLocale(map, locale), 1000);
           if (terrain3DState) map.easeTo({ pitch: 55, duration: 400 });
           setLoaded(true);
         });
 
         // 스타일 내부 로딩 중 발생하는 'styledata' 이벤트에서도 재적용
-        // (zoom-in 해서 contour tile 이 새로 뜰 때 등)
         map.on("styledata", () => {
           if (!map.isStyleLoaded()) return;
           applyMoruLabelLocale(map, locale);
           if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
-          if (peakLabels) emphasizePeakLabels(map, theme);
+        });
+
+        // 이동·줌이 끝날 때마다 봉우리 고도 재샘플링 (DEM 기반)
+        map.on("idle", () => {
+          if (!map.isStyleLoaded()) return;
+          // 한글 라벨 최후 보루 — idle 시점에도 재적용
+          applyMoruLabelLocale(map, locale);
+          if (peakLabels) addPeakElevationOverlay(map, theme);
         });
       } catch (err) {
         console.error("Map load error:", err);
@@ -242,7 +252,7 @@ export function MapView({
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !loaded || !peakLabels) return;
-    emphasizePeakLabels(map, theme);
+    addPeakElevationOverlay(map, theme);
   }, [loaded, peakLabels, theme]);
 
   // 라벨 가독성 강화 — theme/density 변경 시 재적용

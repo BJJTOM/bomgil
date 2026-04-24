@@ -198,7 +198,7 @@ export default function Home() {
   return (
     <div className="bg-warm" style={{ backgroundColor: "var(--c-warm)" }}>
       {/* Mobile top bar */}
-      <div className="md:hidden absolute top-0 left-0 right-0 z-20 px-5 pt-12 pb-3 flex items-center justify-between">
+      <div className="md:hidden absolute top-0 left-0 right-0 z-20 px-5 pt-8 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src="/icon-192.png" alt="Moru" className="w-7 h-7 rounded-lg" />
           <span className="text-white font-bold text-[17px]" style={{ fontFamily: "'DM Sans', sans-serif" }}>Moru</span>
@@ -230,7 +230,7 @@ export default function Home() {
 
       {/* Hero — compact, global */}
       <section className="relative overflow-hidden">
-        <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-20 md:pt-28 pb-20 md:pb-28">
+        <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-24 md:pt-28 pb-20 md:pb-28">
           {/* Subtle dot pattern */}
           <div className="absolute inset-0 opacity-5" style={{
             backgroundImage: `radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)`,

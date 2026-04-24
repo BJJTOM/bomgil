@@ -61,6 +61,39 @@ import TrailCard from '../components/TrailCard';
 import { useThemeStore } from '../stores/theme';
 import { useAuthStore } from '../stores/auth';
 
+/**
+ * Normalize Trail.path_data into a flat [lng, lat, ele?] array.
+ *
+ * Durunubi / public API imports sometimes return MultiLineString (nested
+ * arrays: [[[lng,lat],...],...]) instead of LineString. The old code
+ * cast coordinates as `[number, number][]` unconditionally, which made
+ * those trails render without the gradient/outline stack — the
+ * "신시모도 코스가 다른 스타일로 나온다" bug.
+ *
+ * Accepts LineString, MultiLineString, or a raw coordinate array.
+ */
+function normalizePathCoords(
+  pathData: any,
+): Array<[number, number] | [number, number, number]> {
+  if (!pathData) return [];
+  const coords = pathData.coordinates ?? pathData;
+  if (!Array.isArray(coords) || coords.length === 0) return [];
+
+  // LineString: [[lng, lat], ...]
+  if (typeof coords[0]?.[0] === 'number') {
+    return coords as any[];
+  }
+  // MultiLineString: [[[lng, lat], ...], ...] — flatten
+  if (Array.isArray(coords[0]) && typeof coords[0][0]?.[0] === 'number') {
+    const flat: any[] = [];
+    for (const line of coords as any[][]) {
+      for (const pt of line) flat.push(pt);
+    }
+    return flat as any[];
+  }
+  return [];
+}
+
 // ─── Tab Types ──────────────────────────────────────────────────────────────
 type TabId = 'overview' | 'album' | 'reviews' | 'records';
 
@@ -804,7 +837,7 @@ function TrailDetailScreenInner() {
           style={[styles.mapSection, { backgroundColor: sectionBg }]}
           activeOpacity={0.95}
           onPress={() => navigation.navigate('MapDetail', {
-            pathCoordinates: trail.path_data?.coordinates || [],
+            pathCoordinates: normalizePathCoords(trail.path_data),
             startLat: parseFloat(String(trail.start_lat)),
             startLng: parseFloat(String(trail.start_lng)),
             endLat: trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined,
@@ -820,7 +853,7 @@ function TrailDetailScreenInner() {
               lng={parseFloat(String(trail.start_lng))}
               endLat={trail.end_lat ? parseFloat(String(trail.end_lat)) : undefined}
               endLng={trail.end_lng ? parseFloat(String(trail.end_lng)) : undefined}
-              pathCoordinates={trail.path_data?.coordinates as [number, number][] | undefined}
+              pathCoordinates={normalizePathCoords(trail.path_data) as [number, number][] | undefined}
               region={trail.region}
               country={trail.country}
               height={260}
@@ -841,12 +874,12 @@ function TrailDetailScreenInner() {
         <NearbyPOICards trailId={trail.id} isDark={isDark} />
 
         {/* ===== ELEVATION PROFILE ===== */}
-        {trail.path_data?.coordinates && (
-          <ElevationProfile
-            coordinates={trail.path_data.coordinates as any}
-            isDark={isDark}
-          />
-        )}
+        {(() => {
+          const coords = normalizePathCoords(trail.path_data);
+          return coords.length >= 2 ? (
+            <ElevationProfile coordinates={coords as any} isDark={isDark} />
+          ) : null;
+        })()}
 
         {/* ===== DIFFICULTY INDICATOR (progressive bar) ===== */}
         <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>

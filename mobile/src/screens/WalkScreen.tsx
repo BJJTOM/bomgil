@@ -545,11 +545,16 @@ function WalkScreenInner() {
   }, []);
 
   const handleTakePhoto = useCallback(async () => {
-    if (!currentPos) return;
     if (photoBusyRef.current) return; // prevent rapid double-tap
     photoBusyRef.current = true;
     try {
-      const photo = await takeTaggedPhoto(currentPos.lat, currentPos.lng);
+      // Photo tagging is best-effort. If GPS hasn't locked yet (cold
+      // start, indoors), fall back to 0,0 so the camera still opens —
+      // the photo can still be taken and the location can be backfilled
+      // later. Silent return was the root cause of "카메라 버튼 반응 없음".
+      const lat = currentPos?.lat ?? 0;
+      const lng = currentPos?.lng ?? 0;
+      const photo = await takeTaggedPhoto(lat, lng);
       if (photo) {
         setPendingPhoto(photo);
         setPhotoTitle('');
@@ -1961,61 +1966,70 @@ export default function WalkScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ---- COUNTDOWN ----
+  // ---- COUNTDOWN ---- (light theme, less dead space)
   countdownContainer: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#F6F7F8',
   },
   backBtn: {
     position: 'absolute',
     left: 20,
     zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backBtnText: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: 20,
+    color: 'rgba(0,0,0,0.55)',
   },
   countdownContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    // Push the content slightly up so it doesn't feel lost in the
+    // middle of a huge screen. Combined with countdownHint taking up
+    // the bottom third, this removes the "너무 공백 많음" complaint.
+    paddingBottom: 80,
   },
   countdownLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.15)',
-    letterSpacing: 6,
-    marginBottom: 48,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 5,
+    marginBottom: 28,
+    textTransform: 'uppercase',
   },
   countdownCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
     elevation: 10,
   },
   countdownNumber: {
-    fontSize: 64,
+    fontSize: 76,
     fontWeight: '800',
     color: '#fff',
+    letterSpacing: -2,
   },
   countdownHint: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.2)',
-    marginTop: 48,
-    letterSpacing: 1,
+    fontSize: 13.5,
+    color: colors.textSecondary,
+    marginTop: 24,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    lineHeight: 19,
   },
 
   // ---- MAIN CONTAINER ----

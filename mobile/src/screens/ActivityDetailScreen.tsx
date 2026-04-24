@@ -729,29 +729,9 @@ export default function ActivityDetailScreen() {
             </View>
           </View>
 
-          {/* Distance Markers along route */}
-          {hasPath && distance > 0.5 && (
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                <Feather name="flag" size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: textColor, marginLeft: 6, marginBottom: 0 }]}>거리 구간</Text>
-              </View>
-              <View style={styles.distanceMarkersRow}>
-                {Array.from({ length: Math.floor(distance) }, (_, i) => i + 1).slice(0, 10).map((km) => (
-                  <View key={km} style={styles.distanceMarker}>
-                    <View style={styles.distanceMarkerDot}>
-                      <Text style={styles.distanceMarkerText}>{km}</Text>
-                    </View>
-                    <Text style={[styles.distanceMarkerLabel, { color: textTertColor }]}>km</Text>
-                  </View>
-                ))}
-                <View style={styles.distanceMarkerFinish}>
-                  <Feather name="flag" size={14} color="#FF4B4B" />
-                  <Text style={[styles.distanceMarkerLabel, { color: textTertColor }]}>{distance.toFixed(1)}km</Text>
-                </View>
-              </View>
-            </View>
-          )}
+          {/* Distance segments section removed per user — the km chips
+              duplicated info already surfaced by the elevation profile
+              and route itself. */}
 
           {/* Elevation Profile */}
           {trackPoints.length > 5 && trackPoints.some((p: any) => p.elevation != null || p.altitude != null || p.ele != null) && (() => {

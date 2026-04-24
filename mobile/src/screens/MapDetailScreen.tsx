@@ -69,6 +69,43 @@ export default function MapDetailScreen() {
     geometry: { type: 'LineString' as const, coordinates: pathCoordinates },
   } : null;
 
+  // 1 km interval markers — port of web addTrailDistanceMarkers.
+  const kmMarkersGeoJSON = React.useMemo(() => {
+    if (!hasPath) return null;
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const hav = (a: [number, number], b: [number, number]) => {
+      const dLat = toRad(b[1] - a[1]);
+      const dLng = toRad(b[0] - a[0]);
+      const s =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+    };
+    const features: any[] = [];
+    let cum = 0;
+    let nextKm = 1;
+    for (let i = 1; i < pathCoordinates.length; i++) {
+      const a = pathCoordinates[i - 1];
+      const b = pathCoordinates[i];
+      const segment = hav(a, b);
+      while (cum + segment >= nextKm) {
+        const frac = (nextKm - cum) / segment;
+        const lng = a[0] + (b[0] - a[0]) * frac;
+        const lat = a[1] + (b[1] - a[1]) * frac;
+        features.push({
+          type: 'Feature',
+          properties: { km: nextKm, label: String(nextKm) },
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+        });
+        nextKm += 1;
+      }
+      cum += segment;
+    }
+    if (!features.length) return null;
+    return { type: 'FeatureCollection' as const, features };
+  }, [hasPath, pathCoordinates]);
+
   // Route trace animation: reveal the polyline from start → end.
   //
   // Mapbox `line-trim-offset: [start, end]` HIDES the range [start,end].
@@ -252,6 +289,34 @@ export default function MapDetailScreen() {
           </Mapbox.ShapeSource>
         )}
 
+        {/* Km distance markers along the path (every 1 km) */}
+        {kmMarkersGeoJSON && (
+          <Mapbox.ShapeSource id="km-markers" shape={kmMarkersGeoJSON as any}>
+            {/* Dark halo behind each label for readability */}
+            <Mapbox.CircleLayer
+              id="km-marker-dot"
+              style={{
+                circleColor: '#2D4A2E',
+                circleRadius: 11,
+                circleStrokeColor: '#FFFFFF',
+                circleStrokeWidth: 2.5,
+              }}
+            />
+            <Mapbox.SymbolLayer
+              id="km-marker-label"
+              style={{
+                textField: ['get', 'label'] as any,
+                textSize: 11,
+                textColor: '#FFFFFF',
+                textFont: ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                textAllowOverlap: true,
+                textIgnorePlacement: true,
+                textPadding: 0,
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
         {/* Start marker */}
         {startLat && startLng && (
           <Mapbox.PointAnnotation id="start" coordinate={[startLng, startLat]}>
@@ -339,14 +404,16 @@ export default function MapDetailScreen() {
         </View>
       )}
 
-      {/* Route trace animation trigger — floats above elevation strip */}
+      {/* Route trace animation trigger — clears the elevation strip.
+          ElevationProfile height (88) + its own vertical padding (~22)
+          + safe-area bottom + 12 dp breathing room. */}
       {hasPath && (
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={animating ? cancelAnimation : startAnimation}
           style={[
             styles.traceBtn,
-            { bottom: insets.bottom + 132 },
+            { bottom: insets.bottom + 88 + 22 + 12 },
             animating && styles.traceBtnActive,
           ]}
         >

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -68,6 +68,61 @@ export default function MapDetailScreen() {
     geometry: { type: 'LineString' as const, coordinates: pathCoordinates },
   } : null;
 
+  // Route trace animation: reveal the polyline from start → end by
+  // setting `lineTrimOffset: [progress, 1]` via @rnmapbox/maps. A walker
+  // dot is sampled along the path and updated each frame.
+  const [traceProgress, setTraceProgress] = useState(1); // 1 = fully visible
+  const [animating, setAnimating] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const walkerCoord = hasPath
+    ? sampleAlong(pathCoordinates, Math.max(0, Math.min(1, 1 - traceProgress)))
+    : null;
+  const walkerGeoJSON =
+    animating && walkerCoord
+      ? {
+          type: 'Feature' as const,
+          properties: {},
+          geometry: { type: 'Point' as const, coordinates: walkerCoord },
+        }
+      : null;
+
+  const startAnimation = () => {
+    if (!hasPath) return;
+    cancelAnimation();
+    const duration = 5200;
+    const started = Date.now();
+    setAnimating(true);
+    setTraceProgress(1);
+    const tick = () => {
+      const t = (Date.now() - started) / duration;
+      if (t >= 1) {
+        setTraceProgress(0);
+        // Linger for a beat, then remove the walker so the arrows come back
+        setTimeout(() => {
+          setAnimating(false);
+          setTraceProgress(1);
+        }, 700);
+        return;
+      }
+      // easeOutCubic — 1 - (1 - t)^3
+      const eased = 1 - Math.pow(1 - t, 3);
+      setTraceProgress(1 - eased);
+      rafRef.current = requestAnimationFrame(tick) as unknown as number;
+    };
+    rafRef.current = requestAnimationFrame(tick) as unknown as number;
+  };
+
+  const cancelAnimation = () => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setAnimating(false);
+    setTraceProgress(1);
+  };
+
+  useEffect(() => () => cancelAnimation(), []);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
@@ -100,20 +155,41 @@ export default function MapDetailScreen() {
           animationDuration={500}
         />
 
-        {/* Route */}
+        {/* Route — lineTrimOffset animates 0→1 during trace preview */}
         {routeGeoJSON && (
           <Mapbox.ShapeSource id="route" shape={routeGeoJSON}>
             <Mapbox.LineLayer id="routeGlow" style={{
               lineColor: '#4ADE80', lineWidth: 16, lineOpacity: 0.12,
               lineCap: 'round', lineJoin: 'round', lineBlur: 4,
+              lineTrimOffset: [traceProgress, 1],
             }} />
             <Mapbox.LineLayer id="routeBorder" style={{
               lineColor: 'rgba(255,255,255,0.3)', lineWidth: 8,
               lineOpacity: 0.9, lineCap: 'round', lineJoin: 'round',
+              lineTrimOffset: [traceProgress, 1],
             }} />
             <Mapbox.LineLayer id="routeLine" style={{
               lineColor: '#4ADE80', lineWidth: 4.5,
               lineCap: 'round', lineJoin: 'round',
+              lineTrimOffset: [traceProgress, 1],
+            }} />
+          </Mapbox.ShapeSource>
+        )}
+
+        {/* Walker dot during animation */}
+        {walkerGeoJSON && (
+          <Mapbox.ShapeSource id="route-walker" shape={walkerGeoJSON as any}>
+            <Mapbox.CircleLayer id="route-walker-glow" style={{
+              circleColor: '#FFB770',
+              circleRadius: 18,
+              circleOpacity: 0.35,
+              circleBlur: 1,
+            }} />
+            <Mapbox.CircleLayer id="route-walker-dot" style={{
+              circleColor: '#FFFFFF',
+              circleRadius: 6,
+              circleStrokeColor: '#E8563D',
+              circleStrokeWidth: 2.5,
             }} />
           </Mapbox.ShapeSource>
         )}
@@ -177,6 +253,28 @@ export default function MapDetailScreen() {
             </View>
           )}
         </View>
+      )}
+
+      {/* Route trace animation trigger */}
+      {hasPath && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={animating ? cancelAnimation : startAnimation}
+          style={[
+            styles.traceBtn,
+            { bottom: insets.bottom + ((distance || duration) ? 70 : 16) },
+            animating && styles.traceBtnActive,
+          ]}
+        >
+          <View style={[styles.traceBtnIcon, animating && styles.traceBtnIconActive]}>
+            <Text style={styles.traceBtnIconText}>
+              {animating ? '■' : '▶'}
+            </Text>
+          </View>
+          <Text style={[styles.traceBtnText, animating && styles.traceBtnTextActive]}>
+            {animating ? '정지' : '코스 따라가기'}
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -303,4 +401,81 @@ const styles = StyleSheet.create({
   spotEmoji: {
     fontSize: 14,
   },
+  traceBtn: {
+    position: 'absolute',
+    left: 16,
+    bottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 10,
+    paddingRight: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    zIndex: 11,
+  },
+  traceBtnActive: {
+    backgroundColor: '#FFB770',
+  },
+  traceBtnIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFB770',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  traceBtnIconActive: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  traceBtnIconText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#000',
+  },
+  traceBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  traceBtnTextActive: {
+    color: '#000',
+  },
 });
+
+/** Find the point at a given progress (0..1) along a LineString. */
+function sampleAlong(
+  coords: [number, number][],
+  progress: number,
+): [number, number] | null {
+  if (!coords || coords.length < 2) return null;
+  // Cumulative distances (Euclidean in lng/lat space is fine for a small
+  // path — perfect accuracy isn't needed for a visual marker).
+  let total = 0;
+  const cum: number[] = [0];
+  for (let i = 1; i < coords.length; i++) {
+    const dx = coords[i][0] - coords[i - 1][0];
+    const dy = coords[i][1] - coords[i - 1][1];
+    total += Math.sqrt(dx * dx + dy * dy);
+    cum.push(total);
+  }
+  if (total <= 0) return coords[0];
+  const target = Math.max(0, Math.min(1, progress)) * total;
+  let lo = 0;
+  let hi = cum.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (cum[mid] <= target) lo = mid;
+    else hi = mid;
+  }
+  const segLen = cum[lo + 1] - cum[lo] || 1e-9;
+  const t = (target - cum[lo]) / segLen;
+  return [
+    coords[lo][0] + (coords[lo + 1][0] - coords[lo][0]) * t,
+    coords[lo][1] + (coords[lo + 1][1] - coords[lo][1]) * t,
+  ];
+}

@@ -48,6 +48,7 @@ import { fetchWeatherAt, CurrentWeather } from '../utils/weather';
 import { startBarometer, stopBarometer, subscribeToBarometer } from '../utils/barometer';
 import { useLiveShare } from '../hooks/useLiveShare';
 import LiveShareButton from '../components/LiveShareButton';
+import { useLiveStamps, formatMetres as formatMetresStamp } from '../hooks/useLiveStamps';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -619,6 +620,45 @@ function WalkScreenInner() {
   // GPS mode: 'fast' = 1 Hz (walking), 'slow' = 2s bg (auto-paused, saves battery)
   const gpsModeRef = useRef<'fast' | 'slow'>('fast');
   const createGpsWatchRef = useRef<((mode: 'fast' | 'slow') => void) | null>(null);
+
+  // Live stamp auto-collector — only active when walking a specific trail.
+  // Every GPS fix is fed to checkPosition(), which auto-POSTs the collect
+  // endpoint when the user enters a stamp point's radius.
+  const liveStamps = useLiveStamps({
+    trailId: trailId ?? null,
+    active: !!trailId && isAuthenticated,
+    onAward: (award) => {
+      try {
+        // @ts-ignore — Vibration is imported at the top (RN core re-export
+        // through react-native). Matches the pattern already used for
+        // off-route alerts above.
+        const { Vibration } = require('react-native');
+        Vibration.vibrate([0, 120, 80, 220]);
+      } catch {}
+      try {
+        audioFeedbackRef.current?.announce?.(
+          `${award.stamp.name} 스탬프를 획득했어요!`,
+        );
+      } catch {}
+      setStampBanner({
+        emoji: award.stamp.emoji || '✨',
+        name: award.stamp.name,
+        at: Date.now(),
+      });
+    },
+  });
+  const liveStampsCheckRef = useRef(liveStamps.checkPosition);
+  liveStampsCheckRef.current = liveStamps.checkPosition;
+  const [stampBanner, setStampBanner] = useState<{
+    emoji: string;
+    name: string;
+    at: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!stampBanner) return;
+    const id = setTimeout(() => setStampBanner(null), 3200);
+    return () => clearTimeout(id);
+  }, [stampBanner]);
   // High-accuracy mode: keep 1Hz GPS even when screen off. Uses more battery
   // but gives maximum recording detail. User can toggle this.
   const highAccuracyRef = useRef(false);
@@ -665,6 +705,15 @@ function WalkScreenInner() {
       // In background: still accumulate routeCoords for the final save,
       // but via ref to avoid re-renders.
       setRouteCoords(prev => [...prev, [point.lng, point.lat]]);
+    }
+
+    // GPS auto-stamp — only runs when walking a specific trail with
+    // stamp points. Distance + radius check is done entirely client-side;
+    // backend re-validates on POST so a spoofed GPS still can't cheat.
+    if (point && trailId) {
+      try {
+        liveStampsCheckRef.current(point.lat, point.lng);
+      } catch {}
     }
 
     // Off-route detection: only runs when a trail is being followed
@@ -1307,6 +1356,39 @@ function WalkScreenInner() {
               <Text style={styles.offRouteTitle}>경로를 벗어났어요</Text>
               <Text style={styles.offRouteSub}>원래 길로 돌아가세요</Text>
             </View>
+          </View>
+        )}
+
+        {/* Stamp unlock celebration — auto-awarded by useLiveStamps */}
+        {stampBanner && (
+          <View style={[styles.stampBanner, { top: insets.top + 70 }]}>
+            <Text style={styles.stampBannerEmoji}>{stampBanner.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.stampBannerTitle}>스탬프 획득!</Text>
+              <Text style={styles.stampBannerSub} numberOfLines={1}>
+                {stampBanner.name}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Next-stamp hint pill (above off-route banner when both active) */}
+        {trailId && liveStamps.totalCount > 0 && liveStamps.nextStamp && !stampBanner && (
+          <View style={[styles.nextStampPill, { top: insets.top + 70 }]}>
+            <Text style={styles.nextStampEmoji}>
+              {liveStamps.nextStamp.stamp.emoji || '📍'}
+            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.nextStampLabel}>
+                다음 스탬프 · {liveStamps.collectedCount}/{liveStamps.totalCount}
+              </Text>
+              <Text style={styles.nextStampName} numberOfLines={1}>
+                {liveStamps.nextStamp.stamp.name}
+              </Text>
+            </View>
+            <Text style={styles.nextStampDist}>
+              {formatMetresStamp(liveStamps.nextStamp.distanceM)}
+            </Text>
           </View>
         )}
 
@@ -1994,6 +2076,72 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 12,
     marginTop: 1,
+  },
+  stampBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#6EE7B7',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 7,
+  },
+  stampBannerEmoji: { fontSize: 32 },
+  stampBannerTitle: {
+    color: '#065F46',
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  stampBannerSub: {
+    color: '#047857',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  nextStampPill: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+  },
+  nextStampEmoji: { fontSize: 22 },
+  nextStampLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10.5,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  nextStampName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  nextStampDist: {
+    color: '#FFB770',
+    fontSize: 14,
+    fontWeight: '800',
   },
   accuracyToggle: {
     paddingHorizontal: 8,

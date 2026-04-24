@@ -12,7 +12,8 @@
 #   MORU_SEED_TRAILS=1    → runs import_durunubi_trails + enrich_trail_images
 #   MORU_SEED_SERIES=1    → runs seed_trail_series
 #   MORU_SANITIZE_USERS=1 → runs sanitize_phone_usernames
-#   MORU_SEED_SHOWCASE=1  → runs seed_showcase_trail --force (one-off, unset after)
+#   MORU_SEED_SHOWCASE=1       → runs seed_showcase_trail --force (one-off, unset after)
+#   MORU_SEED_SHOWCASE_PACK=1  → runs seed_showcase_trails_pack --force (북촌+반포, one-off)
 #
 # Alternative: `python manage.py seed_all` triggers every seed on demand.
 set -o errexit
@@ -67,11 +68,19 @@ else
 fi
 
 if [ "${MORU_SEED_SHOWCASE:-0}" = "1" ]; then
-  echo "=== Seeding showcase trail (여의도 한강 벚꽃길) ==="
+  echo "=== Seeding showcase trail (서울숲 공원 루프) ==="
   MORU_DISABLE_REVALIDATE=1 python manage.py seed_showcase_trail --force \
     || echo "seed_showcase_trail failed — continuing"
 else
   echo "=== Skipping showcase trail seed (set MORU_SEED_SHOWCASE=1 to enable) ==="
+fi
+
+if [ "${MORU_SEED_SHOWCASE_PACK:-0}" = "1" ]; then
+  echo "=== Seeding showcase trail pack (북촌 + 반포→뚝섬) ==="
+  MORU_DISABLE_REVALIDATE=1 python manage.py seed_showcase_trails_pack --force \
+    || echo "seed_showcase_trails_pack failed — continuing"
+else
+  echo "=== Skipping showcase pack seed (set MORU_SEED_SHOWCASE_PACK=1 to enable) ==="
 fi
 
 echo "=== Build complete ==="

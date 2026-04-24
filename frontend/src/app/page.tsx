@@ -56,6 +56,17 @@ export default function Home() {
   const { setLanguage } = useLanguageStore();
   const [showLangMenu, setShowLangMenu] = useState(false);
 
+  const { data: featuredSeries } = useQuery<any[]>({
+    queryKey: ["trail-series", "featured"],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get("/trails/series/featured/");
+        return data ?? [];
+      } catch { return []; }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
   const { data: platformStats } = useQuery<{
     countries: number;
     trails: number;
@@ -295,36 +306,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Discover by Country */}
-      <section className="max-w-7xl mx-auto px-5 pt-10 md:pt-16 pb-8 bg-[#FAFAFA]">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-[20px] font-bold tracking-tight">{discoverTexts[language]?.title ?? discoverTexts.en.title}</h2>
-            <p className="text-[13px] text-text-tertiary mt-0.5">{discoverTexts[language]?.sub ?? discoverTexts.en.sub}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {DISCOVER_COUNTRIES.map((country) => {
-            const name = language === "ko" ? country.nameKo : language === "ja" ? country.nameJa : language === "zh" ? country.nameZh : country.nameEn;
-            const desc = (country.desc as any)[language] ?? country.desc.en;
-            return (
-              <Link
-                key={country.code}
-                href={`/explore?country=${country.code}`}
-                className="card-hover p-4 flex items-center gap-3.5 group hover:translate-y-[-2px] hover:shadow-card transition-all duration-200"
-              >
-                <span className="text-3xl group-hover:scale-110 transition-transform duration-200">{country.emoji}</span>
-                <div className="min-w-0">
-                  <p className="text-[14px] font-semibold group-hover:text-primary transition-colors">{name}</p>
-                  <p className="text-[11px] text-text-tertiary truncate">{desc}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-
       {/* Popular Trails */}
       <section className="bg-surface py-8 md:py-14">
         <div className="max-w-7xl mx-auto px-5">
@@ -377,18 +358,119 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Discover by Country */}
+      <section className="max-w-7xl mx-auto px-5 pt-10 md:pt-14 pb-8">
+        <div className="mb-5">
+          <h2 className="text-[20px] font-bold tracking-tight">{discoverTexts[language]?.title ?? discoverTexts.en.title}</h2>
+          <p className="text-[13px] text-text-tertiary mt-0.5">{discoverTexts[language]?.sub ?? discoverTexts.en.sub}</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {DISCOVER_COUNTRIES.map((country) => {
+            const name = language === "ko" ? country.nameKo : language === "ja" ? country.nameJa : language === "zh" ? country.nameZh : country.nameEn;
+            const desc = (country.desc as any)[language] ?? country.desc.en;
+            return (
+              <Link
+                key={country.code}
+                href={`/explore?country=${country.code}`}
+                className="card-hover p-4 flex items-center gap-3.5 group hover:translate-y-[-2px] hover:shadow-card transition-all duration-200"
+              >
+                <span className="text-3xl group-hover:scale-110 transition-transform duration-200">{country.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold group-hover:text-primary transition-colors">{name}</p>
+                  <p className="text-[11px] text-text-tertiary truncate">{desc}</p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Series Challenge */}
+      {featuredSeries && featuredSeries.length > 0 && (
+        <section className="bg-surface py-8 md:py-14">
+          <div className="max-w-7xl mx-auto px-5">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-[20px] font-bold tracking-tight">
+                  {language === "ko" ? "시리즈 도전" : language === "ja" ? "シリーズチャレンジ" : language === "zh" ? "系列挑战" : "Series Challenges"}
+                </h2>
+                <p className="text-[13px] text-text-tertiary mt-0.5">
+                  {language === "ko" ? "여러 코스를 연결해 완주에 도전하세요" : language === "ja" ? "複数のコースをつなげて完走に挑戦" : language === "zh" ? "连接多条路线挑战完走" : "Connect multiple trails and complete the challenge"}
+                </p>
+              </div>
+              <Link href="/series" className="text-[13px] text-primary font-medium">{t("home.viewAll")}</Link>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {featuredSeries.slice(0, 6).map((series: any) => {
+                const pct = Math.min(100, series.progress_pct || 0);
+                return (
+                  <Link
+                    key={series.id}
+                    href={`/series/${series.slug}`}
+                    className="min-w-[240px] bg-white dark:bg-[#1e1e1e] rounded-2xl p-5 shadow-sm hover:shadow-card transition-all duration-200"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-[#F0F7F0] dark:bg-primary/10 flex items-center justify-center mb-3">
+                      <span className="text-xl">{series.accent_emoji || "🚶"}</span>
+                    </div>
+                    <p className="text-[15px] font-bold text-text-primary truncate">{series.title}</p>
+                    <p className="text-[11px] text-text-tertiary mt-0.5 truncate">{series.subtitle || series.region || ""}</p>
+                    <div className="mt-3 h-[5px] rounded-full bg-[#F2F4F6] dark:bg-white/10 overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-[10px] text-text-tertiary mt-1.5 font-medium">
+                      {series.progress_completed}/{series.progress_total} · {pct}%
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* App Download */}
-      <section className="py-12 md:py-16">
-        <div className="max-w-md mx-auto px-5 text-center">
-          <p className="text-[13px] text-text-tertiary mb-5">
+      <section className="py-14 md:py-20">
+        <div className="max-w-lg mx-auto px-5 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <img src="/icon-192.png" alt="Moru" className="w-9 h-9 rounded-xl" />
+          </div>
+          <h2 className="text-[20px] md:text-[24px] font-bold tracking-tight mb-2">
             {appDownloadTexts[language]?.title ?? appDownloadTexts.en.title}
+          </h2>
+          <p className="text-[13px] text-text-tertiary mb-6">
+            {appDownloadTexts[language]?.sub ?? appDownloadTexts.en.sub}
           </p>
           <div className="flex gap-3 justify-center">
-            <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer">
-              <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store" className="h-[40px]" />
+            <a
+              href="https://apps.apple.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 bg-[#000] text-white h-[48px] px-5 rounded-xl hover:bg-[#222] transition-colors"
+            >
+              <svg width="20" height="24" viewBox="0 0 17 20" fill="currentColor">
+                <path d="M13.545 10.239c-.022-2.234 1.823-3.306 1.906-3.358-.037-.055-1.044-1.597-2.648-1.597-1.12 0-2.042.672-2.576.672-.558 0-1.392-.654-2.298-.636C6.56 5.346 5.3 6.267 4.604 7.637c-1.434 2.494-.366 6.176 1.008 8.2.694.982 1.506 2.078 2.566 2.04 1.04-.042 1.424-.654 2.676-.654 1.232 0 1.594.654 2.676.632 1.106-.018 1.8-.982 2.468-1.972.8-1.126 1.12-2.228 1.134-2.286-.024-.01-2.162-.832-2.184-3.298l-.003-.06zM11.49 3.82c.544-.694.926-1.618.822-2.57-.796.034-1.796.556-2.366 1.226-.5.588-.954 1.56-.838 2.468.894.068 1.818-.444 2.382-1.124z"/>
+              </svg>
+              <div className="text-left leading-tight">
+                <div className="text-[9px] opacity-60 font-medium">Download on the</div>
+                <div className="text-[15px] font-semibold -mt-0.5">App Store</div>
+              </div>
             </a>
-            <a href="https://play.google.com" target="_blank" rel="noopener noreferrer">
-              <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Google Play" className="h-[40px]" />
+            <a
+              href="https://play.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 bg-[#000] text-white h-[48px] px-5 rounded-xl hover:bg-[#222] transition-colors"
+            >
+              <svg width="20" height="22" viewBox="0 0 20 22" fill="none">
+                <path d="M1.22 0.26C0.947 0.547 0.79 0.977 0.79 1.527V20.477C0.79 21.027 0.947 21.457 1.22 21.737L1.3 21.817L11.79 11.327V11.167V11.007L1.3 0.517L1.22 0.597V0.26Z" fill="#4285F4"/>
+                <path d="M15.29 14.827L11.79 11.327V11.167V11.007L15.29 7.507L15.39 7.567L19.54 9.907C20.72 10.567 20.72 11.647 19.54 12.317L15.39 14.657L15.29 14.827Z" fill="#FBBC04"/>
+                <path d="M15.39 14.657L11.79 11.057L1.22 21.627C1.62 22.057 2.27 22.107 3.01 21.687L15.39 14.657Z" fill="#EA4335"/>
+                <path d="M15.39 7.457L3.01 0.427C2.27-0.003 1.62 0.057 1.22 0.487L11.79 11.057L15.39 7.457Z" fill="#34A853"/>
+              </svg>
+              <div className="text-left leading-tight">
+                <div className="text-[9px] opacity-60 font-medium">GET IT ON</div>
+                <div className="text-[15px] font-semibold -mt-0.5">Google Play</div>
+              </div>
             </a>
           </div>
         </div>

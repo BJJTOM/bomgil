@@ -19,11 +19,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
+  applyMoruAtmosphere,
   applyMoruBaseLayers,
   applyMoruLabelLocale,
   cleanupMoruLayers,
   drawMoruTrailLine,
   emphasizePeakLabels,
+  enhanceMapLabels,
   type MoruMapLocale,
 } from "./moruMapLayers";
 
@@ -55,6 +57,10 @@ interface MapViewProps {
   peakLabels?: boolean;
   /** 우상단 3D 토글 버튼 노출 여부 (기본 true). */
   showTerrainToggle?: boolean;
+  /** 도로/동네/POI 라벨 가독성 강화 (기본 true). */
+  enhanceLabels?: boolean;
+  /** POI 라벨 밀도 ('default' | 'dense', 기본 'dense'). */
+  labelDensity?: "default" | "dense";
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -96,6 +102,8 @@ export function MapView({
   showContours = true,
   peakLabels = true,
   showTerrainToggle = true,
+  enhanceLabels = true,
+  labelDensity = "dense",
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -157,6 +165,8 @@ export function MapView({
             terrainExaggeration: 1.3,
             theme,
           });
+          applyMoruAtmosphere(map, theme);
+          if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
           if (peakLabels) emphasizePeakLabels(map, theme);
           applyMoruLabelLocale(map, locale);
           if (terrain3DState) map.easeTo({ pitch: 55, duration: 400 });
@@ -168,6 +178,8 @@ export function MapView({
         map.on("styledata", () => {
           if (!map.isStyleLoaded()) return;
           applyMoruLabelLocale(map, locale);
+          if (enhanceLabels) enhanceMapLabels(map, theme, { density: labelDensity });
+          if (peakLabels) emphasizePeakLabels(map, theme);
         });
       } catch (err) {
         console.error("Map load error:", err);
@@ -232,6 +244,13 @@ export function MapView({
     if (!map || !loaded || !peakLabels) return;
     emphasizePeakLabels(map, theme);
   }, [loaded, peakLabels, theme]);
+
+  // 라벨 가독성 강화 — theme/density 변경 시 재적용
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !loaded || !enhanceLabels) return;
+    enhanceMapLabels(map, theme, { density: labelDensity });
+  }, [loaded, enhanceLabels, labelDensity, theme]);
 
   // ── Path & Markers 그리기 (기존 로직 유지 + 라인만 Komoot 버전으로) ─
   useEffect(() => {

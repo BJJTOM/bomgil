@@ -28,6 +28,7 @@ const MORU_LAYER_IDS = [
   'moru-trail-arrows',
   'moru-trail-start',
   'moru-trail-end',
+  'moru-sky',
 ];
 const MORU_SOURCE_IDS = [
   'moru-dem',
@@ -459,4 +460,171 @@ function findLayerId(map: any, candidates: string[]): string | null {
     if (map.getLayer && map.getLayer(id)) return id;
   }
   return null;
+}
+
+// ────────────────────────────────────────────────────────────────
+// 6. 라벨 가독성 강화 — 도로명, 동네, POI, 자연물
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Mapbox dark-v11 기본 스타일은 라벨이 매우 보수적이라 도로명/동네/POI 가
+ * 잘 안 보인다. 이 함수는 스타일 안의 모든 symbol 레이어를 순회하면서:
+ *  - visibility: 'visible' 로 강제
+ *  - text-halo 를 두껍게 (다크 배경에서 뚜렷하게)
+ *  - text-color 를 테마에 맞춰 조정
+ *  - 카테고리별로 text-size 를 살짝 올림 (줌별 interpolate)
+ *  - symbol-sort-key / text-optional / icon-optional 을 안전하게 유지
+ *
+ * moru-* 레이어(우리가 추가한 것)는 건드리지 않는다.
+ */
+export function enhanceMapLabels(
+  map: any,
+  theme: 'dark' | 'light' = 'dark',
+  options: { density?: 'default' | 'dense' } = {}
+) {
+  if (!map || !map.isStyleLoaded()) return;
+  const density = options.density ?? 'dense';
+
+  const haloColor =
+    theme === 'dark' ? 'rgba(8, 16, 12, 0.85)' : 'rgba(255, 255, 255, 0.92)';
+  const primaryText = theme === 'dark' ? '#F0FAF3' : '#191F28';
+  const secondaryText = theme === 'dark' ? '#B7D3C0' : '#4b5563';
+
+  const layers: any[] = map.getStyle()?.layers ?? [];
+  for (const layer of layers) {
+    if (layer.type !== 'symbol') continue;
+    const id: string = layer.id ?? '';
+    if (!id || id.startsWith('moru-')) continue;
+
+    // ── 공통: visibility, halo ────────────────────────────────
+    trySet(map, id, 'layout', 'visibility', 'visible');
+    trySet(map, id, 'paint', 'text-halo-color', haloColor);
+    trySet(map, id, 'paint', 'text-halo-width', 1.6);
+    trySet(map, id, 'paint', 'text-halo-blur', 0.4);
+
+    // 카테고리별 크기 조정
+    if (id.includes('road-label')) {
+      // 도로명 — 공한신도시 내의 '해단북로' 같은 소로까지
+      trySet(map, id, 'paint', 'text-color', primaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        10, 10,
+        13, 11.5,
+        15, 13,
+        18, 15,
+      ]);
+    } else if (
+      id.includes('settlement-subdivision') ||
+      id.includes('neighbourhood') ||
+      id.includes('neighborhood')
+    ) {
+      // 동·신도시·동네 (공한신도시, 역삼동 등)
+      trySet(map, id, 'paint', 'text-color', primaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        11, 11,
+        14, 13,
+        17, 15,
+      ]);
+      trySet(map, id, 'paint', 'text-halo-width', 1.8);
+    } else if (id.includes('settlement-minor') || id.includes('place-town')) {
+      // 읍·면
+      trySet(map, id, 'paint', 'text-color', primaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        8, 11, 12, 13, 15, 15,
+      ]);
+    } else if (id.includes('settlement-major') || id.includes('place-city')) {
+      // 시·도
+      trySet(map, id, 'paint', 'text-color', primaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        4, 11, 8, 14, 12, 18,
+      ]);
+    } else if (id.includes('poi-label')) {
+      // 음식점, 카페, 관광지, 공원…
+      trySet(map, id, 'paint', 'text-color', secondaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        13, 10,
+        15, 11.5,
+        18, 13,
+      ]);
+      if (density === 'dense') {
+        // POI 는 기본적으로 overlap 우선순위가 낮아 많이 사라짐.
+        // 밀도를 올리기 위해 icon 이 있는 경우도 text 표시 유지.
+        trySet(map, id, 'layout', 'text-optional', true);
+        trySet(map, id, 'layout', 'icon-optional', false);
+      }
+    } else if (id.includes('transit-label')) {
+      // 역·정류장
+      trySet(map, id, 'paint', 'text-color', primaryText);
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        12, 10, 15, 12, 18, 14,
+      ]);
+    } else if (id.includes('natural-line-label') || id.includes('waterway-label')) {
+      // 하천·계곡
+      trySet(map, id, 'paint', 'text-color', theme === 'dark' ? '#8FD6FF' : '#1E5FAA');
+      trySet(map, id, 'layout', 'text-size', [
+        'interpolate', ['linear'], ['zoom'],
+        12, 10, 15, 12, 18, 14,
+      ]);
+    } else if (id.includes('water-point-label')) {
+      trySet(map, id, 'paint', 'text-color', theme === 'dark' ? '#8FD6FF' : '#1E5FAA');
+    }
+  }
+}
+
+// 안전한 set — 스타일/레이어에 해당 property 가 없어도 throw 안 하도록
+function trySet(
+  map: any,
+  layerId: string,
+  kind: 'layout' | 'paint',
+  prop: string,
+  value: any
+) {
+  try {
+    if (kind === 'layout') map.setLayoutProperty(layerId, prop, value);
+    else map.setPaintProperty(layerId, prop, value);
+  } catch {
+    /* noop */
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 7. Sky + Fog (3D 모드에서 입체감)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 3D pitch 가 켜져 있을 때 지평선이 밋밋해 보이는 문제를 해결.
+ * atmosphere sky 레이어 + fog 를 추가해 Komoot-스러운 원경 안개 효과.
+ * idempotent — 반복 호출 안전.
+ */
+export function applyMoruAtmosphere(map: any, theme: 'dark' | 'light' = 'dark') {
+  if (!map || !map.isStyleLoaded()) return;
+  try {
+    if (!map.getLayer('moru-sky')) {
+      map.addLayer({
+        id: 'moru-sky',
+        type: 'sky',
+        paint: {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0, 0],
+          'sky-atmosphere-sun-intensity': 5,
+          'sky-atmosphere-color':
+            theme === 'dark' ? 'rgb(18, 30, 36)' : 'rgb(180, 200, 220)',
+        } as any,
+      } as any);
+    }
+    map.setFog({
+      color: theme === 'dark' ? 'rgb(14, 22, 18)' : 'rgb(230, 240, 235)',
+      'high-color': theme === 'dark' ? 'rgb(28, 60, 46)' : 'rgb(200, 220, 210)',
+      'horizon-blend': 0.08,
+      'space-color': theme === 'dark' ? 'rgb(5, 10, 8)' : 'rgb(220, 234, 240)',
+      'star-intensity': theme === 'dark' ? 0.4 : 0,
+    } as any);
+  } catch {
+    /* 구형 Mapbox 에서 fog 미지원 — 무시 */
+  }
 }

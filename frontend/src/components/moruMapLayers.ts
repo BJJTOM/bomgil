@@ -1058,9 +1058,9 @@ export function addTrailDistanceMarkers(
           'circle-stroke-width': 2,
           'circle-radius': [
             'interpolate', ['linear'], ['zoom'],
-            12, 7,
-            15, 10,
-            18, 12,
+            12, 5,
+            15, 7,
+            18, 9,
           ],
           'circle-opacity': 0.95,
         },

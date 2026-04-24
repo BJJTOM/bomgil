@@ -398,26 +398,15 @@ export function MapView({
           .addTo(map);
       }
 
-      // 스팟(POI) 마커 — 호버 시 이름 라벨 표시, 클릭 시 팝업
+      // 스팟(POI) 마커 — 작은 도트 + 호버 시 이름
       markers.forEach((m) => {
         const wrapper = document.createElement("div");
         wrapper.style.cssText = "position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer";
 
         const el = document.createElement("div");
-        if (m.emoji) {
-          el.style.cssText = `width:36px;height:36px;background:${
-            isDark ? "rgba(30,30,30,0.9)" : "white"
-          };border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px ${
-            isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.15)"
-          };border:2px solid ${
-            isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)"
-          };font-size:18px;backdrop-filter:blur(8px);transition:transform 0.15s ease`;
-          el.innerHTML = `<span>${m.emoji}</span>`;
-        } else {
-          el.style.cssText = `width:14px;height:14px;background:${
-            isDark ? "#A8E6CF" : "#2D4A2E"
-          };border-radius:50%;border:2.5px solid white;box-shadow:0 1px 8px rgba(0,0,0,0.25);transition:transform 0.15s ease`;
-        }
+        el.style.cssText = `width:12px;height:12px;background:${
+          isDark ? "#A8E6CF" : "#2D4A2E"
+        };border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);transition:transform 0.15s ease`;
 
         // Hover name label (appears on hover, not popup)
         const nameLabel = document.createElement("div");

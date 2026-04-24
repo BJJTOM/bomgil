@@ -68,6 +68,16 @@ interface MapViewProps {
   showNavigationControl?: boolean;
   /** 스크롤 줌 활성화 (기본 false — fullscreen 모드에서만 true). */
   enableScrollZoom?: boolean;
+  /** 맵 인스턴스가 준비되면 호출되는 콜백. 외부에서 map 을 제어할 수 있음. */
+  onMapReady?: (map: any) => void;
+  /** 원본 좌표 (고도 포함 [lng, lat, ele]). 트레일 클릭 고도 팝업에 사용. */
+  rawCoordinates?: number[][];
+  /** 총 거리 표시 문자열 (도착 마커 뱃지용, 예: "13.2km") */
+  totalDistance?: string;
+  /** 총 소요시간 분 단위 (도착 마커 뱃지용) */
+  totalDuration?: number;
+  /** POI(스팟) 마커 표시 여부 (기본 true). false 면 마커 렌더링 스킵. */
+  showPOIMarkers?: boolean;
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -113,11 +123,18 @@ export function MapView({
   labelDensity = "dense",
   showNavigationControl = false,
   enableScrollZoom = false,
+  onMapReady,
+  rawCoordinates,
+  totalDistance,
+  totalDuration,
+  showPOIMarkers = true,
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const posMarkerRef = useRef<any>(null);
+  const elevPopupRef = useRef<any>(null);
+  const elevMarkerRef = useRef<any>(null);
   const popupsRef = useRef<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const initializedRef = useRef(false);
@@ -190,6 +207,7 @@ export function MapView({
           setTimeout(() => applyMoruLabelLocale(map, locale), 300);
           if (terrain3DState) map.easeTo({ pitch: 55, duration: 400 });
           setLoaded(true);
+          if (onMapReady) onMapReady(map);
         });
 
         // styledata — 1.5s 쿨다운 타임스로틀.
@@ -332,6 +350,106 @@ export function MapView({
         // 1km 마다 거리 마커
         addTrailDistanceMarkers(map, pathCoordinates, theme);
 
+        // ── Feature 1: 트레일 라인 클릭 시 고도 팝업 ──
+        if (elevPopupRef.current) { try { elevPopupRef.current.remove(); } catch {} elevPopupRef.current = null; }
+        if (elevMarkerRef.current) { try { elevMarkerRef.current.remove(); } catch {} elevMarkerRef.current = null; }
+
+        const rawCoordsForClick = rawCoordinates && rawCoordinates.length === pathCoordinates.length
+          ? rawCoordinates
+          : pathCoordinates.map(c => [c[0], c[1]]);
+
+        const R_EARTH = 6371;
+        const toRad = (d: number) => (d * Math.PI) / 180;
+        const haversine = (a: number[], b: number[]) => {
+          const dLat = toRad(b[1] - a[1]);
+          const dLng = toRad(b[0] - a[0]);
+          const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+          return 2 * R_EARTH * Math.asin(Math.min(1, Math.sqrt(s)));
+        };
+
+        const cumDist: number[] = [0];
+        for (let i = 1; i < pathCoordinates.length; i++) {
+          cumDist.push(cumDist[i - 1] + haversine(pathCoordinates[i - 1], pathCoordinates[i]));
+        }
+        const totalPathDist = cumDist[cumDist.length - 1];
+
+        const trailClickHandler = (e: any) => {
+          const clickLng = e.lngLat.lng;
+          const clickLat = e.lngLat.lat;
+          let minD = Infinity;
+          let nearestIdx = 0;
+          for (let i = 0; i < pathCoordinates.length; i++) {
+            const dx = pathCoordinates[i][0] - clickLng;
+            const dy = pathCoordinates[i][1] - clickLat;
+            const d = dx * dx + dy * dy;
+            if (d < minD) { minD = d; nearestIdx = i; }
+          }
+
+          const coord = pathCoordinates[nearestIdx];
+          const rawCoord = rawCoordsForClick[nearestIdx];
+          const elevation = rawCoord.length >= 3 ? Math.round(rawCoord[2]) : null;
+          const distFromStart = cumDist[nearestIdx];
+          const pctOfTotal = totalPathDist > 0 ? Math.round((distFromStart / totalPathDist) * 100) : 0;
+
+          let grade = "";
+          if (rawCoord.length >= 3 && nearestIdx > 0) {
+            const prevRaw = rawCoordsForClick[nearestIdx - 1];
+            if (prevRaw.length >= 3) {
+              const segDist = haversine(pathCoordinates[nearestIdx - 1], pathCoordinates[nearestIdx]) * 1000;
+              if (segDist > 0) {
+                const elevDiff = rawCoord[2] - prevRaw[2];
+                const gradeVal = (elevDiff / segDist) * 100;
+                grade = `${gradeVal >= 0 ? "+" : ""}${gradeVal.toFixed(1)}%`;
+              }
+            }
+          }
+
+          const elevText = elevation != null ? `고도 ${elevation}m` : "";
+          const distText = `출발점에서 ${distFromStart.toFixed(1)}km \u00B7 전체의 ${pctOfTotal}%`;
+          const popupContent = `<div style="font-family:'Pretendard Variable',system-ui,sans-serif;padding:4px 2px;">
+            ${elevText ? `<div style="font-size:14px;font-weight:700;color:white;line-height:1.3">${elevText}${grade ? ` <span style="font-size:11px;font-weight:500;opacity:0.7">${grade}</span>` : ""}</div>` : ""}
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;line-height:1.3">${distText}</div>
+          </div>`;
+
+          if (elevPopupRef.current) { try { elevPopupRef.current.remove(); } catch {} }
+          if (elevMarkerRef.current) { try { elevMarkerRef.current.remove(); } catch {} }
+
+          const dotEl = document.createElement("div");
+          dotEl.style.cssText = "width:10px;height:10px;background:#FF3B30;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);pointer-events:none";
+          elevMarkerRef.current = new mapboxgl.Marker({ element: dotEl, anchor: "center" })
+            .setLngLat(coord)
+            .addTo(map);
+
+          elevPopupRef.current = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: true,
+            offset: 12,
+            className: "moru-elev-popup",
+            maxWidth: "220px",
+          })
+            .setLngLat(coord)
+            .setHTML(popupContent)
+            .addTo(map);
+
+          elevPopupRef.current.on("close", () => {
+            if (elevMarkerRef.current) { try { elevMarkerRef.current.remove(); } catch {} elevMarkerRef.current = null; }
+          });
+        };
+
+        if (map.getLayer("moru-trail-main")) {
+          map.on("click", "moru-trail-main", trailClickHandler);
+          map.on("mouseenter", "moru-trail-main", () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", "moru-trail-main", () => { map.getCanvas().style.cursor = ""; });
+        }
+
+        map.on("click", (e: any) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: map.getLayer("moru-trail-main") ? ["moru-trail-main"] : [] });
+          if (!features || features.length === 0) {
+            if (elevPopupRef.current) { try { elevPopupRef.current.remove(); } catch {} elevPopupRef.current = null; }
+            if (elevMarkerRef.current) { try { elevMarkerRef.current.remove(); } catch {} elevMarkerRef.current = null; }
+          }
+        });
+
         // 시작/종료 마커 (라벨 + pulse 애니메이션 포함)
         if (pathCoordinates.length > 1) {
           // ── Start marker ──
@@ -352,10 +470,26 @@ export function MapView({
             .addTo(map);
           markersRef.current.push(startMarker);
 
-          // ── End marker ──
+          // ── End marker (Feature 3: 총 거리/시간 뱃지 포함) ──
           const endEl = document.createElement("div");
           endEl.style.cssText =
             "position:relative;display:flex;flex-direction:column;align-items:center;z-index:10;pointer-events:none";
+
+          let endBadgeHtml = "";
+          if (totalDistance || totalDuration) {
+            const distPart = totalDistance || "";
+            let durPart = "";
+            if (totalDuration != null) {
+              const h = Math.floor(totalDuration / 60);
+              const mn = totalDuration % 60;
+              durPart = h > 0 ? `${h}h${mn > 0 ? String(mn).padStart(2, "0") + "m" : ""}` : `${mn}m`;
+            }
+            const badgeParts = [distPart, durPart].filter(Boolean).join(" \u00B7 ");
+            if (badgeParts) {
+              endBadgeHtml = `<div style="margin-top:1px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:white;font-size:9px;font-weight:600;padding:1px 8px;border-radius:6px;white-space:nowrap;letter-spacing:0.02em">${badgeParts}</div>`;
+            }
+          }
+
           endEl.innerHTML = `
             <div style="position:relative;display:flex;align-items:center;justify-content:center;width:28px;height:28px">
               <div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,59,48,0.25);animation:moru-pulse 2s ease-out infinite 0.5s"></div>
@@ -364,6 +498,7 @@ export function MapView({
               </div>
             </div>
             <div style="margin-top:2px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;white-space:nowrap;letter-spacing:0.02em">도착</div>
+            ${endBadgeHtml}
           `;
           const endMarker = new mapboxgl.Marker({ element: endEl, anchor: "center" })
             .setLngLat(pathCoordinates[pathCoordinates.length - 1] as [number, number])
@@ -398,15 +533,43 @@ export function MapView({
           .addTo(map);
       }
 
-      // 스팟(POI) 마커 — 작은 도트 + 호버 시 이름
-      markers.forEach((m) => {
+      // 스팟(POI) 마커 — Feature 2: 번호 매긴 원형 마커 (줌 >= 13 시 번호 표시)
+      // showPOIMarkers === false 이면 마커 렌더링 스킵
+      if (!showPOIMarkers) return;
+      const currentZoom = map.getZoom();
+      markers.forEach((m, idx) => {
         const wrapper = document.createElement("div");
         wrapper.style.cssText = "position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer";
 
+        // 번호 표시 여부: 줌 13 이상
+        const showNumber = currentZoom >= 13;
+        const spotNum = idx + 1;
+        const isFirst = idx === 0;
+        const isLast = idx === markers.length - 1;
+        const bgColor = isFirst ? "#34C759" : isLast ? "#FF3B30" : (isDark ? "#A8E6CF" : "#2D4A2E");
+        const textColor = (isFirst || isLast) ? "white" : (isDark ? "#0a1a10" : "white");
+        const dotSize = showNumber ? 16 : 12;
+
         const el = document.createElement("div");
-        el.style.cssText = `width:12px;height:12px;background:${
-          isDark ? "#A8E6CF" : "#2D4A2E"
-        };border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);transition:transform 0.15s ease`;
+        el.style.cssText = `width:${dotSize}px;height:${dotSize}px;background:${bgColor};border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.2);transition:transform 0.15s ease;display:flex;align-items:center;justify-content:center`;
+        if (showNumber) {
+          el.innerHTML = `<span style="color:${textColor};font-size:9px;font-weight:700;line-height:1;pointer-events:none">${spotNum}</span>`;
+        }
+
+        // 줌 변경 시 번호 표시/숨김 업데이트
+        const zoomHandler = () => {
+          const z = map.getZoom();
+          if (z >= 13) {
+            el.style.width = "16px";
+            el.style.height = "16px";
+            el.innerHTML = `<span style="color:${textColor};font-size:9px;font-weight:700;line-height:1;pointer-events:none">${spotNum}</span>`;
+          } else {
+            el.style.width = "12px";
+            el.style.height = "12px";
+            el.innerHTML = "";
+          }
+        };
+        map.on("zoom", zoomHandler);
 
         // Hover name label (appears on hover, not popup)
         const nameLabel = document.createElement("div");
@@ -462,7 +625,7 @@ export function MapView({
       });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, pathCoordinates?.length, markers.length, center?.lat, center?.lng, theme]);
+  }, [loaded, pathCoordinates?.length, markers.length, center?.lat, center?.lng, theme, showPOIMarkers, rawCoordinates?.length, totalDistance, totalDuration]);
 
   const toggle3D = useCallback(() => {
     setTerrain3DState((v) => !v);
@@ -548,6 +711,21 @@ export function MapView({
             transform: scale(1.8);
             opacity: 0;
           }
+        }
+        /* Feature 1: 고도 클릭 팝업 스타일 */
+        .moru-elev-popup .mapboxgl-popup-content {
+          background: rgba(0, 0, 0, 0.78);
+          backdrop-filter: blur(8px);
+          border-radius: 10px;
+          padding: 8px 12px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .moru-elev-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(0, 0, 0, 0.78);
+        }
+        .moru-elev-popup .mapboxgl-popup-close-button {
+          display: none;
         }
       `}</style>
 

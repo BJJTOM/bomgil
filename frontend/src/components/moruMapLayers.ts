@@ -35,6 +35,8 @@ const MORU_LAYER_IDS = [
   'moru-paths',
   'moru-km-markers',
   'moru-km-markers-dot',
+  'moru-slope-outline',
+  'moru-slope-line',
 ];
 const MORU_SOURCE_IDS = [
   'moru-dem',
@@ -43,6 +45,7 @@ const MORU_SOURCE_IDS = [
   'moru-trail-endpoints',
   'moru-peaks',
   'moru-km-markers',
+  'moru-slope',
 ];
 
 // 언어별 Mapbox name_* 필드 표현식. 여러 후보 필드를 coalesce 로 순회해서
@@ -1151,6 +1154,224 @@ export function apply3DBuildings(map: any, theme: 'dark' | 'light' = 'light') {
   } catch {
     /* 일부 스타일(outdoors-v12)엔 building 소스-레이어가 'building' 외 다른 이름일 수 있음 */
   }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 9. 경사도(slope/grade) 컬러 라인
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 트레일 경로에 경사도(grade) 별 색상을 입히는 오버레이.
+ *
+ * 각 세그먼트의 grade(%) = (elev_diff / horizontal_distance) * 100 을 계산하고,
+ * 비슷한 grade 를 가진 연속 구간을 병합하여 GeoJSON FeatureCollection 으로 구성.
+ *
+ * 색상 매핑:
+ *   - 내리막(< -3%): #4A90D9 파랑
+ *   - 완만 내리막(-3~0%): #7AB8E0 연한 파랑
+ *   - 평지(0~3%): #34C759 초록
+ *   - 완경사(3~7%): #FFB347 앰버
+ *   - 급경사(7~12%): #FF6B35 다크오렌지
+ *   - 초급경사(12%+): #FF3B30 빨강
+ *
+ * 성능: 연속된 같은 grade 구간은 하나의 Feature 로 병합하여 피처 수를 줄임.
+ */
+
+export interface SlopeGradientOptions {
+  theme?: 'dark' | 'light';
+}
+
+/** grade(%) 를 6 단계 bucket 으로 분류 */
+function gradeCategory(grade: number): number {
+  if (grade < -3) return 0;   // downhill steep
+  if (grade < 0) return 1;    // downhill gentle
+  if (grade < 3) return 2;    // flat
+  if (grade < 7) return 3;    // gentle uphill
+  if (grade < 12) return 4;   // steep uphill
+  return 5;                   // very steep uphill
+}
+
+/** Haversine distance in meters between two [lng, lat] points */
+function haversineM(lng1: number, lat1: number, lng2: number, lat2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function drawSlopeGradientLine(
+  map: any,
+  coordinates: number[][],
+  opts: SlopeGradientOptions = {}
+) {
+  if (!map) return;
+
+  // 기존 slope 레이어/소스 제거
+  removeSlopeGradientLine(map);
+
+  if (!coordinates || coordinates.length < 2) return;
+
+  // 좌표에 고도(3번째 요소)가 있는지 확인
+  const hasElevation = coordinates.some((c) => c.length >= 3 && c[2] !== 0);
+  if (!hasElevation) return;
+
+  const theme = opts.theme ?? 'dark';
+
+  // 1) 각 세그먼트의 grade 계산 + 같은 category 연속 구간 병합
+  interface Segment {
+    coords: number[][];
+    category: number;
+    grade: number; // 대표 grade (평균)
+  }
+
+  const segments: Segment[] = [];
+  let currentCoords: number[][] = [coordinates[0]];
+  let currentCat = -1;
+  let gradeSum = 0;
+  let gradeCount = 0;
+
+  for (let i = 1; i < coordinates.length; i++) {
+    const prev = coordinates[i - 1];
+    const curr = coordinates[i];
+    const hDist = haversineM(prev[0], prev[1], curr[0], curr[1]);
+    const elevDiff = (curr[2] ?? 0) - (prev[2] ?? 0);
+
+    // 수평 거리가 너무 작으면(< 1m) grade 가 극단적 → 이전 카테고리 유지
+    let grade = 0;
+    if (hDist > 1) {
+      grade = (elevDiff / hDist) * 100;
+    }
+
+    const cat = gradeCategory(grade);
+
+    if (cat === currentCat) {
+      // 같은 카테고리 → 현재 세그먼트에 추가
+      currentCoords.push(curr);
+      gradeSum += grade;
+      gradeCount += 1;
+    } else {
+      // 카테고리 변경 → 이전 세그먼트 마무리
+      if (currentCat >= 0 && currentCoords.length >= 2) {
+        segments.push({
+          coords: [...currentCoords],
+          category: currentCat,
+          grade: gradeCount > 0 ? gradeSum / gradeCount : 0,
+        });
+      }
+      // 새 세그먼트 시작 (이전 점을 이어 받음 — 끊김 방지)
+      currentCoords = currentCoords.length > 0 ? [currentCoords[currentCoords.length - 1], curr] : [curr];
+      currentCat = cat;
+      gradeSum = grade;
+      gradeCount = 1;
+    }
+  }
+  // 마지막 세그먼트
+  if (currentCat >= 0 && currentCoords.length >= 2) {
+    segments.push({
+      coords: currentCoords,
+      category: currentCat,
+      grade: gradeCount > 0 ? gradeSum / gradeCount : 0,
+    });
+  }
+
+  if (segments.length === 0) return;
+
+  // 2) GeoJSON FeatureCollection 구성
+  const fc = {
+    type: 'FeatureCollection' as const,
+    features: segments.map((seg) => ({
+      type: 'Feature' as const,
+      properties: {
+        grade: Math.round(seg.grade * 10) / 10,
+        category: seg.category,
+      },
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: seg.coords,
+      },
+    })),
+  };
+
+  map.addSource('moru-slope', { type: 'geojson', data: fc });
+
+  const roadLabelLayer = findLayerId(map, ['road-label', 'road-label-simple', 'road-label-navigation']);
+
+  // 카테고리별 색상
+  const colorExpr: any = [
+    'match',
+    ['get', 'category'],
+    0, '#4A90D9',  // downhill steep — blue
+    1, '#7AB8E0',  // downhill gentle — light blue
+    2, '#34C759',  // flat — green
+    3, '#FFB347',  // gentle uphill — amber
+    4, '#FF6B35',  // steep — dark orange
+    5, '#FF3B30',  // very steep — red
+    '#34C759',     // fallback
+  ];
+
+  // (1) outline — 어두운 외곽선
+  map.addLayer(
+    {
+      id: 'moru-slope-outline',
+      type: 'line',
+      source: 'moru-slope',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': theme === 'dark' ? '#0a1a10' : '#ffffff',
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 5,
+          14, 9,
+          18, 12,
+        ],
+        'line-opacity': theme === 'dark' ? 0.85 : 0.9,
+      },
+    },
+    roadLabelLayer || undefined
+  );
+
+  // (2) main slope line — 경사도 색상
+  map.addLayer(
+    {
+      id: 'moru-slope-line',
+      type: 'line',
+      source: 'moru-slope',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': colorExpr,
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 2.5,
+          14, 5,
+          18, 7,
+        ],
+        'line-opacity': 0.95,
+      },
+    },
+    roadLabelLayer || undefined
+  );
+}
+
+/** slope 오버레이 레이어/소스 제거 */
+export function removeSlopeGradientLine(map: any) {
+  if (!map) return;
+  for (const id of ['moru-slope-line', 'moru-slope-outline']) {
+    if (map.getLayer?.(id)) { try { map.removeLayer(id); } catch {} }
+  }
+  if (map.getSource?.('moru-slope')) {
+    try { map.removeSource('moru-slope'); } catch {}
+  }
+}
+
+/** coordinates 배열에 유효한 고도 데이터가 있는지 확인 */
+export function hasElevationData(coordinates: number[][] | null | undefined): boolean {
+  if (!coordinates || coordinates.length < 2) return false;
+  return coordinates.some((c) => c.length >= 3 && c[2] !== 0);
 }
 
 // 안전한 set — 스타일/레이어에 해당 property 가 없어도 throw 안 하도록

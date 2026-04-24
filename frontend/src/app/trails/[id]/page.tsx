@@ -1037,6 +1037,9 @@ export default function TrailDetailPage() {
                     zoom={14}
                     markers={mapMarkers}
                     pathCoordinates={pathCoords}
+                    rawCoordinates={Array.isArray(tr.path_data?.coordinates) ? tr.path_data!.coordinates : undefined}
+                    totalDistance={formatDistance(tr.distance_km)}
+                    totalDuration={tr.estimated_minutes}
                     theme="light"
                     locale="ko"
                     onMarkerClick={handleMapMarkerClick}
@@ -1058,6 +1061,7 @@ export default function TrailDetailPage() {
                   markers={mapMarkers}
                   distance={tr.distance_km}
                   duration={String(tr.estimated_minutes)}
+                  difficulty={tr.difficulty}
                   theme="light"
                   onMarkerClick={handleMapMarkerClick}
                 />

@@ -145,6 +145,42 @@ export default function Home() {
     zh: { countries: "国家", trails: "路线", stories: "故事", travelers: "旅行者" },
   };
 
+  const featureSectionTitle: Record<string, string> = {
+    ko: "핵심 기능 3가지",
+    en: "3 Core Features",
+    ja: "3つのコア機能",
+    zh: "3大核心功能",
+  };
+
+  const featureCards: Record<string, { title: string; desc: string }[]> = {
+    ko: [
+      { title: "GPS 걷기 기록", desc: "걸으면서 자동으로 경로를 기록하고, 거리·시간·고도를 분석합니다" },
+      { title: "AI 맞춤 추천", desc: "내 걷기 패턴을 분석해 나에게 딱 맞는 코스를 추천합니다" },
+      { title: "동행 매칭", desc: "같은 코스를 걷고 싶은 동행자를 찾고, 함께 걸어보세요" },
+    ],
+    en: [
+      { title: "GPS Walk Tracking", desc: "Automatically record your route while walking, with distance, time, and elevation analysis" },
+      { title: "AI Recommendations", desc: "Get personalized trail suggestions based on your walking patterns" },
+      { title: "Companion Matching", desc: "Find walking partners who want to explore the same trails" },
+    ],
+    ja: [
+      { title: "GPS歩行記録", desc: "歩きながら自動でルートを記録し、距離・時間・高度を分析します" },
+      { title: "AIおすすめ", desc: "歩行パターンを分析して、ぴったりのコースをおすすめします" },
+      { title: "同行マッチング", desc: "同じコースを歩きたい仲間を見つけて、一緒に歩きましょう" },
+    ],
+    zh: [
+      { title: "GPS步行记录", desc: "步行时自动记录路线，分析距离、时间和海拔" },
+      { title: "AI个性推荐", desc: "分析你的步行模式，为你推荐最合适的路线" },
+      { title: "同行匹配", desc: "找到想走同一路线的同伴，一起出发吧" },
+    ],
+  };
+
+  const appDownloadTexts: Record<string, { title: string; sub: string }> = {
+    ko: { title: "언제 어디서나 Moru와 함께", sub: "GPS 걷기 기록, AI 코스 추천, 동행 매칭까지" },
+    en: { title: "Moru with you, everywhere", sub: "GPS walk tracking, AI trail recommendations, and companion matching" },
+    ja: { title: "いつでもどこでもMoruと一緒に", sub: "GPS歩行記録、AIコースおすすめ、同行マッチングまで" },
+    zh: { title: "随时随地，Moru与你同行", sub: "GPS步行记录、AI路线推荐、同行匹配" },
+  };
 
   const countryUnit = language === "ko" ? "개국" : language === "ja" ? "ヶ国" : language === "zh" ? "国" : "";
 
@@ -173,7 +209,7 @@ export default function Home() {
                 >
                   <span>{l.flag}</span>
                   <span>{l.label}</span>
-                  {language === l.code && <span className="ml-auto text-[#A8E6CF]">✓</span>}
+                  {language === l.code && <span className="ml-auto text-[#A8E6CF]">&#10003;</span>}
                 </button>
               ))}
             </div>
@@ -181,38 +217,48 @@ export default function Home() {
         )}
       </div>
 
-      {/* Hero — compact, global */}
+      {/* Hero -- photo background with dark overlay */}
       <section className="relative overflow-hidden">
-        <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-20 md:pt-28 pb-20 md:pb-28">
+        <div
+          className="relative min-h-[500px] md:min-h-[600px] flex items-center justify-center"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1551632811-561732d1e306?w=1920&q=80')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+          {/* Subtle dot pattern */}
           <div className="absolute inset-0 opacity-5" style={{
             backgroundImage: `radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)`,
             backgroundSize: "40px 40px, 60px 60px",
           }} />
-          <div className="relative max-w-5xl mx-auto px-5 text-center z-10">
+          <div className="relative max-w-5xl mx-auto px-5 text-center z-10 py-20 md:py-28">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-pill px-4 py-2 mb-5">
               <span className="flex gap-0.5 text-[13px]">🇰🇷🇯🇵🇺🇸🇬🇧🇫🇷</span>
               <span className="text-white/70 text-[13px] font-medium">{communityBadgeTexts[language] ?? communityBadgeTexts.en}</span>
             </div>
-            <h1 className="text-[36px] md:text-[48px] font-bold text-white mb-3 tracking-tight leading-[1.2]">
+            <h1 className="text-[36px] md:text-[48px] font-bold text-white mb-3 tracking-tight leading-[1.2] drop-shadow-lg">
               {t("home.hero")}
             </h1>
-            <p className="text-[15px] md:text-[17px] text-white/50 mb-8 max-w-xl mx-auto leading-relaxed whitespace-pre-line">
+            <p className="text-[15px] md:text-[17px] text-white/70 mb-8 max-w-xl mx-auto leading-relaxed whitespace-pre-line drop-shadow-md">
               {heroSubTexts[language] ?? heroSubTexts.en}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
               <Link href="/explore" className="bg-white text-primary px-7 py-3.5 rounded-button text-[15px] font-semibold hover:shadow-float transition-all active:scale-[0.98]">
                 {t("home.exploreButton")}
               </Link>
-              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium hover:bg-white/25 transition-all active:scale-[0.98]">
+              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium hover:bg-white/25 transition-all active:scale-[0.98] border border-white/20">
                 {t("home.ctaButton")}
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="max-w-4xl mx-auto -mt-8 px-5 relative z-10">
-          <div className="card shadow-card grid grid-cols-4 divide-x divide-border-light">
+        {/* Stats bar -- bigger and bolder */}
+        <div className="max-w-4xl mx-auto -mt-10 px-5 relative z-10">
+          <div className="card shadow-card rounded-2xl grid grid-cols-4 divide-x divide-border-light">
             {[
               {
                 key: "countries" as const,
@@ -239,10 +285,10 @@ export default function Home() {
                 suffix: "",
               },
             ].map((stat) => (
-              <div key={stat.label} className="py-4 text-center">
-                <div className="text-[18px] md:text-[22px] font-bold font-en text-primary">
+              <div key={stat.label} className="py-5 md:py-7 text-center">
+                <div className="text-[22px] md:text-[28px] font-bold font-en text-primary">
                   {stat.value == null ? (
-                    <span className="inline-block w-10 h-5 animate-pulse bg-border-light rounded" />
+                    <span className="inline-block w-12 h-6 animate-pulse bg-border-light rounded" />
                   ) : stat.value === 0 ? (
                     <span className="text-[12px] md:text-[13px] font-medium text-text-tertiary">
                       {zeroStatTexts[language]?.[stat.key] ?? zeroStatTexts.en[stat.key]}
@@ -251,9 +297,66 @@ export default function Home() {
                     <AnimatedNumber value={stat.value} suffix={stat.suffix} />
                   )}
                 </div>
-                <p className="text-[11px] md:text-[12px] text-text-tertiary mt-0.5">{stat.label}</p>
+                <p className="text-[11px] md:text-[13px] text-text-tertiary mt-1 font-medium">{stat.label}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Core Features -- 3 cards */}
+      <section className="max-w-5xl mx-auto px-5 pt-14 md:pt-20 pb-10 md:pb-14">
+        <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight text-center mb-3">
+          {featureSectionTitle[language] ?? featureSectionTitle.en}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+          {/* Card 1: GPS Walk Tracking */}
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
+            <div className="w-14 h-14 rounded-full bg-[#E8F5E9] dark:bg-[#2D4A2E]/30 flex items-center justify-center mx-auto mb-5">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
+            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
+              {(featureCards[language] ?? featureCards.en)[0].title}
+            </h3>
+            <p className="text-[14px] text-text-secondary leading-relaxed">
+              {(featureCards[language] ?? featureCards.en)[0].desc}
+            </p>
+          </div>
+
+          {/* Card 2: AI Recommendations */}
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
+            <div className="w-14 h-14 rounded-full bg-[#FFF3E0] dark:bg-[#5C3D00]/30 flex items-center justify-center mx-auto mb-5">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E65100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
+              {(featureCards[language] ?? featureCards.en)[1].title}
+            </h3>
+            <p className="text-[14px] text-text-secondary leading-relaxed">
+              {(featureCards[language] ?? featureCards.en)[1].desc}
+            </p>
+          </div>
+
+          {/* Card 3: Companion Matching */}
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
+            <div className="w-14 h-14 rounded-full bg-[#E3F2FD] dark:bg-[#0D47A1]/30 flex items-center justify-center mx-auto mb-5">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
+              {(featureCards[language] ?? featureCards.en)[2].title}
+            </h3>
+            <p className="text-[14px] text-text-secondary leading-relaxed">
+              {(featureCards[language] ?? featureCards.en)[2].desc}
+            </p>
           </div>
         </div>
       </section>
@@ -362,6 +465,51 @@ export default function Home() {
                 <Link href="/community" className="btn-secondary px-8 py-4 text-[16px] font-semibold">{communityButtonTexts[language] ?? communityButtonTexts.en}</Link>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Download CTA */}
+      <section className="py-14 md:py-20 bg-gradient-to-b from-[#F5F5F5] to-[#FAFAFA] dark:from-[#1a1a1a] dark:to-[#111]">
+        <div className="max-w-3xl mx-auto px-5 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <img src="/icon-192.png" alt="Moru" className="w-10 h-10 rounded-xl" />
+          </div>
+          <h2 className="text-[24px] md:text-[30px] font-bold tracking-tight mb-3">
+            {appDownloadTexts[language]?.title ?? appDownloadTexts.en.title}
+          </h2>
+          <p className="text-[15px] md:text-[17px] text-text-secondary mb-8 max-w-md mx-auto">
+            {appDownloadTexts[language]?.sub ?? appDownloadTexts.en.sub}
+          </p>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <a
+              href="https://apps.apple.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-xl hover:bg-black/80 transition-colors"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+              </svg>
+              <div className="text-left">
+                <div className="text-[10px] leading-none opacity-70">Download on the</div>
+                <div className="text-[15px] font-semibold leading-tight">App Store</div>
+              </div>
+            </a>
+            <a
+              href="https://play.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-xl hover:bg-black/80 transition-colors"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.302 2.302a1 1 0 010 1.38l-2.302 2.302L15.395 13l2.302-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302L5.864 2.658z" />
+              </svg>
+              <div className="text-left">
+                <div className="text-[10px] leading-none opacity-70">GET IT ON</div>
+                <div className="text-[15px] font-semibold leading-tight">Google Play</div>
+              </div>
+            </a>
           </div>
         </div>
       </section>

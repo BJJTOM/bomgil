@@ -248,10 +248,10 @@ export default function Home() {
               {heroSubTexts[language] ?? heroSubTexts.en}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
-              <Link href="/explore" className="bg-white text-primary px-7 py-3.5 rounded-button text-[15px] font-semibold hover:shadow-float transition-all active:scale-[0.98]">
+              <Link href="/explore" className="bg-white text-primary px-7 py-3.5 rounded-button text-[15px] font-semibold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]">
                 {t("home.exploreButton")}
               </Link>
-              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium hover:bg-white/25 transition-all active:scale-[0.98]">
+              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium shadow-lg hover:bg-white/25 hover:shadow-xl transition-all active:scale-[0.98]">
                 {t("home.ctaButton")}
               </Link>
             </div>
@@ -260,7 +260,7 @@ export default function Home() {
 
         {/* Stats bar */}
         <div className="max-w-4xl mx-auto -mt-8 px-5 relative z-10">
-          <div className="card shadow-card grid grid-cols-4 divide-x divide-border-light">
+          <div className="card shadow-lg grid grid-cols-4 divide-x divide-border-light">
             {[
               {
                 key: "countries" as const,
@@ -299,7 +299,7 @@ export default function Home() {
                     <AnimatedNumber value={stat.value} suffix={stat.suffix} />
                   )}
                 </div>
-                <p className="text-[11px] md:text-[12px] text-text-tertiary mt-0.5">{stat.label}</p>
+                <p className="text-[11px] md:text-[12px] text-text-secondary font-medium mt-0.5">{stat.label}</p>
               </div>
             ))}
           </div>

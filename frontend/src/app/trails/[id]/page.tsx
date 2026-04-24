@@ -917,26 +917,26 @@ export default function TrailDetailPage() {
             {/* Distance */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.distance[language] || STAT_LABELS.distance.en}</span>
-              <span className="text-[15px] font-bold text-text-primary mt-0.5">{formatDistance(tr.distance_km)}</span>
+              <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{formatDistance(tr.distance_km)}</span>
             </div>
             <div className="w-px h-7 bg-border-light flex-shrink-0" />
             {/* Time */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.time[language] || STAT_LABELS.time.en}</span>
-              <span className="text-[15px] font-bold text-text-primary mt-0.5">{formatDuration(tr.estimated_minutes)}</span>
+              <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{formatDuration(tr.estimated_minutes)}</span>
             </div>
             <div className="w-px h-7 bg-border-light flex-shrink-0" />
             {/* Difficulty */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.difficulty[language] || STAT_LABELS.difficulty.en}</span>
-              <span className="text-[15px] font-bold text-text-primary mt-0.5">{difficultyLabel}</span>
+              <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{difficultyLabel}</span>
             </div>
             {tr.elevation_gain && (
               <>
                 <div className="w-px h-7 bg-border-light flex-shrink-0" />
                 <div className="flex flex-col items-center flex-1 min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.elevation[language] || STAT_LABELS.elevation.en}</span>
-                  <span className="text-[15px] font-bold text-text-primary mt-0.5">+{tr.elevation_gain}m</span>
+                  <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">+{tr.elevation_gain}m</span>
                 </div>
               </>
             )}
@@ -945,7 +945,7 @@ export default function TrailDetailPage() {
                 <div className="w-px h-7 bg-border-light flex-shrink-0" />
                 <div className="flex flex-col items-center flex-1 min-w-0">
                   <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">{STAT_LABELS.calories[language] || STAT_LABELS.calories.en}</span>
-                  <span className="text-[15px] font-bold text-text-primary mt-0.5">{language === "ko" ? "약 " : "~"}{estimatedCalories.toLocaleString()} kcal</span>
+                  <span className="text-[13px] md:text-[15px] font-bold text-text-primary mt-0.5 whitespace-nowrap">{estimatedCalories.toLocaleString()}kcal</span>
                 </div>
               </>
             )}
@@ -1073,43 +1073,21 @@ export default function TrailDetailPage() {
                 </section>
               )}
 
-              {/* Difficulty / Elevation Visualization */}
+              {/* Difficulty Indicator */}
               <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
-                <h2 className="text-sm font-bold text-text-primary mb-3">
-                  {language === "ko" ? "난이도" : language === "ja" ? "難易度" : language === "zh" ? "难度" : "Difficulty"}
-                </h2>
-                {/* Difficulty bar */}
-                <div className="flex rounded-full overflow-hidden h-3 mb-2">
-                  <div className={`flex-1 ${tr.difficulty === "easy" ? "bg-green-500" : "bg-green-500/20 dark:bg-green-500/10"} transition-colors`} />
-                  <div className={`flex-1 ${tr.difficulty === "moderate" ? "bg-amber-500" : "bg-amber-500/20 dark:bg-amber-500/10"} transition-colors`} />
-                  <div className={`flex-1 ${tr.difficulty === "hard" ? "bg-red-500" : "bg-red-500/20 dark:bg-red-500/10"} transition-colors`} />
-                </div>
-                <div className="flex text-[11px] text-text-tertiary">
-                  <span className={`flex-1 text-left ${tr.difficulty === "easy" ? "font-bold text-green-600 dark:text-green-400" : ""}`}>
-                    {DIFFICULTY_LABELS.easy[language] || "Easy"}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[12px] font-medium text-text-tertiary">
+                    {language === "ko" ? "난이도" : language === "ja" ? "難易度" : language === "zh" ? "难度" : "Difficulty"}
                   </span>
-                  <span className={`flex-1 text-center ${tr.difficulty === "moderate" ? "font-bold text-amber-600 dark:text-amber-400" : ""}`}>
-                    {DIFFICULTY_LABELS.moderate[language] || "Moderate"}
-                  </span>
-                  <span className={`flex-1 text-right ${tr.difficulty === "hard" ? "font-bold text-red-600 dark:text-red-400" : ""}`}>
-                    {DIFFICULTY_LABELS.hard[language] || "Hard"}
+                  <span className={`text-[13px] font-bold ${tr.difficulty === "easy" ? "text-green-600 dark:text-green-400" : tr.difficulty === "moderate" ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+                    {difficultyLabel}
                   </span>
                 </div>
-                {/* Elevation comparison */}
-                {tr.elevation_gain != null && tr.elevation_gain > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border-light flex items-center gap-2 text-[12px] text-text-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary flex-shrink-0">
-                      <path d="M3 21h18M9 8l3-5 3 5M12 3v18" />
-                    </svg>
-                    <span>
-                      +{tr.elevation_gain}m{" "}
-                      <span className="text-text-tertiary">
-                        ({language === "ko" ? "아파트 약" : language === "ja" ? "マンション約" : language === "zh" ? "约" : "~"}{" "}
-                        {Math.round(tr.elevation_gain / 3)}{language === "ko" ? "층 높이" : language === "ja" ? "階の高さ" : language === "zh" ? "层楼高" : " floors"})
-                      </span>
-                    </span>
-                  </div>
-                )}
+                <div className="flex gap-1.5">
+                  <div className={`h-1.5 flex-1 rounded-full ${tr.difficulty === "easy" || tr.difficulty === "moderate" || tr.difficulty === "hard" ? "bg-green-500" : "bg-gray-200 dark:bg-gray-700"}`} />
+                  <div className={`h-1.5 flex-1 rounded-full ${tr.difficulty === "moderate" || tr.difficulty === "hard" ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"}`} />
+                  <div className={`h-1.5 flex-1 rounded-full ${tr.difficulty === "hard" ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"}`} />
+                </div>
               </section>
 
               {/* Trail Segments */}
@@ -1126,7 +1104,7 @@ export default function TrailDetailPage() {
 
               {/* Spot Timeline */}
               {Array.isArray(spots) && spots.length > 0 && (
-                <section className="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm">
+                <section className="pt-2">
                   <ErrorBoundary fallback={null}>
                     <SpotTimeline spots={visibleSpots} />
                   </ErrorBoundary>

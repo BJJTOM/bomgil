@@ -218,19 +218,9 @@ export function POIDetailModal({
             )}
           </div>
 
-          {/* Content */}
+          {/* Content — always show basic info immediately, detail loads in background */}
           <div className="p-5">
-            {isLoading && hasContentId ? (
-              /* Skeleton — only show if we're actually fetching detail */
-              <div className="space-y-3 animate-pulse">
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-                <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ) : (
+            {(
               /* Detail content */
               <>
                 {/* Category badge */}

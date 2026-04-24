@@ -217,48 +217,39 @@ export default function Home() {
         )}
       </div>
 
-      {/* Hero -- photo background with dark overlay */}
+      {/* Hero — compact, global */}
       <section className="relative overflow-hidden">
-        <div
-          className="relative min-h-[500px] md:min-h-[600px] flex items-center justify-center"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1551632811-561732d1e306?w=1920&q=80')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          {/* Dark gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+        <div className="bg-gradient-to-br from-[#1a3a1b] via-[#2D4A2E] to-[#1e442f] pt-20 md:pt-28 pb-20 md:pb-28">
           {/* Subtle dot pattern */}
           <div className="absolute inset-0 opacity-5" style={{
             backgroundImage: `radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)`,
             backgroundSize: "40px 40px, 60px 60px",
           }} />
-          <div className="relative max-w-5xl mx-auto px-5 text-center z-10 py-20 md:py-28">
+          <div className="relative max-w-5xl mx-auto px-5 text-center z-10">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-pill px-4 py-2 mb-5">
               <span className="flex gap-0.5 text-[13px]">🇰🇷🇯🇵🇺🇸🇬🇧🇫🇷</span>
               <span className="text-white/70 text-[13px] font-medium">{communityBadgeTexts[language] ?? communityBadgeTexts.en}</span>
             </div>
-            <h1 className="text-[36px] md:text-[48px] font-bold text-white mb-3 tracking-tight leading-[1.2] drop-shadow-lg">
+            <h1 className="text-[36px] md:text-[48px] font-bold text-white mb-3 tracking-tight leading-[1.2]">
               {t("home.hero")}
             </h1>
-            <p className="text-[15px] md:text-[17px] text-white/70 mb-8 max-w-xl mx-auto leading-relaxed whitespace-pre-line drop-shadow-md">
+            <p className="text-[15px] md:text-[17px] text-white/50 mb-8 max-w-xl mx-auto leading-relaxed whitespace-pre-line">
               {heroSubTexts[language] ?? heroSubTexts.en}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
               <Link href="/explore" className="bg-white text-primary px-7 py-3.5 rounded-button text-[15px] font-semibold hover:shadow-float transition-all active:scale-[0.98]">
                 {t("home.exploreButton")}
               </Link>
-              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium hover:bg-white/25 transition-all active:scale-[0.98] border border-white/20">
+              <Link href="/trails/new" className="bg-white/15 backdrop-blur-sm text-white px-7 py-3.5 rounded-button text-[15px] font-medium hover:bg-white/25 transition-all active:scale-[0.98]">
                 {t("home.ctaButton")}
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Stats bar -- bigger and bolder */}
-        <div className="max-w-4xl mx-auto -mt-10 px-5 relative z-10">
-          <div className="card shadow-card rounded-2xl grid grid-cols-4 divide-x divide-border-light">
+        {/* Stats bar */}
+        <div className="max-w-4xl mx-auto -mt-8 px-5 relative z-10">
+          <div className="card shadow-card grid grid-cols-4 divide-x divide-border-light">
             {[
               {
                 key: "countries" as const,
@@ -285,10 +276,10 @@ export default function Home() {
                 suffix: "",
               },
             ].map((stat) => (
-              <div key={stat.label} className="py-5 md:py-7 text-center">
-                <div className="text-[22px] md:text-[28px] font-bold font-en text-primary">
+              <div key={stat.label} className="py-4 text-center">
+                <div className="text-[18px] md:text-[22px] font-bold font-en text-primary">
                   {stat.value == null ? (
-                    <span className="inline-block w-12 h-6 animate-pulse bg-border-light rounded" />
+                    <span className="inline-block w-10 h-5 animate-pulse bg-border-light rounded" />
                   ) : stat.value === 0 ? (
                     <span className="text-[12px] md:text-[13px] font-medium text-text-tertiary">
                       {zeroStatTexts[language]?.[stat.key] ?? zeroStatTexts.en[stat.key]}
@@ -297,66 +288,9 @@ export default function Home() {
                     <AnimatedNumber value={stat.value} suffix={stat.suffix} />
                   )}
                 </div>
-                <p className="text-[11px] md:text-[13px] text-text-tertiary mt-1 font-medium">{stat.label}</p>
+                <p className="text-[11px] md:text-[12px] text-text-tertiary mt-0.5">{stat.label}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Core Features -- 3 cards */}
-      <section className="max-w-5xl mx-auto px-5 pt-14 md:pt-20 pb-10 md:pb-14">
-        <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight text-center mb-3">
-          {featureSectionTitle[language] ?? featureSectionTitle.en}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
-          {/* Card 1: GPS Walk Tracking */}
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
-            <div className="w-14 h-14 rounded-full bg-[#E8F5E9] dark:bg-[#2D4A2E]/30 flex items-center justify-center mx-auto mb-5">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-            </div>
-            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
-              {(featureCards[language] ?? featureCards.en)[0].title}
-            </h3>
-            <p className="text-[14px] text-text-secondary leading-relaxed">
-              {(featureCards[language] ?? featureCards.en)[0].desc}
-            </p>
-          </div>
-
-          {/* Card 2: AI Recommendations */}
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
-            <div className="w-14 h-14 rounded-full bg-[#FFF3E0] dark:bg-[#5C3D00]/30 flex items-center justify-center mx-auto mb-5">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E65100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-            </div>
-            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
-              {(featureCards[language] ?? featureCards.en)[1].title}
-            </h3>
-            <p className="text-[14px] text-text-secondary leading-relaxed">
-              {(featureCards[language] ?? featureCards.en)[1].desc}
-            </p>
-          </div>
-
-          {/* Card 3: Companion Matching */}
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-7 text-center shadow-sm hover:shadow-card transition-shadow duration-200">
-            <div className="w-14 h-14 rounded-full bg-[#E3F2FD] dark:bg-[#0D47A1]/30 flex items-center justify-center mx-auto mb-5">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h3 className="text-[17px] font-bold mb-2 text-text-primary">
-              {(featureCards[language] ?? featureCards.en)[2].title}
-            </h3>
-            <p className="text-[14px] text-text-secondary leading-relaxed">
-              {(featureCards[language] ?? featureCards.en)[2].desc}
-            </p>
           </div>
         </div>
       </section>
@@ -443,72 +377,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* UGC CTA */}
-      <section className="bg-surface py-10 md:py-20">
-        <div className="max-w-5xl mx-auto px-5">
-          <div className="bg-gradient-to-br from-primary-50 to-accent-light/30 rounded-card p-10 md:p-16">
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2.5 bg-white rounded-pill px-5 py-2.5 shadow-soft mb-7">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                  <line x1="8" y1="2" x2="8" y2="18" />
-                  <line x1="16" y1="6" x2="16" y2="22" />
-                </svg>
-                <span className="text-[15px] font-semibold text-primary">{ctaBadgeTexts[language] ?? ctaBadgeTexts.en}</span>
-              </div>
-              <h2 className="text-[28px] md:text-[36px] font-bold tracking-tight mb-4 whitespace-pre-line leading-snug">{ctaTitleTexts[language] ?? ctaTitleTexts.en}</h2>
-              <p className="text-[16px] md:text-[18px] text-text-secondary leading-relaxed mb-10 max-w-lg mx-auto whitespace-pre-line">
-                {ctaDescTexts[language] ?? ctaDescTexts.en}
-              </p>
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Link href="/trails/new" className="btn-primary px-8 py-4 text-[16px] font-semibold">{t("home.ctaButton")}</Link>
-                <Link href="/community" className="btn-secondary px-8 py-4 text-[16px] font-semibold">{communityButtonTexts[language] ?? communityButtonTexts.en}</Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* App Download CTA */}
-      <section className="py-14 md:py-20 bg-gradient-to-b from-[#F5F5F5] to-[#FAFAFA] dark:from-[#1a1a1a] dark:to-[#111]">
+      {/* App Download + CTA */}
+      <section className="bg-surface py-10 md:py-16">
         <div className="max-w-3xl mx-auto px-5 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-            <img src="/icon-192.png" alt="Moru" className="w-10 h-10 rounded-xl" />
-          </div>
-          <h2 className="text-[24px] md:text-[30px] font-bold tracking-tight mb-3">
-            {appDownloadTexts[language]?.title ?? appDownloadTexts.en.title}
-          </h2>
-          <p className="text-[15px] md:text-[17px] text-text-secondary mb-8 max-w-md mx-auto">
-            {appDownloadTexts[language]?.sub ?? appDownloadTexts.en.sub}
+          <h2 className="text-[22px] md:text-[28px] font-bold tracking-tight mb-2 whitespace-pre-line">{ctaTitleTexts[language] ?? ctaTitleTexts.en}</h2>
+          <p className="text-[14px] md:text-[15px] text-text-secondary leading-relaxed mb-8 max-w-md mx-auto whitespace-pre-line">
+            {ctaDescTexts[language] ?? ctaDescTexts.en}
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <a
-              href="https://apps.apple.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-xl hover:bg-black/80 transition-colors"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              <div className="text-left">
-                <div className="text-[10px] leading-none opacity-70">Download on the</div>
-                <div className="text-[15px] font-semibold leading-tight">App Store</div>
-              </div>
+          <div className="flex gap-3 justify-center flex-wrap mb-8">
+            <Link href="/trails/new" className="btn-primary px-7 py-3.5 text-[15px] font-semibold">{t("home.ctaButton")}</Link>
+            <Link href="/community" className="btn-secondary px-7 py-3.5 text-[15px] font-semibold">{communityButtonTexts[language] ?? communityButtonTexts.en}</Link>
+          </div>
+          <div className="flex gap-3 justify-center flex-wrap">
+            <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2.5 bg-black text-white px-5 py-3 rounded-xl hover:bg-black/80 transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              <div className="text-left"><div className="text-[9px] leading-none opacity-70">Download on the</div><div className="text-[14px] font-semibold leading-tight">App Store</div></div>
             </a>
-            <a
-              href="https://play.google.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-xl hover:bg-black/80 transition-colors"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.302 2.302a1 1 0 010 1.38l-2.302 2.302L15.395 13l2.302-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302L5.864 2.658z" />
-              </svg>
-              <div className="text-left">
-                <div className="text-[10px] leading-none opacity-70">GET IT ON</div>
-                <div className="text-[15px] font-semibold leading-tight">Google Play</div>
-              </div>
+            <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2.5 bg-black text-white px-5 py-3 rounded-xl hover:bg-black/80 transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.302 2.302a1 1 0 010 1.38l-2.302 2.302L15.395 13l2.302-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302L5.864 2.658z"/></svg>
+              <div className="text-left"><div className="text-[9px] leading-none opacity-70">GET IT ON</div><div className="text-[14px] font-semibold leading-tight">Google Play</div></div>
             </a>
           </div>
         </div>

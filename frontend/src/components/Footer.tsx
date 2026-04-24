@@ -79,9 +79,6 @@ export function Footer() {
             {config.telecom_number && (
               <p>통신판매업 신고번호: {config.telecom_number}</p>
             )}
-            {config.contact_email && (
-              <p>이메일: {config.contact_email}</p>
-            )}
           </div>
         )}
 

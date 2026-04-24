@@ -106,6 +106,86 @@ export default function TrailDetailScreen() {
   );
 }
 
+function DescriptionBlock({
+  description,
+  tags,
+  textColor,
+  textSecColor,
+  sectionBg,
+  cardBg,
+}: {
+  description: string;
+  tags: { id: number; name: string }[];
+  textColor: string;
+  textSecColor: string;
+  sectionBg: string;
+  cardBg: string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [needsTruncation, setNeedsTruncation] = useState(false);
+  const [fullHeight, setFullHeight] = useState(0);
+
+  // ~4 lines at fontSize 15, lineHeight 26 => 104px
+  const MAX_HEIGHT = 104;
+
+  const handleTextLayout = (e: any) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0 && fullHeight === 0) {
+      setFullHeight(h);
+      if (h > MAX_HEIGHT + 10) {
+        setNeedsTruncation(true);
+      }
+    }
+  };
+
+  const paragraphs = description.split('\n').filter((p: string) => p.trim());
+
+  return (
+    <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+      <View style={{ backgroundColor: cardBg, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+        <View
+          style={{
+            overflow: 'hidden',
+            maxHeight: !isExpanded && needsTruncation ? MAX_HEIGHT : undefined,
+          }}
+        >
+          <View onLayout={handleTextLayout}>
+            {paragraphs.map((paragraph: string, i: number) => (
+              <Text key={i} style={[styles.descText, { color: textColor }, i > 0 && { marginTop: 10 }]}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
+        </View>
+        {needsTruncation && !isExpanded && (
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: 30, left: 16, right: 16, height: 40 }}>
+            <LinearGradient
+              colors={[`${cardBg}00`, cardBg]}
+              style={{ flex: 1 }}
+            />
+          </View>
+        )}
+        {needsTruncation && (
+          <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)} activeOpacity={0.7} style={{ marginTop: 4 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+              {isExpanded ? '\uC811\uAE30' : '\uB354\uBCF4\uAE30'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {tags.length > 0 && (
+          <View style={[styles.tagsRow, { marginTop: 12 }]}>
+            {tags.map((tag) => (
+              <View key={tag.id} style={[styles.tag, { backgroundColor: sectionBg }]}>
+                <Text style={[styles.tagText, { color: textSecColor }]}>#{tag.name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function TrailDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -507,6 +587,23 @@ function TrailDetailScreenInner() {
               </View>
             </>
           )}
+          {(() => {
+            const dist = parseFloat(trail.distance_km ?? '0');
+            const elev = trail.elevation_gain ?? 0;
+            if (dist <= 0) return null;
+            const cal = Math.round(dist * 65 + elev * 0.5);
+            return (
+              <>
+                <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: textTertColor }]}>{'\uCE7C\uB85C\uB9AC'}</Text>
+                  <Text style={[styles.statValue, { color: textColor }]}>
+                    {cal.toLocaleString()}kcal
+                  </Text>
+                </View>
+              </>
+            );
+          })()}
         </View>
 
         {/* Series-membership chips */}
@@ -584,27 +681,15 @@ function TrailDetailScreenInner() {
           </View>
         )}
 
-        {/* ===== DESCRIPTION — Change #1: no "소개" title, directly after stats ===== */}
-        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-          <View>
-            {(trail?.description || '').split('\n').map((paragraph: string, i: number) => (
-              paragraph.trim() ? (
-                <Text key={i} style={[styles.descText, { color: textColor }, i > 0 && { marginTop: 10 }]}>
-                  {paragraph}
-                </Text>
-              ) : null
-            ))}
-          </View>
-          {(trail?.tags || []).length > 0 && (
-            <View style={styles.tagsRow}>
-              {(trail?.tags || []).map((tag) => (
-                <View key={tag.id} style={[styles.tag, { backgroundColor: sectionBg }]}>
-                  <Text style={[styles.tagText, { color: textSecColor }]}>#{tag.name}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+        {/* ===== DESCRIPTION with show more/less ===== */}
+        <DescriptionBlock
+          description={trail?.description || ''}
+          tags={trail?.tags || []}
+          textColor={textColor}
+          textSecColor={textSecColor}
+          sectionBg={sectionBg}
+          cardBg={cardBg}
+        />
 
         {/* ===== MAP ===== */}
         <TouchableOpacity
@@ -647,39 +732,6 @@ function TrailDetailScreenInner() {
         {/* ===== NEARBY POIs ===== */}
         <NearbyPOICards trailId={trail.id} isDark={isDark} />
 
-        {/* ===== AUTHOR (moved up to match web flow) ===== */}
-        {trail.author && (
-          <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
-            <TouchableOpacity
-              style={[styles.authorCard, { backgroundColor: sectionBg }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
-              <View style={styles.authorAvatar}>
-                {trail.author.profile_image ? (
-                  <Image source={{ uri: trail.author.profile_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
-                ) : (
-                  <Feather name="user" size={18} color={textSecColor} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
-                  {trail.author.is_guide && (
-                    <View style={[styles.guideBadge, { backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.08)' }]}>
-                      <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
-                    </View>
-                  )}
-                </View>
-                {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
-              </View>
-              <Feather name="chevron-right" size={16} color={textTertColor} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ===== SECTION SEPARATOR (matches web) ===== */}
-        <View style={{ marginHorizontal: 20, marginTop: 20, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: borderColor }} />
-
         {/* ===== ELEVATION PROFILE ===== */}
         {trail.path_data?.coordinates && (
           <ElevationProfile
@@ -687,6 +739,25 @@ function TrailDetailScreenInner() {
             isDark={isDark}
           />
         )}
+
+        {/* ===== DIFFICULTY INDICATOR (progressive bar) ===== */}
+        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+          <View style={{ backgroundColor: cardBg, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: textTertColor }}>
+                {'\uB09C\uC774\uB3C4'}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: diff.text }}>
+                {diff.label}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: trail.difficulty === 'easy' || trail.difficulty === 'moderate' || trail.difficulty === 'hard' ? '#22C55E' : (isDark ? '#374151' : '#E5E7EB') }} />
+              <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: trail.difficulty === 'moderate' || trail.difficulty === 'hard' ? '#F59E0B' : (isDark ? '#374151' : '#E5E7EB') }} />
+              <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: trail.difficulty === 'hard' ? '#EF4444' : (isDark ? '#374151' : '#E5E7EB') }} />
+            </View>
+          </View>
+        </View>
 
         {/* ===== TRAIL SEGMENTS ===== */}
         <TrailSegments segments={(trail as any).segments} />
@@ -789,6 +860,64 @@ function TrailDetailScreenInner() {
 
         {/* ===== STAMP COLLECTION ===== */}
         <StampBook trailId={trail.id} />
+
+        {/* ===== SECTION SEPARATOR ===== */}
+        <View style={{ marginHorizontal: 20, marginTop: 20, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: borderColor }} />
+
+        {/* ===== AUTHOR / SOURCE — at the bottom, matching web ===== */}
+        <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>
+          <View style={{ backgroundColor: cardBg, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+            {trail.author ? (
+              <TouchableOpacity
+                style={[styles.authorCard, { backgroundColor: 'transparent', padding: 0 }]}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('Profile', { nickname: trail.author.nickname })}>
+                <View style={styles.authorAvatar}>
+                  {trail.author.profile_image ? (
+                    <Image source={{ uri: trail.author.profile_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                  ) : (
+                    <Feather name="user" size={18} color={textSecColor} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.authorName, { color: textColor }]}>{trail.author.nickname}</Text>
+                    {trail.author.is_guide && (
+                      <View style={[styles.guideBadge, { backgroundColor: isDark ? 'rgba(74,222,128,0.1)' : 'rgba(45,74,46,0.08)' }]}>
+                        <Text style={[styles.guideBadgeText, { color: isDark ? '#4ADE80' : '#2D4A2E' }]}>{'\uC778\uC99D \uAC00\uC774\uB4DC'}</Text>
+                      </View>
+                    )}
+                  </View>
+                  {trail.author.bio ? <Text style={[styles.authorBio, { color: textTertColor }]} numberOfLines={1}>{trail.author.bio}</Text> : null}
+                </View>
+                <Feather name="chevron-right" size={16} color={textTertColor} />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.authorAvatar, { backgroundColor: sectionBg }]}>
+                  <Feather name="map-pin" size={14} color={textTertColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: textSecColor }}>
+                      {(trail as any).source === 'visitkorea' ? '\uD55C\uAD6D\uAD00\uAD11\uACF5\uC0AC'
+                        : (trail as any).source === 'durunubi' ? '\uB450\uB8E8\uB204\uBE44'
+                        : '\uACF5\uC2DD \uCF54\uC2A4'}
+                    </Text>
+                    <View style={{ backgroundColor: sectionBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '600', color: textTertColor }}>{'\uACF5\uC2DD'}</Text>
+                    </View>
+                  </View>
+                  {(trail as any).source_url ? (
+                    <TouchableOpacity onPress={() => Linking.openURL((trail as any).source_url)} activeOpacity={0.7}>
+                      <Text style={{ fontSize: 10, color: textTertColor, marginTop: 2 }}>{'\uC6D0\uBCF8 \uBCF4\uAE30'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
 
         {/* ===== REVIEWS ===== */}
         <View style={[styles.contentBlock, { paddingHorizontal: 20 }]}>

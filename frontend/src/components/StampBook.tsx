@@ -21,10 +21,13 @@ function useTrailStamps(trailId: number) {
   return useQuery<StampPoint[]>({
     queryKey: ["trail-stamps", trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${trailId}/stamps/`);
+      const { data } = await api.get(`/trails/${trailId}/stamps/`, {
+        _silent: true,
+      } as any);
       return data;
     },
-    enabled: !!trailId,
+    enabled: Number.isFinite(trailId) && trailId > 0,
+    retry: false,
   });
 }
 

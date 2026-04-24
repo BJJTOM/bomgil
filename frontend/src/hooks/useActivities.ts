@@ -37,10 +37,17 @@ export function useTrailActivities(trailId: number | string) {
   return useQuery<ActivityTrack[]>({
     queryKey: ["trail-activities", trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/activities/trail/${trailId}/`);
+      const { data } = await api.get(`/activities/trail/${trailId}/`, {
+        _silent: true,
+      } as any);
       return data.results ?? data;
     },
-    enabled: !!trailId,
+    enabled: (() => {
+      if (!trailId) return false;
+      const n = Number(trailId);
+      return Number.isFinite(n) && n > 0;
+    })(),
+    retry: false,
   });
 }
 

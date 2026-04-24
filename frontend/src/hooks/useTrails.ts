@@ -67,10 +67,17 @@ export function useTrail(id: number) {
   return useQuery({
     queryKey: ["trail", id],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${id}/`);
+      // `_silent` — the detail page already renders an inline
+      // "코스를 찾을 수 없어요" card when `trail` is null, so a 404
+      // from a deleted/stale bookmark doesn't need to also explode
+      // in the global axios toast.
+      const { data } = await api.get(`/trails/${id}/`, {
+        _silent: true,
+      } as any);
       return data;
     },
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
+    retry: false,
   });
 }
 

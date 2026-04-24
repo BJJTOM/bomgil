@@ -6,10 +6,13 @@ export function useTrailReviews(trailId: number) {
   return useQuery<Review[]>({
     queryKey: ["trail-reviews", trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/reviews/trails/${trailId}/`);
+      const { data } = await api.get(`/reviews/trails/${trailId}/`, {
+        _silent: true,
+      } as any);
       return data.results ?? data;
     },
-    enabled: !!trailId,
+    enabled: Number.isFinite(trailId) && trailId > 0,
+    retry: false,
   });
 }
 

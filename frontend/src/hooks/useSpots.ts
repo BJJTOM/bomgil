@@ -6,9 +6,14 @@ export function useTrailSpots(trailId: number) {
   return useQuery<Spot[]>({
     queryKey: ["trail-spots", trailId],
     queryFn: async () => {
-      const { data } = await api.get(`/trails/${trailId}/spots/`);
+      // _silent: deleted/stale trail 404s shouldn't toast — the spot
+      // section just hides itself when the array is empty.
+      const { data } = await api.get(`/trails/${trailId}/spots/`, {
+        _silent: true,
+      } as any);
       return data;
     },
-    enabled: !!trailId,
+    enabled: Number.isFinite(trailId) && trailId > 0,
+    retry: false,
   });
 }

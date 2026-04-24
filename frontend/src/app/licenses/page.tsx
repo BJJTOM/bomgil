@@ -6,7 +6,6 @@ const LICENSES = [
   { name: "Next.js", license: "MIT", url: "https://github.com/vercel/next.js" },
   { name: "React", license: "MIT", url: "https://github.com/facebook/react" },
   { name: "Tailwind CSS", license: "MIT", url: "https://github.com/tailwindlabs/tailwindcss" },
-  { name: "Leaflet", license: "BSD-2-Clause", url: "https://github.com/Leaflet/Leaflet" },
   { name: "Axios", license: "MIT", url: "https://github.com/axios/axios" },
   { name: "TanStack Query", license: "MIT", url: "https://github.com/TanStack/query" },
   { name: "Zustand", license: "MIT", url: "https://github.com/pmndrs/zustand" },

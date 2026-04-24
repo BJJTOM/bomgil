@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 interface TrailDrawMapProps {
   initialCenter?: { lat: number; lng: number };
@@ -16,6 +17,10 @@ interface TrailDrawMapProps {
 
 const FALLBACK_CENTER = { lat: 37.5665, lng: 126.978 };
 
+const MAPBOX_TOKEN =
+  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+  "";
+
 export function TrailDrawMap({
   initialCenter,
   zoom = 14,
@@ -24,9 +29,8 @@ export function TrailDrawMap({
 }: TrailDrawMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const leafletRef = useRef<any>(null);
+  const mapboxglRef = useRef<any>(null);
   const waypointMarkersRef = useRef<any[]>([]);
-  const routeLineRef = useRef<any>(null);
   const initializedRef = useRef(false);
 
   const [waypoints, setWaypoints] = useState<[number, number][]>([]);
@@ -43,7 +47,7 @@ export function TrailDrawMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [waypoints, routeCoords, distanceKm, durationMin]);
 
-  // Init Leaflet map
+  // Init Mapbox map
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
     if (initializedRef.current) return;
@@ -52,36 +56,36 @@ export function TrailDrawMap({
     let cancelled = false;
     (async () => {
       try {
-        const L = (await import("leaflet")).default;
+        const mapboxgl = (await import("mapbox-gl")).default;
         if (cancelled) return;
-        leafletRef.current = L;
+
+        mapboxglRef.current = mapboxgl;
+        (mapboxgl as any).accessToken = MAPBOX_TOKEN;
 
         const center = initialCenter || FALLBACK_CENTER;
-        const map = L.map(mapRef.current!, {
-          center: [center.lat, center.lng],
+        const map = new mapboxgl.Map({
+          container: mapRef.current!,
+          style: "mapbox://styles/mapbox/outdoors-v12",
+          center: [center.lng, center.lat],
           zoom,
-          zoomControl: false,
           attributionControl: false,
         });
-        L.control.zoom({ position: "bottomright" }).addTo(map);
-        L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-          { maxZoom: 19 },
-        ).addTo(map);
+
+        map.addControl(
+          new mapboxgl.NavigationControl({ showCompass: false }),
+          "bottom-right"
+        );
 
         map.on("click", (e: any) => {
-          const lng = e.latlng.lng;
-          const lat = e.latlng.lat;
+          const lng = e.lngLat.lng;
+          const lat = e.lngLat.lat;
           setWaypoints((prev) => [...prev, [lng, lat]]);
         });
 
-        mapInstanceRef.current = map;
-        setLoaded(true);
-        setTimeout(() => {
-          try {
-            map.invalidateSize();
-          } catch {}
-        }, 200);
+        map.on("load", () => {
+          mapInstanceRef.current = map;
+          setLoaded(true);
+        });
       } catch (err) {
         console.error("TrailDrawMap init error:", err);
       }
@@ -104,8 +108,9 @@ export function TrailDrawMap({
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !initialCenter) return;
-    map.setView([initialCenter.lat, initialCenter.lng], map.getZoom(), {
-      animate: true,
+    map.easeTo({
+      center: [initialCenter.lng, initialCenter.lat],
+      duration: 500,
     });
   }, [initialCenter?.lat, initialCenter?.lng]);
 
@@ -180,10 +185,10 @@ export function TrailDrawMap({
   // Render waypoint markers
   useEffect(() => {
     const map = mapInstanceRef.current;
-    const L = leafletRef.current;
-    if (!map || !L) return;
+    const mapboxgl = mapboxglRef.current;
+    if (!map || !mapboxgl) return;
 
-    waypointMarkersRef.current.forEach((m) => map.removeLayer(m));
+    waypointMarkersRef.current.forEach((m) => m.remove());
     waypointMarkersRef.current = [];
 
     waypoints.forEach((wp, i) => {
@@ -191,40 +196,59 @@ export function TrailDrawMap({
       const isEnd = i === waypoints.length - 1 && waypoints.length > 1;
       const bg = isStart ? "#34C759" : isEnd ? "#FF3B30" : "#2D4A2E";
       const label = isStart ? "S" : isEnd ? "E" : String(i + 1);
-      const icon = L.divIcon({
-        html: `<div style="width:26px;height:26px;background:${bg};color:white;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${label}</div>`,
-        className: "",
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
-      });
-      const marker = L.marker([wp[1], wp[0]], { icon }).addTo(map);
+
+      const el = document.createElement("div");
+      el.style.cssText = `width:26px;height:26px;background:${bg};color:white;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700`;
+      el.textContent = label;
+
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: "center",
+      })
+        .setLngLat(wp as [number, number])
+        .addTo(map);
       waypointMarkersRef.current.push(marker);
     });
-  }, [waypoints]);
+  }, [waypoints, loaded]);
 
-  // Render route polyline
+  // Render route line
   useEffect(() => {
     const map = mapInstanceRef.current;
-    const L = leafletRef.current;
-    if (!map || !L) return;
+    if (!map) return;
 
-    if (routeLineRef.current) {
-      map.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
-    }
+    // Remove old route line
+    if (map.getLayer("draw-route")) map.removeLayer("draw-route");
+    if (map.getSource("draw-route-source")) map.removeSource("draw-route-source");
 
     if (routeCoords.length >= 2) {
-      const latLngs = routeCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
-      const line = L.polyline(latLngs, {
-        color: "#2D4A2E",
-        weight: 5,
-        opacity: 0.85,
-        lineCap: "round",
-        lineJoin: "round",
-      }).addTo(map);
-      routeLineRef.current = line;
+      map.addSource("draw-route-source", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: routeCoords,
+          },
+        },
+      });
+
+      map.addLayer({
+        id: "draw-route",
+        type: "line",
+        source: "draw-route-source",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#2D4A2E",
+          "line-width": 5,
+          "line-opacity": 0.85,
+        },
+      });
     }
-  }, [routeCoords]);
+  }, [routeCoords, loaded]);
 
   const undo = useCallback(() => {
     setWaypoints((prev) => prev.slice(0, -1));
@@ -239,10 +263,11 @@ export function TrailDrawMap({
 
   const fitToRoute = useCallback(() => {
     const map = mapInstanceRef.current;
-    const L = leafletRef.current;
-    if (!map || !L || waypoints.length < 2) return;
-    const latLngs = waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
-    map.fitBounds(L.polyline(latLngs).getBounds(), { padding: [40, 40] });
+    const mapboxgl = mapboxglRef.current;
+    if (!map || !mapboxgl || waypoints.length < 2) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    waypoints.forEach((wp) => bounds.extend(wp as [number, number]));
+    map.fitBounds(bounds, { padding: 40, duration: 500 });
   }, [waypoints]);
 
   const useMyLocation = useCallback(() => {
@@ -251,18 +276,23 @@ export function TrailDrawMap({
       (pos) => {
         const map = mapInstanceRef.current;
         if (map) {
-          map.setView([pos.coords.latitude, pos.coords.longitude], 16, {
-            animate: true,
+          map.easeTo({
+            center: [pos.coords.longitude, pos.coords.latitude],
+            zoom: 16,
+            duration: 500,
           });
         }
       },
       () => {},
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
 
   return (
-    <div className={`relative overflow-hidden ${className}`} style={{ background: "#f0f4f0" }}>
+    <div
+      className={`relative overflow-hidden ${className}`}
+      style={{ background: "#f0f4f0" }}
+    >
       <div ref={mapRef} className="w-full h-full" />
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -282,14 +312,20 @@ export function TrailDrawMap({
       <div className="absolute top-3 left-3 right-3 z-[1000] flex items-center justify-between gap-2">
         <div className="bg-black/75 backdrop-blur-md rounded-2xl px-3.5 py-2 text-white flex items-center gap-3">
           <div>
-            <div className="text-[11px] text-white/60 uppercase tracking-wider">거리</div>
+            <div className="text-[11px] text-white/60 uppercase tracking-wider">
+              거리
+            </div>
             <div className="text-[15px] font-bold leading-tight">
-              {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(2)}km`}
+              {distanceKm < 1
+                ? `${Math.round(distanceKm * 1000)}m`
+                : `${distanceKm.toFixed(2)}km`}
             </div>
           </div>
           <div className="w-px h-7 bg-white/20" />
           <div>
-            <div className="text-[11px] text-white/60 uppercase tracking-wider">시간</div>
+            <div className="text-[11px] text-white/60 uppercase tracking-wider">
+              시간
+            </div>
             <div className="text-[15px] font-bold leading-tight">
               {durationMin >= 60
                 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
@@ -298,8 +334,12 @@ export function TrailDrawMap({
           </div>
           <div className="w-px h-7 bg-white/20" />
           <div>
-            <div className="text-[11px] text-white/60 uppercase tracking-wider">지점</div>
-            <div className="text-[15px] font-bold leading-tight">{waypoints.length}</div>
+            <div className="text-[11px] text-white/60 uppercase tracking-wider">
+              지점
+            </div>
+            <div className="text-[15px] font-bold leading-tight">
+              {waypoints.length}
+            </div>
           </div>
           {loading && (
             <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin ml-1" />
@@ -328,7 +368,14 @@ export function TrailDrawMap({
             className="bg-white/95 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-white"
             title="내 위치"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2D4A2E"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <circle cx="12" cy="12" r="3" fill="#2D4A2E" />
             </svg>
@@ -340,7 +387,14 @@ export function TrailDrawMap({
             className="bg-white/95 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-white disabled:opacity-40"
             title="경로에 맞추기"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D4A2E" strokeWidth="2">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2D4A2E"
+              strokeWidth="2"
+            >
               <path d="M3 3h6M3 3v6M21 3h-6M21 3v6M3 21h6M3 21v-6M21 21h-6M21 21v-6" />
             </svg>
           </button>
@@ -352,7 +406,14 @@ export function TrailDrawMap({
             disabled={waypoints.length === 0}
             className="bg-white/95 backdrop-blur-md rounded-full px-4 h-10 flex items-center gap-1.5 shadow-md hover:bg-white disabled:opacity-40 text-[13px] font-semibold text-gray-800"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
               <path d="M3 7v6h6M21 17a9 9 0 00-15-6.7L3 13" />
             </svg>
             실행취소

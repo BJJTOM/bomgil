@@ -1,4 +1,4 @@
-@import url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css');
+/* Mapbox GL CSS is imported dynamically in each map component */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -106,7 +106,7 @@ html {
   touch-action: pan-x pan-y;
 }
 
-*:not(.leaflet-container):not(.leaflet-container *) {
+*:not(.mapboxgl-map):not(.mapboxgl-map *) {
   touch-action: pan-x pan-y;
 }
 
@@ -247,58 +247,39 @@ a, button, [role="button"] {
   0% { transform: scale(1); opacity: 0.6; }
   75%, 100% { transform: scale(2.2); opacity: 0; }
 }
-.leaflet-ping {
+.mapbox-ping {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
-/* Clean popup styles */
-.leaflet-popup-clean .leaflet-popup-content-wrapper {
+/* Clean popup styles for Mapbox GL */
+.mapbox-popup-clean .mapboxgl-popup-content {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  padding: 4px 6px;
-}
-.leaflet-popup-clean .leaflet-popup-tip {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 6px 8px;
 }
 
 /* Dark popup for dark theme map */
-.leaflet-popup-dark .leaflet-popup-content-wrapper {
+.mapbox-popup-dark .mapboxgl-popup-content {
   background: rgba(20, 20, 20, 0.92);
   backdrop-filter: blur(12px);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
   border: 1px solid rgba(255,255,255,0.08);
   color: #fff;
-  padding: 4px 6px;
+  padding: 6px 8px;
 }
-.leaflet-popup-dark .leaflet-popup-tip {
-  background: rgba(20, 20, 20, 0.92);
+.mapbox-popup-dark .mapboxgl-popup-tip {
+  border-top-color: rgba(20, 20, 20, 0.92);
 }
 
-/* ---- Leaflet fixes: prevent Tailwind base from breaking tiles ---- */
-.leaflet-container {
+/* ---- Mapbox GL fixes ---- */
+.mapboxgl-map {
   width: 100%;
   height: 100%;
 }
-.leaflet-container img {
-  max-width: none !important;
-  max-height: none !important;
-}
-.leaflet-tile-pane {
-  z-index: 1 !important;
-}
-.leaflet-overlay-pane {
-  z-index: 2 !important;
-}
-.leaflet-marker-pane {
-  z-index: 3 !important;
-}
-.leaflet-popup-pane {
-  z-index: 4 !important;
-}
 
-/* Hide default leaflet attribution styling on dark maps */
-.leaflet-control-attribution {
+/* Hide Mapbox attribution styling on dark maps */
+.mapboxgl-ctrl-attrib {
   font-size: 10px !important;
   opacity: 0.5;
 }

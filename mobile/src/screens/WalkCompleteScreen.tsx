@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
   FlatList,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -379,6 +380,9 @@ function WalkCompleteInner() {
               <Text style={[styles.photosSectionTitle, { color: textSecColor }]}>
                 {t.walk.photoInfo} ({taggedPhotos.length})
               </Text>
+              <Text style={{ color: textSecColor, fontSize: 11, marginLeft: 8, opacity: 0.6 }}>
+                길게 눌러 삭제
+              </Text>
             </View>
             <FlatList
               horizontal
@@ -386,14 +390,51 @@ function WalkCompleteInner() {
               data={taggedPhotos}
               keyExtractor={(_: any, i: number) => String(i)}
               contentContainerStyle={styles.photosList}
-              renderItem={({ item }: { item: any }) => (
-                <View style={styles.photoCard}>
+              renderItem={({ item, index }: { item: any; index: number }) => (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onLongPress={() => {
+                    Alert.alert(
+                      '사진 삭제',
+                      '이 사진을 기록에서 제거할까요?',
+                      [
+                        { text: '취소', style: 'cancel' },
+                        {
+                          text: '삭제',
+                          style: 'destructive',
+                          onPress: async () => {
+                            const next = taggedPhotos.filter((_, i) => i !== index);
+                            setTaggedPhotos(next);
+                            // Persist the deletion so a re-open of this
+                            // screen shows the same trimmed set.
+                            try {
+                              const raw = await AsyncStorage.getItem('activity_latest_extra');
+                              const extra = raw ? JSON.parse(raw) : {};
+                              extra.taggedPhotos = next;
+                              await AsyncStorage.setItem(
+                                'activity_latest_extra',
+                                JSON.stringify(extra),
+                              );
+                              if (activityId) {
+                                await AsyncStorage.setItem(
+                                  `activity_${activityId}_extra`,
+                                  JSON.stringify(extra),
+                                );
+                              }
+                            } catch {}
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                  style={styles.photoCard}
+                >
                   <Image
                     source={{ uri: item.uri }}
                     style={styles.photoImage}
                     resizeMode="cover"
                   />
-                </View>
+                </TouchableOpacity>
               )}
             />
           </View>

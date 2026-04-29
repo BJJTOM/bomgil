@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 import { FirebaseInit } from "@/components/FirebaseInit";
 import { ThemeInit } from "@/components/ThemeInit";
+import { GlobalErrorHandlers } from "@/components/GlobalErrorHandlers";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -162,6 +163,7 @@ export default function RootLayout({
         <Providers>
           <ThemeInit />
           <FirebaseInit />
+          <GlobalErrorHandlers />
           <Navbar />
           <main className="pb-24 md:pb-0">{children}</main>
           <BottomNav />

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { loadKoreanFonts } from "../../_lib/ogFont";
 
 export const runtime = "edge";
 export const alt = "Moru — 도보여행 코스";
@@ -39,6 +40,7 @@ export default async function Image({
     /* fall through to brand fallback */
   }
 
+  const fonts = await loadKoreanFonts();
   return new ImageResponse(
     (
       <div
@@ -51,7 +53,7 @@ export default async function Image({
           background:
             "linear-gradient(135deg, #2D4A2E 0%, #3D6B4A 55%, #A8E6CF 100%)",
           color: "#FFFFFF",
-          fontFamily: "system-ui, sans-serif",
+          fontFamily: "Noto Sans KR, system-ui, sans-serif",
         }}
       >
         {/* Top brand row */}
@@ -151,6 +153,6 @@ export default async function Image({
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts },
   );
 }

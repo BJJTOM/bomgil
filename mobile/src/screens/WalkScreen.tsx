@@ -554,13 +554,27 @@ function WalkScreenInner() {
     if (photoBusyRef.current) return; // prevent rapid double-tap
     photoBusyRef.current = true;
     try {
-      // Photo tagging is best-effort. If GPS hasn't locked yet (cold
-      // start, indoors), fall back to 0,0 so the camera still opens —
-      // the photo can still be taken and the location can be backfilled
-      // later. Silent return was the root cause of "카메라 버튼 반응 없음".
-      const lat = currentPos?.lat ?? 0;
-      const lng = currentPos?.lng ?? 0;
-      const photo = await takeTaggedPhoto(lat, lng);
+      // Photo tagging is best-effort. Resolve location in priority:
+      //   1. live currentPos
+      //   2. engine's last known fix (covers brief gaps)
+      //   3. last point of routeCoords (resumed walk before first new fix)
+      //   4. (0,0) — last resort, photo still opens, server can backfill
+      // Earlier we silently returned when currentPos was null which
+      // looked like "카메라 버튼 반응 없음" — never do that again.
+      let lat = currentPos?.lat;
+      let lng = currentPos?.lng;
+      if (lat == null || lng == null) {
+        const ref = currentPosRef.current;
+        if (ref) {
+          lat = ref.lat;
+          lng = ref.lng;
+        } else if (routeCoords.length > 0) {
+          const last = routeCoords[routeCoords.length - 1];
+          lng = last[0];
+          lat = last[1];
+        }
+      }
+      const photo = await takeTaggedPhoto(lat ?? 0, lng ?? 0);
       if (photo) {
         setPendingPhoto(photo);
         setPhotoTitle('');
@@ -570,7 +584,7 @@ function WalkScreenInner() {
     } catch {} finally {
       photoBusyRef.current = false;
     }
-  }, [currentPos]);
+  }, [currentPos, routeCoords]);
 
   const openSpotModal = useCallback(() => {
     if (spotBusyRef.current) return;

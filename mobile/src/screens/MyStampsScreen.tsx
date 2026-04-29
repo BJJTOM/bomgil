@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -41,7 +42,7 @@ export default function MyStampsScreen() {
   const sectionBg = isDark ? '#1a1a1a' : '#F7F8FA';
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F2F4F6';
 
-  const { data: collectedStamps = [], isLoading } = useQuery({
+  const { data: collectedStamps = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['my-stamps'],
     queryFn: async () => {
       const { data } = await api.get('/trails/me/stamps/');
@@ -109,7 +110,14 @@ export default function MyStampsScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+            />
+          }>
           {/* Summary */}
           <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
             <View style={styles.summaryIcon}>

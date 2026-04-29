@@ -1,8 +1,10 @@
 import { ImageResponse } from "next/og";
+import { loadKoreanFonts } from "../_lib/ogFont";
 
 export const runtime = "edge";
 
 export async function GET() {
+  const fonts = await loadKoreanFonts();
   return new ImageResponse(
     (
       <div
@@ -16,7 +18,7 @@ export async function GET() {
           background:
             "linear-gradient(135deg, #2D4A2E 0%, #3D6B4A 60%, #A8E6CF 100%)",
           color: "#ffffff",
-          fontFamily: "system-ui, sans-serif",
+          fontFamily: "Noto Sans KR, system-ui, sans-serif",
         }}
       >
         <div style={{ fontSize: 150, marginBottom: 24, lineHeight: 1 }}>🌿</div>
@@ -45,6 +47,6 @@ export async function GET() {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, fonts },
   );
 }

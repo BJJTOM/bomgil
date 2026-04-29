@@ -8,7 +8,12 @@ export const contentType = "image/png";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.moruwalk.com/api/v1";
 
-export default async function Image({ params }: { params: { id: string } }) {
+export default async function Image({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   // Try to fetch trail metadata for richer cards. If anything fails we
   // fall through to the brand-only fallback so OG scrapers always get
   // something usable.
@@ -17,7 +22,7 @@ export default async function Image({ params }: { params: { id: string } }) {
   let distance = "";
   let duration = "";
   try {
-    const res = await fetch(`${API_BASE}/trails/${params.id}/`, {
+    const res = await fetch(`${API_BASE}/trails/${id}/`, {
       next: { revalidate: 1800 },
     });
     if (res.ok) {

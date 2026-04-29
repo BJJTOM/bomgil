@@ -109,9 +109,31 @@ class ActivityTrackViewSet(viewsets.ModelViewSet):
             instance.save()
         elif instance.track_points:
             summary = compute_summary(instance.track_points)
+            # CRITICAL: never overwrite values the mobile app sent.
+            #
+            # The phone's WalkEngine computes distance from the FULL GPS
+            # stream (often 30k+ fixes for a 16 km hike) with auto-pause
+            # and smoothing. We downsample to ~3000 points before POST
+            # to keep the JSON small, so re-running compute_summary on
+            # the server inevitably gets a shorter chord-only distance
+            # (often 5–10% lower). Symptom: walk-complete shows 16.4 km
+            # but the activity detail later shows 15.3 km.
+            #
+            # Trust whatever the client sent and only backfill blanks.
+            client_provided = set(serializer.validated_data.keys())
             for key, value in summary.items():
-                if value is not None:
-                    setattr(instance, key, value)
+                if value is None:
+                    continue
+                if key in client_provided:
+                    # Client explicitly set this field — keep theirs.
+                    continue
+                # Also skip if the instance already has a meaningful
+                # value (handles older mobile versions that posted some
+                # fields as 0/None).
+                existing = getattr(instance, key, None)
+                if existing not in (None, 0, 0.0):
+                    continue
+                setattr(instance, key, value)
             instance.track_points = simplify_track(instance.track_points, tolerance=0.00005)
             instance.save()
         self._update_daily_summary(instance)

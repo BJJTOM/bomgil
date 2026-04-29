@@ -354,6 +354,43 @@ class TrailViewSet(viewsets.ModelViewSet):
             defaults={"activity": activity},
         )
 
+        # ── Auto-award TrailCompletion when every stamp on this trail is
+        # collected. Stamps are an alternative completion path for users
+        # who can't (or didn't) record an activity, and this also moves
+        # any TrailSeries this trail belongs to forward in the user's
+        # progress dashboard.
+        completed_series = []
+        if created:
+            total = trail.stamp_points.count()
+            collected = UserStamp.objects.filter(
+                user=request.user,
+                stamp_point__trail=trail,
+            ).count()
+            if total > 0 and collected >= total:
+                tc, tc_created = TrailCompletion.objects.get_or_create(
+                    user=request.user,
+                    trail=trail,
+                    defaults={"source": "manual"},
+                )
+                if tc_created:
+                    # Snapshot of any series whose progress just ticked.
+                    for series in TrailSeries.objects.filter(memberships__trail=trail).distinct():
+                        try:
+                            done = TrailCompletion.objects.filter(
+                                user=request.user,
+                                trail__in=series.trails.all(),
+                            ).values("trail_id").distinct().count()
+                            total_in_series = series.trails.count()
+                            completed_series.append({
+                                "slug": series.slug,
+                                "title": series.title,
+                                "completed": done,
+                                "total": total_in_series,
+                                "is_complete": done >= total_in_series,
+                            })
+                        except Exception:  # pragma: no cover — defensive
+                            continue
+
         return Response(
             {
                 "collected": True,
@@ -361,6 +398,7 @@ class TrailViewSet(viewsets.ModelViewSet):
                 "stamp": StampPointSerializer(
                     stamp_point, context={"request": request},
                 ).data,
+                "series_progress": completed_series,
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )

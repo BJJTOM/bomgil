@@ -106,6 +106,29 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    // Per-architecture APK splits reduce download size massively
+    // (each user only gets their CPU's binary). Play Store also slices
+    // AABs automatically — keep splits OFF when doing `bundleRelease`
+    // so we don't double-split. Toggle via -PenableSplits=true on
+    // the gradle command line for sideload-only builds.
+    splits {
+        abi {
+            reset()
+            enable project.hasProperty("enableSplits")
+            universalApk false
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
+    }
+
+    // Bundle config — AAB uploaded to Play Store. The Mapbox + RN
+    // native libraries are large; split them so each device only
+    // downloads what it needs.
+    bundle {
+        language { enableSplit true }
+        density { enableSplit true }
+        abi { enableSplit true }
+    }
 }
 
 dependencies {

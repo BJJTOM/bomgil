@@ -27,6 +27,71 @@ import api from '../api/client';
 import { navParamCache } from '../utils/navParamCache';
 import { useThemeStore } from '../stores/theme';
 import { PhotoViewer } from '../components/PhotoViewer';
+import SplitChart from '../components/SplitChart';
+import type { KmSplit } from '../utils/walkEngine';
+
+const R_KM = 6371;
+const _toRad = (d: number) => (d * Math.PI) / 180;
+function _hav(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const dLat = _toRad(lat2 - lat1);
+  const dLng = _toRad(lng2 - lng1);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(_toRad(lat1)) * Math.cos(_toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/** Compute per-km splits from a track-point array. Each split is one
+ *  full kilometre — minutes-per-km pace + elevation gain/loss for that
+ *  km. Quietly returns [] when data is too sparse / no timestamps. */
+function computeSplits(points: any[]): KmSplit[] {
+  if (!Array.isArray(points) || points.length < 2) return [];
+  const out: KmSplit[] = [];
+  let cumKm = 0;
+  let kmStartIdx = 0;
+  let nextKm = 1;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const lat1 = a.lat ?? a.latitude;
+    const lng1 = a.lng ?? a.longitude;
+    const lat2 = b.lat ?? b.latitude;
+    const lng2 = b.lng ?? b.longitude;
+    if ([lat1, lng1, lat2, lng2].some((n) => typeof n !== 'number')) continue;
+    cumKm += _hav(lat1, lng1, lat2, lng2);
+    if (cumKm >= nextKm) {
+      const t1 = points[kmStartIdx]?.time ?? points[kmStartIdx]?.timestamp;
+      const t2 = b?.time ?? b?.timestamp;
+      let paceMinPerKm = 0;
+      if (t1 && t2) {
+        const ms = new Date(t2).getTime() - new Date(t1).getTime();
+        if (ms > 0) paceMinPerKm = ms / 60000;
+      }
+      let gain = 0;
+      let loss = 0;
+      for (let j = kmStartIdx + 1; j <= i; j++) {
+        const e1 = points[j - 1]?.ele ?? points[j - 1]?.elevation;
+        const e2 = points[j]?.ele ?? points[j]?.elevation;
+        if (typeof e1 === 'number' && typeof e2 === 'number') {
+          const d = e2 - e1;
+          if (d > 0) gain += d;
+          else loss += -d;
+        }
+      }
+      out.push({
+        km: nextKm,
+        duration: Math.round(paceMinPerKm * 60),
+        pace: paceMinPerKm,
+        avgPace: paceMinPerKm,
+        elevationGain: Math.round(gain),
+        elevationLoss: Math.round(loss),
+      });
+      kmStartIdx = i;
+      nextKm += 1;
+    }
+  }
+  return out;
+}
 
 const { width: SW } = Dimensions.get('window');
 
@@ -778,6 +843,25 @@ export default function ActivityDetailScreen() {
                 </View>
               </View>
             );
+          })()}
+
+          {/* Per-km splits chart — pace breakdown by kilometre */}
+          {(() => {
+            const splits = computeSplits(trackPoints);
+            return splits.length > 0 ? (
+              <View style={styles.section}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Feather name="bar-chart-2" size={16} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { color: textColor, marginLeft: 6, marginBottom: 0 }]}>
+                    구간별 페이스
+                  </Text>
+                  <Text style={{ fontSize: 12, color: textTertColor, marginLeft: 8 }}>
+                    {splits.length}km
+                  </Text>
+                </View>
+                <SplitChart splits={splits} isDark={isDark} />
+              </View>
+            ) : null;
           })()}
 
           {/* 3. Photos section */}

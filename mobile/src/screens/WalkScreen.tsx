@@ -199,6 +199,9 @@ function WalkScreenInner() {
 
   // Previous segment totals (for resume display)
   const [prevSegment, setPrevSegment] = useState<{ distance: number; duration: number; steps: number; calories: number } | null>(null);
+  // Cached previous-segment coordinates so we can render the resumed
+  // portion as a faded line under the current (live) green line.
+  const [prevRouteCoords, setPrevRouteCoords] = useState<[number, number][]>([]);
   // Previous segments' trackPoints saved during resume so they can be merged on completion
   const prevTrackPointsRef = useRef<any[]>([]);
 
@@ -273,6 +276,9 @@ function WalkScreenInner() {
       }
       prevTrackPointsRef.current = prevTp;
       console.log(`[Moru] Resume: ${prevCoords.length} routeCoords, ${prevTp.length} trackPoints, ${segments.length} segments`);
+      // Snapshot the boundary so we can render previous segments as a
+      // dimmed underlay separate from the live green line below.
+      setPrevRouteCoords(prevCoords);
       setRouteCoords(prevCoords);
       setSpots(resumeData.spots || []);
       setTaggedPhotos(resumeData.taggedPhotos || []);
@@ -1309,6 +1315,27 @@ function WalkScreenInner() {
             zoomLevel={16}
             animationDuration={1000}
           />
+          {/* Previous segments (resume) — dimmed gray underlay so the
+              user can see what was already walked vs the live segment. */}
+          {prevRouteCoords.length >= 2 && (
+            <Mapbox.ShapeSource
+              id="route-prev"
+              shape={{
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: prevRouteCoords },
+              } as any}
+            >
+              <Mapbox.LineLayer id="routePrevBorder" style={{
+                lineColor: '#FFFFFF', lineWidth: 6,
+                lineOpacity: 0.7, lineCap: 'round', lineJoin: 'round',
+              }} />
+              <Mapbox.LineLayer id="routePrevLine" style={{
+                lineColor: '#9AA3A8', lineWidth: 3.5,
+                lineOpacity: 0.85, lineCap: 'round', lineJoin: 'round',
+              }} />
+            </Mapbox.ShapeSource>
+          )}
           {routeGeoJSON && (
             <Mapbox.ShapeSource id="route" shape={routeGeoJSON}>
               <Mapbox.LineLayer id="routeGlow" style={{

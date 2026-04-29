@@ -5,6 +5,8 @@ import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 import { FirebaseInit } from "@/components/FirebaseInit";
 import { ThemeInit } from "@/components/ThemeInit";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Inline script runs before React hydrates so there is no light-mode
 // flash when the persisted theme is dark. Reads the same localStorage
@@ -164,6 +166,8 @@ export default function RootLayout({
           <main className="pb-24 md:pb-0">{children}</main>
           <BottomNav />
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

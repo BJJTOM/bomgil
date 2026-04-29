@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function GlobalError({
   error,
@@ -12,6 +13,13 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("App error boundary:", error);
+    // Forward to Sentry — gated on the DSN env, so dev without it stays
+    // quiet. The digest helps correlate the user report with the trace.
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      Sentry.captureException(error, {
+        tags: { source: "app_error_boundary", digest: error.digest || "none" },
+      });
+    }
   }, [error]);
 
   return (

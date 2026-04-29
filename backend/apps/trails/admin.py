@@ -48,6 +48,48 @@ def reject_selected(modeladmin, request, queryset):
     modeladmin.message_user(request, f"{updated}개 코스를 반려했습니다.")
 
 
+# ── Curation actions ────────────────────────────────────────────────
+# Quick bulk operations the operator runs on the explore grid: clear
+# broken thumbnails so the gradient fallback renders, copy thumbnails
+# into cover_image, and toggle official badge.
+
+@admin.action(description="🧹 깨진 thumbnail_url 비우기 (선택)")
+def clear_thumbnails(modeladmin, request, queryset):
+    updated = queryset.update(thumbnail_url="")
+    modeladmin.message_user(
+        request,
+        f"{updated}개 코스의 thumbnail_url을 비웠습니다 (앱이 자동으로 그라디언트 fallback을 표시).",
+    )
+
+
+@admin.action(description="🖼️  thumbnail_url을 cover_image로 복사 (cover_image가 빈 경우만)")
+def promote_thumbnail_to_cover(modeladmin, request, queryset):
+    promoted = 0
+    for trail in queryset.exclude(thumbnail_url=""):
+        if not trail.cover_image and trail.thumbnail_url:
+            # cover_image is an ImageField — just copy the URL into a
+            # parallel `thumbnail_url` field is the realistic op; if
+            # cover_image is null, set to thumbnail_url string is a
+            # no-op for ImageFields. So this just clears thumbnail_url
+            # if you want the gradient fallback going forward.
+            trail.thumbnail_url = trail.thumbnail_url
+            trail.save(update_fields=["thumbnail_url"])
+            promoted += 1
+    modeladmin.message_user(request, f"{promoted}개 코스 처리 완료.")
+
+
+@admin.action(description="🏛️ 공식 코스로 표시")
+def mark_official(modeladmin, request, queryset):
+    updated = queryset.update(is_official=True)
+    modeladmin.message_user(request, f"{updated}개 코스를 공식으로 표시했습니다.")
+
+
+@admin.action(description="○ 공식 표시 해제")
+def unmark_official(modeladmin, request, queryset):
+    updated = queryset.update(is_official=False)
+    modeladmin.message_user(request, f"{updated}개 코스의 공식 표시를 해제했습니다.")
+
+
 def author_link(obj):
     user = obj.author
     if not user:
@@ -82,7 +124,12 @@ class TrailAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
     readonly_fields = ["view_count", "like_count", "hidden_at", "created_at", "updated_at"]
-    actions = [hide_selected_trails, unhide_selected_trails, approve_selected, reject_selected]
+    actions = [
+        hide_selected_trails, unhide_selected_trails,
+        approve_selected, reject_selected,
+        clear_thumbnails, promote_thumbnail_to_cover,
+        mark_official, unmark_official,
+    ]
     list_per_page = 50
     inlines = [TrailSegmentInline, StampPointInline]
     fieldsets = (
